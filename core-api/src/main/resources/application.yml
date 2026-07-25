@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: core-api
+  threads:
+    virtual:
+      enabled: true
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/ifmix_core}
+      auto-index-creation: true
+
+server:
+  port: ${PORT:3000}
+
+springdoc:
+  swagger-ui:
+    persist-authorization: true
+
+app:
+  expose-errors: ${APP_EXPOSE_ERRORS:true}
