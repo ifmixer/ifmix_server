@@ -1,8 +1,8 @@
-# ifmix 后端重写：地基 + 首个纵向切片（core 服务）
+# ifmix 后端重写：地基 + 首个纵向切片（core-api 服务）
 
 - 日期：2026-07-26
 - 状态：已批准，待编写实现计划
-- 范围：建立 `ifmix_server` 多项目仓库的地基，实现 `core` 服务的项目骨架、HTTP 约定、通用 Repo/Service 抽象、MongoDB 接入、多租户机制、OpenAPI、虚拟线程，并用 `todo` 模块打通端到端。
+- 范围：建立 `ifmix_server` 多项目仓库的地基，实现 `core-api` 服务的项目骨架、HTTP 约定、通用 Repo/Service 抽象、MongoDB 接入、多租户机制、OpenAPI、虚拟线程，并用 `todo` 模块打通端到端。
 
 ## 背景与目标
 
@@ -23,18 +23,18 @@
 - **API 文档**：springdoc-openapi（代码优先）。
 - **校验**：Jakarta Bean Validation。
 - **测试**：JUnit 5 + AssertJ + Testcontainers（MongoDB 副本集）。
-- **基础包名**：`com.ifmix.core`。
+- **基础包名**：`com.ifmix.api.core`。
 
 ## 仓库结构（Maven 多模块聚合）
 
-根目录仅放聚合父 POM；`core` 是第一个服务模块，未来服务作为兄弟模块加入父 POM 的 `<modules>`。
+根目录仅放聚合父 POM；`core-api` 是第一个服务模块，未来服务作为兄弟模块加入父 POM 的 `<modules>`。
 
 ```
 ifmix_server/
   pom.xml                      # 聚合父 POM：dependencyManagement + Spring Boot 4.1 BOM + Java 25 + pluginManagement
-  core/
-    pom.xml                    # core 服务模块（打包成可运行 jar）
-    src/main/java/com/ifmix/core/
+  core-api/
+    pom.xml                    # core-api 服务模块（打包成可运行 jar）
+    src/main/java/com/ifmix/api/core/
       CoreApplication.java
       common/
         http/     Envelope, ApiError, ErrorCode, GlobalExceptionHandler,
@@ -51,11 +51,11 @@ ifmix_server/
         platformadmin/  （骨架占位）
         webhooks/       （骨架占位）
     src/main/resources/application.yml
-    src/test/java/com/ifmix/core/...
+    src/test/java/com/ifmix/api/core/...
 ```
 
 - **父 POM**：统一 Java 版本、Spring Boot BOM、依赖版本管理、插件配置。不含业务代码。
-- **通用抽象暂留 `core` 内**：`SimpleRepository`/`Envelope`/`RequestContext` 等先不抽独立库。等第二个服务真正需要复用时，再抽成 `common` 模块（YAGNI，避免提前抽象）。
+- **通用抽象暂留 `core-api` 内**：`SimpleRepository`/`Envelope`/`RequestContext` 等先不抽独立库。等第二个服务真正需要复用时，再抽成 `common` 模块（YAGNI，避免提前抽象）。
 
 ## HTTP 对外契约
 
