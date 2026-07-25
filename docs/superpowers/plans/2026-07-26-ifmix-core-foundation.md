@@ -58,10 +58,15 @@ ifmix_server/
         ReadOptions.java                              # throwIfNotFound/preferPrimary
         BaseRepository.java                           # MongoTemplate 通用 CRUD + 软删 + 游标分页
         BaseAppRepository.java                        # 覆写 extraCriteria 强制注入 appId
+        MongoClusterResolver.java                     # 按 appId 路由集群的接缝（接口）
+        DefaultMongoClusterResolver.java              # 默认实现：忽略 appId 返回单集群 template
       common/service/
         BaseAppService.java                           # 实体时间戳/appId 盖章 + 委托 repo
+      common/tx/
+        TxRunner.java                                 # withTx 事务边界（内部 TransactionTemplate）
       common/config/
         MongoConfig.java                              # 去掉 _class 类型提示
+        TransactionConfig.java                        # MongoTransactionManager bean
         OpenApiConfig.java                            # 每 BFF 一个 GroupedOpenApi + apiKey 安全方案
       modules/todo/
         TodoDocument.java                             # todos 集合文档（内嵌 items）
@@ -82,6 +87,8 @@ ifmix_server/
       common/db/BaseRepositoryTest.java
       common/db/BaseAppRepositoryTest.java
       common/service/BaseAppServiceTest.java
+      common/db/MongoClusterResolverTest.java
+      common/tx/TxRunnerTest.java
       modules/todo/TodoMapperTest.java
       modules/todo/TodoServiceTest.java
       bff/customer/CustomerTodoControllerTest.java
@@ -1477,6 +1484,270 @@ git commit -m "feat: Mongo 去除 _class 提示 + Testcontainers 集成测试基
 ```
 
 ---
+## 任务 8A：集群路由接缝 MongoClusterResolver
+
+说明：为未来"按 appId 路由到不同 MongoDB 集群"预留接缝。地基默认实现忽略 appId、返回唯一的自动配置 `MongoTemplate`。repo bean 经它取 template（任务 14）。
+
+**文件：**
+- 创建：`core-api/src/main/java/com/ifmix/api/core/common/db/MongoClusterResolver.java`
+- 创建：`core-api/src/main/java/com/ifmix/api/core/common/db/DefaultMongoClusterResolver.java`
+- 测试：`core-api/src/test/java/com/ifmix/api/core/common/db/MongoClusterResolverTest.java`
+
+- [ ] **步骤 1：编写失败的测试**
+
+创建 `core-api/src/test/java/com/ifmix/api/core/common/db/MongoClusterResolverTest.java`：
+
+```java
+package com.ifmix.api.core.common.db;
+
+import com.ifmix.api.core.support.AbstractMongoTest;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class MongoClusterResolverTest extends AbstractMongoTest {
+
+    @Autowired
+    private MongoClusterResolver resolver;
+
+    @Autowired
+    private MongoTemplate autoConfiguredTemplate;
+
+    @Test
+    void defaultResolverReturnsSingleTemplateRegardlessOfAppId() {
+        assertThat(resolver.primary()).isSameAs(autoConfiguredTemplate);
+        assertThat(resolver.forAppId("app-1")).isSameAs(autoConfiguredTemplate);
+        assertThat(resolver.forAppId("app-2")).isSameAs(autoConfiguredTemplate);
+    }
+}
+```
+
+- [ ] **步骤 2：运行测试验证失败**
+
+运行：`mvn -q -pl core-api -am -Dtest=MongoClusterResolverTest test`
+预期：编译失败（`MongoClusterResolver` 不存在）。
+
+- [ ] **步骤 3：编写实现**
+
+创建 `core-api/src/main/java/com/ifmix/api/core/common/db/MongoClusterResolver.java`：
+
+```java
+package com.ifmix.api.core.common.db;
+
+import org.springframework.data.mongodb.core.MongoTemplate;
+
+/**
+ * 集群路由接缝：未来按 appId 路由到不同 MongoDB 集群。
+ * 地基阶段默认实现忽略 appId。真要多集群时替换实现即可，业务层零改动。
+ */
+public interface MongoClusterResolver {
+
+    /** 按 appId 返回对应集群的 template。 */
+    MongoTemplate forAppId(String appId);
+
+    /** 默认/主集群 template（用于无 appId 的 bean 装配场景）。 */
+    MongoTemplate primary();
+}
+```
+
+创建 `core-api/src/main/java/com/ifmix/api/core/common/db/DefaultMongoClusterResolver.java`：
+
+```java
+package com.ifmix.api.core.common.db;
+
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.stereotype.Component;
+
+/** 单集群默认实现：忽略 appId，始终返回自动配置的唯一 MongoTemplate。 */
+@Component
+public class DefaultMongoClusterResolver implements MongoClusterResolver {
+
+    private final MongoTemplate template;
+
+    public DefaultMongoClusterResolver(MongoTemplate template) {
+        this.template = template;
+    }
+
+    @Override
+    public MongoTemplate forAppId(String appId) {
+        return template;
+    }
+
+    @Override
+    public MongoTemplate primary() {
+        return template;
+    }
+}
+```
+
+- [ ] **步骤 4：运行测试验证通过**
+
+运行：`mvn -q -pl core-api -am -Dtest=MongoClusterResolverTest test`
+预期：PASS。
+
+- [ ] **步骤 5：Commit**
+
+```bash
+git add core-api/src/main/java/com/ifmix/api/core/common/db/MongoClusterResolver.java core-api/src/main/java/com/ifmix/api/core/common/db/DefaultMongoClusterResolver.java core-api/src/test/java/com/ifmix/api/core/common/db/MongoClusterResolverTest.java
+git commit -m "feat: 集群路由接缝 MongoClusterResolver（单集群默认实现）"
+```
+
+---
+
+## 任务 8B：事务接缝 TxRunner + MongoTransactionManager
+
+说明：事务用 Spring 默认（`MongoTransactionManager` + `TransactionTemplate`，需副本集，Testcontainers 已满足）。业务侧统一经 `TxRunner.withTx(ctx, body)` 进入事务边界；跨函数事务让它们在同一边界内执行。`body` 接收 ctx（当前直通，未来多集群时可在此注入 session），保持签名前瞻。
+
+**文件：**
+- 创建：`core-api/src/main/java/com/ifmix/api/core/common/config/TransactionConfig.java`
+- 创建：`core-api/src/main/java/com/ifmix/api/core/common/tx/TxRunner.java`
+- 测试：`core-api/src/test/java/com/ifmix/api/core/common/tx/TxRunnerTest.java`
+
+- [ ] **步骤 1：编写失败的测试**
+
+创建 `core-api/src/test/java/com/ifmix/api/core/common/tx/TxRunnerTest.java`：
+
+```java
+package com.ifmix.api.core.common.tx;
+
+import com.ifmix.api.core.common.http.RequestContext;
+import com.ifmix.api.core.modules.todo.TodoDocument;
+import com.ifmix.api.core.support.AbstractMongoTest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.time.Instant;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class TxRunnerTest extends AbstractMongoTest {
+
+    private final RequestContext ctx = new RequestContext("app-tx", null, null, null, null, null, null);
+
+    @Autowired
+    private TxRunner txRunner;
+
+    @BeforeEach
+    void ensureCollection() {
+        // 事务中隐式建集合在部分版本会失败，测试前先确保集合存在
+        if (!mongoTemplate.collectionExists(TodoDocument.class)) {
+            mongoTemplate.createCollection(TodoDocument.class);
+        }
+    }
+
+    private TodoDocument todo(String title) {
+        TodoDocument d = new TodoDocument();
+        d.setTitle(title);
+        d.setAppId("app-tx");
+        Instant now = Instant.now();
+        d.setCreatedAt(now);
+        d.setUpdatedAt(now);
+        return d;
+    }
+
+    @Test
+    void commitPersistsAllWrites() {
+        txRunner.withTx(ctx, c -> {
+            mongoTemplate.insert(todo("a"));
+            mongoTemplate.insert(todo("b"));
+        });
+        assertThat(mongoTemplate.findAll(TodoDocument.class)).hasSize(2);
+    }
+
+    @Test
+    void rollbackDiscardsAllWrites() {
+        assertThatThrownBy(() -> txRunner.withTx(ctx, c -> {
+            mongoTemplate.insert(todo("a"));
+            throw new RuntimeException("boom");
+        })).isInstanceOf(RuntimeException.class);
+
+        assertThat(mongoTemplate.findAll(TodoDocument.class)).isEmpty();
+    }
+}
+```
+
+- [ ] **步骤 2：运行测试验证失败**
+
+运行：`mvn -q -pl core-api -am -Dtest=TxRunnerTest test`
+预期：编译失败（`TxRunner` 不存在）。
+
+- [ ] **步骤 3：编写实现**
+
+创建 `core-api/src/main/java/com/ifmix/api/core/common/config/TransactionConfig.java`：
+
+```java
+package com.ifmix.api.core.common.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.mongodb.MongoDatabaseFactory;
+import org.springframework.data.mongodb.MongoTransactionManager;
+
+/** 注册 Mongo 事务管理器（需副本集）。 */
+@Configuration
+public class TransactionConfig {
+
+    @Bean
+    public MongoTransactionManager mongoTransactionManager(MongoDatabaseFactory factory) {
+        return new MongoTransactionManager(factory);
+    }
+}
+```
+
+创建 `core-api/src/main/java/com/ifmix/api/core/common/tx/TxRunner.java`：
+
+```java
+package com.ifmix.api.core.common.tx;
+
+import com.ifmix.api.core.common.http.RequestContext;
+import org.springframework.data.mongodb.MongoTransactionManager;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+/**
+ * 事务边界接缝。业务通过 withTx 进入事务；跨多个函数的事务让它们在同一 withTx 内执行。
+ * 当前 session 由 Spring 线程绑定管理，ctx 直通；未来多集群时改为在此注入手动 session。
+ */
+@Component
+public class TxRunner {
+
+    private final TransactionTemplate txTemplate;
+
+    public TxRunner(MongoTransactionManager txManager) {
+        this.txTemplate = new TransactionTemplate(txManager);
+    }
+
+    public <R> R withTx(RequestContext ctx, Function<RequestContext, R> body) {
+        return txTemplate.execute(status -> body.apply(ctx));
+    }
+
+    public void withTx(RequestContext ctx, Consumer<RequestContext> body) {
+        txTemplate.executeWithoutResult(status -> body.accept(ctx));
+    }
+}
+```
+
+- [ ] **步骤 4：运行测试验证通过**
+
+运行：`mvn -q -pl core-api -am -Dtest=TxRunnerTest test`
+预期：PASS（2 个测试通过）。若因"事务中建集合"报错，确认 `@BeforeEach` 的 `createCollection` 已生效。
+
+- [ ] **步骤 5：Commit**
+
+```bash
+git add core-api/src/main/java/com/ifmix/api/core/common/config/TransactionConfig.java core-api/src/main/java/com/ifmix/api/core/common/tx/TxRunner.java core-api/src/test/java/com/ifmix/api/core/common/tx/TxRunnerTest.java
+git commit -m "feat: 事务接缝 TxRunner + MongoTransactionManager"
+```
+
+---
+
 ## 任务 9：通用仓储 BaseRepository（CRUD + 软删 + 游标分页）
 
 说明：这是数据层核心。基于 `MongoTemplate`，不关注租户（租户在任务 10 的子类注入）。所有按 id 操作对非法/未知 id 优雅处理：`getById` 视 `throwIfNotFound` 抛 NOT_FOUND 或返回 null，`updateById`/`deleteById` 返回 false。
@@ -2521,17 +2792,17 @@ class CustomerTodoControllerTest extends AbstractMongoTest {
 package com.ifmix.api.core.modules.todo;
 
 import com.ifmix.api.core.common.db.BaseAppRepository;
+import com.ifmix.api.core.common.db.MongoClusterResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.core.MongoTemplate;
 
-/** todo 模块 bean 装配。todos 集合开启软删。 */
+/** todo 模块 bean 装配。todos 集合开启软删。template 经集群路由接缝获取（未来多集群可换实现）。 */
 @Configuration
 public class TodoConfig {
 
     @Bean
-    public BaseAppRepository<TodoDocument> todoRepository(MongoTemplate mongo) {
-        return new BaseAppRepository<>(mongo, TodoDocument.class, true);
+    public BaseAppRepository<TodoDocument> todoRepository(MongoClusterResolver clusterResolver) {
+        return new BaseAppRepository<>(clusterResolver.primary(), TodoDocument.class, true);
     }
 
     @Bean
@@ -2744,7 +3015,7 @@ git commit -m "feat: OpenAPI 分组与统一 apiKey 安全方案"
 - [ ] **步骤 1：全量测试**
 
 运行：`mvn -q -pl core-api -am test`
-预期：BUILD SUCCESS，所有测试类通过（Envelope/ErrorCode/ClientPlatform/WebLayer/RequestContextResolution/CursorQuery/MongoSerialization/BaseRepository/BaseAppRepository/BaseAppService/TodoMapper/TodoService/CustomerTodoController/OpenApi）。
+预期：BUILD SUCCESS，所有测试类通过（Envelope/ErrorCode/ClientPlatform/WebLayer/RequestContextResolution/CursorQuery/MongoSerialization/MongoClusterResolver/TxRunner/BaseRepository/BaseAppRepository/BaseAppService/TodoMapper/TodoService/CustomerTodoController/OpenApi）。
 
 - [ ] **步骤 2：启动冒烟（需要本地 Mongo）**
 
@@ -2783,6 +3054,8 @@ git commit -m "feat: OpenAPI 分组与统一 apiKey 安全方案"
 | 游标分页（_id keyset） | 任务 6、9 |
 | Mongo 与序列化（ObjectId/Instant↔epoch/去 _class/内嵌建模） | 任务 7、8、12 |
 | 多租户 + 分片键（appId） | 任务 10（租户强制）；分片键 `{appId,_id}` 见下方说明 |
+| 集群路由接缝（MongoClusterResolver） | 任务 8A、14（bean 经 resolver 取 template） |
+| 事务接缝（TxRunner + MongoTransactionManager） | 任务 8B |
 | 首切片 todo（create/getById/findMany/updateOne/deleteById） | 任务 12、13、14 |
 | OpenAPI（每 BFF 分组 + apiKey） | 任务 15 |
 | 测试（JUnit5+AssertJ+Testcontainers 副本集） | 任务 8 起全部集成任务 |
@@ -2791,7 +3064,7 @@ git commit -m "feat: OpenAPI 分组与统一 apiKey 安全方案"
 
 **2. 占位符扫描**：无 TODO/待定/"类似任务 N"/无代码的测试步骤。每个代码步骤都含完整代码。✅
 
-**3. 类型一致性**：跨任务的类型/方法名核对一致——`RequestContext`（7 参构造，全程一致）、`Envelope.ok/error`、`ErrorCode.externalCode()/status()`、`CursorQuery.Order`/`effectiveLimit()`/`effectiveOrder()`、`ReadOptions.DEFAULT/PRIMARY/NULLABLE`、`Page(items,nextCursor,hasMore)`、`BaseRepository.getById/updateById/deleteById/findMany/insertOne`、`BaseAppService.createOne`、`TodoService.create/update`、`TodoMapper.toResponse`、`TodoDtos.*`。✅
+**3. 类型一致性**：跨任务的类型/方法名核对一致——`RequestContext`（7 参构造，全程一致）、`Envelope.ok/error`、`ErrorCode.externalCode()/status()`、`CursorQuery.Order`/`effectiveLimit()`/`effectiveOrder()`、`ReadOptions.DEFAULT/PRIMARY/NULLABLE`、`Page(items,nextCursor,hasMore)`、`BaseRepository.getById/updateById/deleteById/findMany/insertOne`、`BaseAppService.createOne`、`TodoService.create/update`、`TodoMapper.toResponse`、`TodoDtos.*`、`MongoClusterResolver.forAppId/primary`、`TxRunner.withTx`。✅
 
 ---
 

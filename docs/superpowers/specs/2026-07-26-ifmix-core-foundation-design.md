@@ -162,6 +162,19 @@ ifmix_server/
 - **读一致性**：写后回读走主库（`primary`/`primaryPreferred` 读偏好），避免副本延迟读不到刚写数据。
 - `MongoConfig`：注册 `ObjectId ↔ String`、`Instant ↔ epoch ms` 的转换器与 Jackson 序列化器。
 
+## 集群路由与事务（扩展性接缝）
+
+当前为**单 MongoDB 集群 + Spring 默认事务**；同时预留两个接缝，未来支持"按 `appId` 路由到不同集群"时，改动仅限接缝内，业务模块零改动。
+
+- **事务用 Spring 默认**：配置 `MongoTransactionManager` bean（需副本集，本地/测试用单节点副本集）。业务侧统一通过薄封装 `TxRunner.withTx(ctx, body)` 进入事务边界（内部 `TransactionTemplate`）。跨多个函数的事务 = 让它们在同一 `withTx` 边界内执行；repo 用默认 template 自动加入当前事务。session 由 Spring **线程绑定**管理（虚拟线程每请求独占线程，安全），**不放进 `RequestContext`**——保持上下文干净。
+- **集群路由接缝**：`MongoClusterResolver` 接口——`forAppId(appId)` 按租户返回对应集群的 `MongoTemplate`，`primary()` 返回默认集群 template（用于无 appId 的 bean 装配）。地基默认实现忽略 `appId`、两者都返回唯一的自动配置 template。repo bean 经 `primary()` 取 template。
+- **未来多集群（静态配置映射）**：只需
+  1. 换 `MongoClusterResolver` 实现——`application.yml` 配 `appId → 连接串` + 默认集群，启动时建好各集群 template/factory 缓存；
+  2. 让 `BaseRepository` 改为按 `ctx.appId()` 每次解析 template（而非构造时持有）；
+  3. 换 `TxRunner` 实现为按集群手动 `ClientSession`，届时把 session 放进 `RequestContext`。
+  因为业务只依赖 `TxRunner` 与 `MongoClusterResolver` 两个接缝，模块层不受影响。
+- **权衡（为何短期不做完整多集群）**：完整多集群会失去声明式 `@Transactional`（其假设单一 `MongoDatabaseFactory`）、单 `MongoTemplate` 注入、自动索引创建等默认便利。短期无此需求，故只保留上述接缝，把未来变更收敛到两个可替换组件，避免现在为未来需求牺牲全部默认能力。
+
 ## 首个纵向切片：`todo` 模块
 
 - `TodoDocument`：`_id`(ObjectId)、`appId`、`title`、`done`、内嵌 `items: [{ id, content, done }]`、`createdAt`、`updatedAt`、`deletedAt`。
@@ -204,4 +217,5 @@ ifmix_server/
 - **自研泛型 `MongoTemplate` 基类**而非 `MongoRepository` 接口式仓储：租户自动注入必须无法绕过，动态 `Criteria` 最能保证每个查询都强制追加 `appId`。
 - **父 POM 但暂不抽共享库**：统一版本/插件是低成本高收益；共享代码延迟到有第二个真实消费者时再抽（YAGNI）。
 - **`ObjectId` 主键**：原生、省空间、时间有序、游标分页零成本；对外暴露 24 位 hex 字符串（契约风格允许调整，移动端配合小改）。
+- **多集群路由与事务用接缝、暂不实装**：短期单集群 + Spring 默认事务（`MongoTransactionManager` + `TxRunner`）；用 `MongoClusterResolver` + `TxRunner` 两个接缝保留未来"按 appId 路由到不同集群 + 手动 session 事务"的扩展性，避免现在牺牲声明式事务等默认能力。
 - **app 级集合以 `appId` 为分片键**：采用复合 `{ appId: 1, _id: 1 }` —— 租户查询定向路由、大租户可继续切分避免热点、游标分页高效、唯一索引以分片键为前缀。
