@@ -6,7 +6,7 @@
 
 ## 背景与目标
 
-用 Java + Spring + MongoDB 重写现有 Node 后端（`ifmix_apps/server/core`，栈为 Hono + Drizzle + PostgreSQL）。最终目标是覆盖除 auth 外的全部模块（antique、iap、todo），但分步实现：本规格先打通地基 + 一个纵向切片，后续模块各出独立规格。
+用 Kotlin + Spring + MongoDB 重写现有 Node 后端（`ifmix_apps/server/core`，栈为 Hono + Drizzle + PostgreSQL）。最终目标是覆盖除 auth 外的全部模块（antique、iap、todo），但分步实现：本规格先打通地基 + 一个纵向切片，后续模块各出独立规格。
 
 - **重写而非增量迁移**：DB 从关系型（PostgreSQL）重新设计为文档型（MongoDB）。
 - **auth 暂缓**：本轮不实现登录鉴权。
@@ -15,46 +15,47 @@
 
 ## 技术栈
 
-- **语言/运行时**：Java 25（最新 LTS）。
+- **语言**：Kotlin 2.4.10（运行于 JDK 25，jvmToolchain(25)，`-Xjsr305=strict`）。选 Kotlin 的核心动因是 **null 安全**——`RequestContext.appId` 非空、其余字段 `String?` 显式可空，文档 `deletedAt: Instant?` 一目了然；DTO 用 `data class`、枚举用 `enum class`。
 - **框架**：Spring Boot 4.1（基于 Spring Framework 7），Spring MVC（阻塞式）。
 - **并发**：虚拟线程，`spring.threads.virtual.enabled=true`（每请求一个虚拟线程，阻塞式 Mongo 驱动与之兼容）。
 - **数据库**：MongoDB（副本集）+ Spring Data MongoDB。副本集使得真正需要跨文档原子性时可用多文档事务。
-- **构建**：Maven 多模块聚合。
+- **构建**：Gradle（Kotlin DSL）多模块，Gradle 9.6.1。Kotlin Spring 编译器插件 `kotlin("plugin.spring")`（all-open）打开 `@Component`/`@Configuration` 等类以供代理。
 - **API 文档**：springdoc-openapi（代码优先）。
-- **校验**：Jakarta Bean Validation。
-- **测试**：JUnit 5 + AssertJ + Testcontainers（MongoDB 副本集）。
+- **校验**：Jakarta Bean Validation（Kotlin 用 `@field:` 使用点目标注解到 data class 属性）。
+- **测试**：JUnit 5 + AssertJ + Testcontainers（MongoDB 副本集），测试用 Kotlin 编写。
 - **基础包名**：`com.ifmix.api.core`。
 
-## 仓库结构（Maven 多模块聚合）
+## 仓库结构（Gradle 多模块）
 
-根目录仅放聚合父 POM；`core-api` 是第一个服务模块，未来服务作为兄弟模块加入父 POM 的 `<modules>`。
+根目录放 `settings.gradle.kts`（聚合各模块）；`core-api` 是第一个服务模块，未来服务加入 `settings.gradle.kts` 的 `include(...)`。
 
 ```
 ifmix_server/
-  pom.xml                      # 聚合父 POM：dependencyManagement + Spring Boot 4.1 BOM + Java 25 + pluginManagement
+  settings.gradle.kts          # rootProject + include("core-api")；未来服务在此追加
   core-api/
-    pom.xml                    # core-api 服务模块（打包成可运行 jar）
-    src/main/java/com/ifmix/api/core/
-      CoreApplication.java
+    build.gradle.kts           # 插件（kotlin jvm/spring、spring-boot、dependency-management）+ 依赖 + jvmToolchain(25)
+    src/main/kotlin/com/ifmix/api/core/
+      CoreApplication.kt
       common/
         http/     Envelope, ApiError, ErrorCode, GlobalExceptionHandler,
                   RequestContext, RequestHeaders, RequestContextArgumentResolver,
                   HeaderValidationInterceptor, EnvelopeResponseAdvice
-        db/       BaseRepository, BaseAppRepository, Page, CursorQuery, SoftDelete 支持
+        db/       BaseRepository, BaseAppRepository, Page, CursorQuery, ReadOptions,
+                  BaseDocument, BaseAppDocument, MongoClusterResolver(接缝)
         service/  BaseAppService
-        config/   MongoConfig(转换器), OpenApiConfig(分组), WebConfig(拦截器/参数解析器)
+        tx/       TxRunner(事务接缝)
+        config/   MongoConfig, TransactionConfig, OpenApiConfig, WebConfig
       modules/
-        todo/     TodoDocument, todo DTO, TodoService
+        todo/     TodoDocument, TodoItem, TodoDtos, TodoMapper, TodoService, TodoConfig
       bff/
         customer/       CustomerTodoController
         appadmin/       （骨架占位）
         platformadmin/  （骨架占位）
         webhooks/       （骨架占位）
     src/main/resources/application.yml
-    src/test/java/com/ifmix/api/core/...
+    src/test/kotlin/com/ifmix/api/core/...
 ```
 
-- **父 POM**：统一 Java 版本、Spring Boot BOM、依赖版本管理、插件配置。不含业务代码。
 - **通用抽象暂留 `core-api` 内**：`BaseRepository`/`Envelope`/`RequestContext` 等先不抽独立库。等第二个服务真正需要复用时，再抽成 `common` 模块（YAGNI，避免提前抽象）。
 
 ## HTTP 对外契约
@@ -197,7 +198,7 @@ ifmix_server/
 
 - **单元测试**：纯函数 / helper（如信封构造、游标编解码、实体构造）与被测类同包，JUnit 5 + AssertJ。
 - **集成测试**：Testcontainers 启动 MongoDB（副本集），验证租户隔离、软删、游标分页、事务（后续模块）等真实行为。测试基类提供懒初始化的 `MongoTemplate`、清库、构造最小 `RequestContext` 的助手。
-- 每次改动后跑 `mvn -q verify`（编译 + 测试）。
+- 每次改动后跑 `./gradlew :core-api:test`（编译 + 测试）。
 
 ## 后续规格路线图（分步实现 → 最终覆盖除 auth 外全部）
 
@@ -215,7 +216,7 @@ ifmix_server/
 - **虚拟线程 + 阻塞 MVC**：避开响应式/协程的心智负担；阻塞式 Mongo 驱动在虚拟线程下天然高并发。
 - **显式 `RequestContext` 参数**：牺牲一点签名简洁，换取租户归属的可查性、可测性，符合安全底线"默认安全、显式可审"。
 - **自研泛型 `MongoTemplate` 基类**而非 `MongoRepository` 接口式仓储：租户自动注入必须无法绕过，动态 `Criteria` 最能保证每个查询都强制追加 `appId`。
-- **父 POM 但暂不抽共享库**：统一版本/插件是低成本高收益；共享代码延迟到有第二个真实消费者时再抽（YAGNI）。
+- **Gradle 多模块但暂不抽共享库**：`settings.gradle.kts` 聚合 + 各模块统一插件/依赖是低成本高收益；共享代码延迟到有第二个真实消费者时再抽成 `common` 模块（YAGNI）。
 - **`ObjectId` 主键**：原生、省空间、时间有序、游标分页零成本；对外暴露 24 位 hex 字符串（契约风格允许调整，移动端配合小改）。
 - **多集群路由与事务用接缝、暂不实装**：短期单集群 + Spring 默认事务（`MongoTransactionManager` + `TxRunner`）；用 `MongoClusterResolver` + `TxRunner` 两个接缝保留未来"按 appId 路由到不同集群 + 手动 session 事务"的扩展性，避免现在牺牲声明式事务等默认能力。
 - **app 级集合以 `appId` 为分片键**：采用复合 `{ appId: 1, _id: 1 }` —— 租户查询定向路由、大租户可继续切分避免热点、游标分页高效、唯一索引以分片键为前缀。
