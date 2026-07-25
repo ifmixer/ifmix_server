@@ -152,7 +152,13 @@ ifmix_server/
 - **建模按场景判断**：
   - 聚合边界内、随父一起读写、有界的子实体 → **内嵌**（如 `todo.items`），一次读写原子完成，规避多文档事务。
   - 需独立查询、可无限增长、跨聚合的 → **独立集合 + 引用**（如未来的 `scan_record` 扫描历史）。
-- **多租户**：所有租户集合含 `appId` 字段 + `(appId, _id)` 复合索引；`BaseAppRepository` 强制注入。
+- **多租户**：所有租户（app 级）集合含 `appId` 字段 + `(appId, _id)` 复合索引；`BaseAppRepository` 强制注入。
+- **分片键（sharded cluster）**：app 级集合以 **`appId` 为分片键**。具体采用复合分片键 **`{ appId: 1, _id: 1 }`**（`appId` 前缀）：
+  - 所有租户查询都带 `appId`（由 `BaseAppRepository` 强制），因此是**定向路由**（命中单/少数 shard），避免 scatter-gather。
+  - `_id` 作为分片键后缀，让单个大租户的数据仍能在 shard 内继续切分，避免"一个租户一个 jumbo chunk"的热点；且按 `_id` 的游标分页保持高效。
+  - `appId`、`_id` 均不可变，满足分片键不可变约束。
+  - **唯一索引约束**：分片集合上的唯一索引必须以分片键为前缀（后续软删 partial unique、配置版本化的唯一约束需据此设计，如 `{ appId: 1, ... }`）。
+  - 非 app 级/跨租户集合（用裸 `BaseRepository`）的分片键按各自访问模式单独定，不套用此规则。
 - **读一致性**：写后回读走主库（`primary`/`primaryPreferred` 读偏好），避免副本延迟读不到刚写数据。
 - `MongoConfig`：注册 `ObjectId ↔ String`、`Instant ↔ epoch ms` 的转换器与 Jackson 序列化器。
 
@@ -198,3 +204,4 @@ ifmix_server/
 - **自研泛型 `MongoTemplate` 基类**而非 `MongoRepository` 接口式仓储：租户自动注入必须无法绕过，动态 `Criteria` 最能保证每个查询都强制追加 `appId`。
 - **父 POM 但暂不抽共享库**：统一版本/插件是低成本高收益；共享代码延迟到有第二个真实消费者时再抽（YAGNI）。
 - **`ObjectId` 主键**：原生、省空间、时间有序、游标分页零成本；对外暴露 24 位 hex 字符串（契约风格允许调整，移动端配合小改）。
+- **app 级集合以 `appId` 为分片键**：采用复合 `{ appId: 1, _id: 1 }` —— 租户查询定向路由、大租户可继续切分避免热点、游标分页高效、唯一索引以分片键为前缀。
