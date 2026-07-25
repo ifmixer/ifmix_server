@@ -40,8 +40,8 @@ ifmix_server/
         http/     Envelope, ApiError, ErrorCode, GlobalExceptionHandler,
                   RequestContext, RequestHeaders, RequestContextArgumentResolver,
                   HeaderValidationInterceptor, EnvelopeResponseAdvice
-        db/       SimpleRepository, SimpleAppRepository, Page, CursorQuery, SoftDelete 支持
-        service/  SimpleAppService
+        db/       BaseRepository, BaseAppRepository, Page, CursorQuery, SoftDelete 支持
+        service/  BaseAppService
         config/   MongoConfig(转换器), OpenApiConfig(分组), WebConfig(拦截器/参数解析器)
       modules/
         todo/     TodoDocument, todo DTO, TodoService
@@ -55,26 +55,24 @@ ifmix_server/
 ```
 
 - **父 POM**：统一 Java 版本、Spring Boot BOM、依赖版本管理、插件配置。不含业务代码。
-- **通用抽象暂留 `core-api` 内**：`SimpleRepository`/`Envelope`/`RequestContext` 等先不抽独立库。等第二个服务真正需要复用时，再抽成 `common` 模块（YAGNI，避免提前抽象）。
+- **通用抽象暂留 `core-api` 内**：`BaseRepository`/`Envelope`/`RequestContext` 等先不抽独立库。等第二个服务真正需要复用时，再抽成 `common` 模块（YAGNI，避免提前抽象）。
 
 ## HTTP 对外契约
 
-保留现有信封与整体风格，调整方法语义与 URL 形状。
+保留现有信封与 **URL 形状不变**，仅叠加用 HTTP 方法编码读写语义。
 
-- **方法编码读写语义**：
-  - `PUT` = query（读操作，可带查询请求体）
-  - `POST` = mutation（写操作）
-- **URL 形状**：`/{bff}/{service}/{module}/{action}`
-  - `PUT  /customer/core/todo/findMany`
-  - `PUT  /customer/core/todo/getById`
-  - `POST /customer/core/todo/createOne`
-  - `POST /customer/core/todo/updateOne`
-  - `POST /customer/core/todo/deleteById`
+- **URL 形状（保持原样，含 `query`/`mutation` 段）**：`/{bff}/{service}/{query_type}/{module}/{action}`，`query_type ∈ query | mutation`。
+- **方法编码读写语义（新增约定）**：`PUT` = query（读，可带查询请求体），`POST` = mutation（写）。方法与 URL 的 `query_type` 段一致、互相印证。
+  - `PUT  /customer/core/query/todo/findMany`
+  - `PUT  /customer/core/query/todo/getById`
+  - `POST /customer/core/mutation/todo/createOne`
+  - `POST /customer/core/mutation/todo/updateOne`
+  - `POST /customer/core/mutation/todo/deleteById`
 - **BFF**：`customer`、`app-admin`、`platform-admin`（跨租户）、`webhooks`。各 BFF 声明各自要暴露的路由子集。
 - **请求体**：裸 DTO，不包信封。通用按 id 请求体用 `ByIdRequest { id }`。
 - **响应信封**：`{ code, msg, data }`，`code` 为字符串（`"200000"`、`"400000"`、`"404000"` 等）。
   - 用 `EnvelopeResponseAdvice`（实现 `ResponseBodyAdvice`）自动把 controller 返回的 DTO 包成信封，controller 方法保持返回纯 DTO / `Page<T>`（对标现有 `jsonRoute` 自动 `ok()` 的工效）。
-- **action 命名**：与 `SimpleAppService` 一致的通用短名——`getById`、`findMany`、`createOne`、`updateOne`、`deleteById`。
+- **action 命名**：与 `BaseAppService` 一致的通用短名——`getById`、`findMany`、`createOne`、`updateOne`、`deleteById`。
 
 ### 错误处理
 
@@ -97,13 +95,13 @@ ifmix_server/
 - `RequestContext`：不可变值对象，携带 `appId`、`installId`、`lang`、`currency`、`country`、`clientPlatform`、（未来）`userId` 等。
 - **显式传递**：controller 拿到 `RequestContext` 后显式传给 service（`service.findMany(ctx, input)`），service 再传给 repo。租户归属永远显式可查、可测；不使用 ThreadLocal 隐式上下文。
 
-## 通用 Repo / Service 抽象（组合优于继承）
+## 通用 Repo / Service 抽象（继承复用，避免重复代码）
 
-延续现有"可复用积木 + 组合"的核心设计，适配到 Spring Data MongoDB（基于 `MongoTemplate` 的动态 `Criteria` 便于统一注入租户过滤）。
+可复用积木通过**继承**提供：模块 repo/service 直接 `extends` 基类，白拿全套通用 CRUD，避免每个模块重复委托/转发代码。基于 Spring Data MongoDB（`MongoTemplate` 的动态 `Criteria` 便于统一注入租户过滤）。
 
-### SimpleRepository&lt;T&gt;
+### BaseRepository&lt;T&gt;
 
-基于 `MongoTemplate` 的通用 CRUD，**不关注租户**。构造时传入文档类型 `T` 与集合名，以及可选 `softDelete` 开关。
+基于 `MongoTemplate` 的通用 CRUD 基类，**不关注租户**。构造时传入文档类型 `T` 与集合名，以及可选 `softDelete` 开关。
 
 - `insertOne(ctx, entity)` / `insertMany(ctx, entities)` → `void`
 - `updateById(ctx, id, patch)` → `boolean`（是否命中）
@@ -112,15 +110,13 @@ ifmix_server/
 - `findMany(ctx, cursorQuery)` → `Page<T>`
 - 提供受保护钩子 `extraCriteria(ctx)`：供子类注入额外过滤条件（如租户）。
 
-### SimpleAppRepository&lt;T&gt; extends SimpleRepository&lt;T&gt;
+### BaseAppRepository&lt;T&gt; extends BaseRepository&lt;T&gt;
 
-**自动注入 `appId = ctx.appId` 租户过滤**（覆盖 `extraCriteria`）：所有按 id 操作与 `findMany` 都强制追加租户条件，默认安全、模块无法绕过。文档必须带 `appId` 字段。租户集合一律用它；不带租户或需跨租户的才用裸 `SimpleRepository`。
+**自动注入 `appId = ctx.appId` 租户过滤**（覆盖 `extraCriteria`）：所有按 id 操作与 `findMany` 都强制追加租户条件，默认安全、模块无法绕过。文档必须带 `appId` 字段。租户集合一律用它；不带租户或需跨租户的才用裸 `BaseRepository`。
 
-> 说明：`SimpleAppRepository extends SimpleRepository` 是合理的"同接口精化"继承（仅注入租户过滤，LSP 成立）。"组合优于继承"的硬规则针对**业务 service**，不针对这种框架级精化。
+### BaseAppService&lt;T&gt;
 
-### SimpleAppService&lt;T&gt;
-
-组合一个 `SimpleAppRepository<T>`（不继承）。用 `newEntityForCreate` 构造完整实体（`appId` + `createdAt/updatedAt` 时间戳）后委托 repo。
+持有一个 `BaseAppRepository<T>`，用 `newEntityForCreate` 构造完整实体（`appId` + `createdAt/updatedAt` 时间戳）后委托 repo，暴露通用写/读方法：
 
 - `createOne(ctx, input)` → 新 id
 - `updateById(ctx, id, patch)` → `boolean`
@@ -128,7 +124,11 @@ ifmix_server/
 - `getById(ctx, id, readOptions)` → `T`
 - `findMany(ctx, cursorQuery)` → `Page<T>`
 
-**模块 service 一律用组合**：持有 `SimpleAppService` +（按需）额外的 repo，不 `extend`。带子实体、事务、多集合、关系读的部分在模块 service 里自己实现。参考现有 `TodoService`。
+### 模块 service 用继承复用
+
+**模块 service 直接 `extends BaseAppService<T>`**，从而无需重复编写通用 CRUD 的转发代码；只在需要定制的地方（子实体、事务、多集合、关系读）新增或 `@Override` 对应方法。例如 `TodoService extends BaseAppService<TodoDocument>`，仅覆写 `createOne`（内嵌 items）等定制点，其余 CRUD 直接继承。
+
+> 取舍：这里选择继承而非组合，目的是消除每个模块 service 对通用方法的样板转发代码。基类的公开面即模块 service 的通用面，定制通过 `@Override` 精确覆盖。若某模块的定制导致基类方法签名严重不契合，再针对该模块改用组合。
 
 ### 软删除
 
@@ -152,14 +152,14 @@ ifmix_server/
 - **建模按场景判断**：
   - 聚合边界内、随父一起读写、有界的子实体 → **内嵌**（如 `todo.items`），一次读写原子完成，规避多文档事务。
   - 需独立查询、可无限增长、跨聚合的 → **独立集合 + 引用**（如未来的 `scan_record` 扫描历史）。
-- **多租户**：所有租户集合含 `appId` 字段 + `(appId, _id)` 复合索引；`SimpleAppRepository` 强制注入。
+- **多租户**：所有租户集合含 `appId` 字段 + `(appId, _id)` 复合索引；`BaseAppRepository` 强制注入。
 - **读一致性**：写后回读走主库（`primary`/`primaryPreferred` 读偏好），避免副本延迟读不到刚写数据。
 - `MongoConfig`：注册 `ObjectId ↔ String`、`Instant ↔ epoch ms` 的转换器与 Jackson 序列化器。
 
 ## 首个纵向切片：`todo` 模块
 
 - `TodoDocument`：`_id`(ObjectId)、`appId`、`title`、`done`、内嵌 `items: [{ id, content, done }]`、`createdAt`、`updatedAt`、`deletedAt`。
-- `TodoService`（组合 `SimpleAppService<TodoDocument>`）：
+- `TodoService extends BaseAppService<TodoDocument>`（继承复用通用 CRUD，仅覆写定制点）：
   - `createOne`：内嵌 items 一次写入（单文档原子，无需事务），返回新 id。
   - `getById`：租户 + 软删过滤，未命中抛 `NOT_FOUND`。
   - `findMany`：游标分页。
@@ -191,6 +191,8 @@ ifmix_server/
 ## 关键决策与取舍
 
 - **重写而非迁移**：借机把关系模型重构为文档模型（内嵌规避多数事务），而非机械照搬表结构。
+- **继承复用通用 CRUD（`Base*` 基类）**：模块 repo/service 直接 `extends`，消除样板转发代码；定制通过 `@Override`。命名统一为 `Base*` 前缀以表达"为继承/扩展而设计"。
+- **URL 形状不变 + 方法叠加语义**：保留原有 `/{bff}/{service}/{query_type}/{module}/{action}`（含 `query`/`mutation` 段）不删，仅新增"`PUT`=query / `POST`=mutation"约定，方法与 URL 段互相印证，移动端仅需改方法。
 - **虚拟线程 + 阻塞 MVC**：避开响应式/协程的心智负担；阻塞式 Mongo 驱动在虚拟线程下天然高并发。
 - **显式 `RequestContext` 参数**：牺牲一点签名简洁，换取租户归属的可查性、可测性，符合安全底线"默认安全、显式可审"。
 - **自研泛型 `MongoTemplate` 基类**而非 `MongoRepository` 接口式仓储：租户自动注入必须无法绕过，动态 `Criteria` 最能保证每个查询都强制追加 `appId`。
