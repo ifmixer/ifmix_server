@@ -12,7 +12,6 @@ import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Instant
-import java.util.Base64
 import kotlin.reflect.full.memberProperties
 
 /** 基于 MongoTemplate 的通用 CRUD 基类，不关注租户。 */
@@ -66,16 +65,17 @@ open class BaseRepository<T : BaseDocument>(
     }
 
     /**
-     * 游标分页。本方法自建查询：强制注入租户 appId（extraCriteria）+ 软删过滤，并接管排序、
-     * 游标 keyset、limit 上限与读偏好。
+     * 游标分页。调用方通过 [query] 提供过滤条件（只放 filter，不要设 sort/limit——由本方法接管）；
+     * 本方法在其条件上**强制追加**租户 appId（extraCriteria）+ 软删过滤，并接管排序、游标 keyset、
+     * limit 上限与读偏好，调用方无法绕过。
      *
      * 支持按任意 [CursorQueryInput.sortBy] 字段排序（默认 _id）。非 _id 排序用 (sortBy, _id) 复合
-     * keyset：nextCursor **自包含**地把 sortBy 值 + _id 编码进去（带类型标记），下次解码即得，
-     * **无需回库查锚点**；构造 `sortBy </> v OR (sortBy == v AND _id </> id)` 保证稳定分页。
-     * _id 排序时游标就是 id 的 hex（短、向后兼容）。
+     * keyset：先按游标 id 取锚点文档拿到其真实类型的 sortBy 值，再构造 `sortBy </> anchor OR
+     * (sortBy == anchor AND _id </> cursor)`，保证稳定分页且避免在游标里编码任意类型值。
      */
     fun findByCursor(
         ctx: RequestContext,
+        query: Query = Query(),
         input: CursorQueryInput = CursorQueryInput(),
         readOptions: ReadOptions = ReadOptions.DEFAULT,
     ): Page<T> {
@@ -83,33 +83,28 @@ open class BaseRepository<T : BaseDocument>(
         val desc = input.order == CursorQueryInput.Order.DESC
         val sortField = mongoField(input.sortBy)
 
-        val query = Query()
-        // 强制注入租户 + 软删
+        // 强制注入租户 + 软删（调用方无法绕过）
         extraCriteria(ctx)?.let { query.addCriteria(it) }
         if (softDelete) query.addCriteria(Criteria.where("deletedAt").`is`(null))
 
-        // 游标 keyset（游标自包含，无需查库）
+        // 游标 keyset
         val cursor = input.cursor
-        if (!cursor.isNullOrBlank()) {
+        if (!cursor.isNullOrBlank() && ObjectId.isValid(cursor)) {
+            val cursorId = ObjectId(cursor)
             if (sortField == "_id") {
-                if (ObjectId.isValid(cursor)) {
-                    val cursorId = ObjectId(cursor)
-                    query.addCriteria(
-                        if (desc) Criteria.where("_id").lt(cursorId) else Criteria.where("_id").gt(cursorId),
-                    )
-                }
+                query.addCriteria(
+                    if (desc) Criteria.where("_id").lt(cursorId) else Criteria.where("_id").gt(cursorId),
+                )
             } else {
-                val decoded = Cursor.decode(cursor)
-                val value = decoded?.first
-                val idHex = decoded?.second
-                if (value != null && idHex != null && ObjectId.isValid(idHex)) {
-                    val cursorId = ObjectId(idHex)
+                val anchor = findById(ctx, cursor, readOptions)
+                val anchorVal = anchor?.let { propertyValue(it, input.sortBy) }
+                if (anchorVal != null) {
                     val idCond = if (desc) Criteria.where("_id").lt(cursorId) else Criteria.where("_id").gt(cursorId)
-                    val sortCond = if (desc) Criteria.where(sortField).lt(value) else Criteria.where(sortField).gt(value)
+                    val sortCond = if (desc) Criteria.where(sortField).lt(anchorVal) else Criteria.where(sortField).gt(anchorVal)
                     query.addCriteria(
                         Criteria().orOperator(
                             sortCond,
-                            Criteria().andOperator(Criteria.where(sortField).`is`(value), idCond),
+                            Criteria().andOperator(Criteria.where(sortField).`is`(anchorVal), idCond),
                         ),
                     )
                 }
@@ -127,14 +122,8 @@ open class BaseRepository<T : BaseDocument>(
         val rows = mongo.find(query, type)
         val hasMore = rows.size > limit
         val items = if (hasMore) rows.subList(0, limit) else rows
-        val nextCursor = if (hasMore) encodeNextCursor(items.last(), input.sortBy, sortField) else null
+        val nextCursor = if (hasMore) items.last().id else null
         return Page(items.toList(), nextCursor, hasMore)
-    }
-
-    /** _id 排序：游标就是 id hex；否则把 (sortBy 值, id) 自包含编码。 */
-    private fun encodeNextCursor(last: T, sortBy: String, sortField: String): String? {
-        val id = last.id ?: return null
-        return if (sortField == "_id") id else Cursor.encode(propertyValue(last, sortBy), id)
     }
 
     // ---- helpers ----
@@ -176,52 +165,9 @@ open class BaseRepository<T : BaseDocument>(
     /** 排序/游标字段名归一：id → _id。 */
     private fun mongoField(field: String): String = if (field == "id") "_id" else field
 
-    /** 反射读取实体上 sortBy 字段的真实类型值（用于游标编码）。 */
+    /** 反射读取实体上 sortBy 字段的真实类型值（用于复合 keyset 锚点比较）。 */
     private fun propertyValue(entity: T, field: String): Any? {
         val propName = if (field == "_id" || field == "id") "id" else field
         return entity::class.memberProperties.firstOrNull { it.name == propName }?.getter?.call(entity)
-    }
-}
-
-/**
- * 自包含游标编解码：把 `(sortBy 值, _id hex)` 连同类型标记编码为 base64url 令牌，解码即得，无需查库。
- * 支持常见标量类型（字符串/布尔/整数/浮点/时间戳）；解码出的值交给 Spring QueryMapper 按字段类型转换。
- */
-private object Cursor {
-    private const val SEP = '\u0001'
-
-    fun encode(value: Any?, idHex: String): String {
-        val (tag, raw) = tagAndRaw(value)
-        val payload = "$tag$SEP$raw$SEP$idHex"
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(payload.toByteArray(Charsets.UTF_8))
-    }
-
-    /** 返回 (value, idHex)；解析失败或值为 null 时返回 null。 */
-    fun decode(cursor: String): Pair<Any?, String>? = try {
-        val payload = String(Base64.getUrlDecoder().decode(cursor), Charsets.UTF_8)
-        val parts = payload.split(SEP)
-        if (parts.size != 3) null else Pair(fromRaw(parts[0], parts[1]), parts[2])
-    } catch (_: Exception) {
-        null
-    }
-
-    private fun tagAndRaw(v: Any?): Pair<String, String> = when (v) {
-        null -> "n" to ""
-        is String -> "s" to v
-        is Boolean -> "b" to v.toString()
-        is Int, is Long -> "l" to v.toString()
-        is Double, is Float -> "d" to v.toString()
-        is Instant -> "ts" to v.toEpochMilli().toString()
-        is java.util.Date -> "ts" to v.time.toString()
-        else -> "s" to v.toString()
-    }
-
-    private fun fromRaw(tag: String, raw: String): Any? = when (tag) {
-        "n" -> null
-        "b" -> raw.toBoolean()
-        "l" -> raw.toLong()
-        "d" -> raw.toDouble()
-        "ts" -> Instant.ofEpochMilli(raw.toLong())
-        else -> raw
     }
 }

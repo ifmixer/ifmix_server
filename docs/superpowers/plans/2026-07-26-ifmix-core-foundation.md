@@ -10,6 +10,21 @@
 
 ---
 
+## 实现修订说明（以代码为准，后于计划正文）
+
+实现后经实测迭代，以下几处相对下方任务正文有更新，**以此为准**：
+
+1. **Jackson 3 Kotlin 模块**（任务 1，已在上方 build 依赖修正）：Spring Boot 4 用 Jackson 3，必须依赖 `tools.jackson.module:jackson-module-kotlin`，否则请求 DTO 的 Kotlin 默认值不生效（缺失的非空默认字段会 400 malformed）。
+2. **`CursorQuery` → `CursorQueryInput`**（任务 6）：字段为 `cursor` / `sortBy`(默认 `"_id"`) / `order`(默认 `DESC`) / `limit`；不含 filter/readOptions。测试类为 `CursorQueryInputTest`。
+3. **`findMany` → `findByCursor`**（任务 9/11/14）：签名 `findByCursor(ctx, input: CursorQueryInput = CursorQueryInput(), readOptions: ReadOptions = DEFAULT)`（**无 `Query` 参数**）。
+   - 本方法自建查询，强制注入 `appId` + 软删，并接管排序/游标/limit/读偏好；不接收外部过滤条件。
+   - 支持任意 `sortBy` 字段：非 `_id` 排序用 `(sortBy, _id)` 复合 keyset，游标**自包含**(base64 编码 sortBy 值 + id + 类型标记)，无需回库查锚点。
+   - `readOptions` 为服务端参数（不进客户端 DTO）。
+4. **删除 `QueryFilter.kt` / `buildFilter`**：过滤改由 `Query` 承载，DSL 不再需要。
+5. HTTP action `.../query/todo/findMany` → `.../query/todo/findByCursor`。
+
+下方任务正文中出现的 `CursorQuery`/`findMany`/`buildFilter`/`filter: Criteria` 字样均以本节为准替换。
+
 ## 前置条件（工程师环境）
 
 - **JDK 25** 已安装（`java -version` 显示 25）。Gradle 用 `jvmToolchain(25)` 编译。
@@ -57,7 +72,8 @@ ifmix_server/
         BaseDocument.kt                               # id/createdAt/updatedAt/deletedAt
         BaseAppDocument.kt                            # 追加 appId
         Page.kt / CursorQuery.kt / ReadOptions.kt     # 分页值对象
-        BaseRepository.kt                             # MongoTemplate CRUD + 软删 + 游标分页
+        QueryFilter.kt                                # findMany 过滤 Criteria 的 DSL 构建器
+        BaseRepository.kt                             # MongoTemplate CRUD + 软删 + 游标分页 + 读写分离
         BaseAppRepository.kt                          # 覆写 extraCriteria 注入 appId
         MongoClusterResolver.kt                       # 集群路由接缝（接口）
         DefaultMongoClusterResolver.kt                # 单集群默认实现
@@ -150,7 +166,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    // Spring Boot 4 用 Jackson 3（tools.jackson）；必须用 Jackson 3 的 Kotlin 模块，
+    // 否则 data class 的 Kotlin 默认值（请求缺失字段）不生效、非空默认字段反序列化失败。
+    implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -1644,6 +1662,7 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Instant
 
 /** 基于 MongoTemplate 的通用 CRUD 基类，不关注租户。 */
@@ -1668,7 +1687,7 @@ open class BaseRepository<T : BaseDocument>(
     fun findById(ctx: RequestContext, id: String, options: ReadOptions = ReadOptions.DEFAULT): T? {
         if (invalidId(id)) return null
         val query = buildQuery(idCriteria(ctx, id))
-        if (options.preferPrimary) query.withReadPreference(ReadPreference.primary())
+        applyReadPreference(query, options)
         return mongo.findOne(query, type)
     }
 
@@ -1696,11 +1715,17 @@ open class BaseRepository<T : BaseDocument>(
         }
     }
 
-    fun findMany(ctx: RequestContext, cursorQuery: CursorQuery): Page<T> {
+    fun findMany(
+        ctx: RequestContext,
+        cursorQuery: CursorQuery,
+        filter: Criteria? = null,
+        options: ReadOptions = ReadOptions.DEFAULT,
+    ): Page<T> {
         val limit = cursorQuery.effectiveLimit()
         val order = cursorQuery.effectiveOrder()
 
         val criteria = baseCriteria(ctx).toMutableList()
+        filter?.let { criteria.add(it) }
         val cursor = cursorQuery.cursor
         if (!cursor.isNullOrBlank() && ObjectId.isValid(cursor)) {
             val cursorId = ObjectId(cursor)
@@ -1714,6 +1739,7 @@ open class BaseRepository<T : BaseDocument>(
         val query = buildQuery(criteria)
             .with(Sort.by(direction, "_id"))
             .limit(limit + 1)
+        applyReadPreference(query, options)
 
         val rows = mongo.find(query, type)
         val hasMore = rows.size > limit
@@ -1723,6 +1749,17 @@ open class BaseRepository<T : BaseDocument>(
     }
 
     // ---- helpers ----
+
+    /**
+     * 读写分离：默认读走 secondaryPreferred（从库，无从库回落主库）。
+     * 以下情况强制 primary：显式 preferPrimary（写后回读 read-your-writes）、或处于事务中（Mongo 事务要求主库读）。
+     */
+    private fun applyReadPreference(query: Query, options: ReadOptions) {
+        val forcePrimary = options.preferPrimary || TransactionSynchronizationManager.isActualTransactionActive()
+        query.withReadPreference(
+            if (forcePrimary) ReadPreference.primary() else ReadPreference.secondaryPreferred(),
+        )
+    }
 
     /** 基础过滤：extraCriteria（如租户）+ 软删过滤。 */
     protected fun baseCriteria(ctx: RequestContext): List<Criteria> {
@@ -1946,6 +1983,7 @@ import com.ifmix.api.core.common.db.CursorQuery
 import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.common.db.ReadOptions
 import com.ifmix.api.core.common.http.RequestContext
+import org.springframework.data.mongodb.core.query.Criteria
 import java.time.Instant
 
 /** 通用租户服务基类：模块 service 继承它复用 CRUD，仅覆写定制点。 */
@@ -1976,8 +2014,13 @@ open class BaseAppService<T : BaseAppDocument>(
     fun deleteById(ctx: RequestContext, id: String): Boolean =
         repo.deleteById(ctx, id)
 
-    fun findMany(ctx: RequestContext, cursorQuery: CursorQuery): Page<T> =
-        repo.findMany(ctx, cursorQuery)
+    fun findMany(
+        ctx: RequestContext,
+        cursorQuery: CursorQuery,
+        filter: Criteria? = null,
+        options: ReadOptions = ReadOptions.DEFAULT,
+    ): Page<T> =
+        repo.findMany(ctx, cursorQuery, filter, options)
 }
 ```
 

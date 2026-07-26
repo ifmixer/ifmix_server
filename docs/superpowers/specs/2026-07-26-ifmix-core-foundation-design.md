@@ -17,6 +17,7 @@
 
 - **语言**：Kotlin 2.4.10（运行于 JDK 25，jvmToolchain(25)，`-Xjsr305=strict`）。选 Kotlin 的核心动因是 **null 安全**——`RequestContext.appId` 非空、其余字段 `String?` 显式可空，文档 `deletedAt: Instant?` 一目了然；DTO 用 `data class`、枚举用 `enum class`。
 - **框架**：Spring Boot 4.1（基于 Spring Framework 7），Spring MVC（阻塞式）。
+- **JSON**：Spring Boot 4 默认用 **Jackson 3（`tools.jackson`）**。Kotlin 支持必须用 Jackson 3 的模块 `tools.jackson.module:jackson-module-kotlin`（不是 Jackson 2 的 `com.fasterxml.jackson.module:jackson-module-kotlin`），否则 data class 的 Kotlin 默认值（请求缺失字段）不生效、非空默认字段会反序列化失败。
 - **并发**：虚拟线程，`spring.threads.virtual.enabled=true`（每请求一个虚拟线程，阻塞式 Mongo 驱动与之兼容）。
 - **数据库**：MongoDB（副本集）+ Spring Data MongoDB。副本集使得真正需要跨文档原子性时可用多文档事务。
 - **构建**：Gradle（Kotlin DSL）多模块，Gradle 9.6.1。Kotlin Spring 编译器插件 `kotlin("plugin.spring")`（all-open）打开 `@Component`/`@Configuration` 等类以供代理。
@@ -40,7 +41,7 @@ ifmix_server/
         http/     Envelope, ApiError, ErrorCode, GlobalExceptionHandler,
                   RequestContext, RequestHeaders, RequestContextArgumentResolver,
                   HeaderValidationInterceptor, EnvelopeResponseAdvice
-        db/       BaseRepository, BaseAppRepository, Page, CursorQuery, ReadOptions,
+        db/       BaseRepository, BaseAppRepository, Page, CursorQueryInput, ReadOptions,
                   BaseDocument, BaseAppDocument, MongoClusterResolver(接缝)
         service/  BaseAppService
         tx/       TxRunner(事务接缝)
@@ -144,7 +145,11 @@ ifmix_server/
   - 升序：`_id > cursor`
 - 取 `limit + 1` 条判断 `hasMore`；`limit` 默认 20，上限 100。
 - 返回 `Page<T> { items, nextCursor, hasMore }`；`nextCursor` 为最后一条的 `_id`（hex 字符串），无更多则 `null`。
-- 地基阶段 `CursorQuery` 支持：`cursor`、`order`（asc|desc）、`limit`、可选简单等值过滤。更丰富的 JSON 灵活查询（字段投影/关系读）作为后续增强，需要时加列白名单。
+- `findByCursor(ctx, input = CursorQueryInput(), readOptions = DEFAULT)`：本方法自建查询，强制注入租户 `appId`（`extraCriteria`）+ 软删，并接管排序、游标 keyset、`limit` 上限、读偏好——调用方无法绕过。
+  - `input: CursorQueryInput`（客户端可绑定）：`cursor` / `sortBy`（默认 `_id`）/ `order`（默认 DESC）/ `limit`。
+  - `readOptions`：服务端控制读主/从（不暴露给客户端）。
+  - 不接收外部过滤条件（无 `Query` 参数）；如需带过滤的列表，模块可另建专用查询方法。
+- **支持按任意 `sortBy` 字段排序**。非 `_id` 排序用 `(sortBy, _id)` 复合 keyset。游标**自包含**：`nextCursor` 把 sortBy 值（带类型标记）+ `_id` 编码为 base64url 令牌，下次解码即得、**无需回库查锚点**；构造 `sortBy </> v OR (sortBy == v AND _id </> id)` 保证稳定分页。`_id` 排序时游标就是 id hex（短、向后兼容）。解码值交给 Spring QueryMapper 按字段类型转换。生产应对可排序字段加白名单 + 索引。
 
 ## MongoDB 与序列化
 
@@ -160,7 +165,7 @@ ifmix_server/
   - `appId`、`_id` 均不可变，满足分片键不可变约束。
   - **唯一索引约束**：分片集合上的唯一索引必须以分片键为前缀（后续软删 partial unique、配置版本化的唯一约束需据此设计，如 `{ appId: 1, ... }`）。
   - 非 app 级/跨租户集合（用裸 `BaseRepository`）的分片键按各自访问模式单独定，不套用此规则。
-- **读一致性**：写后回读走主库（`primary`/`primaryPreferred` 读偏好），避免副本延迟读不到刚写数据。
+- **读写分离与一致性**：读操作默认走 `secondaryPreferred`（从库分流，无从库时回落主库，单机/测试安全）；以下情况强制 `primary`——写后回读（`ReadOptions.PRIMARY`，read-your-writes 避免副本延迟）、以及事务内读（Mongo 事务要求主库读）。由 `BaseRepository` 的 `applyReadPreference(query, options)` 统一按 `preferPrimary || 事务活跃` 判定。写操作由 MongoDB 自动路由到主库。
 - `MongoConfig`：注册 `ObjectId ↔ String`、`Instant ↔ epoch ms` 的转换器与 Jackson 序列化器。
 
 ## 集群路由与事务（扩展性接缝）
