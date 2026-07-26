@@ -4,4 +4,5 @@ package com.ifmix.api.core.common.http
 class ApiError(
     val errorCode: ErrorCode,
     message: String = errorCode.name,
+    val details: Any? = null,
 ) : RuntimeException(message)

@@ -16,7 +16,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import org.springframework.data.mongodb.core.MongoTemplate
-import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import java.time.Instant
@@ -32,10 +31,9 @@ class CRUDRepositoryTest {
 
     @BeforeEach
     fun init() {
-        repo = object : CRUDRepository<TodoDocument>(mongo, TodoDocument::class.java, softDelete = true) {
-            override fun extraCriteria(ctx: RequestContext): Criteria =
-                Criteria.where("appId").`is`(ctx.appId)
-        }
+        // TodoDocument extends BaseAppDocument → implements AppScoped + SoftDeletable,
+        // so CRUDRepository auto-detects softDelete=true and appScoped=true.
+        repo = CRUDRepository(mongo, TodoDocument::class.java)
     }
 
     private fun makeDoc(title: String, idHex: String): TodoDocument =

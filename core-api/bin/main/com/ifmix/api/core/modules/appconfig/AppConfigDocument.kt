@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.appconfig
 
-import com.ifmix.api.core.common.db.CRUDAppDocument
+import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.Versioned
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.mapping.Document
@@ -17,7 +18,7 @@ import org.springframework.data.mongodb.core.mapping.Document
     unique = true,
     partialFilter = "{ 'deletedAt': null }",
 )
-class AppConfigDocument : CRUDAppDocument() {
+class AppConfigDocument : BaseAppDocument(), Versioned {
     var authTenantId: String? = null
 
     @Indexed
@@ -30,7 +31,7 @@ class AppConfigDocument : CRUDAppDocument() {
     var google: GoogleConfig = GoogleConfig()
     var iap: IapConfig = IapConfig()
 
-    var configVersion: Int = 1
+    override var revision: Int = 1
 }
 
 /** 内嵌：Apple 商店/凭证配置。 */

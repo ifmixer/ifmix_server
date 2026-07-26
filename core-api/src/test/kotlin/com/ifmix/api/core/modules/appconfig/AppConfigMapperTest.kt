@@ -15,7 +15,7 @@ class AppConfigMapperTest {
             apple = AppleConfig(issuerId = "iss-1", privateKey = "pk-1")
             google = GoogleConfig(clientIds = GoogleClientIds(ios = "ios-client"))
             iap = IapConfig(productTierMap = mapOf("prod.pro" to "pro")) // env null → default
-            configVersion = 3
+            revision = 3
             createdAt = Instant.ofEpochMilli(1000)
             updatedAt = Instant.ofEpochMilli(2000)
         }
@@ -29,7 +29,7 @@ class AppConfigMapperTest {
         assertThat(flat.googleClientIds.ios).isEqualTo("ios-client")
         assertThat(flat.productTierMap).containsEntry("prod.pro", "pro")
         assertThat(flat.iapEnv).isEqualTo("production") // 缺省
-        assertThat(flat.configVersion).isEqualTo(3)
+        assertThat(flat.revision).isEqualTo(3)
         assertThat(flat.createdAt).isEqualTo(Instant.ofEpochMilli(1000))
         assertThat(flat.updatedAt).isEqualTo(Instant.ofEpochMilli(2000))
     }

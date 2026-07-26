@@ -44,7 +44,7 @@ class AppConfigRepo(
         return cfg
     }
 
-    /** 追加新版本：事务内软删当前版本 + 插入 configVersion+1 的新当前版本；清缓存。 */
+    /** 追加新版本：事务内软删当前版本 + 插入 revision+1 的新当前版本；清缓存。 */
     fun newVersion(ctx: RequestContext, appId: String, patch: AppConfigPatch) {
         txRunner.withTx(ctx) {
             val current = mongo.findOne(
@@ -67,7 +67,7 @@ class AppConfigRepo(
                 apple = patch.apple ?: current?.apple ?: AppleConfig()
                 google = patch.google ?: current?.google ?: GoogleConfig()
                 iap = patch.iap ?: current?.iap ?: IapConfig()
-                configVersion = (current?.configVersion ?: 0) + 1
+                revision = (current?.revision ?: 0) + 1
                 createdAt = now
                 updatedAt = now
                 deletedAt = null

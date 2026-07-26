@@ -15,23 +15,28 @@ import java.time.Instant
 import java.util.Base64
 import kotlin.reflect.full.memberProperties
 
-/** 基于 MongoTemplate 的通用 CRUD 基类，不关注租户。 */
-open class CRUDRepository<T : CRUDDocument>(
+/**
+ * 基于 MongoTemplate 的通用 CRUD。构造时反射 [type] 探测能力：
+ * - 实现 [AppScoped] → 自动注入 appId=ctx.appId 过滤（列表 + by-id，分片键定向）。
+ * - 实现 [SoftDeletable] → 删除走 deletedAt 标记，读写自动过滤 deletedAt=null。
+ * 另保留 extraCriteria/extraIdCriteria 两个钩子，供模块附加自定义过滤（如 collection 按 collectionId）。
+ */
+open class CRUDRepository<T : BaseDocument>(
     protected val mongo: MongoTemplate,
     protected val type: Class<T>,
-    protected val softDelete: Boolean,
 ) {
+    protected val appScoped: Boolean = AppScoped::class.java.isAssignableFrom(type)
+    protected val softDeletable: Boolean = SoftDeletable::class.java.isAssignableFrom(type)
 
-    /** 子类覆写以注入额外过滤（如租户）。默认无。 */
-    /** 子类覆写，为 findByCursor（列表查询）注入额外过滤（如租户）。默认无。 */
+    /** 附加列表过滤钩子（保留）：模块覆写注入自定义过滤。默认无。 */
     protected open fun extraCriteria(ctx: RequestContext): Criteria? = null
 
-    /**
-     * 子类覆写，为按 id 的操作（findById/getById/updateById/deleteById）注入额外过滤。
-     * app 级须返回 appId 过滤：**分片集群下按 _id 的单文档读写必须带上分片键 appId**，否则
-     * 无法定向到分片（更新/删除会被拒或广播）。默认无。
-     */
+    /** 附加 by-id 过滤钩子（保留）：模块覆写注入自定义 by-id 过滤。默认无。 */
     protected open fun extraIdCriteria(ctx: RequestContext): Criteria? = null
+
+    /** 自动租户过滤：AppScoped 文档按 appId（分片键）。非 app 文档返回 null。 */
+    private fun tenantCriteria(ctx: RequestContext): Criteria? =
+        if (appScoped) Criteria.where("appId").`is`(ctx.appId) else null
 
     fun insertOne(ctx: RequestContext, entity: T) {
         mongo.insert(entity)
@@ -54,8 +59,8 @@ open class CRUDRepository<T : CRUDDocument>(
         findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     /**
-     * 部分更新：自动从 [patch] 生成 Mongo `$set`——非空属性逐个 set，无需手写字段。
-     * patch 可为任意对象（反射其非空属性，属性名即字段名）或 `Map<String, Any?>`（键即字段名）。
+     * 部分更新：自动从 [patch] 生成 Mongo `$set`——非空属性逐个 set。
+     * patch 为任意对象（反射非空属性，属性名即字段名）或 `Map<String, Any?>`（键即字段名）。
      * 空 patch 时不写，仅返回是否存在。总会刷新 updatedAt。
      */
     fun updateById(ctx: RequestContext, id: String, patch: Any): Boolean {
@@ -78,7 +83,7 @@ open class CRUDRepository<T : CRUDDocument>(
     fun deleteById(ctx: RequestContext, id: String): Boolean {
         if (invalidId(id)) return false
         val query = idQuery(ctx, id)
-        return if (softDelete) {
+        return if (softDeletable) {
             val update = Update().set("deletedAt", Instant.now()).set("updatedAt", Instant.now())
             mongo.updateFirst(query, update, type).modifiedCount > 0
         } else {
@@ -87,11 +92,8 @@ open class CRUDRepository<T : CRUDDocument>(
     }
 
     /**
-     * 游标分页。本方法自建查询：强制注入租户 appId（extraCriteria）+ 软删过滤，并接管排序、
-     * 游标 keyset、limit 上限与读偏好（ctx.readPreference，事务内强制主库）。
-     *
-     * 支持按任意 [CursorQueryInput.sortBy] 字段排序（默认 _id）。非 _id 排序用 (sortBy, _id) 复合
-     * keyset：nextCursor 自包含地把 sortBy 值 + _id 编码进去（带类型标记），下次解码即得，无需回库。
+     * 游标分页。自建查询：注入租户 appId（若 AppScoped）+ extraCriteria + 软删过滤（若 SoftDeletable），
+     * 接管排序、游标 keyset、limit 上限与读偏好。支持按任意 [CursorQueryInput.sortBy] 排序（默认 _id）。
      */
     fun findByCursor(ctx: RequestContext, input: CursorQueryInput = CursorQueryInput()): Page<T> {
         val limit = input.effectiveLimit()
@@ -99,8 +101,9 @@ open class CRUDRepository<T : CRUDDocument>(
         val sortField = mongoField(input.sortBy)
 
         val query = Query()
+        tenantCriteria(ctx)?.let { query.addCriteria(it) }
         extraCriteria(ctx)?.let { query.addCriteria(it) }
-        if (softDelete) query.addCriteria(Criteria.where("deletedAt").`is`(null))
+        if (softDeletable) query.addCriteria(Criteria.where("deletedAt").`is`(null))
 
         val cursor = input.cursor
         if (!cursor.isNullOrBlank()) {
@@ -145,10 +148,6 @@ open class CRUDRepository<T : CRUDDocument>(
 
     // ---- helpers ----
 
-    /**
-     * 读写分离：默认走 ctx.readPreference（默认 primaryPreferred）。
-     * 事务内强制 primary（Mongo 事务要求主库读，否则报错）。
-     */
     private fun applyReadPreference(query: Query, ctx: RequestContext) {
         val pref = if (TransactionSynchronizationManager.isActualTransactionActive()) {
             ReadPreference.primary()
@@ -158,21 +157,19 @@ open class CRUDRepository<T : CRUDDocument>(
         query.withReadPreference(pref)
     }
 
-    /**
-     * 按 id 定位的条件：extraIdCriteria（如 app 级的 appId 分片键）+ _id。
-     * 只负责定位，不含软删过滤（软删由 idQuery 叠加）。
-     */
+    /** 按 id 定位条件：tenantCriteria（appId 分片键）+ extraIdCriteria + _id。不含软删过滤。 */
     private fun idCriteria(ctx: RequestContext, id: String): MutableList<Criteria> {
         val list = mutableListOf<Criteria>()
+        tenantCriteria(ctx)?.let { list.add(it) }
         extraIdCriteria(ctx)?.let { list.add(it) }
         list.add(Criteria.where("_id").`is`(ObjectId(id)))
         return list
     }
 
-    /** by-id 操作的查询：idCriteria + 软删过滤（仅作用于未删文档）。 */
+    /** by-id 操作查询：idCriteria + 软删过滤（若 SoftDeletable）。 */
     private fun idQuery(ctx: RequestContext, id: String): Query {
         val criteria = idCriteria(ctx, id)
-        if (softDelete) criteria.add(Criteria.where("deletedAt").`is`(null))
+        if (softDeletable) criteria.add(Criteria.where("deletedAt").`is`(null))
         return buildQuery(criteria)
     }
 
@@ -200,12 +197,9 @@ open class CRUDRepository<T : CRUDDocument>(
     }
 }
 
-/**
- * 自包含游标编解码：把 `(sortBy 值, _id hex)` 连同类型标记编码为 base64url 令牌，解码即得，无需查库。
- * 支持常见标量类型（字符串/布尔/整数/浮点/时间戳）；解码出的值交给 Spring QueryMapper 按字段类型转换。
- */
+/** 自包含游标编解码：把 (sortBy 值, _id hex) 连同类型标记编码为 base64url，解码即得，无需查库。 */
 private object Cursor {
-    private const val SEP = '\u0001'
+    private const val SEP = ''
 
     fun encode(value: Any?, idHex: String): String {
         val (tag, raw) = tagAndRaw(value)

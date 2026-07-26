@@ -5,5 +5,7 @@ data class Envelope<out T>(val code: String, val msg: String, val data: T?) {
     companion object {
         fun <T> ok(data: T): Envelope<T> = Envelope("200000", "success", data)
         fun error(code: String, msg: String): Envelope<Nothing> = Envelope(code, msg, null)
+        fun errorWithDetails(code: String, msg: String, details: Any?): Envelope<*> =
+            Envelope(code, msg, mapOf("details" to details).filter { it.value != null })
     }
 }

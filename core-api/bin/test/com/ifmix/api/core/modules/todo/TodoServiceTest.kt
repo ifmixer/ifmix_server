@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.todo
 
-import com.ifmix.api.core.common.db.CRUDAppRepository
-import com.ifmix.api.core.common.service.CRUDAppService
+import com.ifmix.api.core.common.db.CRUDRepository
+import com.ifmix.api.core.common.service.CRUDService
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.support.AbstractMongoTest
 import org.assertj.core.api.Assertions.assertThat
@@ -16,7 +16,7 @@ class TodoServiceTest : AbstractMongoTest() {
     @BeforeEach
     fun init() {
         service = TodoService(
-            CRUDAppService(CRUDAppRepository(mongoTemplate, TodoDocument::class.java, softDelete = true)),
+            CRUDService(CRUDRepository(mongoTemplate, TodoDocument::class.java)),
         )
     }
 

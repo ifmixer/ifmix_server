@@ -7,7 +7,7 @@ object AppConfigMapper {
         id = doc.id,
         appId = doc.appId,
         authTenantId = doc.authTenantId,
-        configVersion = doc.configVersion,
+        revision = doc.revision,
         appleBundleId = doc.appleBundleId,
         androidPackageName = doc.androidPackageName,
         appleAppAppleId = doc.apple.appAppleId,

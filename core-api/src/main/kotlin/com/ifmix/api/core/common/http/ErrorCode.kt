@@ -9,5 +9,8 @@ enum class ErrorCode(val externalCode: String, val status: HttpStatus) {
     FORBIDDEN("403000", HttpStatus.FORBIDDEN),
     NOT_FOUND("404000", HttpStatus.NOT_FOUND),
     RATE_LIMITED("429000", HttpStatus.TOO_MANY_REQUESTS),
+    IAP_VERIFY_FAILED("402000", HttpStatus.PAYMENT_REQUIRED),
+    AI_UNAVAILABLE("503000", HttpStatus.SERVICE_UNAVAILABLE),
     INTERNAL("500000", HttpStatus.INTERNAL_SERVER_ERROR),
+    APP_CONFIG_MISSING("400002", HttpStatus.BAD_REQUEST),
 }

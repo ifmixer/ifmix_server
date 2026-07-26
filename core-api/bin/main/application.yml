@@ -1,13 +1,4 @@
 spring:
-  application:
-    name: core-api
-  jackson:
-    serialization:
-      # Instant 等时间类型对外序列化成 epoch 毫秒（整数），而非 ISO 字符串或秒.纳秒
-      write-dates-as-timestamps: true
-      write-date-timestamps-as-nanoseconds: false
-    deserialization:
-      read-date-timestamps-as-nanoseconds: false
   threads:
     virtual:
       enabled: true
@@ -15,6 +6,8 @@ spring:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/ifmix_core}
       auto-index-creation: true
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
 
 server:
   port: ${PORT:3001}
@@ -25,3 +18,10 @@ springdoc:
 
 app:
   expose-errors: ${APP_EXPOSE_ERRORS:true}
+  storage:
+    type: ${STORAGE_TYPE:none}
+    region: ${STORAGE_REGION:us-east-1}
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
+    bucket: ${STORAGE_BUCKET:ifmix}
+    access-key: ${STORAGE_ACCESS_KEY:minioadmin}
+    secret-key: ${STORAGE_SECRET_KEY:minioadmin}

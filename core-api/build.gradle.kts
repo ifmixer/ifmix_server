@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
     // Spring Boot 4 使用 Jackson 3（tools.jackson），需用 Jackson 3 的 Kotlin 模块，
@@ -26,6 +27,10 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:mongodb:1.20.6")
     testImplementation("org.testcontainers:junit-jupiter:1.20.6")
+
+    // AWS SDK v2 for S3 pre-signed URLs
+    implementation(platform("software.amazon.awssdk:bom:2.31.7"))
+    implementation("software.amazon.awssdk:s3")
 }
 
 kotlin {

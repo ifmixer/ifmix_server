@@ -15,10 +15,19 @@ class GlobalExceptionHandler(
 ) {
 
     @ExceptionHandler(ApiError::class)
-    fun handleApiError(ex: ApiError): ResponseEntity<Envelope<Nothing>> {
+    fun handleApiError(ex: ApiError): ResponseEntity<*> {
         val code = ex.errorCode
-        return ResponseEntity.status(code.status)
-            .body(Envelope.error(code.externalCode, ex.message ?: code.name))
+        if (code == ErrorCode.AI_UNAVAILABLE && ex.details != null) {
+            return ResponseEntity.status(code.status)
+                .header("Retry-After", "60")
+                .body(Envelope.errorWithDetails(code.externalCode, ex.message ?: code.name, ex.details))
+        }
+        val body = if (ex.details != null) {
+            Envelope.errorWithDetails(code.externalCode, ex.message ?: code.name, ex.details)
+        } else {
+            Envelope.error(code.externalCode, ex.message ?: code.name)
+        }
+        return ResponseEntity.status(code.status).body(body)
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)

@@ -8,15 +8,17 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Instant
 
+/** Tenant isolation via AppScoped capability (auto-detected from TodoDocument). */
 class CRUDAppRepositoryTest : AbstractMongoTest() {
 
     private val app1 = RequestContext(appId = "app-1")
     private val app2 = RequestContext(appId = "app-2")
-    private lateinit var repo: CRUDAppRepository<TodoDocument>
+    private lateinit var repo: CRUDRepository<TodoDocument>
 
     @BeforeEach
     fun init() {
-        repo = CRUDAppRepository(mongoTemplate, TodoDocument::class.java, softDelete = true)
+        // TodoDocument extends BaseAppDocument → auto-detects AppScoped + SoftDeletable
+        repo = CRUDRepository(mongoTemplate, TodoDocument::class.java)
     }
 
     private fun insert(ctx: RequestContext, title: String): String {

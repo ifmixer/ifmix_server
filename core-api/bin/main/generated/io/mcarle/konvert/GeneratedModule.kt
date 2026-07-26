@@ -3,8 +3,8 @@ package generated.io.mcarle.konvert
 import io.mcarle.konvert.api.GeneratedKonvertModule
 
 @GeneratedKonvertModule(
-  konverterFQN = ["com.ifmix.api.core.modules.todo.TodoMapperImpl.toDto"],
+  konverterFQN = ["com.ifmix.api.core.modules.antique.ScanMapperImpl.toDto", "com.ifmix.api.core.modules.antique.ScanMapperImpl.toListItemDto", "com.ifmix.api.core.modules.todo.TodoMapperImpl.toDto"],
   konvertToFQN = [],
   konvertFromFQN = [],
 )
-public interface `GeneratedModulecd5856dc-d460-42de-a038-66f3e9f0d59b`
+public interface `GeneratedModule6940fefb-6451-4762-932b-9e74cc654862`
