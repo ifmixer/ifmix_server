@@ -22,7 +22,7 @@ class CollectionMembershipImpl(
             Query(
                 Criteria.where("appId").`is`(ctx.appId)
                     .and("collectionId").`is`(cid)
-                    .and("scanRecordId").`is`(scanRecordId)
+                    .and("scanRecordId").`is`(org.bson.types.ObjectId(scanRecordId))
                     .and("deletedAt").`is`(null),
             ),
             CollectionItemDocument::class.java,

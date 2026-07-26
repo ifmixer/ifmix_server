@@ -26,6 +26,6 @@ class CollectionItemDocument : BaseAppDocument() {
     /** 所属收藏夹 ID（ObjectId hex 字符串）。 */
     var collectionId: String? = null
 
-    /** 关联的古物扫描记录 ID（scan_record._id，ObjectId hex 字符串）。 */
-    var scanRecordId: String? = null
+    /** 关联的古物扫描记录 ID（scan_record._id，ObjectId）。 */
+    var scanRecordId: org.bson.types.ObjectId? = null
 }

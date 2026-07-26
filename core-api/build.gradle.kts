@@ -24,6 +24,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.mockito:mockito-core:5.14.2")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:mongodb:1.20.6")
     testImplementation("org.testcontainers:junit-jupiter:1.20.6")
@@ -31,6 +32,10 @@ dependencies {
     // AWS SDK v2 for S3 pre-signed URLs
     implementation(platform("software.amazon.awssdk:bom:2.31.7"))
     implementation("software.amazon.awssdk:s3")
+
+    // Spring AI — OpenAI-compatible model provider (Agnes AI backend)
+    implementation(platform("org.springframework.ai:spring-ai-bom:1.0.2"))
+    implementation("org.springframework.ai:spring-ai-starter-model-openai")
 }
 
 kotlin {

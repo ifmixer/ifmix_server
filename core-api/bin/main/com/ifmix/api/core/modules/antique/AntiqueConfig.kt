@@ -41,10 +41,6 @@ class AntiqueConfig {
     }
 
     @Bean
-    @ConditionalOnMissingBean(ScanRunner::class)
-    fun scanRunner(): ScanRunner = StubScanRunner()
-
-    @Bean
     @ConditionalOnMissingBean(ScanRecordRepository::class)
     fun scanRecordRepository(clusterResolver: MongoClusterResolver): ScanRecordRepository {
         return ScanRecordRepository(clusterResolver.primary())
@@ -59,16 +55,5 @@ class AntiqueConfig {
         mongo: MongoTemplate,
     ): AntiqueService {
         return AntiqueService(scanRunner, objectStorage, rateLimiter, mongo)
-    }
-}
-
-/** 占位扫描执行器：返回 PENDING 结果。 */
-class StubScanRunner : ScanRunner {
-    override suspend fun run(ctx: com.ifmix.api.core.common.http.RequestContext, imageUrl: String): ScanResult {
-        return ScanResult(
-            scanId = java.util.UUID.randomUUID().toString(),
-            status = ScanResult.Status.PENDING,
-            imageUrl = imageUrl,
-        )
     }
 }

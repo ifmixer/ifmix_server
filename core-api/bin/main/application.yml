@@ -8,6 +8,13 @@ spring:
       auto-index-creation: true
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
+  ai:
+    openai:
+      api-key: ${SPRING_AI_OPENAI_API_KEY:sk-placeholder}
+      chat:
+        options:
+          model: ${SPRING_AI_OPENAI_MODEL:gpt-4o}
+      base-url: ${SPRING_AI_OPENAI_BASE_URL:https://api.openai.com}
 
 server:
   port: ${PORT:3001}
@@ -25,3 +32,14 @@ app:
     bucket: ${STORAGE_BUCKET:ifmix}
     access-key: ${STORAGE_ACCESS_KEY:minioadmin}
     secret-key: ${STORAGE_SECRET_KEY:minioadmin}
+  agnes:
+    # API key 轮换配置：预扣配额（每次扫描尝试预扣 1 次，成功消耗、失败/429 归还）
+    ai:
+      preDeductPerAttempt: 1
+      # 模型回退顺序：主模型 → fallback 列表（按逗号分隔的优先级）
+      modelFallbackOrder: "llama-4.0-mini,miro-4"
+    # AI 扫描模块专用限流：按 key 维度独立限制（防止单个 key 耗尽）
+    scanKeyRateLimit:
+      enabled: true
+      perKeyWindowSec: 3600
+      perKeyMaxAttempts: 50

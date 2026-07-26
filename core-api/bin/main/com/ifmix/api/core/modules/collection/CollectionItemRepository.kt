@@ -23,10 +23,11 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
      * @return collection_item 文档的 id
      */
     fun insertIfAbsent(ctx: RequestContext, collectionId: String, scanRecordId: String): String {
+        val scanObjId = org.bson.types.ObjectId(scanRecordId)
         val existing = mongo.findOne(
             Query(
                 base(ctx, collectionId)
-                    .and("scanRecordId").`is`(scanRecordId)
+                    .and("scanRecordId").`is`(scanObjId)
                     .and("deletedAt").`is`(null),
             ),
             CollectionItemDocument::class.java,
@@ -37,7 +38,7 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
         val doc = CollectionItemDocument().apply {
             appId = ctx.appId
             this.collectionId = collectionId
-            this.scanRecordId = scanRecordId
+            this.scanRecordId = scanObjId
             createdAt = now
             updatedAt = now
         }
@@ -54,7 +55,7 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
         val now = Instant.now()
         val query = Query(
             base(ctx, collectionId)
-                .and("scanRecordId").`in`(scanRecordIds)
+                .and("scanRecordId").`in`(scanRecordIds.map { org.bson.types.ObjectId(it) })
                 .and("deletedAt").`is`(null),
         )
         return mongo.updateMulti(
@@ -99,11 +100,10 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
         val hasMore = items.size > limit
         val page = if (hasMore) items.subList(0, limit) else items
 
-        // 收集有效 scanRecordId（hex → ObjectId 校验）
+        // 收集有效 scanRecordId（ObjectId → hex）
         val scanIds = page
             .mapNotNull { it.scanRecordId }
-            .filter { ObjectId.isValid(it) }
-            .map { ObjectId(it) }
+            .toList()
 
         if (scanIds.isEmpty()) return Pair(emptyList(), null)
 
@@ -117,8 +117,11 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
             ScanRecordDocument::class.java,
         ).associateBy { it.id }
 
-        val ordered = page.mapNotNull { scans[it.scanRecordId] }
-        val nextCursor = if (hasMore) page.last().scanRecordId else null
+        val ordered = page.mapNotNull { item ->
+            val oid = item.scanRecordId ?: return@mapNotNull null
+            scans[oid.toString()]
+        }
+        val nextCursor = if (hasMore) page.last().scanRecordId?.toString() else null
         return Pair(ordered, nextCursor)
     }
 
