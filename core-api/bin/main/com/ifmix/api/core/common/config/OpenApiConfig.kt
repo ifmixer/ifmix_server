@@ -19,6 +19,8 @@ class OpenApiConfig {
         // ctx 由 RequestContextArgumentResolver 注入，不是真正的请求参数——让 springdoc 忽略它，
         // 否则每个接口都会多出一个必填的 ctx query 参数并污染生成的客户端。
         SpringDocUtils.getConfig().addRequestWrapperToIgnore(RequestContext::class.java)
+        // Instant 对外序列化为 epoch 毫秒（见 application.yml 的 Jackson 配置），OpenAPI 里按 int64 呈现。
+        SpringDocUtils.getConfig().replaceWithClass(java.time.Instant::class.java, Long::class.javaObjectType)
     }
 
     @Bean

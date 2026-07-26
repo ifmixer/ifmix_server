@@ -4,6 +4,7 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
+import java.time.Instant
 
 /** todo 模块请求/响应 DTO。时间字段对外为 epoch 毫秒。 */
 
@@ -37,8 +38,8 @@ data class TodoDto(
     val title: String?,
     val done: Boolean,
     val items: List<TodoItemDto>,
-    val createdAt: Long,
-    val updatedAt: Long,
+    val createdAt: Instant?,
+    val updatedAt: Instant?,
 )
 
 data class DeleteResult(val deleted: Boolean)

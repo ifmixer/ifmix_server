@@ -1,15 +1,18 @@
 package com.ifmix.api.core.modules.todo
 
-/** 文档 → 响应 DTO 映射（含 Instant → epoch 毫秒）。 */
-object TodoMapper {
+import io.mcarle.konvert.api.Konverter
 
-    fun toResponse(doc: TodoDocument): TodoResponse =
-        TodoResponse(
-            id = doc.id,
-            title = doc.title,
-            done = doc.done,
-            items = doc.items.map { TodoItemResponse(it.id, it.content, it.done) },
-            createdAt = doc.createdAt?.toEpochMilli() ?: 0L,
-            updatedAt = doc.updatedAt?.toEpochMilli() ?: 0L,
-        )
+/**
+ * Konvert 编译期生成 document -> DTO 映射。items 列表按元素用 toDto(TodoItem) 自动映射；
+ * 时间字段 document/DTO 同为 Instant，直接拷贝（对外 JSON 由 Jackson 统一序列化成 epoch 毫秒）。
+ * 通过 Konverter.get<TodoMapper>() 获取生成的实现。
+ */
+@Konverter
+interface TodoMapper {
+
+    fun toDto(item: TodoItem): TodoItemDto
+
+    fun toDto(todo: TodoDocument): TodoDto
+
+    companion object
 }

@@ -25,8 +25,8 @@ class TodoMapperTest {
         assertThat(r.id).isEqualTo("aaaaaaaaaaaaaaaaaaaaaaaa")
         assertThat(r.title).isEqualTo("t")
         assertThat(r.done).isTrue()
-        assertThat(r.createdAt).isEqualTo(1000L)
-        assertThat(r.updatedAt).isEqualTo(2000L)
+        assertThat(r.createdAt).isEqualTo(Instant.ofEpochMilli(1000))
+        assertThat(r.updatedAt).isEqualTo(Instant.ofEpochMilli(2000))
 
         val item = r.items.single()
         assertThat(item.id).isEqualTo("i1")
@@ -35,14 +35,14 @@ class TodoMapperTest {
     }
 
     @Test
-    fun nullTimestampsMapToZero() {
+    fun nullTimestampsStayNull() {
         val doc = TodoDocument().apply {
             id = "bbbbbbbbbbbbbbbbbbbbbbbb"
             title = "t"
         }
         val r = mapper.toDto(doc)
-        assertThat(r.createdAt).isZero()
-        assertThat(r.updatedAt).isZero()
+        assertThat(r.createdAt).isNull()
+        assertThat(r.updatedAt).isNull()
         assertThat(r.items).isEmpty()
     }
 }

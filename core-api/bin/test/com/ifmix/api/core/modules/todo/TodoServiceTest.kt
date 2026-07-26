@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.todo
 
-import com.ifmix.api.core.common.db.BaseAppRepository
+import com.ifmix.api.core.common.db.CRUDAppRepository
+import com.ifmix.api.core.common.service.CRUDAppService
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.support.AbstractMongoTest
 import org.assertj.core.api.Assertions.assertThat
@@ -14,7 +15,9 @@ class TodoServiceTest : AbstractMongoTest() {
 
     @BeforeEach
     fun init() {
-        service = TodoService(BaseAppRepository(mongoTemplate, TodoDocument::class.java, softDelete = true))
+        service = TodoService(
+            CRUDAppService(CRUDAppRepository(mongoTemplate, TodoDocument::class.java, softDelete = true)),
+        )
     }
 
     @Test
@@ -51,7 +54,7 @@ class TodoServiceTest : AbstractMongoTest() {
     }
 
     @Test
-    fun inheritedDeleteSoftDeletes() {
+    fun deleteSoftDeletes() {
         val id = service.create(ctx, CreateTodoRequest("t", null))
         assertThat(service.deleteById(ctx, id)).isTrue()
         assertThat(service.findById(ctx, id)).isNull()

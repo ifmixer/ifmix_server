@@ -1,6 +1,13 @@
 spring:
   application:
     name: core-api
+  jackson:
+    serialization:
+      # Instant 等时间类型对外序列化成 epoch 毫秒（整数），而非 ISO 字符串或秒.纳秒
+      write-dates-as-timestamps: true
+      write-date-timestamps-as-nanoseconds: false
+    deserialization:
+      read-date-timestamps-as-nanoseconds: false
   threads:
     virtual:
       enabled: true
