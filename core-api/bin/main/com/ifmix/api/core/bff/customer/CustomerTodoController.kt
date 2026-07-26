@@ -4,7 +4,6 @@ import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.common.db.ReadOptions
 import com.ifmix.api.core.common.http.RequestContext
-import org.springframework.data.mongodb.core.query.Query
 import com.ifmix.api.core.modules.todo.ByIdRequest
 import com.ifmix.api.core.modules.todo.CreateTodoRequest
 import com.ifmix.api.core.modules.todo.DeleteResult
@@ -29,8 +28,8 @@ class CustomerTodoController(private val todoService: TodoService) {
         ctx: RequestContext,
         @RequestBody(required = false) input: CursorQueryInput?,
     ): Page<TodoResponse> {
-        // 过滤条件放 Query（服务端可控）；租户 appId / 软删 / 分页由 BaseRepository 强制注入
-        val page = todoService.findByCursor(ctx, Query(), input ?: CursorQueryInput())
+        // 租户 appId / 软删 / 分页由 BaseRepository 强制注入
+        val page = todoService.findByCursor(ctx, input ?: CursorQueryInput())
         return Page(page.items.map { TodoMapper.toResponse(it) }, page.nextCursor, page.hasMore)
     }
 

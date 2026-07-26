@@ -1,10 +1,13 @@
 package com.ifmix.api.core.modules.todo
 
+import io.mcarle.konvert.api.Konverter
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.Instant
 
 class TodoMapperTest {
+
+    private val mapper: TodoMapper = Konverter.get()
 
     @Test
     fun mapsDocumentToResponseWithEpochMillis() {
@@ -17,7 +20,7 @@ class TodoMapperTest {
             items = mutableListOf(TodoItem(id = "i1", content = "c", done = false))
         }
 
-        val r = TodoMapper.toResponse(doc)
+        val r = mapper.toDto(doc)
 
         assertThat(r.id).isEqualTo("aaaaaaaaaaaaaaaaaaaaaaaa")
         assertThat(r.title).isEqualTo("t")
@@ -37,7 +40,7 @@ class TodoMapperTest {
             id = "bbbbbbbbbbbbbbbbbbbbbbbb"
             title = "t"
         }
-        val r = TodoMapper.toResponse(doc)
+        val r = mapper.toDto(doc)
         assertThat(r.createdAt).isZero()
         assertThat(r.updatedAt).isZero()
         assertThat(r.items).isEmpty()

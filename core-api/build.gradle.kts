@@ -3,6 +3,7 @@ plugins {
     kotlin("plugin.spring")
     id("org.springframework.boot")
     id("io.spring.dependency-management")
+    id("com.google.devtools.ksp")
 }
 
 dependencies {
@@ -14,6 +15,10 @@ dependencies {
     // 否则 data class 的 Kotlin 默认值（缺失字段）不会生效。
     implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+
+    // Konvert：KSP 编译期生成 DTO<->document 映射（Kotlin 2.3.10 + KSP 2.3.10）
+    implementation("io.mcarle:konvert-api:4.5.0")
+    ksp("io.mcarle:konvert:4.5.0")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.mockito:mockito-core:5.14.2")

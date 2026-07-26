@@ -6,7 +6,6 @@ import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.common.db.ReadOptions
 import com.ifmix.api.core.common.http.RequestContext
-import org.springframework.data.mongodb.core.query.Query
 import java.time.Instant
 
 /** 通用租户服务基类：模块 service 继承它复用 CRUD，仅覆写定制点。 */
@@ -39,9 +38,8 @@ open class BaseAppService<T : BaseAppDocument>(
 
     fun findByCursor(
         ctx: RequestContext,
-        query: Query = Query(),
         input: CursorQueryInput = CursorQueryInput(),
         readOptions: ReadOptions = ReadOptions.DEFAULT,
     ): Page<T> =
-        repo.findByCursor(ctx, query, input, readOptions)
+        repo.findByCursor(ctx, input, readOptions)
 }

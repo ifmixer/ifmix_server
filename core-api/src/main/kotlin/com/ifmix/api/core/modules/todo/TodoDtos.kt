@@ -30,13 +30,13 @@ data class ByIdRequest(
     @field:NotBlank val id: String? = null,
 )
 
-data class TodoItemResponse(val id: String?, val content: String?, val done: Boolean)
+data class TodoItemDto(val id: String?, val content: String?, val done: Boolean)
 
-data class TodoResponse(
+data class TodoDto(
     val id: String?,
     val title: String?,
     val done: Boolean,
-    val items: List<TodoItemResponse>,
+    val items: List<TodoItemDto>,
     val createdAt: Long,
     val updatedAt: Long,
 )

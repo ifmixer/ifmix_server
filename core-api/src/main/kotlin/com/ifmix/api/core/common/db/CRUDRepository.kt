@@ -16,14 +16,22 @@ import java.util.Base64
 import kotlin.reflect.full.memberProperties
 
 /** 基于 MongoTemplate 的通用 CRUD 基类，不关注租户。 */
-open class BaseRepository<T : BaseDocument>(
+open class CRUDRepository<T : CRUDDocument>(
     protected val mongo: MongoTemplate,
     protected val type: Class<T>,
     protected val softDelete: Boolean,
 ) {
 
     /** 子类覆写以注入额外过滤（如租户）。默认无。 */
+    /** 子类覆写，为 findByCursor（列表查询）注入额外过滤（如租户）。默认无。 */
     protected open fun extraCriteria(ctx: RequestContext): Criteria? = null
+
+    /**
+     * 子类覆写，为按 id 的操作（findById/getById/updateById/deleteById）注入额外过滤。
+     * app 级须返回 appId 过滤：**分片集群下按 _id 的单文档读写必须带上分片键 appId**，否则
+     * 无法定向到分片（更新/删除会被拒或广播）。默认无。
+     */
+    protected open fun extraIdCriteria(ctx: RequestContext): Criteria? = null
 
     fun insertOne(ctx: RequestContext, entity: T) {
         mongo.insert(entity)
@@ -33,30 +41,43 @@ open class BaseRepository<T : BaseDocument>(
         if (entities.isNotEmpty()) mongo.insert(entities, type)
     }
 
-    /** 未命中/非法 id 返回 null，绝不抛。 */
-    fun findById(ctx: RequestContext, id: String, options: ReadOptions = ReadOptions.DEFAULT): T? {
+    /** 未命中/非法 id 返回 null，绝不抛。读偏好取 ctx.readPreference（事务内强制主库）。 */
+    fun findById(ctx: RequestContext, id: String): T? {
         if (invalidId(id)) return null
-        val query = buildQuery(idCriteria(ctx, id))
-        applyReadPreference(query, options)
+        val query = idQuery(ctx, id)
+        applyReadPreference(query, ctx)
         return mongo.findOne(query, type)
     }
 
     /** 未命中抛 NOT_FOUND，返回非空。 */
-    fun getById(ctx: RequestContext, id: String, options: ReadOptions = ReadOptions.DEFAULT): T =
-        findById(ctx, id, options) ?: throw ApiError(ErrorCode.NOT_FOUND)
+    fun getById(ctx: RequestContext, id: String): T =
+        findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
-    fun updateById(ctx: RequestContext, id: String, patch: Map<String, Any?>): Boolean {
+    /**
+     * 部分更新：自动从 [patch] 生成 Mongo `$set`——非空属性逐个 set，无需手写字段。
+     * patch 可为任意对象（反射其非空属性，属性名即字段名）或 `Map<String, Any?>`（键即字段名）。
+     * 空 patch 时不写，仅返回是否存在。总会刷新 updatedAt。
+     */
+    fun updateById(ctx: RequestContext, id: String, patch: Any): Boolean {
         if (invalidId(id)) return false
-        val query = buildQuery(idCriteria(ctx, id))
+        val sets: Map<String, Any?> = when (patch) {
+            is Map<*, *> -> patch.entries.filter { it.value != null }.associate { it.key.toString() to it.value }
+            else -> patch::class.memberProperties
+                .mapNotNull { p -> p.getter.call(patch)?.let { p.name to it } }
+                .toMap()
+        }
+        if (sets.isEmpty()) return findById(ctx, id) != null
+
+        val query = idQuery(ctx, id)
         val update = Update()
-        patch.forEach { (k, v) -> update.set(k, v) }
+        sets.forEach { (field, value) -> update.set(field, value) }
         update.set("updatedAt", Instant.now())
         return mongo.updateFirst(query, update, type).modifiedCount > 0
     }
 
     fun deleteById(ctx: RequestContext, id: String): Boolean {
         if (invalidId(id)) return false
-        val query = buildQuery(idCriteria(ctx, id))
+        val query = idQuery(ctx, id)
         return if (softDelete) {
             val update = Update().set("deletedAt", Instant.now()).set("updatedAt", Instant.now())
             mongo.updateFirst(query, update, type).modifiedCount > 0
@@ -67,28 +88,20 @@ open class BaseRepository<T : BaseDocument>(
 
     /**
      * 游标分页。本方法自建查询：强制注入租户 appId（extraCriteria）+ 软删过滤，并接管排序、
-     * 游标 keyset、limit 上限与读偏好。
+     * 游标 keyset、limit 上限与读偏好（ctx.readPreference，事务内强制主库）。
      *
      * 支持按任意 [CursorQueryInput.sortBy] 字段排序（默认 _id）。非 _id 排序用 (sortBy, _id) 复合
-     * keyset：nextCursor **自包含**地把 sortBy 值 + _id 编码进去（带类型标记），下次解码即得，
-     * **无需回库查锚点**；构造 `sortBy </> v OR (sortBy == v AND _id </> id)` 保证稳定分页。
-     * _id 排序时游标就是 id 的 hex（短、向后兼容）。
+     * keyset：nextCursor 自包含地把 sortBy 值 + _id 编码进去（带类型标记），下次解码即得，无需回库。
      */
-    fun findByCursor(
-        ctx: RequestContext,
-        input: CursorQueryInput = CursorQueryInput(),
-        readOptions: ReadOptions = ReadOptions.DEFAULT,
-    ): Page<T> {
+    fun findByCursor(ctx: RequestContext, input: CursorQueryInput = CursorQueryInput()): Page<T> {
         val limit = input.effectiveLimit()
         val desc = input.order == CursorQueryInput.Order.DESC
         val sortField = mongoField(input.sortBy)
 
         val query = Query()
-        // 强制注入租户 + 软删
         extraCriteria(ctx)?.let { query.addCriteria(it) }
         if (softDelete) query.addCriteria(Criteria.where("deletedAt").`is`(null))
 
-        // 游标 keyset（游标自包含，无需查库）
         val cursor = input.cursor
         if (!cursor.isNullOrBlank()) {
             if (sortField == "_id") {
@@ -116,13 +129,12 @@ open class BaseRepository<T : BaseDocument>(
             }
         }
 
-        // 排序：(sortBy, _id) 保证游标稳定；_id 排序时不重复
         val dir = if (desc) Sort.Direction.DESC else Sort.Direction.ASC
         query.with(
             if (sortField == "_id") Sort.by(dir, "_id") else Sort.by(dir, sortField).and(Sort.by(dir, "_id")),
         )
         query.limit(limit + 1)
-        applyReadPreference(query, readOptions)
+        applyReadPreference(query, ctx)
 
         val rows = mongo.find(query, type)
         val hasMore = rows.size > limit
@@ -131,36 +143,38 @@ open class BaseRepository<T : BaseDocument>(
         return Page(items.toList(), nextCursor, hasMore)
     }
 
-    /** _id 排序：游标就是 id hex；否则把 (sortBy 值, id) 自包含编码。 */
-    private fun encodeNextCursor(last: T, sortBy: String, sortField: String): String? {
-        val id = last.id ?: return null
-        return if (sortField == "_id") id else Cursor.encode(propertyValue(last, sortBy), id)
-    }
-
     // ---- helpers ----
 
     /**
-     * 读写分离：默认读走 secondaryPreferred（从库，无从库回落主库）。
-     * 以下情况强制 primary：显式 preferPrimary（写后回读，read-your-writes）、
-     * 或处于事务中（Mongo 事务要求主库读，否则报错）。
+     * 读写分离：默认走 ctx.readPreference（默认 primaryPreferred）。
+     * 事务内强制 primary（Mongo 事务要求主库读，否则报错）。
      */
-    private fun applyReadPreference(query: Query, options: ReadOptions) {
-        val forcePrimary = options.preferPrimary || TransactionSynchronizationManager.isActualTransactionActive()
-        query.withReadPreference(
-            if (forcePrimary) ReadPreference.primary() else ReadPreference.secondaryPreferred(),
-        )
+    private fun applyReadPreference(query: Query, ctx: RequestContext) {
+        val pref = if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            ReadPreference.primary()
+        } else {
+            ctx.readPreference
+        }
+        query.withReadPreference(pref)
     }
 
-    /** 基础过滤：extraCriteria（如租户）+ 软删过滤。 */
-    protected fun baseCriteria(ctx: RequestContext): List<Criteria> {
+    /**
+     * 按 id 定位的条件：extraIdCriteria（如 app 级的 appId 分片键）+ _id。
+     * 只负责定位，不含软删过滤（软删由 idQuery 叠加）。
+     */
+    private fun idCriteria(ctx: RequestContext, id: String): MutableList<Criteria> {
         val list = mutableListOf<Criteria>()
-        extraCriteria(ctx)?.let { list.add(it) }
-        if (softDelete) list.add(Criteria.where("deletedAt").`is`(null))
+        extraIdCriteria(ctx)?.let { list.add(it) }
+        list.add(Criteria.where("_id").`is`(ObjectId(id)))
         return list
     }
 
-    private fun idCriteria(ctx: RequestContext, id: String): List<Criteria> =
-        baseCriteria(ctx) + Criteria.where("_id").`is`(ObjectId(id))
+    /** by-id 操作的查询：idCriteria + 软删过滤（仅作用于未删文档）。 */
+    private fun idQuery(ctx: RequestContext, id: String): Query {
+        val criteria = idCriteria(ctx, id)
+        if (softDelete) criteria.add(Criteria.where("deletedAt").`is`(null))
+        return buildQuery(criteria)
+    }
 
     private fun buildQuery(criteria: List<Criteria>): Query {
         val query = Query()
@@ -173,10 +187,13 @@ open class BaseRepository<T : BaseDocument>(
 
     private fun invalidId(id: String?): Boolean = id == null || !ObjectId.isValid(id)
 
-    /** 排序/游标字段名归一：id → _id。 */
     private fun mongoField(field: String): String = if (field == "id") "_id" else field
 
-    /** 反射读取实体上 sortBy 字段的真实类型值（用于游标编码）。 */
+    private fun encodeNextCursor(last: T, sortBy: String, sortField: String): String? {
+        val id = last.id ?: return null
+        return if (sortField == "_id") id else Cursor.encode(propertyValue(last, sortBy), id)
+    }
+
     private fun propertyValue(entity: T, field: String): Any? {
         val propName = if (field == "_id" || field == "id") "id" else field
         return entity::class.memberProperties.firstOrNull { it.name == propName }?.getter?.call(entity)
@@ -196,7 +213,6 @@ private object Cursor {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(payload.toByteArray(Charsets.UTF_8))
     }
 
-    /** 返回 (value, idHex)；解析失败或值为 null 时返回 null。 */
     fun decode(cursor: String): Pair<Any?, String>? = try {
         val payload = String(Base64.getUrlDecoder().decode(cursor), Charsets.UTF_8)
         val parts = payload.split(SEP)

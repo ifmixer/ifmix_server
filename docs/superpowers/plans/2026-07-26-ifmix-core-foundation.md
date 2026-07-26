@@ -22,8 +22,14 @@
    - `readOptions` 为服务端参数（不进客户端 DTO）。
 4. **删除 `QueryFilter.kt` / `buildFilter`**：过滤改由 `Query` 承载，DSL 不再需要。
 5. HTTP action `.../query/todo/findMany` → `.../query/todo/findByCursor`。
+6. **`findByCursor` 去掉 `query` 参数**：签名 `findByCursor(ctx, input = CursorQueryInput())`，内部自建查询，不接收外部过滤。
+7. **命名 `Base*` → `CRUD*`**（任务 7/9/10/11/13/14 及其测试）：`CRUDDocument`/`CRUDAppDocument`/`CRUDRepository`/`CRUDAppRepository`/`CRUDAppService`。
+8. **继承改组合**：`TodoService` 组合持有 `CRUDAppService<TodoDocument>` 并委托，不继承。
+9. **读偏好进 `RequestContext`**：新增 `readPreference: ReadPreference = primaryPreferred()`，删除 `ReadOptions`；读方法统一用 `ctx.readPreference`，事务内强制主库。
+10. **`updateById(ctx, id, patch: Any)` 自动生成 `$set`**（反射非空属性或 Map），无需手写字段。
+11. **DTO 映射改用 Konvert**（`@Konverter interface TodoMapper`，KSP 生成，`Konverter.get()` 取实现），删除手写 mapper；**Kotlin 降至 2.3.10** + KSP 2.3.10 + konvert 4.5.0（任务 1 build 依赖）。
 
-下方任务正文中出现的 `CursorQuery`/`findMany`/`buildFilter`/`filter: Criteria` 字样均以本节为准替换。
+下方任务正文中出现的 `CursorQuery`/`findMany`/`buildFilter`/`filter: Criteria`/`Base*`/`ReadOptions`/Kotlin 2.4.10 字样均以本节为准替换。
 
 ## 前置条件（工程师环境）
 

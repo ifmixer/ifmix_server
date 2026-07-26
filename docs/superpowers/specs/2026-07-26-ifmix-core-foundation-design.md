@@ -15,12 +15,13 @@
 
 ## 技术栈
 
-- **语言**：Kotlin 2.4.10（运行于 JDK 25，jvmToolchain(25)，`-Xjsr305=strict`）。选 Kotlin 的核心动因是 **null 安全**——`RequestContext.appId` 非空、其余字段 `String?` 显式可空，文档 `deletedAt: Instant?` 一目了然；DTO 用 `data class`、枚举用 `enum class`。
+- **语言**：Kotlin 2.3.10（运行于 JDK 25，jvmToolchain(25)，`-Xjsr305=strict`）。选 2.3.10 而非 2.4.x 是为对齐 KSP/Konvert（KSP 最新仅到 2.3.10）与 Spring Boot 4.1 的 Kotlin 基线。选 Kotlin 的核心动因是 **null 安全**——`RequestContext.appId` 非空、其余字段 `String?` 显式可空，文档 `deletedAt: Instant?` 一目了然；DTO 用 `data class`、枚举用 `enum class`。
 - **框架**：Spring Boot 4.1（基于 Spring Framework 7），Spring MVC（阻塞式）。
 - **JSON**：Spring Boot 4 默认用 **Jackson 3（`tools.jackson`）**。Kotlin 支持必须用 Jackson 3 的模块 `tools.jackson.module:jackson-module-kotlin`（不是 Jackson 2 的 `com.fasterxml.jackson.module:jackson-module-kotlin`），否则 data class 的 Kotlin 默认值（请求缺失字段）不生效、非空默认字段会反序列化失败。
 - **并发**：虚拟线程，`spring.threads.virtual.enabled=true`（每请求一个虚拟线程，阻塞式 Mongo 驱动与之兼容）。
 - **数据库**：MongoDB（副本集）+ Spring Data MongoDB。副本集使得真正需要跨文档原子性时可用多文档事务。
-- **构建**：Gradle（Kotlin DSL）多模块，Gradle 9.6.1。Kotlin Spring 编译器插件 `kotlin("plugin.spring")`（all-open）打开 `@Component`/`@Configuration` 等类以供代理。
+- **构建**：Gradle（Kotlin DSL）多模块，Gradle 9.6.1。Kotlin Spring 编译器插件 `kotlin("plugin.spring")`（all-open）打开 `@Component`/`@Configuration` 等类以供代理。**KSP**（`com.google.devtools.ksp` 2.3.10）+ **Konvert**（`io.mcarle:konvert` 4.5.0）编译期生成 DTO↔document 映射。
+- **DTO 映射**：Konvert `@Konverter interface`（如 `TodoMapper.toDto(...)`），编译期生成，运行期经 `Konverter.get<TodoMapper>()` 取实现。`Instant → epoch 毫秒`用 `@Mapping(expression=...)`，列表元素自动映射。
 - **API 文档**：springdoc-openapi（代码优先）。
 - **校验**：Jakarta Bean Validation（Kotlin 用 `@field:` 使用点目标注解到 data class 属性）。
 - **测试**：JUnit 5 + AssertJ + Testcontainers（MongoDB 副本集），测试用 Kotlin 编写。
@@ -225,3 +226,16 @@ ifmix_server/
 - **`ObjectId` 主键**：原生、省空间、时间有序、游标分页零成本；对外暴露 24 位 hex 字符串（契约风格允许调整，移动端配合小改）。
 - **多集群路由与事务用接缝、暂不实装**：短期单集群 + Spring 默认事务（`MongoTransactionManager` + `TxRunner`）；用 `MongoClusterResolver` + `TxRunner` 两个接缝保留未来"按 appId 路由到不同集群 + 手动 session 事务"的扩展性，避免现在牺牲声明式事务等默认能力。
 - **app 级集合以 `appId` 为分片键**：采用复合 `{ appId: 1, _id: 1 }` —— 租户查询定向路由、大租户可继续切分避免热点、游标分页高效、唯一索引以分片键为前缀。
+
+## 实现修订（相对初稿，以代码为准）
+
+实现过程中经实测迭代，以下决策已更新，正文其余部分按此理解：
+
+1. **命名 `Base*` → `CRUD*`**：`CRUDDocument` / `CRUDAppDocument` / `CRUDRepository` / `CRUDAppRepository` / `CRUDAppService`。
+2. **通用能力改为组合**：模块 service（如 `TodoService`）**组合**持有 `CRUDAppService<T>` 并委托，不再继承（组合优于继承）。框架内 `CRUDAppRepository : CRUDRepository` 仍用继承（仅覆写 `extraCriteria` 钩子注入租户，同接口精化），文档基类也保留继承复用字段。
+3. **读偏好进 `RequestContext`，取代 `ReadOptions`**：`RequestContext.readPreference: ReadPreference` 默认 `primaryPreferred`（读主、写后回读天然安全）。`findById/getById/findByCursor` 不再带读选项参数，统一用 `ctx.readPreference`；**事务内强制主库**覆盖之。需要把只读请求分流从库时 `ctx.copy(readPreference = secondaryPreferred())`。
+4. **`updateById` 自动生成 `$set`**：`updateById(ctx, id, patch: Any)` 反射 patch 对象的**非空属性**（或直接用 `Map`）生成 Mongo `$set` 并刷新 `updatedAt`，无需手写字段；模块层把 patch DTO 直接透传。
+5. **DTO 映射用 Konvert**（见技术栈），取代手写 mapper。
+6. **Kotlin 降到 2.3.10**（见技术栈），以启用 KSP/Konvert 并对齐 Spring Boot 4.1 的 Kotlin 基线。
+7. **响应 DTO 命名 `*Response` → `*Dto`**：`TodoResponse` → `TodoDto`、`TodoItemResponse` → `TodoItemDto`。
+8. **按 id 操作的分片键注入 `extraIdCriteria`**：`CRUDRepository` 的 `idCriteria` 只做 `extraIdCriteria + _id`（不含软删，软删由 `idQuery` 叠加）；新增 `extraIdCriteria(ctx)` 钩子，app 级覆写返回 `appId` 过滤——**分片集群下按 `_id` 的单文档读写必须带上分片键 appId** 才能定向到分片。`extraCriteria`（列表查询用）与 `extraIdCriteria`（by-id 用）分离。

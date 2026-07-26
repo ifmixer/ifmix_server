@@ -1,12 +1,16 @@
 package com.ifmix.api.core.modules.todo
 
-import com.ifmix.api.core.common.db.BaseAppRepository
+import com.ifmix.api.core.common.db.CursorQueryInput
+import com.ifmix.api.core.common.db.Page
+import com.ifmix.api.core.common.service.CRUDAppService
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.common.service.BaseAppService
 import org.bson.types.ObjectId
 
-/** todo 业务逻辑：继承通用 CRUD，仅定制带内嵌 items 的创建与 patch 更新。 */
-class TodoService(repo: BaseAppRepository<TodoDocument>) : BaseAppService<TodoDocument>(repo) {
+/**
+ * todo 业务逻辑：**组合**持有通用 CRUDAppService（不继承），委托通用 CRUD，只实现定制逻辑
+ * （带内嵌 items 的创建、部分更新自动生成）。
+ */
+class TodoService(private val crud: CRUDAppService<TodoDocument>) {
 
     /** 创建 todo（内嵌 items 单文档原子写），返回新 id。 */
     fun create(ctx: RequestContext, req: CreateTodoRequest): String {
@@ -17,18 +21,19 @@ class TodoService(repo: BaseAppRepository<TodoDocument>) : BaseAppService<TodoDo
                 TodoItem(id = ObjectId().toHexString(), content = it.content, done = false)
             }.toMutableList()
         }
-        return createOne(ctx, doc) // 继承自 BaseAppService：盖章 appId/时间戳 + 插入
+        return crud.createOne(ctx, doc)
     }
 
-    /** 部分更新：仅设置提供的字段；空 patch 时校验存在性后视为命中。 */
-    fun update(ctx: RequestContext, id: String, patch: UpdateTodoRequest): Boolean {
-        val set = mutableMapOf<String, Any?>()
-        patch.title?.let { set["title"] = it }
-        patch.done?.let { set["done"] = it }
-        if (set.isEmpty()) {
-            getById(ctx, id) // 不存在则抛 NOT_FOUND
-            return true
-        }
-        return updateById(ctx, id, set)
-    }
+    /** 部分更新：直接把 patch 交给通用层自动生成 Mongo $set（非空字段），无需手写字段。 */
+    fun update(ctx: RequestContext, id: String, patch: UpdateTodoRequest): Boolean =
+        crud.updateById(ctx, id, patch)
+
+    fun getById(ctx: RequestContext, id: String): TodoDocument = crud.getById(ctx, id)
+
+    fun findById(ctx: RequestContext, id: String): TodoDocument? = crud.findById(ctx, id)
+
+    fun findByCursor(ctx: RequestContext, input: CursorQueryInput): Page<TodoDocument> =
+        crud.findByCursor(ctx, input)
+
+    fun deleteById(ctx: RequestContext, id: String): Boolean = crud.deleteById(ctx, id)
 }

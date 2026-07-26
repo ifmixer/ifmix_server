@@ -8,15 +8,15 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Instant
 
-class BaseAppRepositoryTest : AbstractMongoTest() {
+class CRUDAppRepositoryTest : AbstractMongoTest() {
 
     private val app1 = RequestContext(appId = "app-1")
     private val app2 = RequestContext(appId = "app-2")
-    private lateinit var repo: BaseAppRepository<TodoDocument>
+    private lateinit var repo: CRUDAppRepository<TodoDocument>
 
     @BeforeEach
     fun init() {
-        repo = BaseAppRepository(mongoTemplate, TodoDocument::class.java, softDelete = true)
+        repo = CRUDAppRepository(mongoTemplate, TodoDocument::class.java, softDelete = true)
     }
 
     private fun insert(ctx: RequestContext, title: String): String {
@@ -39,7 +39,7 @@ class BaseAppRepositoryTest : AbstractMongoTest() {
     }
 
     @Test
-    fun findManyIsolatedByTenant() {
+    fun findByCursorIsolatedByTenant() {
         insert(app1, "a1")
         insert(app2, "b1")
         insert(app2, "b2")
