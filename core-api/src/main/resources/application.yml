@@ -10,7 +10,7 @@ spring:
       auto-index-creation: true
 
 server:
-  port: ${PORT:3000}
+  port: ${PORT:3001}
 
 springdoc:
   swagger-ui:

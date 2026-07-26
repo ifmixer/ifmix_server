@@ -16,6 +16,12 @@ class WebConfig(
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(headerValidationInterceptor)
             .addPathPatterns("/customer/**", "/app/**")
+            // openapi/swagger 端点无需 appId（本就不在 /customer、/app 下，这里显式排除以自文档化、防未来路径变更）
+            .excludePathPatterns(
+                "/v3/api-docs/**",
+                "/swagger-ui/**",
+                "/swagger-ui.html",
+            )
     }
 
     override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
