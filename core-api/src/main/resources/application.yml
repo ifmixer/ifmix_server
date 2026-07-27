@@ -43,3 +43,12 @@ app:
       enabled: true
       perKeyWindowSec: 3600
       perKeyMaxAttempts: 50
+
+  auth:
+    # JWT 签发者标识
+    issuer: ${AUTH_ISSUER:ifmix}
+    # Google / Apple JWKS endpoint
+    google:
+      jwks-uri: ${AUTH_GOOGLE_JWKS_URI:https://accounts.google.com/.well-known/openid-configuration}
+    apple:
+      jwks-uri: ${AUTH_APPLE_JWKS_URI:https://appleid.apple.com/.well-known/jwks.json}

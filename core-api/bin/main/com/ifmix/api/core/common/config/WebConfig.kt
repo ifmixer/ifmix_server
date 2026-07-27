@@ -1,5 +1,6 @@
 package com.ifmix.api.core.common.config
 
+import com.ifmix.api.core.common.auth.AuthInterceptor
 import com.ifmix.api.core.common.http.HeaderValidationInterceptor
 import com.ifmix.api.core.common.http.RequestContextArgumentResolver
 import org.springframework.context.annotation.Configuration
@@ -11,6 +12,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 @Configuration
 class WebConfig(
     private val headerValidationInterceptor: HeaderValidationInterceptor,
+    private val authInterceptor: AuthInterceptor,
 ) : WebMvcConfigurer {
 
     override fun addInterceptors(registry: InterceptorRegistry) {
@@ -21,6 +23,15 @@ class WebConfig(
                 "/v3/api-docs/**",
                 "/swagger-ui/**",
                 "/swagger-ui.html",
+            )
+
+        // JWT 认证拦截器：仅对需要认证的端点生效
+        // /customer/auth/* 不需要（登录/刷新/交换是公开接口）
+        // /customer/core/* 需要（业务 API）
+        registry.addInterceptor(authInterceptor)
+            .addPathPatterns("/customer/core/**")
+            .excludePathPatterns(
+                "/.well-known/**",
             )
     }
 

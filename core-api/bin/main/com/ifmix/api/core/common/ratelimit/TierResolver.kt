@@ -21,3 +21,21 @@ interface TierResolver {
 class FreeTierResolver : TierResolver {
     override fun resolve(ctx: com.ifmix.api.core.common.http.RequestContext): Tier = Tier.FREE
 }
+
+/**
+ * 限流主体解析器。
+ * 优先使用 userId（已认证用户），fallback 到 "unknown"。
+ * 不再使用 installId 作为限流主体（installId 可伪造）。
+ */
+interface RateLimitSubjectResolver {
+    /**
+     * @param clientIp 客户端真实 IP（由调用方传入）
+     */
+    fun resolve(ctx: com.ifmix.api.core.common.http.RequestContext, clientIp: String): String
+}
+
+/** 默认实现：userId ?: ip ?: "unknown"。 */
+class DefaultRateLimitSubjectResolver : RateLimitSubjectResolver {
+    override fun resolve(ctx: com.ifmix.api.core.common.http.RequestContext, clientIp: String): String =
+        ctx.userId ?: if (clientIp.isNotBlank()) clientIp else "unknown"
+}

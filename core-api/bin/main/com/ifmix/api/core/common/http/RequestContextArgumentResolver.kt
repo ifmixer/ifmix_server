@@ -1,6 +1,8 @@
 package com.ifmix.api.core.common.http
 
-import org.bson.types.ObjectId
+import com.ifmix.api.core.common.auth.AuthInterceptor
+import jakarta.servlet.http.HttpServletRequest
+import org.springframework.web.context.request.RequestAttributes
 import org.springframework.core.MethodParameter
 import org.springframework.web.bind.support.WebDataBinderFactory
 import org.springframework.web.context.request.NativeWebRequest
@@ -18,14 +20,20 @@ class RequestContextArgumentResolver : HandlerMethodArgumentResolver {
         mavContainer: ModelAndViewContainer?,
         webRequest: NativeWebRequest,
         binderFactory: WebDataBinderFactory?,
-    ): Any = RequestContext(
-        appId = header(webRequest, RequestHeaders.APP_ID) ?: "",
-        installId = header(webRequest, RequestHeaders.INSTALL_ID),
-        lang = header(webRequest, RequestHeaders.LANG),
-        currency = header(webRequest, RequestHeaders.CURRENCY),
-        country = header(webRequest, RequestHeaders.COUNTRY),
-        clientPlatform = ClientPlatform.fromHeader(header(webRequest, RequestHeaders.CLIENT_PLATFORM)),
-    )
+    ): Any {
+        // 从 AuthInterceptor 读取已验证的 userId（如果拦截器已执行）
+        val userId = (webRequest.getAttribute(AuthInterceptor.ATTR_USER_ID, RequestAttributes.SCOPE_REQUEST) as? String)
+
+        return RequestContext(
+            appId = header(webRequest, RequestHeaders.APP_ID) ?: "",
+            installId = header(webRequest, RequestHeaders.INSTALL_ID),
+            lang = header(webRequest, RequestHeaders.LANG),
+            currency = header(webRequest, RequestHeaders.CURRENCY),
+            country = header(webRequest, RequestHeaders.COUNTRY),
+            clientPlatform = ClientPlatform.fromHeader(header(webRequest, RequestHeaders.CLIENT_PLATFORM)),
+            userId = userId,
+        )
+    }
 
     private fun header(request: NativeWebRequest, name: String): String? =
         request.getHeader(name)?.takeIf { it.isNotBlank() }

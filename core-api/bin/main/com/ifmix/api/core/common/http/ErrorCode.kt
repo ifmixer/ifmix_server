@@ -13,4 +13,5 @@ enum class ErrorCode(val externalCode: String, val status: HttpStatus) {
     AI_UNAVAILABLE("503000", HttpStatus.SERVICE_UNAVAILABLE),
     INTERNAL("500000", HttpStatus.INTERNAL_SERVER_ERROR),
     APP_CONFIG_MISSING("400002", HttpStatus.BAD_REQUEST),
+    AUTH_PROVIDER_FAILED("401001", ErrorCode.UNAUTHORIZED.status),
 }

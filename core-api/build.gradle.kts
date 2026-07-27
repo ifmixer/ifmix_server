@@ -21,9 +21,11 @@ dependencies {
     implementation("io.mcarle:konvert-api:4.5.0")
     ksp("io.mcarle:konvert:4.5.0")
 
+    testImplementation("com.willowtreeapps.assertk:assertk-jvm:0.28.1")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.mockito:mockito-core:5.14.2")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:mongodb:1.20.6")
@@ -36,6 +38,11 @@ dependencies {
     // Spring AI — OpenAI-compatible model provider (Agnes AI backend)
     implementation(platform("org.springframework.ai:spring-ai-bom:1.0.2"))
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
+
+    // Auth — social login + JWT + refresh token
+    implementation("org.springframework.security:spring-security-oauth2-jose")
+    implementation("com.nimbusds:nimbus-jose-jwt:9.40")
+    implementation("com.google.crypto.tink:tink:1.15.0")
 }
 
 kotlin {
