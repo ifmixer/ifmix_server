@@ -24,6 +24,21 @@ springdoc:
     persist-authorization: true
 
 app:
+  # ... other existing configurations ...
+  clusters:
+    default:
+      writer:
+        jdbc-url: ${PG_WRITER_URL:jdbc:postgresql://localhost:5432/ifmix_core_local}
+        username: ${PG_USERNAME:postgres}
+        password: ${PG_PASSWORD:postgres}
+      reader:
+        jdbc-url: ${PG_READER_URL:jdbc:postgresql://localhost:5432/ifmix_core_local}
+        username: ${PG_USERNAME:postgres}
+        password: ${PG_PASSWORD:postgres}
+
+  cluster-routing:
+    mappings: {}
+
   expose-errors: ${APP_EXPOSE_ERRORS:true}
   storage:
     type: ${STORAGE_TYPE:none}

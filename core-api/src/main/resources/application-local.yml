@@ -24,3 +24,17 @@ app:
     bucket: ifmix
     access-key: minioadmin
     secret-key: minioadmin
+
+  clusters:
+    default:
+      writer:
+        jdbc-url: jdbc:postgresql://localhost:5432/ifmix_core_local
+        username: postgres
+        password: postgres
+      reader:
+        jdbc-url: jdbc:postgresql://localhost:5432/ifmix_core_local
+        username: postgres
+        password: postgres
+
+  cluster-routing:
+    mappings: {}
