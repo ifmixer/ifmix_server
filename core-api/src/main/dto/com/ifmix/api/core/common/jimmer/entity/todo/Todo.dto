@@ -1,0 +1,20 @@
+export com.ifmix.api.core.common.jimmer.entity.todo.Todo
+    -> package com.ifmix.api.core.common.jimmer.dto.todo
+
+TodoView {
+    #allScalars
+    items {
+        #allScalars
+    }
+}
+
+input TodoCreateInput {
+    title
+    done
+}
+
+input TodoUpdateInput {
+    id!
+    title
+    done
+}
