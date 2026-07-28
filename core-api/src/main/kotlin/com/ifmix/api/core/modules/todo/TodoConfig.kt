@@ -1,24 +1,7 @@
 package com.ifmix.api.core.modules.todo
 
-import com.ifmix.api.core.common.db.CRUDRepository
-import com.ifmix.api.core.common.db.MongoClusterResolver
-import com.ifmix.api.core.common.service.CRUDService
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-/** todo 模块 bean 装配。todos 集合开启软删（由 BaseAppDocument 能力接口声明，CRUDRepository 反射探测）。 */
+/** Todo 模块配置。Bean 由 @Service/@Component 自动扫描注册。 */
 @Configuration
-class TodoConfig {
-
-    @Bean
-    fun todoRepository(clusterResolver: MongoClusterResolver): CRUDRepository<TodoDocument> =
-        CRUDRepository(clusterResolver.primary(), TodoDocument::class.java)
-
-    @Bean
-    fun todoCrudService(todoRepository: CRUDRepository<TodoDocument>): CRUDService<TodoDocument> =
-        CRUDService(todoRepository)
-
-    @Bean
-    fun todoService(todoCrudService: CRUDService<TodoDocument>): TodoService =
-        TodoService(todoCrudService)
-}
+class TodoConfig

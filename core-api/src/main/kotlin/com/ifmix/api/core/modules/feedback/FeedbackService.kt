@@ -1,23 +1,23 @@
 package com.ifmix.api.core.modules.feedback
 
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.common.service.CRUDService
+import com.ifmix.api.core.common.jimmer.base.BaseAppCrudService
+import com.ifmix.api.core.common.jimmer.entity.feedback.Feedback
+import com.ifmix.api.core.common.jimmer.repository.feedback.FeedbackRepository
+import org.babyfish.jimmer.Input
+import org.springframework.stereotype.Service
 
 /**
- * feedback 业务逻辑：**组合**持有通用 CRUDService（不继承），委托通用 CRUD，只实现定制逻辑。
+ * Feedback 业务逻辑。继承自 BaseAppCrudService，获得基本 CRUD 操作。
+ * 领域特有方法（如 submit）在此追加。
  */
-class FeedbackService(val crud: CRUDService<FeedbackDocument>) {
+@Service
+class FeedbackService(
+    feedbackRepo: FeedbackRepository,
+) : BaseAppCrudService<Feedback>(feedbackRepo) {
 
-    /** 提交反馈，返回新建文档的 id。 */
-    fun submit(ctx: RequestContext, req: SubmitReq): String {
-        val doc = FeedbackDocument().apply {
-            appId = ctx.appId
-            installId = ctx.installId
-            userId = ctx.userId
-            scanRecordId = req.scanRecordId
-            category = req.category
-            note = req.note
-        }
-        return crud.createOne(ctx, doc)
-    }
+    /**
+     * 提交反馈，返回新建实体。直接委托 base create(Input) 方法。
+     */
+    fun submit(input: Input<Feedback>): Feedback =
+        create(input)
 }
