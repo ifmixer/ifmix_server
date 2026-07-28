@@ -221,14 +221,9 @@ class AppScopedFilter(
 ```
 // common/jimmer/dto/todo/Todo.dto
 TodoView {
-    id
-    title
-    done
-    createdAt
+    #allScalars
     items {
-        id
-        content
-        done
+        #allScalars
     }
 }
 
@@ -272,6 +267,12 @@ abstract class BaseCrudRepository<E : Any>(
 
     fun save(ctx: RequestContext, input: Input<E>): E =
         sql(ctx).save(input).modifiedEntity
+
+    fun insert(ctx: RequestContext, input: Input<E>): E =
+        sql(ctx).save(input) { setMode(SaveMode.INSERT_ONLY) }.modifiedEntity
+
+    fun update(ctx: RequestContext, input: Input<E>): E =
+        sql(ctx).save(input) { setMode(SaveMode.UPDATE_ONLY) }.modifiedEntity
 
     fun deleteById(ctx: RequestContext, id: UUID) {
         sql(ctx).deleteById(entityType, id)
@@ -327,10 +328,14 @@ open class BaseCrudService<E : Any>(
 
     @Transactional
     open fun create(ctx: RequestContext, input: Input<E>): E =
-        repo.save(ctx, input)
+        repo.insert(ctx, input)
 
     @Transactional
     open fun update(ctx: RequestContext, input: Input<E>): E =
+        repo.update(ctx, input)
+
+    @Transactional
+    open fun save(ctx: RequestContext, input: Input<E>): E =
         repo.save(ctx, input)
 
     @Transactional
