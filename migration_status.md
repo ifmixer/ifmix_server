@@ -7,10 +7,10 @@ Last updated: 2026-07-29
 | 1 | ✅ Done | Gradle dependency configuration |
 | 2 | ✅ Done | Flyway baseline migration file |
 | 3 | ✅ Done | Multi-cluster routing + read-write split infrastructure |
-| 4 | ✅ Done | Jimmer Entity definitions + Global filter (simplified) |
-| 5 | ⏳ In Progress | Jimmer DTO definitions |
-| 6 | ⏳ Pending | BaseCrudRepository + BaseAppCrudRepository |
-| 7 | ⏳ Pending | BaseCrudService + BaseAppCrudService |
+| 4 | ✅ Done | Jimmer Entity definitions + simplified filter |
+| 5 | ✅ Done | Jimmer DTO definitions |
+| 6 | ✅ Done | BaseCrudRepository + BaseAppCrudRepository |
+| 7 | ⏳ In Progress | BaseCrudService + BaseAppCrudService |
 | 8 | ⏳ Pending | Migrate Todo module |
 | 9 | ⏳ Pending | Migrate Feedback module |
 | 10 | ⏳ Pending | RequestContext adjustment + RequestContextHolder integration |
