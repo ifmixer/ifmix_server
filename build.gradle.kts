@@ -14,3 +14,6 @@ allprojects {
         mavenCentral()
     }
 }
+
+// Jimmer 版本集中管理
+extra["jimmerVersion"] = "0.11.5"

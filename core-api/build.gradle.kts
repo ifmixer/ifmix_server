@@ -36,7 +36,7 @@ dependencies {
     implementation("software.amazon.awssdk:s3")
 
     // Spring AI — OpenAI-compatible model provider (Agnes AI backend)
-    // 2.0.x 才兼容 Spring Boot 4.0/4.1（1.0.x 面向 Boot 3.x，引用了已被移除的 RestClientAutoConfiguration 旧包名）
+    // 2.0.x 才兼容 Spring Boot 4.0/4.1（1.0.x 面向 Boot 3.x，引用了已被移除的 RestClient AutoConfiguration 旧包名）
     implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0"))
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
 
@@ -44,6 +44,25 @@ dependencies {
     implementation("org.springframework.security:spring-security-oauth2-jose")
     implementation("com.nimbusds:nimbus-jose-jwt:9.40")
     implementation("com.google.crypto.tink:tink:1.15.0")
+
+    // === Jimmer + PostgreSQL ===
+    val jimmerVersion: String by rootProject.extra
+    implementation("org.babyfish.jimmer:jimmer-spring-boot-starter:$jimmerVersion")
+    implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
+    ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")
+
+    // PostgreSQL JDBC
+    implementation("org.postgresql:postgresql")
+
+    // Flyway
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-database-postgresql")
+
+    // Testcontainers PostgreSQL（测试）
+    testImplementation("org.testcontainers:postgresql:1.20.6")
+
+    // H2 for routing tests (needed in task 3)
+    testImplementation("com.h2database:h2")
 }
 
 kotlin {
@@ -55,4 +74,12 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// Jimmer KSP 配置
+ksp {
+    // Jimmer DTO 文件位置（相对于 project root）
+    arg("jimmer.dto.dirs", "src/main/dto")
+    // 生成 Kotlin 代码
+    arg("jimmer.language", "kotlin")
 }
