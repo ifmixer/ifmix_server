@@ -1,40 +1,37 @@
 package com.ifmix.api.core.common.ai
 
+import com.openai.client.OpenAIClientImpl
+import com.openai.core.ClientOptions
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.ai.openai.OpenAiChatOptions
-import org.springframework.ai.openai.api.OpenAiApi
+import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient
 
 /**
- * Factory untuk membuat ChatClient dengan API key + model yang dinamis.
+ * 按 API key + model 动态创建 ChatClient（每次 forKey 产生新实例，无状态，供多 key 轮换）。
  *
- * Setiap call ke forKey() menghasilkan instance baru (stateless),
- * sehingga bisa dipakai untuk rotasi key tanpa konflik.
+ * Spring AI 2.0：OpenAI 集成改用官方 openai-java SDK 的 [com.openai.client.OpenAIClient]。
+ * 手动构造 per-key client：SpringAiOpenAiHttpClient（Spring AI 的 okhttp 传输）+ ClientOptions
+ * （注入 baseUrl/apiKey）→ OpenAIClientImpl → OpenAiChatModel。
  */
 open class AgnesChatClientFactory(
     val baseUrl: String,
     val defaultModel: String,
 ) {
 
-    /**
-     * Buat ChatClient baru untuk key + model tertentu.
-     *
-     * @param apiKey  API key yang akan dipakai saat runtime
-     * @param model   Nama model (default dari factory config)
-     * @return ChatClient yang siap dipanggil
-     */
     open fun forKey(apiKey: String, model: String = defaultModel): ChatClient {
-        val api = OpenAiApi.builder()
-            .apiKey(apiKey)
+        val httpClient = SpringAiOpenAiHttpClient.builder().build()
+        val clientOptions = ClientOptions.builder()
+            .httpClient(httpClient)
             .baseUrl(baseUrl)
+            .apiKey(apiKey)
             .build()
+        val openAiClient = OpenAIClientImpl(clientOptions)
 
-        val chatModel = OpenAiChatModel.builder().apply {
-            openAiApi(api)
-            defaultOptions(OpenAiChatOptions.builder()
-                .model(model)
-                .build())
-        }.build()
+        val chatModel = OpenAiChatModel.builder()
+            .openAiClient(openAiClient)
+            .options(OpenAiChatOptions.builder().model(model).build())
+            .build()
 
         return ChatClient.builder(chatModel).build()
     }

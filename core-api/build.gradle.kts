@@ -36,7 +36,8 @@ dependencies {
     implementation("software.amazon.awssdk:s3")
 
     // Spring AI — OpenAI-compatible model provider (Agnes AI backend)
-    implementation(platform("org.springframework.ai:spring-ai-bom:1.0.2"))
+    // 2.0.x 才兼容 Spring Boot 4.0/4.1（1.0.x 面向 Boot 3.x，引用了已被移除的 RestClientAutoConfiguration 旧包名）
+    implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0"))
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
 
     // Auth — social login + JWT + refresh token

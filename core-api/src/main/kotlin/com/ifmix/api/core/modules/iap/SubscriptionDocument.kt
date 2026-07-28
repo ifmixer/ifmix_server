@@ -30,8 +30,7 @@ class SubscriptionDocument : BaseAppDocument() {
     @Indexed
     var subscriptionPxid: String? = null
 
-    /** 原始交易 ID（用于去重和退款查询）。 */
-    @Indexed
+    /** 原始交易 ID（用于去重和退款查询）。索引由 sub_original_txn_idx 提供，勿加 @Indexed（会与之 key 重复冲突）。 */
     var originalTransactionId: String? = null
 
     /** 产品 SKU。 */

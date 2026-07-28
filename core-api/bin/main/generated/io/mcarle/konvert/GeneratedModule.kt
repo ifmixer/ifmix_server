@@ -7,4 +7,4 @@ import io.mcarle.konvert.api.GeneratedKonvertModule
   konvertToFQN = [],
   konvertFromFQN = [],
 )
-public interface `GeneratedModule3ecec9fc-3ad7-49aa-a8c5-846657d69753`
+public interface `GeneratedModuleddcef2e6-664e-4a6b-ae9f-23073e21aab7`
