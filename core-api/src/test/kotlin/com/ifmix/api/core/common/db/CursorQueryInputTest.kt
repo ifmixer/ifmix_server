@@ -1,4 +1,4 @@
-package com.ifmix.api.core.common.db
+package com.ifmix.api.core.infra.db
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test

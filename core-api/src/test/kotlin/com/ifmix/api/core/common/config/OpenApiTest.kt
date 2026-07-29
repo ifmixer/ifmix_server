@@ -1,4 +1,4 @@
-package com.ifmix.api.core.common.config
+package com.ifmix.api.core.infra.config
 
 import com.ifmix.api.core.support.AbstractMongoTest
 import org.junit.jupiter.api.BeforeEach

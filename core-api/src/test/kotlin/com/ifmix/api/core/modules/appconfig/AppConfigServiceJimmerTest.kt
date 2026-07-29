@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.appconfig
+package com.ifmix.api.core.service.appconfig
 
 import org.junit.jupiter.api.Test
 import org.assertj.core.api.Assertions.assertThat
@@ -22,9 +22,9 @@ class AppConfigServiceJimmerTest {
         assertThat(config.revision).isEqualTo(1)
     }
 
-    private fun mockAppConfig(id: UUID): com.ifmix.api.core.common.jimmer.entity.appconfig.AppConfig {
+    private fun mockAppConfig(id: UUID): com.ifmix.api.core.entity.appconfig.AppConfig {
         // Create a mock entity - in real test this would come from the repository
-        return com.ifmix.api.core.common.jimmer.entity.appconfig.AppConfig {
+        return com.ifmix.api.core.entity.appconfig.AppConfig {
             this.id = id
             this.appId = id
             this.authTenantId = null

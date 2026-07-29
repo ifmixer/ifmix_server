@@ -1,4 +1,4 @@
-package com.ifmix.api.core.common.http
+package com.ifmix.api.core.infra.http
 
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.BeforeEach

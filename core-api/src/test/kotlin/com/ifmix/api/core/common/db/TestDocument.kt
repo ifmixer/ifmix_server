@@ -1,4 +1,4 @@
-package com.ifmix.api.core.common.db
+package com.ifmix.api.core.infra.db
 
 import org.springframework.data.mongodb.core.mapping.Document
 

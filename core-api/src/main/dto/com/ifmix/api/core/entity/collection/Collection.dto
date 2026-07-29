@@ -1,0 +1,23 @@
+export com.ifmix.api.core.entity.collection.Collection
+CollectionDto {
+    id
+    appId
+    installId
+    userId
+    isDefault
+    createdAt
+    updatedAt
+    items {
+        id
+        scanRecord {
+            id
+            scanId
+            imageUrl
+            resultJson
+            status
+            tier
+            clientIp
+            relatedId
+        }
+    }
+}

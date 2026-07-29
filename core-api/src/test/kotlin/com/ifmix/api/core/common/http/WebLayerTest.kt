@@ -1,4 +1,4 @@
-package com.ifmix.api.core.common.http
+package com.ifmix.api.core.infra.http
 
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank

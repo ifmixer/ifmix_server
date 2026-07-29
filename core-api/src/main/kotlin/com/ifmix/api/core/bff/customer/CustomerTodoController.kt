@@ -1,9 +1,9 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.common.db.CursorQueryInput
-import com.ifmix.api.core.common.db.Page
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.todo.TodoService
+import com.ifmix.api.core.infra.db.CursorQueryInput
+import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.service.todo.TodoService
 import org.springframework.web.bind.annotation.*
 
 /** customer BFF 的 todo 路由。PUT=query，POST=mutation。 */

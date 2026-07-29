@@ -1,10 +1,10 @@
-package com.ifmix.api.core.modules.antique
+package com.ifmix.api.core.service.antique
 
-import com.ifmix.api.core.common.http.ApiError
-import com.ifmix.api.core.common.http.ErrorCode
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.common.ratelimit.RateLimiter
-import com.ifmix.api.core.common.storage.ObjectStorage
+import com.ifmix.api.core.infra.http.ApiError
+import com.ifmix.api.core.infra.http.ErrorCode
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.ratelimit.RateLimiter
+import com.ifmix.api.core.infra.storage.ObjectStorage
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

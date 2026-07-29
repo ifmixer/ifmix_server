@@ -1,9 +1,9 @@
-package com.ifmix.api.core.modules.iap
+package com.ifmix.api.core.service.iap
 
-import com.ifmix.api.core.common.http.ApiError
-import com.ifmix.api.core.common.http.ErrorCode
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.appconfig.AppConfigRepo
+import com.ifmix.api.core.infra.http.ApiError
+import com.ifmix.api.core.infra.http.ErrorCode
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.service.appconfig.AppConfigRepo
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -43,7 +43,7 @@ class IapServiceTest {
 
         assertThat(res.verified).isTrue()
         assertThat(res.productId).isEqualTo("premium_monthly")
-        assertThat(res.tier).isEqualTo(com.ifmix.api.core.common.ratelimit.Tier.PRO)
+        assertThat(res.tier).isEqualTo(com.ifmix.api.core.infra.ratelimit.Tier.PRO)
     }
 
     @Test
@@ -86,8 +86,8 @@ class IapServiceTest {
         service.handleGoogleNotification(ctx, payload, decoder)
     }
 
-    private fun mockAppConfig(): com.ifmix.api.core.modules.appconfig.AppConfig {
-        return com.ifmix.api.core.modules.appconfig.AppConfig(
+    private fun mockAppConfig(): com.ifmix.api.core.service.appconfig.AppConfig {
+        return com.ifmix.api.core.service.appconfig.AppConfig(
             id = "app-config-1",
             appId = "app-1",
             authTenantId = null,
@@ -100,7 +100,7 @@ class IapServiceTest {
             applePrivateKey = null,
             appleServicesId = null,
             googleServiceAccount = null,
-            googleClientIds = com.ifmix.api.core.modules.appconfig.GoogleClientIds(),
+            googleClientIds = com.ifmix.api.core.service.appconfig.GoogleClientIds(),
             productTierMap = mapOf("premium_monthly" to "PRO"),
             iapEnv = "sandbox",
             createdAt = null,

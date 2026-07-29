@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.antique
+package com.ifmix.api.core.service.antique
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test

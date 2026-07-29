@@ -1,4 +1,4 @@
-package com.ifmix.api.core.common.http
+package com.ifmix.api.core.infra.http
 
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy

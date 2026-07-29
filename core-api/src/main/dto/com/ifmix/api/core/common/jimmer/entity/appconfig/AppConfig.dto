@@ -1,6 +1,0 @@
-export com.ifmix.api.core.common.jimmer.entity.appconfig.AppConfig
-    -> package com.ifmix.api.core.common.jimmer.dto.appconfig
-
-AppConfigView {
-    #allScalars
-}

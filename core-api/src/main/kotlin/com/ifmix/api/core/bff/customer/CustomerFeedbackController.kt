@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.feedback.FeedbackService
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.service.feedback.FeedbackService
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping

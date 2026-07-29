@@ -1,0 +1,11 @@
+export com.ifmix.api.core.entity.feedback.Feedback
+FeedbackView {
+    #allScalars
+}
+input FeedbackCreateInput {
+    installId
+    userId
+    scanRecordId
+    category
+    comment
+}

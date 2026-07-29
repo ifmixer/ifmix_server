@@ -1,9 +1,9 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.iap.IapService
-import com.ifmix.api.core.modules.iap.VerifyReq
-import com.ifmix.api.core.modules.iap.VerifyRes
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.service.iap.IapService
+import com.ifmix.api.core.service.iap.VerifyReq
+import com.ifmix.api.core.service.iap.VerifyRes
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.web.bind.annotation.*

@@ -1,9 +1,9 @@
 package com.ifmix.api.core.common.service
 
-import com.ifmix.api.core.common.db.CRUDRepository
-import com.ifmix.api.core.common.db.BaseAppDocument
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.todo.TodoDocument
+import com.ifmix.api.core.infra.db.CRUDRepository
+import com.ifmix.api.core.infra.db.BaseAppDocument
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.service.todo.TodoDocument
 import org.assertj.core.api.Assertions.assertThat
 import org.bson.types.ObjectId
 import org.junit.jupiter.api.BeforeEach

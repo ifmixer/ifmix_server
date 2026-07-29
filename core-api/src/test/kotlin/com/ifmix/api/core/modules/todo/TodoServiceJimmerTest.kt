@@ -1,11 +1,11 @@
-package com.ifmix.api.core.modules.todo
+package com.ifmix.api.core.service.todo
 
-import com.ifmix.api.core.common.db.CursorQueryInput
-import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.infra.db.CursorQueryInput
+import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.common.jimmer.dto.todo.TodoCreateInput
 import com.ifmix.api.core.common.jimmer.dto.todo.TodoView
-import com.ifmix.api.core.common.jimmer.filter.RequestContextHolder
-import com.ifmix.api.core.common.jimmer.repository.todo.TodoRepository
+import com.ifmix.api.core.infra.jimmer.RequestContextHolder
+import com.ifmix.api.core.repository.todo.TodoRepository
 import com.ifmix.api.core.support.AbstractJimmerTest
 import assertk.assertThat
 import assertk.assertions.*

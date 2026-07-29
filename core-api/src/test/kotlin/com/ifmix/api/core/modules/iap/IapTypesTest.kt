@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.iap
+package com.ifmix.api.core.service.iap
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -26,8 +26,8 @@ class IapTypesTest {
     @Test
     fun tierOf_returnsTier_whenMatched() {
         val map = mapOf("premium_monthly" to "PRO", "enterprise_yearly" to "ENTERPRISE")
-        assertThat(tierOf("premium_monthly", map)).isEqualTo(com.ifmix.api.core.common.ratelimit.Tier.PRO)
-        assertThat(tierOf("enterprise_yearly", map)).isEqualTo(com.ifmix.api.core.common.ratelimit.Tier.ENTERPRISE)
+        assertThat(tierOf("premium_monthly", map)).isEqualTo(com.ifmix.api.core.infra.ratelimit.Tier.PRO)
+        assertThat(tierOf("enterprise_yearly", map)).isEqualTo(com.ifmix.api.core.infra.ratelimit.Tier.ENTERPRISE)
     }
 
     @Test
@@ -39,6 +39,6 @@ class IapTypesTest {
     @Test
     fun tierOf_handlesMixedCaseMapValue() {
         val map = mapOf("basic" to "free")
-        assertThat(tierOf("basic", map)).isEqualTo(com.ifmix.api.core.common.ratelimit.Tier.FREE)
+        assertThat(tierOf("basic", map)).isEqualTo(com.ifmix.api.core.infra.ratelimit.Tier.FREE)
     }
 }

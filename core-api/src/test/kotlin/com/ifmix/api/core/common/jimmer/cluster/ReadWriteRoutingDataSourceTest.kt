@@ -1,4 +1,4 @@
-package com.ifmix.api.core.common.jimmer.cluster
+package com.ifmix.api.core.infra.jimmer
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo

@@ -1,6 +1,6 @@
-package com.ifmix.api.core.common.ratelimit
+package com.ifmix.api.core.infra.ratelimit
 
-import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.infra.http.RequestContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

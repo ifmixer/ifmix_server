@@ -1,8 +1,8 @@
 package com.ifmix.api.core.bff.webhooks
 
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.iap.IapService
-import com.ifmix.api.core.modules.iap.NotificationDecoder
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.service.iap.IapService
+import com.ifmix.api.core.service.iap.NotificationDecoder
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.http.ResponseEntity

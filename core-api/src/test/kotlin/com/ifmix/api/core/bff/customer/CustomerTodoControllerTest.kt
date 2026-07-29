@@ -1,6 +1,6 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.common.http.RequestHeaders
+import com.ifmix.api.core.infra.http.RequestHeaders
 import com.ifmix.api.core.support.AbstractMongoTest
 import com.jayway.jsonpath.JsonPath
 import org.hamcrest.Matchers.containsString

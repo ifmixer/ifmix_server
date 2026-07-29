@@ -1,6 +1,6 @@
-package com.ifmix.api.core.modules.feedback
+package com.ifmix.api.core.service.feedback
 
-import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.support.AbstractMongoTest
 import org.assertj.core.api.Assertions.assertThat
 import org.bson.Document
@@ -22,7 +22,7 @@ class FeedbackIntegrationTest : AbstractMongoTest() {
         mongoTemplate.getCollection("feedback").deleteMany(Document())
         service = FeedbackService(
             com.ifmix.api.core.common.service.CRUDService(
-                com.ifmix.api.core.common.db.CRUDRepository(mongoTemplate, FeedbackDocument::class.java),
+                com.ifmix.api.core.infra.db.CRUDRepository(mongoTemplate, FeedbackDocument::class.java),
             ),
         )
     }

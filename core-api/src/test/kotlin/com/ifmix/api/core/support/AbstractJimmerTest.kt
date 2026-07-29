@@ -1,7 +1,7 @@
 package com.ifmix.api.core.support
 
-import com.ifmix.api.core.common.jimmer.cluster.ClusterProperties
-import com.ifmix.api.core.common.jimmer.cluster.ClusterRegistry
+import com.ifmix.api.core.infra.jimmer.ClusterProperties
+import com.ifmix.api.core.infra.jimmer.ClusterRegistry
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach

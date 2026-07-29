@@ -1,8 +1,8 @@
-package com.ifmix.api.core.common.db
+package com.ifmix.api.core.infra.db
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.infra.http.RequestContext
 
 /** 归属助手单元测试：ownsRow / ownerCriteria 的逻辑正确性。 */
 class OwnershipTest {

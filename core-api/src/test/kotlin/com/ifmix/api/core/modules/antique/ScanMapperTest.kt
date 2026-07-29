@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.antique
+package com.ifmix.api.core.service.antique
 
 import io.mcarle.konvert.api.Konverter
 import org.assertj.core.api.Assertions.assertThat

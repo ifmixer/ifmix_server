@@ -1,15 +1,15 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.common.db.Page
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.common.storage.ObjectStorage
-import com.ifmix.api.core.modules.collection.AddItemReq
-import com.ifmix.api.core.modules.collection.AddItemRes
-import com.ifmix.api.core.modules.collection.CollectionService
-import com.ifmix.api.core.modules.collection.GetDefaultRes
-import com.ifmix.api.core.modules.collection.ListItemsReq
-import com.ifmix.api.core.modules.collection.RemoveItemsReq
-import com.ifmix.api.core.modules.collection.RemoveItemsRes
+import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.storage.ObjectStorage
+import com.ifmix.api.core.service.collection.AddItemReq
+import com.ifmix.api.core.service.collection.AddItemRes
+import com.ifmix.api.core.service.collection.CollectionService
+import com.ifmix.api.core.service.collection.GetDefaultRes
+import com.ifmix.api.core.service.collection.ListItemsReq
+import com.ifmix.api.core.service.collection.RemoveItemsReq
+import com.ifmix.api.core.service.collection.RemoveItemsRes
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -27,7 +27,7 @@ class CustomerCollectionController(
     private val storage: ObjectStorage,
 ) {
 
-    private var membership: com.ifmix.api.core.modules.antique.CollectionMembership? = null
+    private var membership: com.ifmix.api.core.service.antique.CollectionMembership? = null
 
     /** 获取（或创建）默认收藏夹。 */
     @PutMapping("/query/collection/getDefault")
@@ -46,7 +46,7 @@ class CustomerCollectionController(
     fun listItems(
         ctx: RequestContext,
         @RequestBody(required = false) req: ListItemsReq?,
-    ): Page<com.ifmix.api.core.modules.antique.ScanDto> {
+    ): Page<com.ifmix.api.core.service.antique.ScanDto> {
         return Page(emptyList(), null, false)
     }
 }

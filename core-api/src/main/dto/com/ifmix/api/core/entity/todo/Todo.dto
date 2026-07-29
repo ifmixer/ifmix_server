@@ -1,0 +1,16 @@
+export com.ifmix.api.core.entity.todo.Todo
+TodoView {
+    #allScalars
+    items {
+        #allScalars
+    }
+}
+input TodoCreateInput {
+    title
+    done
+}
+input TodoUpdateInput {
+    id!
+    title
+    done
+}

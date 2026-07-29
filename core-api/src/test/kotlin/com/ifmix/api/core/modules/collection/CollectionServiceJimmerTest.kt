@@ -1,6 +1,6 @@
-package com.ifmix.api.core.modules.collection
+package com.ifmix.api.core.service.collection
 
-import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.infra.http.RequestContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -24,7 +24,7 @@ class CollectionServiceJimmerTest {
     fun `getDefault - should create default collection if none exists`() {
         // Arrange
         whenever(collectionRepo.findDefault(ctx)).thenReturn(null)
-        val mockCollection = com.ifmix.api.core.common.jimmer.entity.collection.Collection {
+        val mockCollection = com.ifmix.api.core.entity.collection.Collection {
             id = java.util.UUID.randomUUID()
             appId = java.util.UUID.fromString("app-1")
             installId = "install-1"

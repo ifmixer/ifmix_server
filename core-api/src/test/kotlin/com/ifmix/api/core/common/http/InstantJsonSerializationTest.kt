@@ -1,7 +1,7 @@
-package com.ifmix.api.core.common.http
+package com.ifmix.api.core.infra.http
 
-import com.ifmix.api.core.common.config.JacksonConfig
-import com.ifmix.api.core.modules.todo.TodoDto
+import com.ifmix.api.core.infra.config.JacksonConfig
+import com.ifmix.api.core.service.todo.TodoDto
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired

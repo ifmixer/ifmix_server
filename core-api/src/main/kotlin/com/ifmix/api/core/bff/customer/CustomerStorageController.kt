@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.antique.AntiqueService
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.service.antique.AntiqueService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.web.bind.annotation.*
 import java.time.Duration

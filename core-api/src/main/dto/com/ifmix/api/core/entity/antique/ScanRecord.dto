@@ -1,0 +1,19 @@
+export com.ifmix.api.core.entity.antique.ScanRecord
+ScanRecordView {
+    #allScalars
+}
+ScanRecordListItem {
+    id
+    scanId
+    status
+    imageUrl
+    createdAt
+}
+input ScanRecordCreateInput {
+    scanId
+    imageUrl
+    status
+    tier
+    clientIp
+    relatedId
+}

@@ -1,11 +1,11 @@
-package com.ifmix.api.core.modules.auth
+package com.ifmix.api.core.service.auth
 
-import com.ifmix.api.core.common.auth.AuthJwtService
-import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.infra.auth.AuthJwtService
+import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.appconfig.AppConfig
-import com.ifmix.api.core.modules.appconfig.AppConfigRepo
-import com.ifmix.api.core.modules.appconfig.GoogleClientIds
+import com.ifmix.api.core.service.appconfig.AppConfig
+import com.ifmix.api.core.service.appconfig.AppConfigRepo
+import com.ifmix.api.core.service.appconfig.GoogleClientIds
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -19,7 +19,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-@SpringBootTest(classes = [AuthConfig::class, com.ifmix.api.core.common.jimmer.cluster.JimmerConfig::class])
+@SpringBootTest(classes = [AuthConfig::class, com.ifmix.api.core.infra.jimmer.JimmerConfig::class])
 @TestExecutionListeners(listeners = [SqlRepeatRepetitionListener::class])
 class AuthServiceJimmerTest {
 
@@ -30,16 +30,16 @@ class AuthServiceJimmerTest {
     private lateinit var appConfigRepo: AppConfigRepo
 
     @Autowired
-    private lateinit var providerIdentityRepo: com.ifmix.api.core.common.jimmer.repository.auth.AuthProviderIdentityRepository
+    private lateinit var providerIdentityRepo: com.ifmix.api.core.repository.auth.AuthProviderIdentityRepository
 
     @Autowired
-    private lateinit var appUserRepo: com.ifmix.api.core.common.jimmer.repository.auth.AppUserRepository
+    private lateinit var appUserRepo: com.ifmix.api.core.repository.auth.AppUserRepository
 
     @Autowired
-    private lateinit var deviceSecretRepo: com.ifmix.api.core.common.jimmer.repository.auth.AuthDeviceSecretRepository
+    private lateinit var deviceSecretRepo: com.ifmix.api.core.repository.auth.AuthDeviceSecretRepository
 
     @Autowired
-    private lateinit var refreshRepo: com.ifmix.api.core.common.jimmer.repository.auth.AppRefreshTokenRepository
+    private lateinit var refreshRepo: com.ifmix.api.core.repository.auth.AppRefreshTokenRepository
 
     @Autowired
     private lateinit var jwt: AuthJwtService
@@ -88,7 +88,7 @@ class AuthServiceJimmerTest {
         val ctx = RequestContext(appId = "app1", installId = "inst2")
         assertThatThrownBy { 
             // exchange req would require valid device secret
-        }.isInstanceOf(com.ifmix.api.core.common.http.ApiError::class.java)
+        }.isInstanceOf(com.ifmix.api.core.infra.http.ApiError::class.java)
     }
 
     @Test

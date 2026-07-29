@@ -1,6 +1,6 @@
 package com.ifmix.api.core.bff.wellknown
 
-import com.ifmix.api.core.common.auth.AuthJwtService
+import com.ifmix.api.core.infra.auth.AuthJwtService
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController

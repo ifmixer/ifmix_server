@@ -1,13 +1,13 @@
-package com.ifmix.api.core.modules.auth
+package com.ifmix.api.core.service.auth
 
-import com.ifmix.api.core.common.auth.AuthJwtService
-import com.ifmix.api.core.common.http.ApiError
-import com.ifmix.api.core.common.http.ErrorCode
-import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.infra.auth.AuthJwtService
+import com.ifmix.api.core.infra.http.ApiError
+import com.ifmix.api.core.infra.http.ErrorCode
+import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.appconfig.AppConfig
-import com.ifmix.api.core.modules.appconfig.AppConfigRepo
-import com.ifmix.api.core.modules.appconfig.GoogleClientIds
+import com.ifmix.api.core.service.appconfig.AppConfig
+import com.ifmix.api.core.service.appconfig.AppConfigRepo
+import com.ifmix.api.core.service.appconfig.GoogleClientIds
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test

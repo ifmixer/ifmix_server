@@ -1,7 +1,7 @@
-package com.ifmix.api.core.common.ai
+package com.ifmix.api.core.infra.ai
 
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.antique.ScanResult
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.service.antique.ScanResult
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock

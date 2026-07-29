@@ -1,6 +1,6 @@
-package com.ifmix.api.core.common.db
+package com.ifmix.api.core.infra.db
 
-import com.ifmix.api.core.modules.todo.TodoDocument
+import com.ifmix.api.core.service.todo.TodoDocument
 import com.ifmix.api.core.support.AbstractMongoTest
 import org.assertj.core.api.Assertions.assertThat
 import org.bson.types.ObjectId
