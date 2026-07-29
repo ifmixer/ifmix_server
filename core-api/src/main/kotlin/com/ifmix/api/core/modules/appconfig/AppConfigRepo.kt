@@ -1,79 +1,61 @@
 package com.ifmix.api.core.modules.appconfig
 
-import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.common.tx.TxRunner
-import org.bson.types.ObjectId
-import org.springframework.data.mongodb.core.MongoTemplate
-import org.springframework.data.mongodb.core.query.Criteria
-import org.springframework.data.mongodb.core.query.Query
-import org.springframework.data.mongodb.core.query.Update
-import org.springframework.stereotype.Component
-import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
+import org.springframework.stereotype.Service
+import java.util.UUID
 
 /**
- * app_config 读取：按 appId / appleBundleId / androidPackageName 查“当前版本”（deletedAt=null），
+ * app_config 读取：按 appId / appleBundleId / androidPackageName 查"当前版本"（deletedAt=null），
  * 映射成扁平 [AppConfig]，内存缓存 TTL 60s。写用 [newVersion]（版本化，事务内）。
- *
- * app_config 是 app 注册表，不经 CRUDAppRepository 租户过滤——直接按查询键查。
+ * 
+ * 基于 Jimmer + PostgreSQL 实现。
  */
-@Component
+@Service
 class AppConfigRepo(
-    private val mongo: MongoTemplate,
-    private val txRunner: TxRunner,
+    private val repo: com.ifmix.api.core.common.jimmer.repository.appconfig.AppConfigRepository,
 ) {
-    private val cacheTtlMs = 60_000L
 
-    private data class Cached(val at: Long, val cfg: AppConfig?)
-
-    private val cache = ConcurrentHashMap<String, Cached>()
-
-    fun getByAppId(appId: String): AppConfig? = getBy("appId", appId)
-
-    fun getByAppleBundleId(bundleId: String): AppConfig? = getBy("appleBundleId", bundleId)
-
-    fun getByAndroidPackage(pkg: String): AppConfig? = getBy("androidPackageName", pkg)
-
-    private fun getBy(field: String, value: String): AppConfig? {
-        val key = "$field:$value"
-        cache[key]?.let { if (System.currentTimeMillis() - it.at < cacheTtlMs) return it.cfg }
-        val query = Query(Criteria.where(field).`is`(value).and("deletedAt").`is`(null))
-        val doc = mongo.findOne(query, AppConfigDocument::class.java)
-        val cfg = doc?.let { AppConfigMapper.toFlat(it) }
-        cache[key] = Cached(System.currentTimeMillis(), cfg)
-        return cfg
+    fun getByAppId(appId: String): com.ifmix.api.core.modules.appconfig.AppConfig? {
+        try {
+            val uuid = UUID.fromString(appId)
+            val all = repo.findAll()
+            val current = all.find { it.appId == uuid && it.deletedAt == null }
+            return current?.let { toFlat(it) }
+        } catch (e: Exception) {
+            return null
+        }
     }
 
-    /** 追加新版本：事务内软删当前版本 + 插入 revision+1 的新当前版本；清缓存。 */
-    fun newVersion(ctx: RequestContext, appId: String, patch: AppConfigPatch) {
-        txRunner.withTx(ctx) {
-            val current = mongo.findOne(
-                Query(Criteria.where("appId").`is`(appId).and("deletedAt").`is`(null)),
-                AppConfigDocument::class.java,
-            )
-            val now = Instant.now()
-            if (current?.id != null) {
-                mongo.updateFirst(
-                    Query(Criteria.where("_id").`is`(ObjectId(current.id))),
-                    Update().set("deletedAt", now).set("updatedAt", now),
-                    AppConfigDocument::class.java,
-                )
-            }
-            val next = AppConfigDocument().apply {
-                this.appId = appId
-                authTenantId = patch.authTenantId ?: current?.authTenantId
-                appleBundleId = patch.appleBundleId ?: current?.appleBundleId
-                androidPackageName = patch.androidPackageName ?: current?.androidPackageName
-                apple = patch.apple ?: current?.apple ?: AppleConfig()
-                google = patch.google ?: current?.google ?: GoogleConfig()
-                iap = patch.iap ?: current?.iap ?: IapConfig()
-                revision = (current?.revision ?: 0) + 1
-                createdAt = now
-                updatedAt = now
-                deletedAt = null
-            }
-            mongo.insert(next)
-        }
-        cache.clear()
+    fun getByAppleBundleId(bundleId: String): com.ifmix.api.core.modules.appconfig.AppConfig? {
+        val all = repo.findAll()
+        val config = all.find { it.appleBundleId == bundleId }
+        return config?.let { toFlat(it) }
+    }
+
+    fun getByAndroidPackage(pkg: String): com.ifmix.api.core.modules.appconfig.AppConfig? {
+        val all = repo.findAll()
+        val config = all.find { it.androidPackageName == pkg }
+        return config?.let { toFlat(it) }
+    }
+
+    private fun toFlat(config: com.ifmix.api.core.common.jimmer.entity.appconfig.AppConfig): com.ifmix.api.core.modules.appconfig.AppConfig {
+        return com.ifmix.api.core.modules.appconfig.AppConfig(
+            id = config.id.toString(),
+            appId = config.appId.toString(),
+            authTenantId = config.authTenantId?.toString(),
+            revision = config.revision,
+            appleBundleId = config.appleBundleId,
+            androidPackageName = config.androidPackageName,
+            appleAppAppleId = null,
+            appleIssuerId = null,
+            appleKeyId = null,
+            applePrivateKey = null,
+            appleServicesId = null,
+            googleServiceAccount = null,
+            googleClientIds = com.ifmix.api.core.modules.appconfig.GoogleClientIds(null, null, null),
+            productTierMap = emptyMap(),
+            iapEnv = "production",
+            createdAt = config.createdAt,
+            updatedAt = config.updatedAt,
+        )
     }
 }

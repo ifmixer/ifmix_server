@@ -33,3 +33,28 @@ data class AppConfigPatch(
     val google: GoogleConfig? = null,
     val iap: IapConfig? = null,
 )
+
+/** Holder for Client IDs in flattened view */
+data class GoogleClientIds(
+    val ios: String? = null,
+    val android: String? = null,
+    val web: String? = null,
+)
+
+data class AppleConfig(
+    val appAppleId: String? = null,
+    val issuerId: String? = null,
+    val keyId: String? = null,
+    val privateKey: String? = null,
+    val servicesId: String? = null,
+)
+
+data class GoogleConfig(
+    val serviceAccount: String? = null,
+    val clientIds: GoogleClientIds = GoogleClientIds(),
+)
+
+data class IapConfig(
+    val productTierMap: Map<String, String> = emptyMap(),
+    val env: String? = null,
+)
