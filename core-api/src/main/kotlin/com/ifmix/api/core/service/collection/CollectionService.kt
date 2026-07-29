@@ -5,28 +5,143 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.entity.antique.ScanRecord
+import com.ifmix.api.core.entity.collection.Collection
 import com.ifmix.api.core.repository.collection.CollectionRepository
 import com.ifmix.api.core.repository.collection.CollectionItemRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
+import java.util.UUID
 
 /**
- * 收藏业务编排（简化版 - 占位）。
+ * 收藏业务编排 - 完整实现。
  */
+@Service
 class CollectionService(
     private val collectionRepo: CollectionRepository,
     private val itemRepo: CollectionItemRepository,
 ) {
 
-    fun getDefault(ctx: RequestContext): com.ifmix.api.core.entity.collection.Collection =
-        throw NotImplementedError("getDefault not implemented")
+    /**
+     * 获取或创建用户的默认收藏。
+     * 按 userId 优先匹配，若无 userId 则按 installId 匹配。
+     */
+    @Transactional
+    fun getDefault(ctx: RequestContext): Collection {
+        val appId = requireNonNullCtxAppId(ctx)
+        val userId = ctx.userId
+        val installId = ctx.installId
 
-    fun addItem(ctx: RequestContext, req: AddItemReq): String =
-        throw NotImplementedError("addItem not implemented")
+        var collection = collectionRepo.findDefault(appId, installId, userId)
 
-    fun removeItems(ctx: RequestContext, req: RemoveItemsReq): Long =
-        throw NotImplementedError("removeItems not implemented")
+        if (collection == null) {
+            collection = createDefaultCollection(appId, userId, installId)
+        }
 
-    fun listItems(ctx: RequestContext, req: ListItemsReq?): Page<ScanRecord> =
-        Page(emptyList(), null, false)
+        return collection
+    }
+
+    private fun requireNonNullCtxAppId(ctx: RequestContext): UUID {
+        return try {
+            UUID.fromString(ctx.appId)
+        } catch (e: Exception) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "Invalid app ID in context")
+        }
+    }
+
+    private fun createDefaultCollection(
+        appId: UUID,
+        userId: String?,
+        installId: String?,
+    ): Collection {
+        val now = Instant.now()
+        return Collection {
+            id = UUID.randomUUID()
+            this.appId = appId
+            this.userId = userId
+            this.installId = installId
+            this.isDefault = true
+            createdAt = now
+            updatedAt = now
+            deletedAt = null
+        }
+    }
+
+    /**
+     * 添加扫描记录到收藏。
+     * 幂等操作：重复添加不会创建重复项。
+     */
+    @Transactional
+    fun addItem(ctx: RequestContext, req: AddItemReq): AddItemRes {
+        val scanRecordId = req.scanRecordId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "scanRecordId is required")
+        val scanRecordIdUUID = try {
+            UUID.fromString(scanRecordId)
+        } catch (e: Exception) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "Invalid scanRecordId format")
+        }
+
+        val collectionId = when {
+            req.collectionId != null -> UUID.fromString(req.collectionId)
+            else -> getDefault(ctx).id
+        }
+
+        val itemId = itemRepo.insertIfAbsent(requireNonNullCtxAppId(ctx), collectionId, scanRecordIdUUID)
+        return AddItemRes(itemId.toString())
+    }
+
+    /**
+     * 批量从收藏中移除扫描记录（软删除）。
+     */
+    @Transactional
+    fun removeItems(ctx: RequestContext, req: RemoveItemsReq): RemoveItemsRes {
+        val scanRecordIds = req.scanRecordIds ?: throw ApiError(ErrorCode.INVALID_REQUEST, "scanRecordIds is required")
+        if (scanRecordIds.isEmpty()) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "scanRecordIds cannot be empty")
+        }
+
+        val parsedIds = scanRecordIds.map { id ->
+            try {
+                UUID.fromString(id)
+            } catch (e: Exception) {
+                throw ApiError(ErrorCode.INVALID_REQUEST, "Invalid scanRecordId format: $id")
+            }
+        }
+
+        val appId = requireNonNullCtxAppId(ctx)
+        val collectionId = when {
+            req.collectionId != null -> UUID.fromString(req.collectionId)
+            else -> getDefault(ctx).id
+        }
+
+        val deletedCount = itemRepo.softDeleteByScanIds(appId, collectionId, parsedIds)
+        return RemoveItemsRes(deletedCount)
+    }
+
+    /**
+     * 列出收藏中的扫描记录，带分页和游标支持。
+     * 返回包含扫描详情的 Page<ScanRecord>。
+     */
+    @Transactional
+    fun listItems(ctx: RequestContext, req: ListItemsReq?): Page<ScanRecord> {
+        val appId = requireNonNullCtxAppId(ctx)
+
+        val collectionId = when {
+            req?.collectionId != null -> UUID.fromString(req.collectionId)
+            else -> getDefault(ctx).id
+        }
+
+        val limit = req?.limit ?: 20
+        val cursor = req?.cursor?.let { try { UUID.fromString(it) } catch (e: Exception) { null } }
+
+        val collectionItems = itemRepo.listWithScanRecords(appId, collectionId, limit, cursor)
+        val scanRecords = collectionItems.items.mapNotNull { item -> item.scanRecord }
+
+        val nextCursor = if (collectionItems.hasMore && collectionItems.items.isNotEmpty()) {
+            collectionItems.items.lastOrNull()?.id?.toString()
+        } else null
+
+        return Page(scanRecords, nextCursor, collectionItems.hasMore)
+    }
 }
 
 // Request/Response DTOs

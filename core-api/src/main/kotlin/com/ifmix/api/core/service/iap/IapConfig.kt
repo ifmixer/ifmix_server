@@ -26,8 +26,10 @@ class IapConfig {
         @Qualifier("appleVerifier") appleVerifier: PurchaseVerifier,
         @Qualifier("googleVerifier") googleVerifier: PurchaseVerifier,
         subscriptionRepo: com.ifmix.api.core.repository.iap.SubscriptionRepository,
+        storeNotificationRepo: com.ifmix.api.core.repository.iap.StoreNotificationRepository,
+        appConfigRepo: AppConfigRepo,
     ): IapService {
-        return IapService(appleVerifier, googleVerifier, subscriptionRepo)
+        return IapService(appleVerifier, googleVerifier, subscriptionRepo, storeNotificationRepo, appConfigRepo)
     }
 
     @Bean

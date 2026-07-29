@@ -26,11 +26,10 @@ class CollectionConfig {
 
     @Bean
     @ConditionalOnMissingBean(CollectionMembership::class)
-    fun collectionMembership(): CollectionMembership {
-        return CollectionMembershipImplStub()
+    fun collectionMembership(
+        itemRepo: CollectionItemRepository,
+        collectionRepo: CollectionRepository,
+    ): CollectionMembership {
+        return CollectionMembershipImpl(itemRepo, collectionRepo)
     }
-}
-
-private class CollectionMembershipImplStub : CollectionMembership {
-    override fun isCollected(ctx: RequestContext, scanRecordId: String): Boolean = false
 }
