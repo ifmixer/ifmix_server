@@ -1,0 +1,12 @@
+export com.ifmix.api.core.common.jimmer.entity.auth.AuthProviderIdentity
+    -> package com.ifmix.api.core.common.jimmer.dto.auth
+
+AuthProviderIdentityView {
+    #allScalars
+    authTenant {
+        #allScalars
+    }
+    authIdentity {
+        #allScalars
+    }
+}

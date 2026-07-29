@@ -1,0 +1,9 @@
+export com.ifmix.api.core.common.jimmer.entity.auth.AppUser
+    -> package com.ifmix.api.core.common.jimmer.dto.auth
+
+AppUserView {
+    #allScalars
+    authIdentity {
+        #allScalars
+    }
+}

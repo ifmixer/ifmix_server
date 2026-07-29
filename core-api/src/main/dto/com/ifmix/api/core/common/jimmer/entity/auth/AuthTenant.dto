@@ -1,0 +1,6 @@
+export com.ifmix.api.core.common.jimmer.entity.auth.AuthTenant
+    -> package com.ifmix.api.core.common.jimmer.dto.auth
+
+AuthTenantView {
+    #allScalars
+}

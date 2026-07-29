@@ -1,0 +1,12 @@
+export com.ifmix.api.core.common.jimmer.entity.auth.AppRefreshToken
+    -> package com.ifmix.api.core.common.jimmer.dto.auth
+
+AppRefreshTokenView {
+    #allScalars
+    appUser {
+        #allScalars
+    }
+    deviceSecret {
+        #allScalars
+    }
+}

@@ -2,8 +2,11 @@ package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.auth.AuthJwtKeys
 import com.ifmix.api.core.common.auth.AuthJwtService
-import com.ifmix.api.core.common.tx.TxRunner
 import com.ifmix.api.core.modules.appconfig.AppConfigRepo
+import com.ifmix.api.core.common.jimmer.repository.auth.AuthProviderIdentityRepository
+import com.ifmix.api.core.common.jimmer.repository.auth.AppUserRepository
+import com.ifmix.api.core.common.jimmer.repository.auth.AuthDeviceSecretRepository
+import com.ifmix.api.core.common.jimmer.repository.auth.AppRefreshTokenRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
@@ -12,6 +15,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.scheduling.annotation.EnableAsync
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * 认证模块 bean 装配。
@@ -48,18 +52,18 @@ class AuthConfig {
     ): AuthJwtService = AuthJwtService(AuthJwtKeys(privateJwk.ifBlank { null }), issuer, accessTtlSec)
 
     @Bean
+    @Transactional
     fun authService(
         appConfigRepo: AppConfigRepo,
         providerVerifiers: Map<String, ProviderVerifier>,
         authJwtService: AuthJwtService,
-        providerIdentityRepo: AuthProviderIdentityRepo,
-        appUserRepo: AppUserRepo,
-        deviceSecretRepo: AuthDeviceSecretRepo,
-        refreshRepo: AppRefreshTokenRepo,
-        txRunner: TxRunner,
+        providerIdentityRepo: AuthProviderIdentityRepository,
+        appUserRepo: AppUserRepository,
+        deviceSecretRepo: AuthDeviceSecretRepository,
+        refreshRepo: AppRefreshTokenRepository,
         events: ApplicationEventPublisher,
     ): AuthService = AuthService(
         appConfigRepo, providerVerifiers, authJwtService, providerIdentityRepo, appUserRepo,
-        deviceSecretRepo, refreshRepo, txRunner, events, accessTtlSec,
+        deviceSecretRepo, refreshRepo, events, accessTtlSec,
     )
 }
