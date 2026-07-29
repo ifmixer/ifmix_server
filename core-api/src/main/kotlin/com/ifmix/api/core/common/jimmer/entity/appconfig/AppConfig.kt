@@ -20,9 +20,17 @@ interface AppConfig : AppScopedProps {
     val appleBundleId: String?
     val androidPackageName: String?
 
-    val appleConfig: String?
-    val googleConfig: String?
-    val iapConfig: String?
+    /** JSONB — Apple 相关配置 */
+    @Serialized
+    val appleConfig: AppleConfigValue
+
+    /** JSONB — Google 相关配置 */
+    @Serialized
+    val googleConfig: GoogleConfigValue
+
+    /** JSONB — IAP 相关配置 */
+    @Serialized
+    val iapConfig: IapConfigValue
 
     val revision: Int
 
@@ -30,4 +38,30 @@ interface AppConfig : AppScopedProps {
     val deletedAt: Instant?
 
     val createdAt: Instant
-    val updatedAt: Instant}
+    val updatedAt: Instant
+}
+
+/** JSONB 内嵌值对象 */
+data class AppleConfigValue(
+    val appAppleId: String? = null,
+    val issuerId: String? = null,
+    val keyId: String? = null,
+    val privateKey: String? = null,
+    val servicesId: String? = null,
+)
+
+data class GoogleConfigValue(
+    val serviceAccount: String? = null,
+    val clientIds: GoogleClientIdsValue = GoogleClientIdsValue(),
+)
+
+data class GoogleClientIdsValue(
+    val ios: String? = null,
+    val android: String? = null,
+    val web: String? = null,
+)
+
+data class IapConfigValue(
+    val productTierMap: Map<String, String> = emptyMap(),
+    val env: String? = null,
+)

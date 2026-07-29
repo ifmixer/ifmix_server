@@ -10,13 +10,12 @@ import com.ifmix.api.core.modules.collection.GetDefaultRes
 import com.ifmix.api.core.modules.collection.ListItemsReq
 import com.ifmix.api.core.modules.collection.RemoveItemsReq
 import com.ifmix.api.core.modules.collection.RemoveItemsRes
-import jakarta.annotation.Nullable
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation@RestController
+import org.springframework.web.bind.annotation.RestController
 
 /**
  * customer BFF 的收藏路由（简化版 - 待完善）。
@@ -28,22 +27,21 @@ class CustomerCollectionController(
     private val storage: ObjectStorage,
 ) {
 
-    @Nullable
     private var membership: com.ifmix.api.core.modules.antique.CollectionMembership? = null
 
-    /** 获取（或创建）默认收藏夹。（待实现） */
+    /** 获取（或创建）默认收藏夹。 */
     @PutMapping("/query/collection/getDefault")
     fun getDefault(ctx: RequestContext): GetDefaultRes = throw NotImplementedError("getDefault not implemented")
 
-    /** 添加收藏条目（幂等）。（待实现） */
+    /** 添加收藏条目（幂等）。 */
     @PostMapping("/mutation/collection/addItem")
     fun addItem(ctx: RequestContext, @Valid @RequestBody req: AddItemReq): AddItemRes = throw NotImplementedError("addItem not implemented")
 
-    /** 批量移除收藏条目（软删）。（待实现） */
+    /** 批量移除收藏条目（软删）。 */
     @PostMapping("/mutation/collection/removeItems")
     fun removeItems(ctx: RequestContext, @Valid @RequestBody req: RemoveItemsReq): RemoveItemsRes = throw NotImplementedError("removeItems not implemented")
 
-    /** 列出收藏夹中的扫描记录（游标分页）。（待实现） */
+    /** 列出收藏夹中的扫描记录（游标分页）。 */
     @PutMapping("/query/collection/listItems")
     fun listItems(
         ctx: RequestContext,
@@ -51,5 +49,4 @@ class CustomerCollectionController(
     ): Page<com.ifmix.api.core.modules.antique.ScanDto> {
         return Page(emptyList(), null, false)
     }
-
 }

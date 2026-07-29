@@ -1,7 +1,6 @@
 package com.ifmix.api.core.common.jimmer.entity.antique
 
 import org.babyfish.jimmer.sql.*
-import org.babyfish.jimmer.sql.UUIDIdGenerator
 import com.ifmix.api.core.common.jimmer.entity.AppScopedProps
 import java.time.Instant
 import java.util.UUID
@@ -13,7 +12,6 @@ import java.util.UUID
 @Table(name = "scan_record")
 interface ScanRecord : AppScopedProps {
     @Id
-    @GeneratedValue(generatorType = UUIDIdGenerator::class)
     val id: UUID
 
     override val appId: UUID
@@ -30,4 +28,5 @@ interface ScanRecord : AppScopedProps {
     val deletedAt: Instant?
 
     val createdAt: Instant
-    val updatedAt: Instant}
+    val updatedAt: Instant
+}

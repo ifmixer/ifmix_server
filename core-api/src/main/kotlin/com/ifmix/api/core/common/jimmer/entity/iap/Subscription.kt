@@ -14,7 +14,9 @@ interface Subscription : AppScopedProps {
 
     override val appId: UUID
 
+    @Key
     val subscriptionPxid: String?
+
     val originalTransactionId: String?
     val productId: String?
     val platform: String?
@@ -22,8 +24,12 @@ interface Subscription : AppScopedProps {
     val subStatus: String?
     val expiryDate: Instant?
     val purchaseToken: String?
+
     @Serialized
     val rawResponse: Map<String, Any?>?
+
+    @LogicalDeleted("now")
+    val deletedAt: Instant?
 
     val createdAt: Instant
     val updatedAt: Instant

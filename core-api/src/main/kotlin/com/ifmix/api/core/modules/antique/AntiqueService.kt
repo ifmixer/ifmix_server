@@ -22,7 +22,7 @@ class AntiqueService(
 ) {
 
     @Transactional
-    fun createScan(ctx: RequestContext, request: CreateScanRequest): String {
+    fun createScan(ctx: RequestContext, request: CreateScanRequest): ScanRecord {
         // 限流检查
         val subject = ctx.appId
         val limitResult = rateLimiter.check(ctx, subject)
@@ -34,13 +34,13 @@ class AntiqueService(
         val objectKey = "antique/${UUID.randomUUID()}.png"
         val uploadUrl = objectStorage.presignUpload(objectKey, "image/png", Duration.ofMinutes(5))
 
-        // 创建 ScanRecord — 通过仓库的 create 方法
+        // 创建 ScanRecord
         val scanId = UUID.randomUUID().toString()
         return scanRepo.create(
             appId = ctx.appId,
             scanId = scanId,
             imageUrl = uploadUrl,
-            status = Status.PENDING.toString(),
+            status = Status.PENDING.name,
             tier = "FREE",
             relatedId = request.relatedId,
             clientIp = ctx.clientIp,
@@ -48,22 +48,13 @@ class AntiqueService(
     }
 
     fun getScanResult(ctx: RequestContext, id: String): ScanDto {
-        // Find by primary key id
-        val uuid = try { UUID.fromString(id) } catch (e: Exception) { throw ApiError(ErrorCode.INVALID_ID, "invalid UUID") }
-        // Use base repository findById
+        val uuid = try {
+            UUID.fromString(id)
+        } catch (_: Exception) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID format")
+        }
         val record = scanRepo.findById(uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
-        return ScanDto(
-            id = record.id.toString(),
-            scanId = record.scanId,
-            imageUrl = record.imageUrl,
-            status = record.status,
-            resultJson = record.resultJson,
-            tier = record.tier,
-            clientIp = record.clientIp,
-            relatedId = record.relatedId,
-            createdAt = record.createdAt,
-            updatedAt = record.updatedAt,
-        )
+        return record.toDto()
     }
 
     fun findByCursor(
@@ -71,8 +62,8 @@ class AntiqueService(
         input: com.ifmix.api.core.common.db.CursorQueryInput = com.ifmix.api.core.common.db.CursorQueryInput(),
     ): com.ifmix.api.core.common.db.Page<ScanRecord> {
         val all = scanRepo.findAll()
-        val appId = ctx.appId
-        val filtered = all.filter { it.appId == appId && it.deletedAt == null }
+        val appIdUUID = UUID.fromString(ctx.appId)
+        val filtered = all.filter { it.appId == appIdUUID }
         val sorted = filtered.sortedByDescending { it.createdAt }
         val limit = input.effectiveLimit()
         val hasMore = sorted.size > limit
@@ -87,6 +78,19 @@ class AntiqueService(
     fun presignedDownloadUrl(objectKey: String, duration: Duration): String {
         return objectStorage.presignDownload(objectKey, duration)
     }
+
+    private fun ScanRecord.toDto() = ScanDto(
+        id = id.toString(),
+        scanId = scanId,
+        imageUrl = imageUrl,
+        status = status,
+        resultJson = resultJson,
+        tier = tier,
+        clientIp = clientIp,
+        relatedId = relatedId,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
 }
 
 data class ScanDto(

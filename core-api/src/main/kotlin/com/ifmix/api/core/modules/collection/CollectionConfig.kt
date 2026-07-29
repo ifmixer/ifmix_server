@@ -1,5 +1,6 @@
 package com.ifmix.api.core.modules.collection
 
+import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.jimmer.repository.collection.CollectionRepository
 import com.ifmix.api.core.common.jimmer.repository.collection.CollectionItemRepository
 import com.ifmix.api.core.modules.antique.CollectionMembership
@@ -23,7 +24,6 @@ class CollectionConfig {
         return CollectionService(collectionRepo, itemRepo)
     }
 
-    // CollectionMembership 留空实现（暂不依赖 Mongo）
     @Bean
     @ConditionalOnMissingBean(CollectionMembership::class)
     fun collectionMembership(): CollectionMembership {
@@ -31,6 +31,6 @@ class CollectionConfig {
     }
 }
 
-class CollectionMembershipImplStub : CollectionMembership {
+private class CollectionMembershipImplStub : CollectionMembership {
     override fun isCollected(ctx: RequestContext, scanRecordId: String): Boolean = false
 }

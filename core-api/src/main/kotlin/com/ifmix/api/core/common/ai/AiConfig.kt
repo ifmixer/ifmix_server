@@ -1,11 +1,11 @@
 package com.ifmix.api.core.common.ai
 
+import com.ifmix.api.core.common.jimmer.repository.ai.AgnesKeyRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
-import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.redis.core.StringRedisTemplate
 
 /**
@@ -16,7 +16,7 @@ import org.springframework.data.redis.core.StringRedisTemplate
  */
 @Configuration
 @ConditionalOnProperty(
-    name = arrayOf("app.storage.type"),
+    name = ["app.storage.type"],
     havingValue = "s3",
     matchIfMissing = false,
 )
@@ -26,13 +26,21 @@ class AiConfig {
     @Primary
     fun agnesKeyStore(
         redis: StringRedisTemplate,
-        mongo: MongoTemplate,
+        agnesKeyRepo: AgnesKeyRepository,
     ): AgnesKeyStore {
         return AgnesKeyStore(
             redis = redis,
             loadKeys = {
-                val repo = AgnesKeyRepo(mongo)
-                repo.loadEnabled()
+                agnesKeyRepo.findAllEnabled().map { key ->
+                    AgnesKeyStore.AgnesKeyDoc(
+                        id = key.id.toString(),
+                        key = key.key ?: "",
+                        type = key.type,
+                        rateLimit = key.rateLimit,
+                        windowSec = key.windowSec,
+                        models = key.models,
+                    )
+                }
             },
         )
     }

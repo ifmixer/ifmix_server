@@ -7,7 +7,6 @@ import com.ifmix.api.core.common.jimmer.repository.iap.SubscriptionRepository
 import com.ifmix.api.core.common.jimmer.repository.iap.StoreNotificationRepository
 import com.ifmix.api.core.common.jimmer.entity.iap.Subscription
 import org.springframework.transaction.annotation.Transactional
-import java.time.Duration
 import java.time.Instant
 
 /**
@@ -19,39 +18,62 @@ class IapService(
     private val subscriptionRepo: SubscriptionRepository,
 ) {
 
-    enum class Platform { APPLE, GOOGLE }
-
     /**
-     * 验证一笔购买。暂存 stub，实际逻辑需整合 verifier 和订阅仓库。
+     * 验证一笔购买并写入订阅记录。
      */
     @Transactional
-    fun verifyPurchase(ctx: RequestContext, req: Any?): Any =
-        throw NotImplementedError("verifyPurchase not fully implemented")
+    fun verifyPurchase(ctx: RequestContext, req: VerifyReq): VerifyRes {
+        // TODO: 完整实现
+        // 1. 根据 platform 选择 verifier
+        // 2. 调用 verifier.verify(receipt/token)
+        // 3. upsert subscription record
+        // 4. 返回当前订阅状态
+        throw NotImplementedError("verifyPurchase — pending full Jimmer integration")
+    }
 
     /**
      * 处理 Apple Server Notifications 推送。
      */
     @Transactional
-    fun handleAppleNotification(ctx: RequestContext, rawPayload: String, decoder: Any) =
-        handleNotification(ctx, decoder, "apple")
+    fun handleAppleNotification(ctx: RequestContext, rawPayload: String, decoder: NotificationDecoder) {
+        handleNotification(ctx, rawPayload, decoder, "APPLE")
+    }
 
     /**
      * 处理 Google Play 推送通知。
      */
     @Transactional
-    fun handleGoogleNotification(ctx: RequestContext, rawPayload: String, decoder: Any) =
-        handleNotification(ctx, decoder, "google")
+    fun handleGoogleNotification(ctx: RequestContext, rawPayload: String, decoder: NotificationDecoder) {
+        handleNotification(ctx, rawPayload, decoder, "GOOGLE")
+    }
 
-    /** 内部统一处理通知逻辑。（待实现） */
-    private fun handleNotification(ctx: RequestContext, decoder: Any, platform: String) {
-        // TODO: 实现通知处理
+    /** 内部统一处理通知逻辑。 */
+    private fun handleNotification(ctx: RequestContext, rawPayload: String, decoder: NotificationDecoder, platform: String) {
+        // TODO: 幂等检查 + 状态更新
     }
 
     /**
      * 获取活跃订阅（通过 subscriptionPxid）。
      */
-    fun getActiveSubscription(ctx: RequestContext, subscriptionPxid: String?): Subscription? =
-        // SubscriptionRepository 目前只有基础 CRUD，需要在子类中扩展查询方法
-        // 此处为占位符，实际实现需要添加 findBySubscriptionPxid 到仓库
-        null
+    fun getActiveSubscription(ctx: RequestContext, subscriptionPxid: String?): Subscription? {
+        if (subscriptionPxid == null) return null
+        return subscriptionRepo.findAll().firstOrNull {
+            it.subscriptionPxid == subscriptionPxid && it.active
+        }
+    }
 }
+
+// Request/Response DTOs
+data class VerifyReq(
+    val platform: String? = null,     // "APPLE" or "GOOGLE"
+    val receipt: String? = null,       // Apple receipt data (base64)
+    val purchaseToken: String? = null, // Google purchase token
+    val productId: String? = null,
+)
+
+data class VerifyRes(
+    val subscriptionPxid: String?,
+    val active: Boolean,
+    val expiryDate: Instant?,
+    val state: SubscriptionState,
+)

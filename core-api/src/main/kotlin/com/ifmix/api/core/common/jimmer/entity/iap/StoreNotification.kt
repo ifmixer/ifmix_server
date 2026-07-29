@@ -22,6 +22,9 @@ interface StoreNotification : AppScopedProps {
     val processed: Boolean
     val processedAt: Instant?
 
+    @LogicalDeleted("now")
+    val deletedAt: Instant?
+
     val createdAt: Instant
     val updatedAt: Instant
 }

@@ -14,7 +14,9 @@ interface AgnesKey : AppScopedProps {
 
     override val appId: UUID
 
-    val key: String?
+    /** API key — NOT NULL in DDL */
+    val key: String
+
     val email: String?
     val type: String?  // PRIMARY / FALLBACK / HOTSPARE
     val rateLimit: Long

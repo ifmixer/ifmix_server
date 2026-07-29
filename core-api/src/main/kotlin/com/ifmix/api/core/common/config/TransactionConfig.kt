@@ -1,15 +1,10 @@
 package com.ifmix.api.core.common.config
 
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.data.mongodb.MongoDatabaseFactory
-import org.springframework.data.mongodb.MongoTransactionManager
 
-/** 注册 Mongo 事务管理器（需副本集）。 */
+/**
+ * 事务管理：Jimmer + PostgreSQL 使用 Spring 的 PlatformTransactionManager（由 spring-boot-starter-jdbc 自动配置）。
+ * 此文件保留为空配置占位，如需自定义事务属性可在此扩展。
+ */
 @Configuration
-class TransactionConfig {
-
-    @Bean
-    fun mongoTransactionManager(factory: MongoDatabaseFactory): MongoTransactionManager =
-        MongoTransactionManager(factory)
-}
+class TransactionConfig

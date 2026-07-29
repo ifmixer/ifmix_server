@@ -2,11 +2,11 @@ package com.ifmix.api.core.common.http
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.bson.types.ObjectId
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
+import java.util.UUID
 
-/** 校验请求头：x-app-id 必填且为合法 ObjectId；x-client-platform 若存在须为合法枚举。 */
+/** 校验请求头：x-app-id 必填且为合法 UUID；x-client-platform 若存在须为合法枚举。 */
 @Component
 class HeaderValidationInterceptor : HandlerInterceptor {
 
@@ -15,17 +15,24 @@ class HeaderValidationInterceptor : HandlerInterceptor {
         if (appId.isNullOrBlank()) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "${RequestHeaders.APP_ID}: required")
         }
-        if (!ObjectId.isValid(appId)) {
+        if (!isValidUUID(appId)) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "${RequestHeaders.APP_ID}: invalid input")
         }
         val platform = request.getHeader(RequestHeaders.CLIENT_PLATFORM)
         if (!platform.isNullOrBlank()) {
             try {
                 ClientPlatform.fromHeader(platform)
-            } catch (e: IllegalArgumentException) {
+            } catch (_: IllegalArgumentException) {
                 throw ApiError(ErrorCode.INVALID_REQUEST, "${RequestHeaders.CLIENT_PLATFORM}: invalid input")
             }
         }
         return true
+    }
+
+    private fun isValidUUID(value: String): Boolean = try {
+        UUID.fromString(value)
+        true
+    } catch (_: IllegalArgumentException) {
+        false
     }
 }

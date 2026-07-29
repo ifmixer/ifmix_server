@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.antique
 
-import com.ifmix.api.core.common.db.MongoClusterResolver
+import com.ifmix.api.core.common.jimmer.repository.antique.ScanRecordRepository
 import com.ifmix.api.core.common.ratelimit.RateLimitConfig
 import com.ifmix.api.core.common.ratelimit.RateLimiter
 import com.ifmix.api.core.common.storage.ObjectStorage
@@ -9,7 +9,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.redis.core.StringRedisTemplate
 
 /**
@@ -36,20 +35,12 @@ class AntiqueConfig {
         return com.ifmix.api.core.common.storage.S3ObjectStorage(presigner, config)
     }
 
-    /** 未配置存储时的回落实现，保证本地/开发环境能启动（返回假 URL）。声明在 s3 bean 之后，
-     *  @ConditionalOnMissingBean 在同一配置类内按声明顺序求值：s3 已注册则跳过、否则用 Noop。 */
+    /** 未配置存储时的回落实现，保证本地/开发环境能启动（返回假 URL）。 */
     @Bean
     @ConditionalOnMissingBean(ObjectStorage::class)
     fun noopObjectStorage(): ObjectStorage = com.ifmix.api.core.common.storage.NoopObjectStorage()
 
-    @Bean
-    @ConditionalOnMissingBean(ScanRecordRepository::class)
-    fun scanRecordRepository(clusterResolver: MongoClusterResolver): ScanRecordRepository {
-        return ScanRecordRepository(clusterResolver.primary())
-    }
-
-    /** 回落 ScanRunner：未接入真实 AI（app.storage.type != s3）时用 stub，保证本地能启动。
-     *  AiConfig 的 SpringAiScanRunner 为 @Primary，配了 s3 时优先生效。 */
+    /** 回落 ScanRunner：未接入真实 AI 时用 stub，保证本地能启动。 */
     @Bean
     @ConditionalOnMissingBean(ScanRunner::class)
     fun stubScanRunner(): ScanRunner = StubScanRunner()
@@ -60,8 +51,8 @@ class AntiqueConfig {
         scanRunner: ScanRunner,
         objectStorage: ObjectStorage,
         rateLimiter: RateLimiter,
-        mongo: MongoTemplate,
+        scanRepo: ScanRecordRepository,
     ): AntiqueService {
-        return AntiqueService(scanRunner, objectStorage, rateLimiter, mongo)
+        return AntiqueService(scanRunner, objectStorage, rateLimiter, scanRepo)
     }
 }
