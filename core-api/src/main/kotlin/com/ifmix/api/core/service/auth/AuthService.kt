@@ -6,10 +6,12 @@ import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.service.appconfig.AppConfigRepo
 import com.ifmix.api.core.repository.auth.AuthProviderIdentityRepository
-import com.ifmix.api.core.repository.auth.AppUserRepository
 import com.ifmix.api.core.repository.auth.AuthDeviceSecretRepository
+import com.ifmix.api.core.repository.auth.AuthIdentityRepository
 import com.ifmix.api.core.repository.auth.AppRefreshTokenRepository
+import com.ifmix.api.core.repository.auth.AppUserRepository
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 /**
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional
  *
  * 注意：此为 Jimmer 迁移后的骨架版本，核心业务逻辑待后续完善。
  */
+@Service
 class AuthService(
     private val appConfigRepo: AppConfigRepo,
     private val verifiers: Map<String, ProviderVerifier>,
@@ -25,6 +28,7 @@ class AuthService(
     private val appUserRepo: AppUserRepository,
     private val deviceSecretRepo: AuthDeviceSecretRepository,
     private val refreshRepo: AppRefreshTokenRepository,
+    private val identityRepo: AuthIdentityRepository,
     private val events: ApplicationEventPublisher,
     private val accessTtlSec: Long,
 ) {

@@ -4,6 +4,7 @@ import com.ifmix.api.core.infra.auth.AuthJwtKeys
 import com.ifmix.api.core.infra.auth.AuthJwtService
 import com.ifmix.api.core.service.appconfig.AppConfigRepo
 import com.ifmix.api.core.repository.auth.AuthProviderIdentityRepository
+import com.ifmix.api.core.repository.auth.AuthIdentityRepository  // NEW
 import com.ifmix.api.core.repository.auth.AppUserRepository
 import com.ifmix.api.core.repository.auth.AuthDeviceSecretRepository
 import com.ifmix.api.core.repository.auth.AppRefreshTokenRepository
@@ -61,9 +62,10 @@ class AuthConfig {
         appUserRepo: AppUserRepository,
         deviceSecretRepo: AuthDeviceSecretRepository,
         refreshRepo: AppRefreshTokenRepository,
+        identityRepo: AuthIdentityRepository,  // NEW
         events: ApplicationEventPublisher,
     ): AuthService = AuthService(
-        appConfigRepo, providerVerifiers, authJwtService, providerIdentityRepo, appUserRepo,
-        deviceSecretRepo, refreshRepo, events, accessTtlSec,
+        appConfigRepo, providerVerifiers, authJwtService,
+        providerIdentityRepo, appUserRepo, deviceSecretRepo, refreshRepo, identityRepo, events, accessTtlSec,
     )
 }
