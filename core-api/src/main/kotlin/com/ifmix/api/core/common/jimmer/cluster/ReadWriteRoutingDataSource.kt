@@ -25,7 +25,7 @@ class ReadWriteRoutingDataSource(
         afterPropertiesSet()
     }
 
-    override public fun determineCurrentLookupKey(): Any {
+    public override fun determineCurrentLookupKey(): Any {
         val isReadOnly = TransactionSynchronizationManager.isCurrentTransactionReadOnly()
         return if (isReadOnly) READER else WRITER
     }

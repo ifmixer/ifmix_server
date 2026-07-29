@@ -1,7 +1,7 @@
 package com.ifmix.api.core.common.db
 
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.todo.TodoDocument
+import com.ifmix.api.core.common.db.TestDocument
 import com.ifmix.api.core.support.AbstractMongoTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach

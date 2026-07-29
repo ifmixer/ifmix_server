@@ -2,74 +2,51 @@ package com.ifmix.api.core.common.jimmer.cluster
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
+import org.babyfish.jimmer.sql.dialect.PostgresDialect
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.newKSqlClient
-import org.babyfish.jimmer.sql.dialect.PostgresDialect
 import org.springframework.stereotype.Component
 import javax.sql.DataSource
 
+/**
+ * 单集群数据源注册：一个 writer + 一个 reader。
+ *
+ * 提供：
+ * - [sqlClient]：KSqlClient 实例，通过 Spring 管理的 DataSource 获取连接
+ * - [routingDataSource]：用于注册 Spring TransactionManager
+ * - [writerDataSource]：用于 Flyway migration
+ */
 @Component
 class ClusterRegistry(
     private val props: ClusterProperties,
 ) {
-    private lateinit var clients: Map<String, KSqlClient>
-    private lateinit var dataSources: Map<String, Pair<HikariDataSource, HikariDataSource>>
-    private lateinit var routingMap: Map<String, String> // appId → clusterName
+    val writerDataSource: HikariDataSource by lazy { createDataSource(props.writer, "pg-writer") }
+    val readerDataSource: HikariDataSource by lazy { createDataSource(props.reader, "pg-reader") }
+    val routingDataSource: ReadWriteRoutingDataSource by lazy { ReadWriteRoutingDataSource(writerDataSource, readerDataSource) }
 
-    @PostConstruct
-    fun init() {
-        routingMap = props.clusterRouting.mappings
-
-        val dsMap = mutableMapOf<String, Pair<HikariDataSource, HikariDataSource>>()
-        val clientMap = mutableMapOf<String, KSqlClient>()
-
-        props.clusters.forEach { (name, cluster) ->
-            val writerDs = createDataSource(cluster.writer, "$name-writer")
-            val readerDs = createDataSource(cluster.reader, "$name-reader")
-            dsMap[name] = writerDs to readerDs
-
-            val routingDs = ReadWriteRoutingDataSource(writerDs, readerDs)
-            val sqlClient = newKSqlClient {
-                setConnectionManager {
-                    val con = routingDs.connection
-                    try {
-                        proceed(con)
-                    } finally {
-                        con.close()
-                    }
+    /**
+     * 全局唯一的 KSqlClient。
+     * ConnectionManager 从 routingDataSource 获取连接，由 Spring TX 控制读写路由。
+     */
+    val sqlClient: KSqlClient by lazy {
+        newKSqlClient {
+            setConnectionManager {
+                val conn = routingDataSource.connection
+                try {
+                    proceed(conn)
+                } finally {
+                    conn.close()
                 }
-                setDialect(PostgresDialect())
             }
-            clientMap[name] = sqlClient
+            setDialect(PostgresDialect())
         }
-
-        dataSources = dsMap
-        clients = clientMap
     }
-
-    /** 按 appId 获取对应集群的 KSqlClient。未映射的走 default。 */
-    fun forAppId(appId: String): KSqlClient {
-        val clusterName = routingMap[appId] ?: "default"
-        return clients[clusterName]
-            ?: throw IllegalStateException("Cluster '$clusterName' not found (appId=$appId)")
-    }
-
-    /** 获取默认集群的 KSqlClient */
-    fun primary(): KSqlClient =
-        clients["default"] ?: throw IllegalStateException("No 'default' cluster configured")
-
-    /** 获取所有集群的 writer DataSource（用于 Flyway） */
-    fun allWriterDataSources(): Map<String, DataSource> =
-        dataSources.mapValues { it.value.first }
 
     @PreDestroy
     fun destroy() {
-        dataSources.values.forEach { (writer, reader) ->
-            writer.close()
-            reader.close()
-        }
+        writerDataSource.close()
+        readerDataSource.close()
     }
 
     private fun createDataSource(props: ClusterProperties.DataSourceProps, poolName: String): HikariDataSource {

@@ -6,7 +6,7 @@ import org.springframework.boot.ApplicationRunner
 import org.springframework.stereotype.Component
 
 /**
- * 启动时对所有集群的 writer DataSource 执行 Flyway migrate。
+ * 启动时对 writer DataSource 执行 Flyway migrate。
  */
 @Component
 class ClusterInitializer(
@@ -14,13 +14,11 @@ class ClusterInitializer(
 ) : ApplicationRunner {
 
     override fun run(args: ApplicationArguments) {
-        clusterRegistry.allWriterDataSources().forEach { (name, ds) ->
-            Flyway.configure()
-                .dataSource(ds)
-                .locations("classpath:db/migration")
-                .baselineOnMigrate(true)
-                .load()
-                .migrate()
-        }
+        Flyway.configure()
+            .dataSource(clusterRegistry.writerDataSource)
+            .locations("classpath:db/migration")
+            .baselineOnMigrate(true)
+            .load()
+            .migrate()
     }
 }
