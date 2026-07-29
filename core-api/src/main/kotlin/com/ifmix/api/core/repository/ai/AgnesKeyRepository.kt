@@ -1,8 +1,11 @@
 package com.ifmix.api.core.repository.ai
 
-import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import com.ifmix.api.core.entity.ai.AgnesKey
+import com.ifmix.api.core.entity.ai.appId
+import com.ifmix.api.core.entity.ai.unavailableUntil
+import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.UUID
@@ -14,11 +17,12 @@ class AgnesKeyRepository(
 
     /**
      * 查找所有启用的 key（未软删、供 AiConfig 加载）。
+     * @LogicalDeleted 自动过滤 deletedAt IS NOT NULL。
      */
     fun findAllEnabled(): List<AgnesKey> {
-        // AppScopedFilter 不适用于全局加载场景，此处用 findAll()
-        // Jimmer @LogicalDeleted 会自动过滤 deletedAt IS NOT NULL
-        return findAll()
+        return sql.createQuery(AgnesKey::class) {
+            select(table)
+        }.execute()
     }
 
     /**
@@ -26,10 +30,16 @@ class AgnesKeyRepository(
      */
     fun findAvailable(appId: UUID): List<AgnesKey> {
         val now = Instant.now()
-        return findAll().filter { key ->
-            key.appId == appId &&
-            (key.unavailableUntil == null || now.isAfter(key.unavailableUntil!!))
-        }
+        return sql.createQuery(AgnesKey::class) {
+            where(table.appId eq appId)
+            where(
+                or(
+                    table.unavailableUntil.isNull(),
+                    table.unavailableUntil lt now
+                )
+            )
+            select(table)
+        }.execute()
     }
 
     /**
@@ -37,7 +47,6 @@ class AgnesKeyRepository(
      */
     fun markUnavailable(keyId: UUID, until: Instant) {
         val existing = findById(keyId) ?: return
-        // Jimmer save with only modified fields
         val updated = AgnesKey {
             id = keyId
             appId = existing.appId

@@ -1,10 +1,14 @@
 package com.ifmix.api.core.repository.iap
 
-import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import com.ifmix.api.core.entity.iap.Subscription
+import com.ifmix.api.core.entity.iap.active
+import com.ifmix.api.core.entity.iap.appId
+import com.ifmix.api.core.entity.iap.originalTransactionId
+import com.ifmix.api.core.entity.iap.subscriptionPxid
+import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Component
-import java.time.Instant
 import java.util.UUID
 
 /** Subscription repository with custom query methods */
@@ -23,27 +27,27 @@ class SubscriptionRepository(
 
     /**
      * Find active subscription by appId and subscriptionPxid.
+     * @LogicalDeleted auto-filters deleted records.
      */
     fun findActiveByPxid(appId: UUID, pxid: String?): Subscription? {
-        val all = findAll()
-        return all.firstOrNull {
-            it.appId == appId &&
-            it.subscriptionPxid == pxid &&
-            it.active &&
-            it.deletedAt == null
-        }
+        return sql.createQuery(Subscription::class) {
+            where(table.appId eq appId)
+            where(table.subscriptionPxid eq pxid)
+            where(table.active eq true)
+            select(table)
+        }.fetchOneOrNull()
     }
 
     /**
      * Find subscription by originalTransactionId and update it.
+     * @LogicalDeleted auto-filters deleted records.
      */
     fun updateByOriginalTxn(appId: UUID, originalTxnId: String, updater: (Subscription) -> Subscription): Subscription? {
-        val all = findAll()
-        val existing = all.firstOrNull {
-            it.appId == appId &&
-            it.originalTransactionId == originalTxnId &&
-            it.deletedAt == null
-        } ?: return null
+        val existing = sql.createQuery(Subscription::class) {
+            where(table.appId eq appId)
+            where(table.originalTransactionId eq originalTxnId)
+            select(table)
+        }.fetchOneOrNull() ?: return null
         val updated = updater(existing)
         return save(updated)
     }

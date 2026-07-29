@@ -18,8 +18,7 @@ class AppConfigRepo(
     fun getByAppId(appId: String): AppConfig? {
         return try {
             val uuid = UUID.fromString(appId)
-            val all = repo.findAll()
-            val current = all.find { it.appId == uuid }
+            val current = repo.findCurrentByAppId(uuid)
             current?.let { toFlat(it) }
         } catch (_: Exception) {
             null
@@ -27,14 +26,12 @@ class AppConfigRepo(
     }
 
     fun getByAppleBundleId(bundleId: String): AppConfig? {
-        val all = repo.findAll()
-        val config = all.find { it.appleBundleId == bundleId }
+        val config = repo.findByBundleId(bundleId)
         return config?.let { toFlat(it) }
     }
 
     fun getByAndroidPackage(pkg: String): AppConfig? {
-        val all = repo.findAll()
-        val config = all.find { it.androidPackageName == pkg }
+        val config = repo.findByAndroidPackage(pkg)
         return config?.let { toFlat(it) }
     }
 

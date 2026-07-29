@@ -17,9 +17,7 @@ dependencies {
     implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
-    // Konvert：KSP 编译期生成 DTO<->document 映射（Kotlin 2.3.10 + KSP 2.3.10）
-    implementation("io.mcarle:konvert-api:4.5.0")
-    ksp("io.mcarle:konvert:4.5.0")
+
 
     testImplementation("com.willowtreeapps.assertk:assertk-jvm:0.28.1")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

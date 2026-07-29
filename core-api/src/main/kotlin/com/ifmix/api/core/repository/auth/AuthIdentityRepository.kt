@@ -1,9 +1,13 @@
 package com.ifmix.api.core.repository.auth
 
-import com.ifmix.api.core.repository.base.BaseCrudRepository
 import com.ifmix.api.core.entity.auth.AuthIdentity
+import com.ifmix.api.core.entity.auth.authTenantId
+import com.ifmix.api.core.entity.auth.email
+import com.ifmix.api.core.repository.base.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Component
+import java.util.UUID
 
 /** Auth identity repository with custom queries */
 @Component
@@ -11,10 +15,13 @@ class AuthIdentityRepository(
     sql: KSqlClient,
 ) : BaseCrudRepository<AuthIdentity>(sql, AuthIdentity::class) {
 
-    /** 按租户和邮箱查找身份（临时实现，Task 5 将优化为 Jimmer 查询 DSL） */
+    /** Find identity by tenant ID and email using Jimmer query DSL */
     fun findByTenantAndEmail(tenantId: String, email: String): AuthIdentity? {
-        // Temporary: fetch all and filter (will be optimized in Task 5)
-        val all = findAll()
-        return all.firstOrNull { it.authTenant.id?.toString() == tenantId && it.email == email }
+        val tenantUUID = UUID.fromString(tenantId)
+        return sql.createQuery(AuthIdentity::class) {
+            where(table.authTenantId eq tenantUUID)
+            where(table.email eq email)
+            select(table)
+        }.fetchOneOrNull()
     }
 }

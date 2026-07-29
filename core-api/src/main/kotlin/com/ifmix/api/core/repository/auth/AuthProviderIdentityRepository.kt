@@ -1,8 +1,12 @@
 package com.ifmix.api.core.repository.auth
 
-import com.ifmix.api.core.repository.base.BaseCrudRepository
 import com.ifmix.api.core.entity.auth.AuthProviderIdentity
+import com.ifmix.api.core.entity.auth.authTenantId
+import com.ifmix.api.core.entity.auth.provider
+import com.ifmix.api.core.entity.auth.providerAccountId
+import com.ifmix.api.core.repository.base.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.UUID
@@ -13,11 +17,15 @@ class AuthProviderIdentityRepository(
     sql: KSqlClient,
 ) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {
 
-    /** 按 tenantId + provider + providerAccountId 查找 */
+    /** Find by tenantId + provider + providerAccountId using Jimmer query DSL */
     fun findByProviderAndAccountId(tenantId: String, provider: String, providerAccountId: String): AuthProviderIdentity? {
-        return findAll().firstOrNull {
-            it.authTenant.id.toString() == tenantId && it.provider == provider && it.providerAccountId == providerAccountId
-        }
+        val tenantUUID = UUID.fromString(tenantId)
+        return sql.createQuery(AuthProviderIdentity::class) {
+            where(table.authTenantId eq tenantUUID)
+            where(table.provider eq provider)
+            where(table.providerAccountId eq providerAccountId)
+            select(table)
+        }.fetchOneOrNull()
     }
 
     /**
