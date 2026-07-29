@@ -1,0 +1,23 @@
+export com.ifmix.api.core.common.jimmer.entity.antique.ScanRecord
+    -> package com.ifmix.api.core.common.jimmer.dto.antique
+
+ScanRecordView {
+    #allScalars
+}
+
+ScanRecordListItem {
+    id
+    scanId
+    status
+    imageUrl
+    createdAt
+}
+
+input ScanRecordCreateInput {
+    scanId
+    imageUrl
+    status
+    tier
+    clientIp
+    relatedId
+}

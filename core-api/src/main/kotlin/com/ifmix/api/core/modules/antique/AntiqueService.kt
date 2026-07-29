@@ -5,77 +5,55 @@ import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.ratelimit.RateLimiter
 import com.ifmix.api.core.common.storage.ObjectStorage
-import com.ifmix.api.core.modules.antique.ScanResult.Status
-import org.springframework.data.mongodb.core.MongoTemplate
-import org.springframework.data.mongodb.core.query.Criteria
-import org.springframework.data.mongodb.core.query.Query
+import com.ifmix.api.core.common.jimmer.repository.antique.ScanRecordRepository
+import com.ifmix.api.core.common.jimmer.entity.antique.ScanRecord
+import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.util.UUID
 
 /**
  * 古物扫描业务编排。
- *
- * 流程：
- * 1. 限流检查 → 2. 生成预签名上传 URL → 3. 创建 ScanRecordDocument →
- *    4. 异步调用 ScanRunner → 5. 返回结果
  */
 class AntiqueService(
     private val scanRunner: ScanRunner,
     private val objectStorage: ObjectStorage,
     private val rateLimiter: RateLimiter,
-    private val mongo: MongoTemplate,
+    private val scanRepo: ScanRecordRepository,
 ) {
 
-    /**
-     * 创建扫描任务。
-     *
-     * @return 扫描记录 ID
-     */
+    @Transactional
     fun createScan(ctx: RequestContext, request: CreateScanRequest): String {
-        // 1. 限流检查（以 appId 作为 subject）
+        // 限流检查
         val subject = ctx.appId
         val limitResult = rateLimiter.check(ctx, subject)
         if (!limitResult.allowed) {
-            throw ApiError(
-                ErrorCode.RATE_LIMITED,
-                "daily limit exceeded",
-                mapOf("limit" to limitResult.limit, "count" to limitResult.count),
-            )
+            throw ApiError(ErrorCode.RATE_LIMITED, "daily limit exceeded")
         }
 
-        // 2. 生成预签名上传 URL
+        // 生成预签名上传 URL
         val objectKey = "antique/${UUID.randomUUID()}.png"
         val uploadUrl = objectStorage.presignUpload(objectKey, "image/png", Duration.ofMinutes(5))
 
-        // 3. 创建扫描记录文档
-        val record = ScanRecordDocument().apply {
-            appId = ctx.appId
-            scanId = UUID.randomUUID().toString()
-            imageUrl = uploadUrl
-            status = Status.PENDING.name
-            tier = "FREE"
-            relatedId = request.relatedId
-        }
-        mongo.insert(record)
-
-        return record.id!!
+        // 创建 ScanRecord — 通过仓库的 create 方法
+        val scanId = UUID.randomUUID().toString()
+        return scanRepo.create(
+            appId = ctx.appId,
+            scanId = scanId,
+            imageUrl = uploadUrl,
+            status = Status.PENDING.toString(),
+            tier = "FREE",
+            relatedId = request.relatedId,
+            clientIp = ctx.clientIp,
+        )
     }
 
-    /**
-     * 获取扫描记录文档（内部方法）。
-     */
-    fun getScanRecordById(id: String): ScanRecordDocument {
-        return mongo.findById(id, ScanRecordDocument::class.java)
-            ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
-    }
-
-    /**
-     * 获取扫描结果 DTO。
-     */
     fun getScanResult(ctx: RequestContext, id: String): ScanDto {
-        val record = getScanRecordById(id)
+        // Find by primary key id
+        val uuid = try { UUID.fromString(id) } catch (e: Exception) { throw ApiError(ErrorCode.INVALID_ID, "invalid UUID") }
+        // Use base repository findById
+        val record = scanRepo.findById(uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
         return ScanDto(
-            id = record.id,
+            id = record.id.toString(),
             scanId = record.scanId,
             imageUrl = record.imageUrl,
             status = record.status,
@@ -88,37 +66,42 @@ class AntiqueService(
         )
     }
 
-    /**
-     * 游标分页查询扫描记录。
-     */
     fun findByCursor(
         ctx: RequestContext,
         input: com.ifmix.api.core.common.db.CursorQueryInput = com.ifmix.api.core.common.db.CursorQueryInput(),
-    ): com.ifmix.api.core.common.db.Page<ScanRecordDocument> {
-        val query = Query()
-        query.addCriteria(Criteria.where("appId").`is`(ctx.appId))
-        // 软删过滤
-        query.addCriteria(Criteria.where("deletedAt").`is`(null))
-
+    ): com.ifmix.api.core.common.db.Page<ScanRecord> {
+        val all = scanRepo.findAll()
+        val appId = ctx.appId
+        val filtered = all.filter { it.appId == appId && it.deletedAt == null }
+        val sorted = filtered.sortedByDescending { it.createdAt }
         val limit = input.effectiveLimit()
-        query.limit(limit + 1)
-        val docs = mongo.find(query, ScanRecordDocument::class.java)
-        val hasMore = docs.size > limit
-        val items = if (hasMore) docs.subList(0, limit) else docs
-        return com.ifmix.api.core.common.db.Page(items.toList(), null, hasMore)
+        val hasMore = sorted.size > limit
+        val items = if (hasMore) sorted.take(limit) else sorted
+        return com.ifmix.api.core.common.db.Page(items, null, hasMore)
     }
 
-    /**
-     * 生成预签名上传 URL。
-     */
     fun presignedUploadUrl(objectKey: String, contentType: String, duration: Duration): String {
         return objectStorage.presignUpload(objectKey, contentType, duration)
     }
 
-    /**
-     * 生成预签名下载 URL。
-     */
     fun presignedDownloadUrl(objectKey: String, duration: Duration): String {
         return objectStorage.presignDownload(objectKey, duration)
     }
 }
+
+data class ScanDto(
+    val id: String,
+    val scanId: String?,
+    val imageUrl: String?,
+    val status: String?,
+    val resultJson: String?,
+    val tier: String?,
+    val clientIp: String?,
+    val relatedId: String?,
+    val createdAt: java.time.Instant?,
+    val updatedAt: java.time.Instant?,
+)
+
+data class CreateScanRequest(val relatedId: String?)
+
+enum class Status { PENDING, IN_PROGRESS, COMPLETED, FAILED }
