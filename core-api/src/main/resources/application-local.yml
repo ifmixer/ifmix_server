@@ -3,10 +3,6 @@
 # 该文件仅覆盖本地需要改的项，其余沿用 application.yml 的默认值。
 spring:
   data:
-    mongodb:
-      # MongoDB 事务需要副本集，本地用单节点副本集 rs0
-      uri: mongodb://localhost:27017/ifmix_core?replicaSet=rs0
-      auto-index-creation: true
     redis:
       url: redis://localhost:6379
 

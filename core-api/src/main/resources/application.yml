@@ -3,9 +3,6 @@ spring:
     virtual:
       enabled: true
   data:
-    mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/ifmix_core}
-      auto-index-creation: true
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
   ai:

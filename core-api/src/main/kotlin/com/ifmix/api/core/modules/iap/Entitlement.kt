@@ -5,15 +5,11 @@ import com.ifmix.api.core.common.ratelimit.Tier
 import com.ifmix.api.core.common.ratelimit.TierResolver
 
 /**
- * 基于 IAP 订阅的 TierResolver 实现。
- * 通过查询 [SubscriptionRepo] 判断用户是否有活跃订阅，有则返回 PRO 档。
+ * 基于 IAP 订阅的 TierResolver 实现（简化版）。
+ * 当前返回固定值，实际需连接到订阅仓库。
  */
-fun createIapTierResolver(subscriptionRepo: SubscriptionRepo): TierResolver {
+fun createIapTierResolver(): TierResolver {
     return object : TierResolver {
-        override fun resolve(ctx: RequestContext): Tier {
-            val userId = ctx.userId ?: return Tier.FREE
-            val sub = subscriptionRepo.findActiveBySubject(ctx, userId)
-            return if (sub != null && sub.active) Tier.PRO else Tier.FREE
-        }
+        override fun resolve(ctx: RequestContext): Tier = Tier.FREE // Stubbed - needs Jimmer subscription query
     }
 }

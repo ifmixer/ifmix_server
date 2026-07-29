@@ -1,46 +1,23 @@
 package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.antique.ScanRecordDocument
-import com.ifmix.api.core.modules.iap.SubscriptionDocument
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
-import org.springframework.data.mongodb.core.MongoTemplate
-import org.springframework.data.mongodb.core.query.Criteria
-import org.springframework.data.mongodb.core.query.Query
-import org.springframework.data.mongodb.core.query.Update
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
-import java.time.Instant
 
 /**
- * 登录后归并匿名数据：把 (appId, installId, userId=null) 的 scan_record/subscription 回填 userId。
- * best-effort（错误隔离，不拖垮登录）；失败结构化 error 日志（便于告警/对账）。
+ * 登录后归并匿名数据（暂未实现，待全量迁移至 PostgreSQL 后重构）。
+ * 当前为 no-op，避免编译错误。
  */
 @Component
-class MergeOnLoginListener(
-    private val mongo: MongoTemplate,
-    private val txRunner: TxRunner,
-) {
+class MergeOnLoginListener() {
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Async
     @EventListener
     fun onLogin(e: AuthLoggedInEvent) {
-        val installId = e.installId ?: return
-        try {
-            txRunner.withTx(RequestContext(appId = e.appId, installId = installId)) {
-                val q = Query(
-                    Criteria.where("appId").`is`(e.appId)
-                        .and("installId").`is`(installId).and("userId").`is`(null),
-                )
-                val u = Update().set("userId", e.appUserId).set("updatedAt", Instant.now())
-                mongo.updateMulti(q, u, ScanRecordDocument::class.java)
-                mongo.updateMulti(q, u, SubscriptionDocument::class.java)
-            }
-        } catch (ex: Exception) {
-            log.error("mergeOnLogin failed appId={} appUserId={} installId={}", e.appId, e.appUserId, installId, ex)
-        }
+        // TODO: 待迁移完成后实现基于 Jimmer Repository 的数据归并逻辑
+        log.debug("mergeOnLogin: no-op (migration pending)")
     }
 }
