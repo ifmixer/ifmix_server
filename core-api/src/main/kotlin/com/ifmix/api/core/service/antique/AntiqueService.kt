@@ -14,7 +14,7 @@ import java.util.UUID
 /**
  * 古物扫描业务编排。
  */
-class AntiqueService(
+open class AntiqueService(
     private val scanRunner: ScanRunner,
     private val objectStorage: ObjectStorage,
     private val rateLimiter: RateLimiter,

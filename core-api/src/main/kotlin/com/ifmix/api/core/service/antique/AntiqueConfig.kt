@@ -20,6 +20,12 @@ import org.springframework.data.redis.core.StringRedisTemplate
 class AntiqueConfig {
 
     @Bean
+    @ConditionalOnMissingBean(com.ifmix.api.core.infra.ratelimit.TierResolver::class)
+    fun tierResolver(): com.ifmix.api.core.infra.ratelimit.TierResolver {
+        return com.ifmix.api.core.infra.ratelimit.FreeTierResolver()
+    }
+
+    @Bean
     @ConditionalOnMissingBean(RateLimiter::class)
     fun rateLimiter(
         redis: StringRedisTemplate,

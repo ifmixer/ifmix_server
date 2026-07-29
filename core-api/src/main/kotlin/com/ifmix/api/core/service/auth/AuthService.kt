@@ -15,7 +15,6 @@ import com.ifmix.api.core.repository.auth.AuthIdentityRepository
 import com.ifmix.api.core.repository.auth.AuthProviderIdentityRepository
 import com.ifmix.api.core.service.appconfig.AppConfigRepo
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
@@ -25,8 +24,7 @@ import java.util.UUID
  *
  * 提供完整的 provider 登录、设备密钥交换、refresh 轮转、logout 流程。
  */
-@Service
-class AuthService(
+open class AuthService(
     private val appConfigRepo: AppConfigRepo,
     private val verifiers: Map<String, ProviderVerifier>,
     private val jwt: AuthJwtService,
@@ -82,23 +80,30 @@ class AuthService(
                 identityRepo.save(newIdentity)
             }
         } else {
-            // No email — create identity with accountId as fallback
-            val newIdentity = AuthIdentity {
-                id = UUID.randomUUID()
-                authTenant { id = tenantUUID }
-                rawEmail = null
-                email = null
-                rawPhone = verified.phone
-                phone = verified.phone
-                contactEmail = null
-                displayName = verified.userMetadata["name"] as? String
-                passwordHash = null
-                profile = null
-                metadata = null
-                createdAt = Instant.now()
-                updatedAt = Instant.now()
+            // No email — look up existing provider identity first
+            val existingProvider = providerIdentityRepo.findByProviderAndAccountId(
+                tenantId, provider, verified.accountId
+            )
+            if (existingProvider != null) {
+                identityRepo.findById(existingProvider.authIdentity.id)!!
+            } else {
+                val newIdentity = AuthIdentity {
+                    id = UUID.randomUUID()
+                    authTenant { id = tenantUUID }
+                    rawEmail = null
+                    email = null
+                    rawPhone = verified.phone
+                    phone = verified.phone
+                    contactEmail = null
+                    displayName = verified.userMetadata["name"] as? String
+                    passwordHash = null
+                    profile = null
+                    metadata = null
+                    createdAt = Instant.now()
+                    updatedAt = Instant.now()
+                }
+                identityRepo.save(newIdentity)
             }
-            identityRepo.save(newIdentity)
         }
 
         // 5. Upsert AuthProviderIdentity
@@ -228,7 +233,7 @@ class AuthService(
             refreshToken = rawRefreshToken,
             refreshExpiresAt = refreshExpiresAt,
             expiresIn = accessTtlSec,
-            user = UserDto(id = appUserId.toString(), email = null),
+            user = UserDto(id = appUserId.toString(), email = identityRepo.findById(identityId)?.email),
         )
     }
 

@@ -1,8 +1,16 @@
 package com.ifmix.api.core.repository.auth
 
-import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import com.ifmix.api.core.entity.auth.AppRefreshToken
+import com.ifmix.api.core.entity.auth.appId
+import com.ifmix.api.core.entity.auth.expiresAt
+import com.ifmix.api.core.entity.auth.id
+import com.ifmix.api.core.entity.auth.replacedBy
+import com.ifmix.api.core.entity.auth.revokedAt
+import com.ifmix.api.core.entity.auth.tokenHash
+import com.ifmix.api.core.entity.auth.updatedAt
+import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.UUID
@@ -19,31 +27,26 @@ class AppRefreshTokenRepository(
      */
     fun findValidByHash(appId: UUID, tokenHash: String): AppRefreshToken? {
         val now = Instant.now()
-        return findAll().firstOrNull { rt ->
-            rt.appId == appId
-                && rt.tokenHash == tokenHash
-                && rt.revokedAt == null
-                && (rt.expiresAt == null || rt.expiresAt!!.isAfter(now))
-        }
+        return sql.createQuery(AppRefreshToken::class) {
+            where(table.appId eq appId)
+            where(table.tokenHash eq tokenHash)
+            where(table.revokedAt.isNull())
+            where(or(table.expiresAt.isNull(), table.expiresAt gt now))
+            select(table)
+        }.fetchOneOrNull()
     }
 
     /**
      * Revoke a refresh token: set revokedAt and optionally replacedBy.
      */
     fun revoke(id: UUID, replacedBy: UUID? = null) {
-        val existing = findById(id) ?: return
-        val updated = AppRefreshToken {
-            this.id = id
-            this.appId = existing.appId
-            appUser { this.id = existing.appUser.id }
-            tokenHash = existing.tokenHash
-            loginInstallId = existing.loginInstallId
-            expiresAt = existing.expiresAt
-            revokedAt = Instant.now()
-            this.replacedBy = replacedBy
-            createdAt = existing.createdAt
-            updatedAt = Instant.now()
-        }
-        save(updated)
+        sql.createUpdate(AppRefreshToken::class) {
+            set(table.revokedAt, Instant.now())
+            set(table.updatedAt, Instant.now())
+            if (replacedBy != null) {
+                set(table.replacedBy, replacedBy)
+            }
+            where(table.id eq id)
+        }.execute()
     }
 }

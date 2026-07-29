@@ -29,11 +29,22 @@ class SubscriptionRepository(
      * Find active subscription by appId and subscriptionPxid.
      * @LogicalDeleted auto-filters deleted records.
      */
-    fun findActiveByPxid(appId: UUID, pxid: String?): Subscription? {
+    fun findActiveByPxid(appId: UUID, pxid: String): Subscription? {
         return sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.subscriptionPxid eq pxid)
             where(table.active eq true)
+            select(table)
+        }.fetchOneOrNull()
+    }
+
+    /**
+     * Find any non-deleted subscription by pxid (regardless of active status).
+     */
+    fun findByPxid(appId: UUID, pxid: String): Subscription? {
+        return sql.createQuery(Subscription::class) {
+            where(table.appId eq appId)
+            where(table.subscriptionPxid eq pxid)
             select(table)
         }.fetchOneOrNull()
     }

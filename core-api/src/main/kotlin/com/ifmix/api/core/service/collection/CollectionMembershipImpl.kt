@@ -1,6 +1,7 @@
 package com.ifmix.api.core.service.collection
 
 import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.appIdAsUUID
 import com.ifmix.api.core.repository.collection.CollectionItemRepository
 import com.ifmix.api.core.repository.collection.CollectionRepository
 import com.ifmix.api.core.service.antique.CollectionMembership
@@ -17,19 +18,11 @@ class CollectionMembershipImpl(
     override fun isCollected(ctx: RequestContext, scanRecordId: String): Boolean {
         try {
             val scanRecordIdUUID = UUID.fromString(scanRecordId)
-            val appId = requireNonNullCtxAppId(ctx)
+            val appId = ctx.appIdAsUUID()
             val collection = collectionRepo.findDefault(appId, ctx.installId, ctx.userId) ?: return false
             return itemRepo.existsByScanRecordId(collection.id, scanRecordIdUUID)
         } catch (e: Exception) {
             return false
-        }
-    }
-
-    private fun requireNonNullCtxAppId(ctx: RequestContext): UUID {
-        return try {
-            UUID.fromString(ctx.appId)
-        } catch (e: Exception) {
-            throw RuntimeException("Invalid app ID in context")
         }
     }
 }

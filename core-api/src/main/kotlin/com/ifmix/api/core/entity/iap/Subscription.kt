@@ -15,7 +15,7 @@ interface Subscription : AppScopedProps {
     override val appId: UUID
 
     @Key
-    val subscriptionPxid: String?
+    val subscriptionPxid: String
 
     val originalTransactionId: String?
     val productId: String?

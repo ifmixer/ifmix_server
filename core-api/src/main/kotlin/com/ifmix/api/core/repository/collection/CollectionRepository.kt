@@ -19,15 +19,25 @@ class CollectionRepository(
 
     /** Find default collection for app by optional userId or installId */
     fun findDefault(appId: UUID, installId: String?, userId: String?): Collection? {
-        return sql.createQuery(Collection::class) {
-            where(table.appId eq appId)
-            where(table.isDefault eq true)
-            when {
-                userId != null -> where(table.userId eq userId)
-                installId != null -> where(table.installId eq installId)
-                else -> {} // no additional filter
-            }
-            select(table)
-        }.fetchOneOrNull()
+        // Try userId first
+        if (userId != null) {
+            val byUser = sql.createQuery(Collection::class) {
+                where(table.appId eq appId)
+                where(table.isDefault eq true)
+                where(table.userId eq userId)
+                select(table)
+            }.fetchOneOrNull()
+            if (byUser != null) return byUser
+        }
+        // Fallback to installId
+        if (installId != null) {
+            return sql.createQuery(Collection::class) {
+                where(table.appId eq appId)
+                where(table.isDefault eq true)
+                where(table.installId eq installId)
+                select(table)
+            }.fetchOneOrNull()
+        }
+        return null
     }
 }

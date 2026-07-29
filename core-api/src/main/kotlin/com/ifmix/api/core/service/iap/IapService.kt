@@ -27,8 +27,7 @@ import java.util.HashMap
 /**
  * IAP 服务：购买验证、订阅状态管理、商店通知处理。
  */
-@Transactional
-class IapService(
+open class IapService(
     private val appleVerifier: PurchaseVerifier,
     private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
@@ -45,6 +44,7 @@ class IapService(
     /**
      * 验证一笔购买并写入订阅记录。
      */
+    @Transactional
     fun verifyPurchase(ctx: RequestContext, req: VerifyReq): VerifyRes {
         val appId = ctx.appId.toUUIDOrNull() ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
@@ -66,7 +66,7 @@ class IapService(
 
         // 3. Map productId to product tier from AppConfig
         val config = appConfigRepo.getByAppId(appId.toString()) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
-        val productTierMap = config.productTierMap ?: emptyMap()
+        val productTierMap = config.productTierMap
         val tier = tierOf(productId, productTierMap)
 
         // 4. Determine subscription PxID - use originalTransactionId or generate one
@@ -156,6 +156,7 @@ class IapService(
     /**
      * Internal unified notification handling logic.
      */
+    @Transactional
     fun handleNotification(ctx: RequestContext, rawPayload: String, decoder: NotificationDecoder, platform: String) {
         val appId = ctx.appId.toUUIDOrNull() ?: return
 
@@ -178,11 +179,7 @@ class IapService(
         var subscription = subscriptionRepo.findActiveByPxid(appId, decoderResult.subscriptionPxid)
         if (subscription == null) {
             // Try finding any (including inactive/deleted but not physically deleted) subscription
-            subscription = subscriptionRepo.findAll().firstOrNull {
-                it.appId == appId &&
-                it.subscriptionPxid == decoderResult.subscriptionPxid &&
-                it.deletedAt == null
-            }
+            subscription = subscriptionRepo.findByPxid(appId, decoderResult.subscriptionPxid)
         }
 
         // If subscription doesn't exist at all, create a minimal record or just log

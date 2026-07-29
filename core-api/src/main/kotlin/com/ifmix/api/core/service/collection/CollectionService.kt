@@ -4,6 +4,7 @@ import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.appIdAsUUID
 import com.ifmix.api.core.entity.antique.ScanRecord
 import com.ifmix.api.core.entity.collection.Collection
 import com.ifmix.api.core.repository.collection.CollectionRepository
@@ -17,7 +18,7 @@ import java.util.UUID
  * 收藏业务编排 - 完整实现。
  */
 @Service
-class CollectionService(
+open class CollectionService(
     private val collectionRepo: CollectionRepository,
     private val itemRepo: CollectionItemRepository,
 ) {
@@ -28,7 +29,7 @@ class CollectionService(
      */
     @Transactional
     fun getDefault(ctx: RequestContext): Collection {
-        val appId = requireNonNullCtxAppId(ctx)
+        val appId = ctx.appIdAsUUID()
         val userId = ctx.userId
         val installId = ctx.installId
 
@@ -41,21 +42,13 @@ class CollectionService(
         return collection
     }
 
-    private fun requireNonNullCtxAppId(ctx: RequestContext): UUID {
-        return try {
-            UUID.fromString(ctx.appId)
-        } catch (e: Exception) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "Invalid app ID in context")
-        }
-    }
-
     private fun createDefaultCollection(
         appId: UUID,
         userId: String?,
         installId: String?,
     ): Collection {
         val now = Instant.now()
-        return Collection {
+        val entity = Collection {
             id = UUID.randomUUID()
             this.appId = appId
             this.userId = userId
@@ -65,6 +58,7 @@ class CollectionService(
             updatedAt = now
             deletedAt = null
         }
+        return collectionRepo.save(entity)
     }
 
     /**
@@ -85,7 +79,7 @@ class CollectionService(
             else -> getDefault(ctx).id
         }
 
-        val itemId = itemRepo.insertIfAbsent(requireNonNullCtxAppId(ctx), collectionId, scanRecordIdUUID)
+        val itemId = itemRepo.insertIfAbsent(ctx.appIdAsUUID(), collectionId, scanRecordIdUUID)
         return AddItemRes(itemId.toString())
     }
 
@@ -107,7 +101,7 @@ class CollectionService(
             }
         }
 
-        val appId = requireNonNullCtxAppId(ctx)
+        val appId = ctx.appIdAsUUID()
         val collectionId = when {
             req.collectionId != null -> UUID.fromString(req.collectionId)
             else -> getDefault(ctx).id
@@ -123,7 +117,7 @@ class CollectionService(
      */
     @Transactional
     fun listItems(ctx: RequestContext, req: ListItemsReq?): Page<ScanRecord> {
-        val appId = requireNonNullCtxAppId(ctx)
+        val appId = ctx.appIdAsUUID()
 
         val collectionId = when {
             req?.collectionId != null -> UUID.fromString(req.collectionId)
