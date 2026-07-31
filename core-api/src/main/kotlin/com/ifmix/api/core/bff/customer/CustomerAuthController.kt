@@ -26,6 +26,11 @@ class CustomerAuthController(private val authService: AuthService) {
     fun apple(ctx: RequestContext, @Valid @RequestBody req: LoginReq): LoginRes =
         authService.loginWithProvider(ctx, "apple", req)
 
+    @Operation(summary = "微信登录", description = "提交微信 authorization code 换取平台 JWT。免鉴权。")
+    @PostMapping("/mutation/auth/wechat")
+    fun wechat(ctx: RequestContext, @Valid @RequestBody req: LoginReq): LoginRes =
+        authService.loginWithProvider(ctx, "wechat", req)
+
     @Operation(summary = "同系 App SSO 交换", description = "用 deviceSecret 在同一租户下的兄弟 App 之间免登录切换。免鉴权。")
     @PostMapping("/mutation/auth/exchange")
     fun exchange(ctx: RequestContext, @Valid @RequestBody req: ExchangeReq): ExchangeRes =
