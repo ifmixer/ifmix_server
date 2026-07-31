@@ -57,6 +57,7 @@ class ScanRecordRepository(sql: KSqlClient,) : BaseAppCrudRepository<ScanRecord>
         tier: String?,
         relatedId: String?,
         clientIp: String?,
+        resultJson: String? = null,
     ): ScanRecord {
         val now = Instant.now()
         val entity = ScanRecord {
@@ -64,6 +65,7 @@ class ScanRecordRepository(sql: KSqlClient,) : BaseAppCrudRepository<ScanRecord>
             this.appId = UUID.fromString(appId)
             this.scanId = scanId
             this.imageUrl = imageUrl
+            this.resultJson = resultJson
             this.status = status
             this.tier = tier
             this.relatedId = relatedId

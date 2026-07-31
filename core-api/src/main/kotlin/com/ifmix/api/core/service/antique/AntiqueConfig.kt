@@ -6,6 +6,7 @@ import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.infra.storage.StorageConfig
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.core.StringRedisTemplate
@@ -16,6 +17,7 @@ import org.springframework.data.redis.core.StringRedisTemplate
  * 将限流器、对象存储、ScanRunner、AntiqueService 串联起来。
  */
 @Configuration
+@EnableConfigurationProperties(RateLimitConfig::class)
 class AntiqueConfig {
 
     @Bean
@@ -29,8 +31,9 @@ class AntiqueConfig {
     fun rateLimiter(
         redis: StringRedisTemplate,
         tierResolver: com.ifmix.api.core.infra.ratelimit.TierResolver,
+        rateLimitConfig: RateLimitConfig,
     ): RateLimiter {
-        return RateLimiter(redis, tierResolver, RateLimitConfig())
+        return RateLimiter(redis, tierResolver, rateLimitConfig)
     }
 
     /** 配置了 S3/R2（app.storage.type=s3）时用真实预签名存储。 */

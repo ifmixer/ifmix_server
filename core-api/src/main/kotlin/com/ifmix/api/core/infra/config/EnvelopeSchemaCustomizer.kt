@@ -2,29 +2,26 @@ package com.ifmix.api.core.infra.config
 
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
+import io.swagger.v3.oas.models.media.Content
+import io.swagger.v3.oas.models.media.IntegerSchema
+import io.swagger.v3.oas.models.media.MediaType
 import io.swagger.v3.oas.models.media.ObjectSchema
 import io.swagger.v3.oas.models.media.Schema
 import io.swagger.v3.oas.models.media.StringSchema
+import io.swagger.v3.oas.models.headers.Header
+import io.swagger.v3.oas.models.responses.ApiResponse
 import org.springdoc.core.customizers.GlobalOpenApiCustomizer
 
 /**
- * 让文档里的响应体和运行时真实响应体一致。
+ * 全局 OpenAPI 后处理器。职责：
  *
- * 运行时 [com.ifmix.api.core.infra.http.EnvelopeResponseAdvice] 会把 controller 返回的裸 DTO
- * 包成 `{ code, msg, data }`，但 springdoc 只能看到 controller 签名上的裸 DTO，
- * 于是生成的 schema 少了一层信封——客户端代码生成出来直接就是错的。
+ * 1. **信封包装** — controller 裸返回的 DTO 包成 `{ code, msg, data }` 信封 schema，
+ *    与运行时 [EnvelopeResponseAdvice] 行为对齐。
+ * 2. **Content-Type 修正** — 2xx 响应从通配符改为 application/json（P0-3）。
+ * 3. **ErrorEnvelope + 标准错误响应** — 注册错误信封 schema 并给每个 operation 补
+ *    400/401/404/429/500（P0-4）。
  *
- * 这里在文档生成的最后一步，把每个 2xx 响应 schema 包进 `Envelope{DataType}` 命名 schema，
- * 保证 openapi-generator 之类的工具产出可用的类型。
- *
- * 必须实现 [GlobalOpenApiCustomizer] 而不是 OpenApiCustomizer：
- * 后者只作用于默认（未分组）文档，springdoc 给每个 GroupedOpenApi 组装 customizer 时
- * 只会合入 GlobalOpenApiCustomizer 类型的 bean
- * （见 AbstractMultipleOpenApiResource.afterPropertiesSet），
- * 否则 customer / app / platform 三个分组的文档拿不到信封。
- *
- * 跳过规则与 advice 保持一致：裸 `String` 返回（jwks、webhook）不走信封，因此
- * `type: string` 的响应原样保留。
+ * 必须实现 [GlobalOpenApiCustomizer] 才能作用于所有 GroupedOpenApi 分组。
  */
 class EnvelopeSchemaCustomizer : GlobalOpenApiCustomizer {
 
@@ -32,12 +29,20 @@ class EnvelopeSchemaCustomizer : GlobalOpenApiCustomizer {
         val paths = openApi.paths ?: return
         val components = openApi.components ?: Components().also { openApi.components = it }
 
+        // --- Pass 1: 信封包装 + content-type 修正 ---
         for (pathItem in paths.values) {
             for (operation in pathItem.readOperations()) {
                 val responses = operation.responses ?: continue
                 for ((status, response) in responses) {
                     if (!status.startsWith("2")) continue
                     val content = response.content ?: continue
+
+                    // P0-3: */* → application/json
+                    val wildcardMedia = content.remove("*/*")
+                    if (wildcardMedia != null && !content.containsKey("application/json")) {
+                        content.addMediaType("application/json", wildcardMedia)
+                    }
+
                     for (mediaType in content.values) {
                         val data = mediaType.schema ?: continue
                         if (skip(data)) continue
@@ -46,9 +51,44 @@ class EnvelopeSchemaCustomizer : GlobalOpenApiCustomizer {
                 }
             }
         }
+
+        // --- Pass 2: ErrorEnvelope schema + 标准错误响应 ---
+        registerErrorSchema(components)
+
+        val errorRef = Schema<Any>().`$ref`("#/components/schemas/ErrorEnvelope")
+        for (pathItem in paths.values) {
+            for (operation in pathItem.readOperations()) {
+                val responses = operation.responses ?: continue
+                if (!responses.containsKey("400")) {
+                    responses.addApiResponse("400", createErrorResponse("参数错误（INVALID_REQUEST）", errorRef))
+                }
+                if (!responses.containsKey("401")) {
+                    responses.addApiResponse("401", createErrorResponse("未鉴权 / token 无效或过期", errorRef))
+                }
+                if (!responses.containsKey("404")) {
+                    responses.addApiResponse("404", createErrorResponse("资源不存在", errorRef))
+                }
+                if (!responses.containsKey("429")) {
+                    val resp = createErrorResponse("限流 / 额度用尽", errorRef)
+                    resp.addHeaderObject(
+                        "Retry-After",
+                        Header()
+                            .description("建议客户端等待的秒数（固定窗口剩余时间）")
+                            .schema(IntegerSchema()),
+                    )
+                    responses.addApiResponse("429", resp)
+                }
+                if (!responses.containsKey("500")) {
+                    responses.addApiResponse("500", createErrorResponse("服务端内部错误", errorRef))
+                }
+            }
+        }
     }
 
-    /** 已经是信封、或是 advice 不会包装的裸 String，都跳过。 */
+    // ==========================================================
+    // Envelope wrapping
+    // ==========================================================
+
     private fun skip(schema: Schema<*>): Boolean {
         val ref = schema.`$ref`
         if (ref != null) return ref.substringAfterLast('/').startsWith(ENVELOPE_PREFIX)
@@ -58,7 +98,7 @@ class EnvelopeSchemaCustomizer : GlobalOpenApiCustomizer {
     }
 
     private fun envelopeOf(data: Schema<*>, components: Components): Schema<*> {
-        val name = dataTypeName(data) ?: return buildEnvelope(data) // 匿名类型只能内联
+        val name = dataTypeName(data) ?: return buildEnvelope(data)
         val envelopeName = ENVELOPE_PREFIX + name
         if (components.schemas?.containsKey(envelopeName) != true) {
             components.addSchemas(envelopeName, buildEnvelope(data))
@@ -68,13 +108,12 @@ class EnvelopeSchemaCustomizer : GlobalOpenApiCustomizer {
 
     private fun buildEnvelope(data: Schema<*>): Schema<*> =
         ObjectSchema()
-            .description("统一响应信封。code 为业务码字符串，成功固定 200000。")
+            .description("统一响应信封。code 为业务码字符串，成功固定 \"200000\"。")
             .addProperty("code", StringSchema().example("200000"))
             .addProperty("msg", StringSchema().example("success"))
             .addProperty("data", data)
-            .required(listOf("code", "msg"))
+            .required(listOf("code", "msg", "data"))
 
-    /** 给信封生成一个稳定、可读的名字，便于客户端代码生成。 */
     private fun dataTypeName(schema: Schema<*>): String? {
         schema.`$ref`?.let { return it.substringAfterLast('/') }
         schema.items?.let { item -> return dataTypeName(item)?.let { "${it}List" } }
@@ -85,6 +124,54 @@ class EnvelopeSchemaCustomizer : GlobalOpenApiCustomizer {
             "integer" -> if (schema.format == "int64") "Long" else "Int"
             else -> null
         }
+    }
+
+    // ==========================================================
+    // Error schema (P0-4)
+    // ==========================================================
+
+    private fun registerErrorSchema(components: Components) {
+        val codeSchema = StringSchema().apply {
+            description = """
+                业务错误码（字符串）。完整取值：
+                - "200000" — 成功
+                - "400000" — 参数错误 (INVALID_REQUEST)
+                - "400002" — 应用配置缺失 (APP_CONFIG_MISSING)
+                - "401000" — 未鉴权 / token 无效 (UNAUTHORIZED)
+                - "401001" — 第三方登录失败 (AUTH_PROVIDER_FAILED)
+                - "402000" — IAP 验证失败 (IAP_VERIFY_FAILED)
+                - "403000" — 禁止访问 (FORBIDDEN)
+                - "404000" — 资源不存在 (NOT_FOUND)
+                - "401002" — access token 过期，可用 refresh 重试 (TOKEN_EXPIRED)
+                - "401003" — refresh token 失效，需重新登录 (REFRESH_EXPIRED)
+                - "429000" — 限流 / 日配额用尽 (RATE_LIMITED)
+                - "429001" — 日配额用尽，升级可解锁 (QUOTA_EXCEEDED)
+                - "500000" — 服务端错误 (INTERNAL)
+                - "503000" — AI 服务不可用 (AI_UNAVAILABLE)
+            """.trimIndent()
+            example = "400000"
+        }
+
+        val errorSchema = ObjectSchema()
+            .description(
+                "错误响应信封。" +
+                "429 场景：`Retry-After` 响应头为首选（固定窗口剩余秒数），" +
+                "`data` 不携带 retryAfter（前端优先读响应头即可）。",
+            )
+            .addProperty("code", codeSchema)
+            .addProperty("msg", StringSchema().description("人类可读的错误描述").example("daily limit exceeded"))
+            .addProperty("data", Schema<Any>().description("通常为 null。部分错误场景可能携带附加信息。").nullable(true))
+            .required(listOf("code", "msg"))
+
+        components.addSchemas("ErrorEnvelope", errorSchema)
+    }
+
+    private fun createErrorResponse(description: String, schema: Schema<*>): ApiResponse {
+        val mediaType = MediaType().schema(schema)
+        val content = Content().addMediaType("application/json", mediaType)
+        return ApiResponse()
+            .description(description)
+            .content(content)
     }
 
     private companion object {

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.e2e.support
 
-import org.springframework.beans.factory.annotation.Autowired
+import org.junit.jupiter.api.BeforeEach
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.http.MediaType
@@ -26,11 +26,15 @@ import org.testcontainers.junit.jupiter.Testcontainers
 @ActiveProfiles("test")
 abstract class E2eTestBase {
 
-    @Autowired
     lateinit var webClient: WebTestClient
 
     @LocalServerPort
     var port: Int = 0
+
+    @BeforeEach
+    fun initWebClient() {
+        webClient = WebTestClient.bindToServer().baseUrl("http://localhost:$port").build()
+    }
 
     companion object {
         /** 测试用 appId */

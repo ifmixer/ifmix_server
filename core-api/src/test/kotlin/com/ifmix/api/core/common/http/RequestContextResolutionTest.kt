@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController
 
 class RequestContextResolutionTest {
 
-    private val validAppId = "0123456789abcdef01234567"
+    private val validAppId = "01234567-89ab-cdef-0123-456789abcdef"
     private lateinit var mvc: MockMvc
 
     @BeforeEach

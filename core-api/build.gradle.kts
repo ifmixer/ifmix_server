@@ -19,6 +19,9 @@ dependencies {
 
 
 
+    // Coroutines (needed for runBlocking in AntiqueService to call suspend ScanRunner)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+
     testImplementation("com.willowtreeapps.assertk:assertk-jvm:0.28.1")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.mockito:mockito-core:5.14.2")

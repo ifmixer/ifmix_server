@@ -60,7 +60,8 @@ class SecurityE2eTest : E2eTestBase() {
 
         @Test
         fun `path traversal in objectKey returns 400`() {
-            post("/customer/core/mutation/storage/presignUpload?objectKey=app_${TEST_APP_ID}/../etc/passwd&contentType=image/png")
+            post("/customer/core/mutation/storage/presignDownload")
+                .bodyValue(mapOf("objectKey" to "app_${TEST_APP_ID}/../etc/passwd"))
                 .exchange()
                 .expectStatus().isBadRequest
                 .expectBody().jsonPath("$.msg").value<String> { assert(it.contains("path traversal")) }
@@ -68,7 +69,8 @@ class SecurityE2eTest : E2eTestBase() {
 
         @Test
         fun `invalid objectKey format returns 400`() {
-            post("/customer/core/mutation/storage/presignUpload?objectKey=random/path/file.png&contentType=image/png")
+            post("/customer/core/mutation/storage/presignDownload")
+                .bodyValue(mapOf("objectKey" to "random/path/file.png"))
                 .exchange()
                 .expectStatus().isBadRequest
         }
@@ -76,7 +78,8 @@ class SecurityE2eTest : E2eTestBase() {
         @Test
         fun `objectKey with mismatched appId returns 400`() {
             val otherAppId = "99999999-9999-9999-9999-999999999999"
-            post("/customer/core/mutation/storage/presignUpload?objectKey=app_${otherAppId}/i_abc/file.png&contentType=image/png")
+            post("/customer/core/mutation/storage/presignDownload")
+                .bodyValue(mapOf("objectKey" to "app_${otherAppId}/i_abc/file.png"))
                 .exchange()
                 .expectStatus().isBadRequest
                 .expectBody().jsonPath("$.msg").value<String> { assert(it.contains("appId mismatch")) }
@@ -84,9 +87,13 @@ class SecurityE2eTest : E2eTestBase() {
 
         @Test
         fun `valid objectKey with install prefix succeeds`() {
-            post("/customer/core/mutation/storage/presignUpload?objectKey=app_${TEST_APP_ID}/i_${TEST_INSTALL_ID}/scan.png&contentType=image/png")
+            post("/customer/core/mutation/storage/presignUpload")
+                .bodyValue(mapOf("contentType" to "image/png"))
                 .exchange()
                 .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.data.uploadUrl").isNotEmpty
+                .jsonPath("$.data.imageKey").isNotEmpty
         }
     }
 }

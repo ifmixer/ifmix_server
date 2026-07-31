@@ -1,12 +1,12 @@
 package com.ifmix.api.core.service.auth
 
-import jakarta.validation.constraints.NotBlank
+import com.ifmix.api.core.infra.ratelimit.Tier
 import java.time.Instant
 
-data class UserDto(val id: String?, val email: String?)
+data class UserDto(val id: String, val email: String?)
 
 data class LoginReq(
-    @field:NotBlank val idToken: String? = null,
+    val idToken: String,
     val deviceSecret: String? = null,
 )
 data class LoginRes(
@@ -18,7 +18,7 @@ data class LoginRes(
     val user: UserDto,
 )
 
-data class ExchangeReq(@field:NotBlank val deviceSecret: String? = null)
+data class ExchangeReq(val deviceSecret: String)
 data class ExchangeRes(
     val accessToken: String,
     val refreshToken: String,
@@ -27,7 +27,7 @@ data class ExchangeRes(
     val user: UserDto,
 )
 
-data class RefreshReq(@field:NotBlank val refreshToken: String? = null)
+data class RefreshReq(val refreshToken: String)
 data class RefreshRes(
     val accessToken: String,
     val refreshToken: String,
@@ -35,7 +35,16 @@ data class RefreshRes(
     val expiresIn: Long,
 )
 
-data class LogoutReq(@field:NotBlank val refreshToken: String? = null)
+data class LogoutReq(val refreshToken: String)
 data class LogoutRes(val ok: Boolean)
 
-data class MeRes(val id: String, val email: String?)
+data class MeRes(
+    val id: String,
+    val email: String?,
+    /** 当前订阅档位 */
+    val tier: Tier = Tier.FREE,
+    /** 订阅是否有效 */
+    val active: Boolean = false,
+    /** 订阅过期时间（epoch millis），永久权益为 null */
+    val expiresAt: Long? = null,
+)

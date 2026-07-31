@@ -14,16 +14,6 @@ data class ScanResult(
     /** 扫描状态：PENDING / PROCESSING / COMPLETED / FAILED。 */
     val status: Status = Status.PENDING,
 
-    // ---- 输入信息 ----
-    /** 原始图片 URL（预签名上传地址）。 */
-    val imageUrl: String? = null,
-
-    /** 原始图片的 MIME 类型（如 image/png）。 */
-    val imageMimeType: String? = null,
-
-    /** 原始图片尺寸（宽 x 高，如 "1920x1080"）。 */
-    val imageSize: String? = null,
-
     // ---- 核心识别 ----
     /** 是否判定为古物（true = 古物，false = 非古物/现代物品）。 */
     val isAntique: Boolean? = null,
@@ -37,20 +27,17 @@ data class ScanResult(
     /** 古物别名/俗称列表。 */
     val aliases: List<String> = emptyList(),
 
-    /** 类别（如 "陶瓷"、"青铜器"、"书画"）。 */
-    val category: String? = null,
-
-    /** 子类别（如 "青花"、"粉彩"）。 */
-    val subCategory: String? = null,
+    /** 面向用户的介绍文案。 */
+    val description: String? = null,
 
     /** 一级分类标签。 */
-    val label1: String? = null,
+    val primaryCategory: String? = null,
 
     /** 二级分类标签。 */
-    val label2: String? = null,
+    val secondaryCategory: String? = null,
 
     /** 三级分类标签。 */
-    val label3: String? = null,
+    val tertiaryCategory: String? = null,
 
     // ---- 年代判定 ----
     /** 年代描述（如 "明代"、"清代乾隆"）。 */
@@ -111,13 +98,13 @@ data class ScanResult(
     val weightG: Double? = null,
 
     // ---- 价值评估 ----
-    /** 估价范围描述（如 "5000-10000元"）。 */
+    /** 服务端格式化的价格范围字符串（如 "¥5,000-10,000"，含货币符号）。前端可直接展示。 */
     val priceRange: String? = null,
 
-    /** 估价最低值（人民币元）。 */
+    /** 估价数值（单位由 priceCurrency 决定），用于前端自定义格式化。 */
     val priceMin: Double? = null,
 
-    /** 估价最高值（人民币元）。 */
+    /** 估价数值（单位由 priceCurrency 决定），用于前端自定义格式化。 */
     val priceMax: Double? = null,
 
     /** 估价币种代码（如 CNY、USD）。 */
@@ -127,7 +114,7 @@ data class ScanResult(
     val valueConfidence: Double? = null,
 
     // ---- 真伪鉴定 ----
-    /** 真伪判定：authentic / suspicious / fake / uncertain。 */
+    /** 真伪判定: authentic / suspicious / fake / uncertain */
     val authenticity: String? = null,
 
     /** 真伪置信度（0-1）。 */
@@ -137,7 +124,7 @@ data class ScanResult(
     val authenticityNotes: String? = null,
 
     // ---- 保存状况 ----
-    /** 保存状况：pristine / excellent / good / fair / poor / damaged。 */
+    /** 保存状况: pristine / excellent / good / fair / poor / damaged */
     val condition: String? = null,
 
     /** 瑕疵描述列表。 */
@@ -147,28 +134,15 @@ data class ScanResult(
     val restorationHistory: String? = null,
 
     // ---- 综合评分 ----
-    /** 综合评分（0-100）。 */
+    /** 综合评分（0-100） */
     val score: Int? = null,
 
-    /** 综合置信度（0-1）。 */
+    /** 综合置信度（0.0-1.0） */
     val confidence: Double? = null,
-
-    // ---- AI 模型信息 ----
-    /** 使用的模型名称。 */
-    val modelName: String? = null,
-
-    /** 使用的 API key ID（脱敏）。 */
-    val apiKeyId: String? = null,
-
-    /** 模型推理耗时（毫秒）。 */
-    val modelLatencyMs: Long? = null,
 
     // ---- 辅助信息 ----
     /** 标签列表（通用分类标签）。 */
     val tags: List<String> = emptyList(),
-
-    /** 来源说明（如 "用户上传"、"系统采集"）。 */
-    val source: String? = null,
 
     /** 额外备注/自由文本。 */
     val notes: String? = null,
@@ -178,8 +152,8 @@ data class ScanResult(
     val errorMessage: String? = null,
 
     // ---- 时间戳 ----
-    /** AI 分析完成时间。 */
-    val analyzedAt: String? = null,
+    /** AI 分析完成时间（epoch millis）。 */
+    val analyzedAt: Long? = null,
 ) {
     /** 扫描状态枚举。 */
     enum class Status {

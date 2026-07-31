@@ -1,7 +1,6 @@
 package com.ifmix.api.core.infra.ratelimit
 
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.stereotype.Component
 
 /**
  * 各 Tier 的日限额配置。键为 Tier 名称（FREE / PRO / ENTERPRISE），
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Component
  *     enterprise: 1000000
  * ```
  */
-@Component
 @ConfigurationProperties(prefix = "app.ratelimit")
 data class RateLimitConfig(
     val free: Int = 100,

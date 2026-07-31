@@ -9,12 +9,26 @@ package com.ifmix.api.core.infra.db
  */
 data class CursorQueryInput(
     val cursor: String? = null,
-    val sortBy: String = "_id",
-    val order: Order = Order.DESC,
+    val sortBy: SortField? = null,
+    val order: Order? = null,
     val limit: Int? = null,
 ) {
+    enum class SortField {
+        CREATED_AT,
+        UPDATED_AT,
+        ID;
+
+        fun toColumnName(): String = when (this) {
+            CREATED_AT -> "createdAt"
+            UPDATED_AT -> "updatedAt"
+            ID -> "id"
+        }
+    }
+
     enum class Order { ASC, DESC }
 
+    fun effectiveSortBy(): String = (sortBy ?: SortField.CREATED_AT).toColumnName()
+    fun effectiveOrder(): Order = order ?: Order.DESC
     fun effectiveLimit(): Int = (limit ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
 
     companion object {

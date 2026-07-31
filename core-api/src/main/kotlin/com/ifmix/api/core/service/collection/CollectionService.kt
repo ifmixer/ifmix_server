@@ -68,9 +68,8 @@ open class CollectionService(
      */
     @Transactional
     fun addItem(ctx: RequestContext, req: AddItemReq): AddItemRes {
-        val scanRecordId = req.scanRecordId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "scanRecordId is required")
         val scanRecordIdUUID = try {
-            UUID.fromString(scanRecordId)
+            UUID.fromString(req.scanRecordId)
         } catch (e: Exception) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "Invalid scanRecordId format")
         }
@@ -81,7 +80,7 @@ open class CollectionService(
         }
 
         val itemId = itemRepo.insertIfAbsent(ctx.appIdAsUUID(), collectionId, scanRecordIdUUID)
-        return AddItemRes(itemId.toString())
+        return AddItemRes(id = itemId.toString())
     }
 
     /**
@@ -89,12 +88,11 @@ open class CollectionService(
      */
     @Transactional
     fun removeItems(ctx: RequestContext, req: RemoveItemsReq): RemoveItemsRes {
-        val scanRecordIds = req.scanRecordIds ?: throw ApiError(ErrorCode.INVALID_REQUEST, "scanRecordIds is required")
-        if (scanRecordIds.isEmpty()) {
+        if (req.scanRecordIds.isEmpty()) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "scanRecordIds cannot be empty")
         }
 
-        val parsedIds = scanRecordIds.map { id ->
+        val parsedIds = req.scanRecordIds.map { id ->
             try {
                 UUID.fromString(id)
             } catch (e: Exception) {
@@ -109,7 +107,7 @@ open class CollectionService(
         }
 
         val deletedCount = itemRepo.softDeleteByScanIds(appId, collectionId, parsedIds)
-        return RemoveItemsRes(deletedCount)
+        return RemoveItemsRes(deletedCount.toInt())
     }
 
     /**
@@ -140,12 +138,12 @@ open class CollectionService(
 }
 
 // Request/Response DTOs
-data class AddItemReq(val collectionId: String? = null, val scanRecordId: String? = null)
-data class AddItemRes(val itemId: String)
+data class AddItemReq(val collectionId: String? = null, val scanRecordId: String)  // scanRecordId 必填
+data class AddItemRes(val id: String)  // id 对应 collection_item 表的 id
 
-data class RemoveItemsReq(val collectionId: String? = null, val scanRecordIds: List<String>? = null)
-data class RemoveItemsRes(val removed: Long)
+data class RemoveItemsReq(val collectionId: String? = null, val scanRecordIds: List<String>)  // 必填非空列表
+data class RemoveItemsRes(val removed: Int)
 
 data class ListItemsReq(val collectionId: String? = null, val limit: Int? = null, val cursor: String? = null)
 
-data class GetDefaultRes(val id: String, val isDefault: Boolean)
+data class GetDefaultRes(val id: String, val isDefault: Boolean, val createdAt: Long?)  // 补回 createdAt

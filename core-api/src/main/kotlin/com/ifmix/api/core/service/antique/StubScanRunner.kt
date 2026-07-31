@@ -14,7 +14,6 @@ class StubScanRunner : ScanRunner {
         ScanResult(
             scanId = UuidV7.generate().toString(),
             status = ScanResult.Status.COMPLETED,
-            imageUrl = imageUrl,
             isAntique = false,
             name = "stub",
         )

@@ -24,7 +24,9 @@ class CursorQueryInputTest {
     @Test
     fun defaultsToIdDescending() {
         val input = CursorQueryInput()
-        assertThat(input.sortBy).isEqualTo("_id")
-        assertThat(input.order).isEqualTo(CursorQueryInput.Order.DESC)
+        assertThat(input.sortBy).isNull()
+        assertThat(input.order).isNull()
+        assertThat(input.effectiveSortBy()).isEqualTo("createdAt")
+        assertThat(input.effectiveOrder()).isEqualTo(CursorQueryInput.Order.DESC)
     }
 }

@@ -19,8 +19,7 @@ class ScanResultJsonTest {
             status = ScanResult.Status.COMPLETED,
             isAntique = true,
             name = "青花瓷瓶",
-            category = "陶瓷",
-            subCategory = "青花",
+            description = "一件精美的明代青花瓷瓶",
             dynasty = "明代",
             yearFrom = 1368,
             yearTo = 1644,
@@ -41,7 +40,6 @@ class ScanResultJsonTest {
             condition = "good",
             score = 78,
             confidence = 0.85,
-            modelName = "gpt-4o",
             tags = listOf("瓷器", "明代", "青花"),
             aliases = listOf("明青花"),
             colors = listOf("蓝色", "白色"),
@@ -49,20 +47,15 @@ class ScanResultJsonTest {
             flaws = listOf("微磕"),
             hasInscription = true,
             inscription = "大明宣德年制",
-            imageUrl = "https://example.com/photo.png",
-            imageMimeType = "image/png",
-            imageSize = "1920x1080",
             texture = "光滑",
             authenticityNotes = null,
             restorationHistory = null,
             notes = "器型完整，底款清晰",
             errorMessage = null,
-            analyzedAt = "2026-07-27T00:00:00Z",
-            apiKeyId = "key-****1234",
-            modelLatencyMs = 3200L,
-            label1 = "陶瓷",
-            label2 = "瓷器",
-            label3 = "青花瓷",
+            analyzedAt = 1722038400000L,
+            primaryCategory = "陶瓷",
+            secondaryCategory = "瓷器",
+            tertiaryCategory = "青花瓷",
             materials = listOf("高岭土", "钴料"),
             techniques = listOf("釉下彩绘", "高温烧制"),
         )
@@ -78,8 +71,7 @@ class ScanResultJsonTest {
         assertThat(json).contains("\"height_cm\"")
         assertThat(json).contains("\"weight_g\"")
         assertThat(json).contains("\"price_range\"")
-        assertThat(json).contains("\"model_name\"")
-        assertThat(json).contains("\"api_key_id\"")
+        assertThat(json).contains("\"description\"")
     }
 
     @Test
@@ -89,7 +81,7 @@ class ScanResultJsonTest {
             "status": "COMPLETED",
             "is_antique": true,
             "name": "青铜鼎",
-            "category": "青铜器",
+            "primary_category": "青铜器",
             "dynasty": "商代",
             "year_from": 1600,
             "year_to": 1046,
@@ -111,7 +103,7 @@ class ScanResultJsonTest {
         assertThat(result.status).isEqualTo(ScanResult.Status.COMPLETED)
         assertThat(result.isAntique).isTrue()
         assertThat(result.name).isEqualTo("青铜鼎")
-        assertThat(result.category).isEqualTo("青铜器")
+        assertThat(result.primaryCategory).isEqualTo("青铜器")
         assertThat(result.dynasty).isEqualTo("商代")
         assertThat(result.yearFrom).isEqualTo(1600)
         assertThat(result.yearTo).isEqualTo(1046)
@@ -135,7 +127,7 @@ class ScanResultJsonTest {
         val json = snakeMapper.writeValueAsString(result)
         assertThat(json).contains("\"is_antique\":null")
         assertThat(json).contains("\"name\":null")
-        assertThat(json).contains("\"category\":null")
+        assertThat(json).contains("\"primary_category\":null")
     }
 
     @Test

@@ -21,6 +21,7 @@ import java.util.UUID
  * 请求/响应体全部用 Jimmer 生成的 DTO（TodoView / TodoCreateInput / TodoUpdateInput），
  * 这样 OpenAPI 才能给出具体 schema 而不是 `object`。
  */
+@io.swagger.v3.oas.annotations.Hidden
 @RestController
 @RequestMapping("/customer/core")
 class CustomerTodoController(private val todoService: TodoService) {

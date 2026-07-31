@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
-import java.util.HashMap
 
 /**
  * IAP 服务：购买验证、订阅状态管理、商店通知处理。
@@ -52,18 +51,16 @@ open class IapService(
     fun verifyPurchase(ctx: RequestContext, req: VerifyReq): VerifyRes {
         val appId = ctx.appId.toUUIDOrNull() ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
-        // 1. Select verifier based on platform
-        val platformStr = req.platform?.trim() ?: throw ApiError(ErrorCode.INVALID_REQUEST, "platform required")
-        val verifier = verifierMap[platformStr] ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: $platformStr")
-        val platform = if (platformStr == "APPLE") Platform.APPLE else Platform.GOOGLE
+        // 1. Select verifier based on platform (already an enum, no parsing needed)
+        val verifier = verifierMap[req.platform.name] ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: ${req.platform}")
 
         // 2. Verify purchase using the selected verifier
-        val purchaseToken = req.purchaseToken ?: req.receipt ?: throw ApiError(ErrorCode.INVALID_REQUEST, "purchaseToken or receipt required")
-        val productId = req.productId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "productId required")
+        val purchaseToken = req.purchaseToken ?: req.signedTransaction
+            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "purchaseToken or signedTransaction required")
         val input = VerifyInput(
-            platform = platform,
+            platform = req.platform,
             purchaseToken = purchaseToken,
-            productId = productId,
+            productId = req.productId,
             appId = appId.toString()
         )
         val verifyResult = verifier.verify(input)
@@ -71,22 +68,20 @@ open class IapService(
         // 3. Map productId to product tier from AppConfig
         val config = appConfigRepo.getByAppId(appId.toString()) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val productTierMap = config.productTierMap
-        val tier = tierOf(productId, productTierMap)
+        val tier = tierOf(req.productId, productTierMap) ?: com.ifmix.api.core.infra.ratelimit.Tier.FREE
 
         // 4. Determine subscription PxID - use originalTransactionId or generate one
         val subscriptionPxid = verifyResult.originalTransactionId ?: run {
-            "pxid-${platformStr}-${UuidV7.generate()}"
+            "pxid-${req.platform.name}-${UuidV7.generate()}"
         }
 
         // Check for existing active subscription with same pxid (idempotency)
         val existingSub = subscriptionRepo.findActiveByPxid(appId, subscriptionPxid)
         if (existingSub != null) {
             return VerifyRes(
-                subscriptionPxid = existingSub.subscriptionPxid,
-                active = existingSub.active,
-                expiryDate = existingSub.expiryDate,
+                expiresAt = existingSub.expiryDate?.toEpochMilli(),
                 state = statusFromExpiry(existingSub.expiryDate),
-                productId = existingSub.productId,
+                productId = existingSub.productId ?: req.productId,
                 tier = tier
             )
         }
@@ -113,18 +108,18 @@ open class IapService(
             this.appId = appId
             this.subscriptionPxid = subscriptionPxid
             this.originalTransactionId = verifyResult.originalTransactionId
-            this.productId = productId
-            this.platform = platformStr
+            this.productId = req.productId
+            this.platform = req.platform.name
             this.active = true
             this.subStatus = subStatus
             this.expiryDate = verifyResult.expiryDate
             this.purchaseToken = purchaseToken
             this.rawResponse = mapOf(
                 "original_transaction_id" to verifyResult.originalTransactionId,
-                "product_id" to productId,
+                "product_id" to req.productId,
                 "expiry_date" to verifyResult.expiryDate?.toString(),
                 "sub_status" to verifyResult.subStatus.name,
-                "platform" to platformStr
+                "platform" to req.platform.name
             )
             createdAt = now
             updatedAt = now
@@ -134,11 +129,9 @@ open class IapService(
 
         // 7. Return result
         return VerifyRes(
-            subscriptionPxid = savedSub.subscriptionPxid,
-            active = savedSub.active,
-            expiryDate = savedSub.expiryDate,
+            expiresAt = savedSub.expiryDate?.toEpochMilli(),
             state = statusFromExpiry(savedSub.expiryDate),
-            productId = savedSub.productId,
+            productId = savedSub.productId ?: req.productId,
             tier = tier
         )
     }
@@ -286,17 +279,15 @@ open class IapService(
 
 // Request/Response DTOs
 data class VerifyReq(
-    val platform: String? = null,     // "APPLE" or "GOOGLE"
-    val receipt: String? = null,       // Apple receipt data (base64)
-    val purchaseToken: String? = null, // Google purchase token
-    val productId: String? = null,
+    val platform: Platform,                    // 必填枚举（不是可空 string）
+    val signedTransaction: String? = null,     // iOS StoreKit 2 JWS
+    val purchaseToken: String? = null,         // Google purchase token
+    val productId: String,                     // 必填
 )
 
 data class VerifyRes(
-    val subscriptionPxid: String?,
-    val active: Boolean,
-    val expiryDate: Instant?,
+    val expiresAt: Long?,                      // epoch millis（与前端约定）
     val state: SubscriptionState,
-    val productId: String? = null,
-    val tier: com.ifmix.api.core.infra.ratelimit.Tier? = null,
+    val productId: String,
+    val tier: com.ifmix.api.core.infra.ratelimit.Tier,  // 必填枚举 FREE/PRO
 )

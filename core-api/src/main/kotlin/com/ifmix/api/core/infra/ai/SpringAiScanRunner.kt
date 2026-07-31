@@ -174,13 +174,10 @@ open class SpringAiScanRunner(
                 .build()
 
             mapper.readValue(jsonOnly, ScanResult::class.java)
-                ?.let { it.copy(modelName = modelName, apiKeyId = keyId.takeLast(8)) }
                 ?: ScanResult(
                     scanId = UuidV7.generate().toString(),
                     status = ScanResult.Status.COMPLETED,
                     errorMessage = "Could not parse JSON fields",
-                    modelName = modelName,
-                    apiKeyId = keyId.takeLast(8),
                 )
         } catch (e: Exception) {
             log.error("Failed to parse AI response [${jsonText.take(200)}]: ${e.message}")
@@ -190,8 +187,6 @@ open class SpringAiScanRunner(
                 name = jsonText.take(100),
                 notes = "raw_response: $jsonText",
                 errorMessage = "JSON parsing fallback: ${e.message}",
-                modelName = modelName,
-                apiKeyId = keyId.takeLast(8),
             )
         }
     }
