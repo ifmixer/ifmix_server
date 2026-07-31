@@ -1,7 +1,7 @@
 package com.ifmix.api.core.service.appconfig
 
 /**
- * 扁平配置视图（BO）：把 AppConfigDocument 的 apple/google/iap 内嵌对象摊平，
+ * 扁平配置视图（BO）：把 AppConfig entity 的 apple/google/iap 内嵌 JSONB 摊平，
  * 供下游（iap/antique 的验证器、tier 解析等）直接读取。
  */
 data class AppConfig(

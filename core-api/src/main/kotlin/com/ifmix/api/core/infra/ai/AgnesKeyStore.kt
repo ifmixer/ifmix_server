@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap
  * Agnes Key 运行时状态管理（quota pre-deduct、冷却标记、weighted pick）。
  *
  * 从数据源加载 keys → 维护内存状态 → 通过 Redis 做分布式冷却/计数。
- * 对应旧 MongoDB 版本的 AgnesKeyStore，现在底层改用回调 loadKeys 加载。
  */
 class AgnesKeyStore(
     private val redis: StringRedisTemplate,

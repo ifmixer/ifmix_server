@@ -8,7 +8,6 @@ plugins {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
-    // Removed spring-boot-starter-data-mongodb (migration to Jimmer + PostgreSQL complete)
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
@@ -25,7 +24,6 @@ dependencies {
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
-    // Removed spring-boot-testcontainers, testcontainers-mongodb (MongoDB migration complete)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     // WebTestClient for E2E testing (Spring Boot 4 removed TestRestTemplate)
     testImplementation("org.springframework.boot:spring-boot-starter-webflux")
