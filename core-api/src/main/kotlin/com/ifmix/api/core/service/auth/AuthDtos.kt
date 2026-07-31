@@ -6,7 +6,8 @@ import java.time.Instant
 data class UserDto(val id: String, val email: String?)
 
 data class LoginReq(
-    val idToken: String,
+    val idToken: String? = null,
+    val code: String? = null,
     val deviceSecret: String? = null,
 )
 data class LoginRes(

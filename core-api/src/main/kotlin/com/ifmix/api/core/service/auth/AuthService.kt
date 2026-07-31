@@ -58,8 +58,13 @@ open class AuthService(
         // 2. Get verifier
         val verifier = verifiers[provider] ?: throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unsupported provider: $provider")
 
-        // 3. Verify id_token
-        val verified = verifier.verify(config, ctx.clientPlatform, req.idToken!!)
+        // 3. Resolve credential (code for wechat, idToken for others)
+        val credential = if (provider == "wechat") {
+            req.code ?: throw ApiError(ErrorCode.INVALID_REQUEST, "code required for wechat login")
+        } else {
+            req.idToken ?: throw ApiError(ErrorCode.INVALID_REQUEST, "idToken required")
+        }
+        val verified = verifier.verify(config, ctx.clientPlatform, credential)
 
         // 4. Find or create AuthIdentity
         val normalizedEmail = verified.email?.lowercase()
