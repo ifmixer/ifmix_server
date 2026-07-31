@@ -16,20 +16,20 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/customer/core", produces = ["application/json"])
 class CustomerAuthController(private val authService: AuthService) {
 
-    @Operation(summary = "Google 登录", description = "提交 Google ID Token 换取平台 JWT。免鉴权。")
+    @Operation(summary = "Google 登录", description = "提交 Google ID Token 换取平台 JWT。免鉴权。idToken 必填。")
     @PostMapping("/mutation/auth/google")
-    fun google(ctx: RequestContext, @Valid @RequestBody req: LoginReq): LoginRes =
-        authService.loginWithProvider(ctx, "google", req)
+    fun google(ctx: RequestContext, @Valid @RequestBody req: ProviderLoginReq): LoginRes =
+        authService.loginWithIdToken(ctx, "google", req)
 
-    @Operation(summary = "Apple 登录", description = "提交 Apple Identity Token 换取平台 JWT。免鉴权。")
+    @Operation(summary = "Apple 登录", description = "提交 Apple Identity Token 换取平台 JWT。免鉴权。idToken 必填。")
     @PostMapping("/mutation/auth/apple")
-    fun apple(ctx: RequestContext, @Valid @RequestBody req: LoginReq): LoginRes =
-        authService.loginWithProvider(ctx, "apple", req)
+    fun apple(ctx: RequestContext, @Valid @RequestBody req: ProviderLoginReq): LoginRes =
+        authService.loginWithIdToken(ctx, "apple", req)
 
-    @Operation(summary = "微信登录", description = "提交微信 authorization code 换取平台 JWT。免鉴权。")
+    @Operation(summary = "微信登录", description = "提交微信 authorization code 换取平台 JWT。免鉴权。code 必填。失败返回 401001 AUTH_PROVIDER_FAILED。")
     @PostMapping("/mutation/auth/wechat")
-    fun wechat(ctx: RequestContext, @Valid @RequestBody req: LoginReq): LoginRes =
-        authService.loginWithProvider(ctx, "wechat", req)
+    fun wechat(ctx: RequestContext, @Valid @RequestBody req: WechatLoginReq): LoginRes =
+        authService.loginWithCode(ctx, "wechat", req)
 
     @Operation(summary = "同系 App SSO 交换", description = "用 deviceSecret 在同一租户下的兄弟 App 之间免登录切换。免鉴权。")
     @PostMapping("/mutation/auth/exchange")

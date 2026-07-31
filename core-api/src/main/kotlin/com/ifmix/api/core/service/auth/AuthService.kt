@@ -49,7 +49,17 @@ open class AuthService(
         appConfigRepo.getByAppId(ctx.appId)?.authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
     @Transactional
-    fun loginWithProvider(ctx: RequestContext, provider: String, req: LoginReq): LoginRes {
+    fun loginWithIdToken(ctx: RequestContext, provider: String, req: ProviderLoginReq): LoginRes {
+        return loginWithProvider(ctx, provider, req.idToken, req.deviceSecret)
+    }
+
+    @Transactional
+    fun loginWithCode(ctx: RequestContext, provider: String, req: WechatLoginReq): LoginRes {
+        return loginWithProvider(ctx, provider, req.code, req.deviceSecret)
+    }
+
+    @Transactional
+    fun loginWithProvider(ctx: RequestContext, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
         // 1. Resolve app config & tenant
         val config = appConfigRepo.getByAppId(ctx.appId) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val tenantId = config.authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
@@ -58,12 +68,7 @@ open class AuthService(
         // 2. Get verifier
         val verifier = verifiers[provider] ?: throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unsupported provider: $provider")
 
-        // 3. Resolve credential (code for wechat, idToken for others)
-        val credential = if (provider == "wechat") {
-            req.code ?: throw ApiError(ErrorCode.INVALID_REQUEST, "code required for wechat login")
-        } else {
-            req.idToken ?: throw ApiError(ErrorCode.INVALID_REQUEST, "idToken required")
-        }
+        // 3. Verify credential
         val verified = verifier.verify(config, ctx.clientPlatform, credential)
 
         // 4. Find or create AuthIdentity

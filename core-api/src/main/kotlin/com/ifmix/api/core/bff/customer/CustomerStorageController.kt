@@ -89,9 +89,9 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
         @Valid @RequestBody req: PresignDownloadReq,
     ): PresignedDownloadResponse {
         // 校验 objectKey 格式
-        validateObjectKey(ctx, req.objectKey)
+        validateObjectKey(ctx, req.imageKey)
 
-        val url = antiqueService.presignedDownloadUrl(req.objectKey, Duration.ofSeconds(req.durationSeconds))
+        val url = antiqueService.presignedDownloadUrl(req.imageKey, Duration.ofSeconds(req.durationSeconds))
         return PresignedDownloadResponse(url)
     }
 
@@ -135,7 +135,9 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
     }
 
     data class PresignDownloadReq(
-        val objectKey: String,
+        /** 即 ScanDto.imageKey，presignUpload 返回的 imageKey */
+        val imageKey: String,
+        /** 签名 URL 有效时长（秒），默认 3600，上限 86400 */
         val durationSeconds: Long = 3600,
     )
 

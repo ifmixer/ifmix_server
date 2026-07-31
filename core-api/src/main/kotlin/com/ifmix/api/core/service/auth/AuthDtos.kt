@@ -5,9 +5,15 @@ import java.time.Instant
 
 data class UserDto(val id: String, val email: String?)
 
-data class LoginReq(
-    val idToken: String? = null,
-    val code: String? = null,
+/** Google / Apple 登录请求。idToken 必填。 */
+data class ProviderLoginReq(
+    val idToken: String,
+    val deviceSecret: String? = null,
+)
+
+/** 微信登录请求。code 必填。 */
+data class WechatLoginReq(
+    val code: String,
     val deviceSecret: String? = null,
 )
 data class LoginRes(
