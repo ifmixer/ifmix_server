@@ -6,7 +6,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Table(name = "subscription")
+@Table(name = "core_subscription")
 interface Subscription : AppScopedProps {
 
     @Id

@@ -1,0 +1,32 @@
+# application-test.yml — E2E 测试配置
+# Testcontainers 动态注入 datasource 和 redis，这里只覆盖不需要动态的部分
+
+spring:
+  threads:
+    virtual:
+      enabled: true
+  ai:
+    openai:
+      api-key: sk-test-placeholder
+      chat:
+        options:
+          model: gpt-4o
+      base-url: https://api.openai.com
+
+app:
+  expose-errors: true
+  storage:
+    type: none
+  auth:
+    issuer: ifmix-test
+    access-ttl-sec: 900
+  agnes:
+    ai:
+      preDeductPerAttempt: 1
+      modelFallbackOrder: "test-model"
+    scanKeyRateLimit:
+      enabled: false
+  ratelimit:
+    free: 1000
+    pro: 10000
+    enterprise: 1000000

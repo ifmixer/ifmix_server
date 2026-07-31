@@ -1,6 +1,5 @@
 package com.ifmix.api.core.service.antique
 
-import com.ifmix.api.core.repository.antique.ScanRecordRepository
 import com.ifmix.api.core.infra.ratelimit.RateLimitConfig
 import com.ifmix.api.core.infra.ratelimit.RateLimiter
 import com.ifmix.api.core.infra.storage.ObjectStorage
@@ -50,15 +49,4 @@ class AntiqueConfig {
     @Bean
     @ConditionalOnMissingBean(ScanRunner::class)
     fun stubScanRunner(): ScanRunner = StubScanRunner()
-
-    @Bean
-    @ConditionalOnMissingBean(AntiqueService::class)
-    fun antiqueService(
-        scanRunner: ScanRunner,
-        objectStorage: ObjectStorage,
-        rateLimiter: RateLimiter,
-        scanRepo: ScanRecordRepository,
-    ): AntiqueService {
-        return AntiqueService(scanRunner, objectStorage, rateLimiter, scanRepo)
-    }
 }

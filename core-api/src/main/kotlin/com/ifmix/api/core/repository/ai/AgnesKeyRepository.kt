@@ -6,14 +6,12 @@ import com.ifmix.api.core.entity.ai.unavailableUntil
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
-@Component
-class AgnesKeyRepository(
-    sql: KSqlClient,
-) : BaseAppCrudRepository<AgnesKey>(sql, AgnesKey::class) {
+@Repository
+class AgnesKeyRepository(sql: KSqlClient,) : BaseAppCrudRepository<AgnesKey>(sql, AgnesKey::class) {
 
     /**
      * 查找所有启用的 key（未软删、供 AiConfig 加载）。

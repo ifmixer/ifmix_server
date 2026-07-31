@@ -9,7 +9,7 @@ import java.util.UUID
  * Refresh Token.
  */
 @Entity
-@Table(name = "app_refresh_token")
+@Table(name = "core_app_refresh_token")
 interface AppRefreshToken : AppScopedProps {
     @Id
     val id: UUID

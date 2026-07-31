@@ -9,7 +9,7 @@ import java.util.UUID
  * App 级用户。
  */
 @Entity
-@Table(name = "app_user")
+@Table(name = "core_app_user")
 interface AppUser : AppScopedProps {
     @Id
     val id: UUID

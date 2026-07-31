@@ -8,14 +8,12 @@ import com.ifmix.api.core.entity.iap.subscriptionPxid
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 import java.util.UUID
 
 /** Subscription repository with custom query methods */
-@Component
-class SubscriptionRepository(
-    sql: KSqlClient,
-) : BaseAppCrudRepository<Subscription>(sql, Subscription::class) {
+@Repository
+class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscription>(sql, Subscription::class) {
 
     /**
      * Upsert subscription based on subscriptionPxid key.

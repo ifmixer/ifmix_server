@@ -6,7 +6,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Table(name = "todo_item")
+@Table(name = "core_todo_item")
 interface TodoItem : AppScopedProps {
 
     @Id

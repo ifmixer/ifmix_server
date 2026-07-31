@@ -9,7 +9,7 @@ import java.util.UUID
  * Feedback 实体。追加式写入，不软删（无 @LogicalDeleted）。
  */
 @Entity
-@Table(name = "feedback")
+@Table(name = "core_feedback")
 interface Feedback : AppScopedProps {
 
     @Id

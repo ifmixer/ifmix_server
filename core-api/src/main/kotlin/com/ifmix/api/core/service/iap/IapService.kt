@@ -28,8 +28,11 @@ import java.util.HashMap
 /**
  * IAP 服务：购买验证、订阅状态管理、商店通知处理。
  */
+@org.springframework.stereotype.Service
 open class IapService(
+    @org.springframework.beans.factory.annotation.Qualifier("appleVerifier")
     private val appleVerifier: PurchaseVerifier,
+    @org.springframework.beans.factory.annotation.Qualifier("googleVerifier")
     private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
     private val storeNotificationRepo: StoreNotificationRepository,

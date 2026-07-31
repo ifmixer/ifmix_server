@@ -5,7 +5,6 @@ import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.service.antique.ScanResult
 import com.ifmix.api.core.service.antique.ScanRunner
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.content.Media
@@ -13,16 +12,15 @@ import org.springframework.util.MimeTypeUtils
 import java.net.URI
 
 /**
- * ScanRunner berbasis Spring AI OpenAI-compatible model.
+ * ScanRunner 基于 Spring AI OpenAI-compatible model.
  *
- * Mengirim gambar ke model multimodal (GPT-4o, Claude Vision, dll),
- * mengekstrak JSON hasil, dan memetakan ke ScanResult.
+ * 向多模态模型发送图片，提取 JSON 结果，映射为 ScanResult。
  *
- * Fitur:
- * - Try-fallback model otomatis (utama → daftar fallback)
- * - Deteksi 429 / timeout via exception heuristic
- * - Pre-deduct quota sebelum setiap attempt
- * - Return quota jika gagal (rate limit / timeout)
+ * 功能：
+ * - 每个模型尝试所有可用 key（内层循环），不止一个
+ * - 检测真实 HTTP 异常（状态码 429、超时等），映射为内部异常
+ * - Pre-deduct quota / 失败归还
+ * - 模型 fallback 链（外层循环）
  */
 open class SpringAiScanRunner(
     private val chatClientFactory: AgnesChatClientFactory,
@@ -32,79 +30,73 @@ open class SpringAiScanRunner(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    /**
-     * Eksekusi scan terhadap gambar di imageUrl.
-     *
-     * Alur:
-     * 1. Load keys dari store
-     * 2. Untuk setiap model (utama + fallback):
-     *    a. Pick key via weighted random
-     *    b. Pre-deduct quota
-     *    c. Kirim prompt multimodal
-     *    d. Parse JSON response → ScanResult
-     *    e. Jika sukses: release quota, return result
-     *    f. Jika rate-limited: mark unavailable, retry dengan key lain
-     *    g. Jika timeout: release pre-deduct, coba model berikutnya
-     */
     override suspend fun run(ctx: RequestContext, imageUrl: String): ScanResult {
         val states = keyStore.init()
 
-        // Daftar model: utama (dari factory config) + fallback
+        // 模型列表：主模型 + fallback
         val allModels = listOf(chatClientFactory.defaultModel) + fallbackModels
 
         for (model in allModels) {
-            var lastError: String? = null
+            // 内层循环：对当前 model 尝试所有可用 key
+            var attemptCount = 0
+            val maxAttempts = states.size.coerceAtLeast(1)
 
-            // Coba semua key yang tersedia untuk model ini
-            val pickedKeyId = keyStore.weightedPick(states) ?: break
+            while (attemptCount < maxAttempts) {
+                val pickedKeyId = keyStore.weightedPick(states) ?: break
+                attemptCount++
 
-            try {
-                // Pre-deduct quota
-                if (!keyStore.preDeduct(states, pickedKeyId)) {
-                    continue
+                try {
+                    // Pre-deduct quota
+                    if (!keyStore.preDeduct(states, pickedKeyId)) {
+                        continue
+                    }
+
+                    // 创建 ChatClient
+                    val doc = states[pickedKeyId]?.doc
+                    val apiKey = doc?.key ?: continue
+                    val client = chatClientFactory.forKey(apiKey, model)
+
+                    // 构造多模态 prompt
+                    val media = Media(MimeTypeUtils.IMAGE_PNG, URI.create(imageUrl))
+                    val userMsg = UserMessage.builder()
+                        .text(ScanPrompt.userPrompt(imageUrl))
+                        .media(media)
+                        .build()
+
+                    val prompt = Prompt(userMsg)
+                    val response = client.prompt(prompt).call()
+                    val content = response.content() ?: ""
+
+                    // 解析 JSON → ScanResult
+                    val result = parseJsonToScanResult(content, model, pickedKeyId)
+
+                    // 成功：确认消费
+                    keyStore.release(states, pickedKeyId)
+                    return result
+
+                } catch (e: Exception) {
+                    // 检测真实 HTTP 异常类型
+                    val isRateLimit = isRateLimitException(e)
+                    val isTimeout = isTimeoutException(e)
+
+                    if (isRateLimit) {
+                        log.warn("Rate limited on key $pickedKeyId for model $model: ${e.message}")
+                        keyStore.markUnavailable(states, pickedKeyId, 300L) // 5 min 冷却
+                        // 继续尝试下一个 key
+                    } else if (isTimeout) {
+                        log.warn("Timeout on key $pickedKeyId for model $model: ${e.message}")
+                        // 继续尝试下一个 key
+                    } else {
+                        log.error("Error scanning with key $pickedKeyId, model $model: ${e.message}")
+                        // 未知错误也继续尝试下一个 key
+                    }
                 }
-
-                // Buat ChatClient dengan key ini
-                val doc = states[pickedKeyId]?.doc
-                val apiKey = doc?.key ?: continue
-                val client = chatClientFactory.forKey(apiKey, model)
-
-                // Konstruksi prompt multimodal
-                val media = Media(MimeTypeUtils.IMAGE_PNG, URI.create(imageUrl))
-                val userMsg = UserMessage.builder()
-                    .text(ScanPrompt.userPrompt(imageUrl))
-                    .media(media)
-                    .build()
-
-                // Eksekusi ke model — wrap UserMessage in Prompt
-                val prompt = Prompt(userMsg)
-                val response = client.prompt(prompt).call()
-                val content = response.content() ?: ""
-
-                // Parse JSON → ScanResult
-                val result = parseJsonToScanResult(content, model, pickedKeyId)
-
-                // Sukses: release quota (confirm consumption)
-                keyStore.release(states, pickedKeyId)
-                return result
-
-            } catch (e: RateLimitException) {
-                // 429 detected — mark key unavailable, release pre-deduct
-                log.warn("Rate limited on key $pickedKeyId for model $model")
-                keyStore.markUnavailable(states, pickedKeyId, 300L) // 5 min cooling
-                lastError = "rate_limited"
-            } catch (e: TimeoutException) {
-                // Timeout — release pre-deduct, retry next key
-                log.warn("Timeout on key $pickedKeyId for model $model")
-                lastError = "timeout"
-            } catch (e: Exception) {
-                // Generic error — release pre-deduct, retry next key
-                log.error("Error scanning with key $pickedKeyId, model $model: ${e.message}")
-                lastError = e.message ?: "unknown_error"
             }
+            // 当前 model 所有 key 都失败，尝试下一个 model
+            log.warn("All keys exhausted for model $model, trying next model")
         }
 
-        // Semua model + key sudah dicoba, tidak ada yang berhasil
+        // 所有 model + key 都失败
         log.error("All models exhausted — AI_UNAVAILABLE")
         return ScanResult(
             scanId = ctx.installId ?: UuidV7.generate().toString(),
@@ -114,14 +106,52 @@ open class SpringAiScanRunner(
     }
 
     /**
-     * Parse teks JSON dari model AI menjadi objek ScanResult.
-     *
-     * Menggunakan Jackson ObjectMapper untuk parsing snake_case → camelCase.
-     * Fallback ke manual mapping jika parsing gagal.
+     * 检测是否为 429 Rate Limit 异常。
+     * 匹配 Spring AI / OkHttp / openai-java SDK 可能抛出的异常。
+     */
+    private fun isRateLimitException(e: Exception): Boolean {
+        val msg = e.message?.lowercase() ?: ""
+        // Spring AI / openai-java SDK 会在 message 中包含 HTTP 状态码
+        if (msg.contains("429") || msg.contains("rate limit") || msg.contains("too many requests")) {
+            return true
+        }
+        // 检查嵌套 cause
+        val cause = e.cause
+        if (cause != null) {
+            val causeMsg = cause.message?.lowercase() ?: ""
+            if (causeMsg.contains("429") || causeMsg.contains("rate limit")) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /**
+     * 检测是否为超时异常。
+     */
+    private fun isTimeoutException(e: Exception): Boolean {
+        val msg = e.message?.lowercase() ?: ""
+        if (msg.contains("timeout") || msg.contains("timed out")) {
+            return true
+        }
+        // 常见超时异常类型
+        if (e is java.net.SocketTimeoutException ||
+            e is java.util.concurrent.TimeoutException) {
+            return true
+        }
+        val cause = e.cause
+        if (cause is java.net.SocketTimeoutException ||
+            cause is java.util.concurrent.TimeoutException) {
+            return true
+        }
+        return false
+    }
+
+    /**
+     * 解析 AI 模型返回的 JSON 文本为 ScanResult。
      */
     private fun parseJsonToScanResult(jsonText: String, modelName: String, keyId: String): ScanResult {
         return try {
-            // Simple extraction: look for JSON block in response
             val cleaned = jsonText
                 .trim()
                 .removePrefix("```json")
@@ -130,7 +160,6 @@ open class SpringAiScanRunner(
                 .removeSuffix("```")
                 .trim()
 
-            // Try to find JSON object boundaries
             val startIdx = cleaned.indexOf('{')
             val endIdx = cleaned.lastIndexOf('}')
             val jsonOnly = if (startIdx >= 0 && endIdx > startIdx) {
@@ -139,7 +168,6 @@ open class SpringAiScanRunner(
                 cleaned
             }
 
-            // Use Jackson JsonMapper to parse snake_case → camelCase
             val mapper = tools.jackson.databind.json.JsonMapper.builder()
                 .addModule(tools.jackson.module.kotlin.KotlinModule.Builder().build())
                 .propertyNamingStrategy(tools.jackson.databind.PropertyNamingStrategies.SNAKE_CASE)
@@ -167,14 +195,4 @@ open class SpringAiScanRunner(
             )
         }
     }
-
-    /**
-     * Custom exception untuk rate limiting (429).
-     */
-    class RateLimitException(message: String) : RuntimeException(message)
-
-    /**
-     * Custom exception untuk timeout.
-     */
-    class TimeoutException(message: String) : RuntimeException(message)
 }

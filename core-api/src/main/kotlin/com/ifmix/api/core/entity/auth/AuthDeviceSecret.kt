@@ -8,7 +8,7 @@ import java.util.UUID
  * 设备密钥。
  */
 @Entity
-@Table(name = "auth_device_secret")
+@Table(name = "core_auth_device_secret")
 interface AuthDeviceSecret {
     @Id
     val id: UUID

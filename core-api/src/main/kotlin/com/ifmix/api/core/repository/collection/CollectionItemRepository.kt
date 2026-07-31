@@ -10,16 +10,14 @@ import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
 /** CollectionItem repository with custom business operations */
-@Component
-class CollectionItemRepository(
-    sql: KSqlClient,
-) : BaseAppCrudRepository<CollectionItem>(sql, CollectionItem::class) {
+@Repository
+class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<CollectionItem>(sql, CollectionItem::class) {
 
     /**
      * Idempotent insert - returns existing or new item ID.

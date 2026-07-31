@@ -37,19 +37,12 @@ open class BaseCrudService<E : Any>(
     open fun <V : View<E>> getById(id: UUID, viewType: KClass<V>): V =
         repo.findById(id, viewType) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
+    /**
+     * 游标分页：委托 repository 的 SQL 分页实现。
+     */
     @Transactional(readOnly = true)
-    open fun findByCursor(input: CursorQueryInput = CursorQueryInput()): Page<E> {
-        val all = repo.findAll()
-        return Page(all, null, false)
-    }
-
-    @Transactional(readOnly = true)
-    open fun <V : View<E>> findByCursor(input: CursorQueryInput = CursorQueryInput(), viewType: KClass<V>): Page<V> {
-        val all = repo.findAll()
-        @Suppress("UNCHECKED_CAST")
-        val views = all.map { it as V }
-        return Page(views, null, false)
-    }
+    open fun findByCursor(input: CursorQueryInput = CursorQueryInput()): Page<E> =
+        repo.findByCursor(input)
 
     @Transactional
     open fun create(input: Input<E>): E =

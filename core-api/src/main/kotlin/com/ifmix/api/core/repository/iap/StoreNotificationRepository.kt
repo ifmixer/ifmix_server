@@ -7,13 +7,11 @@ import com.ifmix.api.core.entity.iap.purchaseToken
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 
 /** StoreNotification repository with idempotency check method */
-@Component
-class StoreNotificationRepository(
-    sql: KSqlClient,
-) : BaseAppCrudRepository<StoreNotification>(sql, StoreNotification::class) {
+@Repository
+class StoreNotificationRepository(sql: KSqlClient,) : BaseAppCrudRepository<StoreNotification>(sql, StoreNotification::class) {
 
     /**
      * Check if a notification has already been processed by platform and purchase token.

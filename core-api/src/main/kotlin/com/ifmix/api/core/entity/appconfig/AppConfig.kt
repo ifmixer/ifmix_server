@@ -9,7 +9,7 @@ import java.util.UUID
  * per-app 配置（版本化：追加式，deletedAt 标记历史版本；至多一条当前版本）。
  */
 @Entity
-@Table(name = "app_config")
+@Table(name = "core_app_config")
 interface AppConfig : AppScopedProps {
     @Id
     val id: UUID

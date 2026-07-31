@@ -7,16 +7,14 @@ import com.ifmix.api.core.entity.auth.providerAccountId
 import com.ifmix.api.core.repository.base.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
 /** Provider identity repository with custom queries */
-@Component
-class AuthProviderIdentityRepository(
-    sql: KSqlClient,
-) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {
+@Repository
+class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {
 
     /** Find by tenantId + provider + providerAccountId using Jimmer query DSL */
     fun findByProviderAndAccountId(tenantId: String, provider: String, providerAccountId: String): AuthProviderIdentity? {

@@ -7,13 +7,11 @@ import com.ifmix.api.core.entity.appconfig.androidPackageName
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 import java.util.UUID
 
-@Component
-class AppConfigRepository(
-    sql: KSqlClient,
-) : BaseAppCrudRepository<AppConfig>(sql, AppConfig::class) {
+@Repository
+class AppConfigRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppConfig>(sql, AppConfig::class) {
 
     /** Find current (non-deleted) config by appId. @LogicalDeleted auto-filters. */
     fun findCurrentByAppId(appId: UUID): AppConfig? {

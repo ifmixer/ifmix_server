@@ -8,7 +8,7 @@ import java.util.UUID
  * 认证租户（全局，不按 appId 分片）。
  */
 @Entity
-@Table(name = "auth_tenant")
+@Table(name = "core_auth_tenant")
 interface AuthTenant {
     @Id
     val id: UUID

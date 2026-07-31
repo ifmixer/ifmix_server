@@ -32,11 +32,10 @@ class RateLimiter(
             redis.expire(dayKey, ttl, java.util.concurrent.TimeUnit.SECONDS)
         }
 
-        return if ((count ?: 0) > limit) {
-            redis.delete(dayKey)
-            CheckResult.limited(count!!)
+        return if ((count ?: 0) >= limit) {
+            CheckResult.limited(count ?: 0)
         } else {
-            CheckResult.allowed(count, limit.toLong())
+            CheckResult.allowed(count ?: 0, limit.toLong())
         }
     }
 

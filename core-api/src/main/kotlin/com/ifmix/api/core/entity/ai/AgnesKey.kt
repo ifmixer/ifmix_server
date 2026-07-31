@@ -6,7 +6,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Table(name = "agnes_key")
+@Table(name = "core_agnes_key")
 interface AgnesKey : AppScopedProps {
 
     @Id

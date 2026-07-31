@@ -27,6 +27,8 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     // Removed spring-boot-testcontainers, testcontainers-mongodb (MongoDB migration complete)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // WebTestClient for E2E testing (Spring Boot 4 removed TestRestTemplate)
+    testImplementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation(platform("software.amazon.awssdk:bom:2.31.7"))
     implementation("software.amazon.awssdk:s3")
 
@@ -58,6 +60,10 @@ dependencies {
 
     // Testcontainers PostgreSQL（测试）
     testImplementation("org.testcontainers:postgresql:1.20.6")
+    testImplementation("org.testcontainers:junit-jupiter:1.20.6")
+
+    // Testcontainers Redis (E2E)
+    testImplementation("com.redis:testcontainers-redis:2.2.4")
 
     // H2 for routing tests (needed in task 3)
     testImplementation("com.h2database:h2")

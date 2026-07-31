@@ -10,15 +10,13 @@ import com.ifmix.api.core.entity.auth.updatedAt
 import com.ifmix.api.core.repository.base.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
 /** Device secret repository with custom queries */
-@Component
-class AuthDeviceSecretRepository(
-    sql: KSqlClient,
-) : BaseCrudRepository<AuthDeviceSecret>(sql, AuthDeviceSecret::class) {
+@Repository
+class AuthDeviceSecretRepository(sql: KSqlClient,) : BaseCrudRepository<AuthDeviceSecret>(sql, AuthDeviceSecret::class) {
 
     /**
      * Find a valid (not expired, not revoked) device secret by its hash.

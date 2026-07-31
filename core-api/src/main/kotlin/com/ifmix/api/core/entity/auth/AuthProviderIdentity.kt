@@ -8,7 +8,7 @@ import java.util.UUID
  * Provider 身份（第三方登录）。
  */
 @Entity
-@Table(name = "auth_provider_identity")
+@Table(name = "core_auth_provider_identity")
 interface AuthProviderIdentity {
     @Id
     val id: UUID

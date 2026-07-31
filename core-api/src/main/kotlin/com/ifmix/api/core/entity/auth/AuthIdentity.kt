@@ -8,7 +8,7 @@ import java.util.UUID
  * 租户级用户身份。
  */
 @Entity
-@Table(name = "auth_identity")
+@Table(name = "core_auth_identity")
 interface AuthIdentity {
     @Id
     val id: UUID

@@ -9,7 +9,7 @@ import java.util.UUID
  * 古物扫描记录。
  */
 @Entity
-@Table(name = "scan_record")
+@Table(name = "core_scan_record")
 interface ScanRecord : AppScopedProps {
     @Id
     val id: UUID

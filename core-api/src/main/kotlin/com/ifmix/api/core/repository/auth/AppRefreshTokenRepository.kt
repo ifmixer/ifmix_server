@@ -11,15 +11,13 @@ import com.ifmix.api.core.entity.auth.updatedAt
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
 /** Refresh token repository with custom queries */
-@Component
-class AppRefreshTokenRepository(
-    sql: KSqlClient,
-) : BaseAppCrudRepository<AppRefreshToken>(sql, AppRefreshToken::class) {
+@Repository
+class AppRefreshTokenRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppRefreshToken>(sql, AppRefreshToken::class) {
 
     /**
      * Find a valid refresh token by (appId, tokenHash).

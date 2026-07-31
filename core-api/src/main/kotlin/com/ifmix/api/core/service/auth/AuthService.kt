@@ -25,6 +25,7 @@ import java.util.UUID
  *
  * 提供完整的 provider 登录、设备密钥交换、refresh 轮转、logout 流程。
  */
+@org.springframework.stereotype.Service
 open class AuthService(
     private val appConfigRepo: AppConfigRepo,
     private val verifiers: Map<String, ProviderVerifier>,
@@ -35,6 +36,7 @@ open class AuthService(
     private val refreshRepo: AppRefreshTokenRepository,
     private val identityRepo: AuthIdentityRepository,
     private val events: ApplicationEventPublisher,
+    @org.springframework.beans.factory.annotation.Value("\${app.auth.access-ttl-sec:900}")
     private val accessTtlSec: Long,
 ) {
 

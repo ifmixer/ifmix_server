@@ -1,10 +1,13 @@
 package com.ifmix.api.core.repository.base
 
 import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.infra.db.CursorQueryInput
+import com.ifmix.api.core.infra.db.Page
 import org.babyfish.jimmer.Input
 import org.babyfish.jimmer.View
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.*
 import java.util.UUID
 import kotlin.reflect.KClass
 
@@ -44,6 +47,51 @@ abstract class BaseCrudRepository<E : Any>(
 
     fun findAll(): List<E> =
         sql.entities.findAll(entityType)
+
+    /**
+     * 通用游标分页：按 id DESC 排序，cursor 为上一页最后一条的 id。
+     * 使用 Jimmer query DSL 执行 SQL 分页，不全量加载。
+     *
+     * 子类若需要额外过滤条件（如 appId），应覆写此方法。
+     */
+    open fun findByCursor(input: CursorQueryInput = CursorQueryInput()): Page<E> {
+        val limit = input.effectiveLimit()
+        val cursor = input.cursor?.let {
+            try { UUID.fromString(it) } catch (_: Exception) { null }
+        }
+
+        val items = sql.createQuery(entityType) {
+            if (cursor != null) {
+                where(table.getId<UUID>() lt cursor)
+            }
+            orderBy(table.getId<UUID>().desc())
+            select(table)
+        }.limit(limit + 1).execute()
+
+        val hasMore = items.size > limit
+        val pageItems = if (hasMore) items.take(limit) else items
+        val nextCursor = if (hasMore && pageItems.isNotEmpty()) {
+            // 获取最后一条的 id 作为 nextCursor
+            sql.entities.findById(entityType, pageItems.last())?.let { entity ->
+                @Suppress("UNCHECKED_CAST")
+                (entity as? Any)?.let { getEntityId(it)?.toString() }
+            }
+        } else null
+
+        return Page(pageItems, nextCursor, hasMore)
+    }
+
+    /**
+     * 获取实体的 id 值。通过反射获取 id() 方法（Jimmer 生成的接口方法）。
+     */
+    private fun getEntityId(entity: Any): UUID? {
+        return try {
+            val method = entity.javaClass.getMethod("id")
+            method.invoke(entity) as? UUID
+        } catch (_: Exception) {
+            null
+        }
+    }
 }
 
 /**

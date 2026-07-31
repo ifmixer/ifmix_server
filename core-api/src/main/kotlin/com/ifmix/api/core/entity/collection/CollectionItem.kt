@@ -7,7 +7,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Table(name = "collection_item")
+@Table(name = "core_collection_item")
 interface CollectionItem : AppScopedProps {
 
     @Id

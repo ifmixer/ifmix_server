@@ -6,7 +6,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Table(name = "store_notification")
+@Table(name = "core_store_notification")
 interface StoreNotification : AppScopedProps {
 
     @Id

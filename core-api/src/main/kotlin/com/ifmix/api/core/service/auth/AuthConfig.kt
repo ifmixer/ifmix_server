@@ -2,21 +2,13 @@ package com.ifmix.api.core.service.auth
 
 import com.ifmix.api.core.infra.auth.AuthJwtKeys
 import com.ifmix.api.core.infra.auth.AuthJwtService
-import com.ifmix.api.core.service.appconfig.AppConfigRepo
-import com.ifmix.api.core.repository.auth.AuthProviderIdentityRepository
-import com.ifmix.api.core.repository.auth.AuthIdentityRepository  // NEW
-import com.ifmix.api.core.repository.auth.AppUserRepository
-import com.ifmix.api.core.repository.auth.AuthDeviceSecretRepository
-import com.ifmix.api.core.repository.auth.AppRefreshTokenRepository
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.scheduling.annotation.EnableAsync
-import org.springframework.transaction.annotation.Transactional
 
 /**
  * 认证模块 bean 装配。
@@ -51,21 +43,4 @@ class AuthConfig {
     fun authJwtService(
         @Value("\${app.auth.jwt-private-key:}") privateJwk: String,
     ): AuthJwtService = AuthJwtService(AuthJwtKeys(privateJwk.ifBlank { null }), issuer, accessTtlSec)
-
-    @Bean
-    @Transactional
-    fun authService(
-        appConfigRepo: AppConfigRepo,
-        providerVerifiers: Map<String, ProviderVerifier>,
-        authJwtService: AuthJwtService,
-        providerIdentityRepo: AuthProviderIdentityRepository,
-        appUserRepo: AppUserRepository,
-        deviceSecretRepo: AuthDeviceSecretRepository,
-        refreshRepo: AppRefreshTokenRepository,
-        identityRepo: AuthIdentityRepository,  // NEW
-        events: ApplicationEventPublisher,
-    ): AuthService = AuthService(
-        appConfigRepo, providerVerifiers, authJwtService,
-        providerIdentityRepo, appUserRepo, deviceSecretRepo, refreshRepo, identityRepo, events, accessTtlSec,
-    )
 }

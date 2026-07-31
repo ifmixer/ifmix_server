@@ -6,16 +6,14 @@ import com.ifmix.api.core.entity.auth.authIdentityId
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
 /** AppUser repository with custom ensure() method */
-@Component
-class AppUserRepository(
-    sql: KSqlClient,
-) : BaseAppCrudRepository<AppUser>(sql, AppUser::class) {
+@Repository
+class AppUserRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppUser>(sql, AppUser::class) {
 
     /** Find AppUser by appId and authIdentityId using Jimmer query DSL */
     fun findByAppAndIdentity(appId: UUID, authIdentityId: UUID): AppUser? {

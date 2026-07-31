@@ -15,6 +15,7 @@ import java.util.UUID
 /**
  * 古物扫描业务编排。
  */
+@org.springframework.stereotype.Service
 open class AntiqueService(
     private val scanRunner: ScanRunner,
     private val objectStorage: ObjectStorage,
@@ -62,14 +63,7 @@ open class AntiqueService(
         ctx: RequestContext,
         input: com.ifmix.api.core.infra.db.CursorQueryInput = com.ifmix.api.core.infra.db.CursorQueryInput(),
     ): com.ifmix.api.core.infra.db.Page<ScanRecord> {
-        val all = scanRepo.findAll()
-        val appIdUUID = UUID.fromString(ctx.appId)
-        val filtered = all.filter { it.appId == appIdUUID }
-        val sorted = filtered.sortedByDescending { it.createdAt }
-        val limit = input.effectiveLimit()
-        val hasMore = sorted.size > limit
-        val items = if (hasMore) sorted.take(limit) else sorted
-        return com.ifmix.api.core.infra.db.Page(items, null, hasMore)
+        return scanRepo.findByCursorForApp(UUID.fromString(ctx.appId), input)
     }
 
     fun presignedUploadUrl(objectKey: String, contentType: String, duration: Duration): String {
