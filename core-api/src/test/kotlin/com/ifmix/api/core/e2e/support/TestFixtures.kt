@@ -41,11 +41,12 @@ class TestFixtures(private val jdbcTemplate: JdbcTemplate) {
         // 3. AppConfig
         jdbcTemplate.update(
             """INSERT INTO core_app_config (id, app_id, auth_tenant_id, apple_bundle_id, android_package_name,
-                                           apple_config, google_config, iap_config, revision, created_at, updated_at)
+                                           apple_config, google_config, iap_config, wechat_config, revision, created_at, updated_at)
                VALUES (?::uuid, ?::uuid, ?::uuid, 'com.ifmix.test', 'com.ifmix.test',
                        '{"appAppleId":"123","issuerId":"iss","keyId":"kid","privateKey":"pk","servicesId":"sid"}'::jsonb,
                        '{"serviceAccount":"sa","clientIds":{"ios":"ios-id","android":"android-id","web":"web-id"}}'::jsonb,
                        '{"productTierMap":{"pro_monthly":"PRO"},"env":"sandbox"}'::jsonb,
+                       '{"appId":"wx_test_id","appSecret":"wx_test_secret"}'::jsonb,
                        1, now(), now())
                ON CONFLICT DO NOTHING""",
             UUID.randomUUID().toString(), APP_ID.toString(), TENANT_ID.toString()

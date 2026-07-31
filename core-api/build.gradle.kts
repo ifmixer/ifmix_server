@@ -67,6 +67,9 @@ dependencies {
     // Testcontainers Redis (E2E)
     testImplementation("com.redis:testcontainers-redis:2.2.4")
 
+    // WireMock for external API mocking (wechat E2E tests)
+    testImplementation("org.wiremock:wiremock-standalone:3.12.1")
+
     // H2 for routing tests (needed in task 3)
     testImplementation("com.h2database:h2")
 }

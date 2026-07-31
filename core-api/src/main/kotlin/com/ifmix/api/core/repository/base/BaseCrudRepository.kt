@@ -19,33 +19,33 @@ abstract class BaseCrudRepository<E : Any>(
     protected val sql: KSqlClient,
     protected val entityType: KClass<E>,
 ) {
-    fun findById(id: UUID): E? =
+    open fun findById(id: UUID): E? =
         sql.entities.findById(entityType, id)
 
-    fun <V : View<E>> findById(id: UUID, viewType: KClass<V>): V? =
+    open fun <V : View<E>> findById(id: UUID, viewType: KClass<V>): V? =
         sql.entities.findById(viewType, id)
 
-    fun insert(input: Input<E>): E =
+    open fun insert(input: Input<E>): E =
         sql.entities.save(input) {
             setMode(SaveMode.INSERT_ONLY)
         }.modifiedEntity
 
-    fun update(input: Input<E>): E =
+    open fun update(input: Input<E>): E =
         sql.entities.save(input) {
             setMode(SaveMode.UPDATE_ONLY)
         }.modifiedEntity
 
-    fun save(input: Input<E>): E =
+    open fun save(input: Input<E>): E =
         sql.entities.save(input).modifiedEntity
 
-    fun save(entity: E): E =
+    open fun save(entity: E): E =
         sql.entities.save(entity).modifiedEntity
 
-    fun deleteById(id: UUID) {
+    open fun deleteById(id: UUID) {
         sql.entities.delete(entityType, id)
     }
 
-    fun findAll(): List<E> =
+    open fun findAll(): List<E> =
         sql.entities.findAll(entityType)
 
     /**
