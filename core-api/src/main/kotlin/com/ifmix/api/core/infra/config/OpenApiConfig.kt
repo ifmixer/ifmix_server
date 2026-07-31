@@ -23,6 +23,10 @@ class OpenApiConfig {
         SpringDocUtils.getConfig().replaceWithClass(java.time.Instant::class.java, Long::class.javaObjectType)
     }
 
+    /** 全局 customizer，自动作用于下面所有 GroupedOpenApi 分组。 */
+    @Bean
+    fun envelopeSchemaCustomizer(): EnvelopeSchemaCustomizer = EnvelopeSchemaCustomizer()
+
     @Bean
     fun customerApi(): GroupedOpenApi =
         GroupedOpenApi.builder().group("customer").pathsToMatch("/customer/**").build()

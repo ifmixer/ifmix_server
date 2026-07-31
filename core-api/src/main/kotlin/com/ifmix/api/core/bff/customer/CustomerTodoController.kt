@@ -1,12 +1,26 @@
 package com.ifmix.api.core.bff.customer
 
+import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
+import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
+import com.ifmix.api.core.entity.todo.dto.TodoView
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.service.todo.TodoService
-import org.springframework.web.bind.annotation.*
+import jakarta.validation.Valid
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 
-/** customer BFF 的 todo 路由。PUT=query，POST=mutation。 */
+/**
+ * customer BFF 的 todo 路由。PUT=query，POST=mutation。
+ *
+ * 请求/响应体全部用 Jimmer 生成的 DTO（TodoView / TodoCreateInput / TodoUpdateInput），
+ * 这样 OpenAPI 才能给出具体 schema 而不是 `object`。
+ */
 @RestController
 @RequestMapping("/customer/core")
 class CustomerTodoController(private val todoService: TodoService) {
@@ -15,17 +29,25 @@ class CustomerTodoController(private val todoService: TodoService) {
     fun findByCursor(
         ctx: RequestContext,
         @RequestBody(required = false) input: CursorQueryInput?,
-    ): Page<Any> = Page(emptyList(), null, false)
+    ): Page<TodoView> = todoService.findViewByCursor(ctx, input ?: CursorQueryInput())
 
     @PutMapping("/query/todo/getById")
-    fun getById(ctx: RequestContext, @RequestBody req: Any): Any = TODO("Not implemented")
+    fun getById(ctx: RequestContext, @Valid @RequestBody req: TodoIdRequest): TodoView =
+        todoService.getView(ctx, req.id)
 
     @PostMapping("/mutation/todo/createOne")
-    fun createOne(ctx: RequestContext, @RequestBody req: Any): Any = TODO("Not implemented")
+    fun createOne(ctx: RequestContext, @Valid @RequestBody req: TodoCreateInput): TodoView =
+        todoService.createOne(ctx, req)
 
     @PostMapping("/mutation/todo/updateOne")
-    fun updateOne(ctx: RequestContext, @RequestBody req: Any): Unit = TODO("Not implemented")
+    fun updateOne(ctx: RequestContext, @Valid @RequestBody req: TodoUpdateInput): TodoView =
+        todoService.updateOne(ctx, req)
 
     @PostMapping("/mutation/todo/deleteById")
-    fun deleteById(ctx: RequestContext, @RequestBody req: Any): Any = TODO("Not implemented")
+    fun deleteById(ctx: RequestContext, @Valid @RequestBody req: TodoIdRequest): DeleteResult =
+        DeleteResult(deleted = todoService.deleteOne(ctx, req.id))
+
+    data class TodoIdRequest(val id: UUID)
+
+    data class DeleteResult(val deleted: Boolean)
 }

@@ -70,12 +70,9 @@ abstract class BaseCrudRepository<E : Any>(
 
         val hasMore = items.size > limit
         val pageItems = if (hasMore) items.take(limit) else items
-        val nextCursor = if (hasMore && pageItems.isNotEmpty()) {
-            // 获取最后一条的 id 作为 nextCursor
-            sql.entities.findById(entityType, pageItems.last())?.let { entity ->
-                @Suppress("UNCHECKED_CAST")
-                (entity as? Any)?.let { getEntityId(it)?.toString() }
-            }
+        // 最后一条的 id 即 nextCursor（实体已在内存，无需再查库）
+        val nextCursor = if (hasMore) {
+            pageItems.lastOrNull()?.let { getEntityId(it)?.toString() }
         } else null
 
         return Page(pageItems, nextCursor, hasMore)
