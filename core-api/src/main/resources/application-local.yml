@@ -30,3 +30,12 @@ app:
       jdbc-url: jdbc:postgresql://localhost:5432/ifmix_core_local
       username: postgres
       password: postgres
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,mappings,env,beans
+  endpoint:
+    health:
+      show-details: always
