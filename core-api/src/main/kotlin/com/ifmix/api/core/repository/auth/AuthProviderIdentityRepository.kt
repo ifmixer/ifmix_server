@@ -8,6 +8,7 @@ import com.ifmix.api.core.repository.base.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Component
+import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
@@ -52,7 +53,7 @@ class AuthProviderIdentityRepository(
         val now = Instant.now()
 
         val entity = AuthProviderIdentity {
-            id = existing?.id ?: UUID.randomUUID()
+            id = existing?.id ?: UuidV7.generate()
             authTenant { id = tenantUUID }
             authIdentity { id = identityId }
             this.provider = provider

@@ -1,7 +1,7 @@
 package com.ifmix.api.core.service.antique
 
+import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.RequestContext
-import java.util.UUID
 
 /**
  * 占位 ScanRunner：未接入真实 AI（app.storage.type != s3 / 无 Agnes key）时的回落实现，
@@ -12,7 +12,7 @@ class StubScanRunner : ScanRunner {
 
     override suspend fun run(ctx: RequestContext, imageUrl: String): ScanResult =
         ScanResult(
-            scanId = UUID.randomUUID().toString(),
+            scanId = UuidV7.generate().toString(),
             status = ScanResult.Status.COMPLETED,
             imageUrl = imageUrl,
             isAntique = false,

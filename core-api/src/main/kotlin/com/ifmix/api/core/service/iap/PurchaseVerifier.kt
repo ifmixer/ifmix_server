@@ -1,5 +1,7 @@
 package com.ifmix.api.core.service.iap
 
+import com.ifmix.api.core.infra.db.UuidV7
+
 /**
  * 购买验证接缝：各商店（Apple / Google）的 verifyPurchase 实现不同，
  * 通过此接口解耦。
@@ -36,7 +38,7 @@ data class VerifyResult(
 class StubPurchaseVerifier : PurchaseVerifier {
     override fun verify(input: VerifyInput): VerifyResult {
         return VerifyResult(
-            originalTransactionId = "stub-txn-${java.util.UUID.randomUUID()}",
+            originalTransactionId = "stub-txn-${UuidV7.generate()}",
             productId = input.productId,
             expiryDate = java.time.Instant.now().plusSeconds(86400L * 30), // 30 days
             subStatus = SubStatus.ACCEPTED,

@@ -1,5 +1,7 @@
 package com.ifmix.api.core.service.iap
 
+import com.ifmix.api.core.infra.db.UuidV7
+
 /**
  * 商店推送通知解码接缝：Apple Server Notifications / Google Play PubSub
  * 的原始 payload 格式各异，通过此接口统一解析为内部模型。
@@ -50,9 +52,9 @@ class StubNotificationDecoder : NotificationDecoder {
             val json = com.fasterxml.jackson.databind.ObjectMapper().readTree(rawPayload)
             json.get("subscriptionPxid")?.asText()
                 ?: json.get("properties")?.get("subscriptionPxid")?.asText()
-                ?: "stub-sub-${java.util.UUID.randomUUID()}"
+                ?: "stub-sub-${UuidV7.generate()}"
         } catch (_: Exception) {
-            "stub-sub-${java.util.UUID.randomUUID()}"
+            "stub-sub-${UuidV7.generate()}"
         }
         return DecodedNotification(
             subscriptionPxid = subPxid,

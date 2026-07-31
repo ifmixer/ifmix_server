@@ -46,6 +46,9 @@ dependencies {
     implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
     ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")
 
+    // UUIDv7 generator (cursor pagination requires time-ordered IDs)
+    implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
+
     // PostgreSQL JDBC
     implementation("org.postgresql:postgresql")
 

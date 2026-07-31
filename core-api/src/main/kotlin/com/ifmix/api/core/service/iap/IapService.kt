@@ -18,6 +18,7 @@ import com.ifmix.api.core.service.iap.NotificationType
 import com.ifmix.api.core.service.iap.statusFromExpiry
 import com.ifmix.api.core.service.iap.tierOf
 import com.ifmix.api.core.service.iap.DecodedNotification
+import com.ifmix.api.core.infra.db.UuidV7
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
@@ -71,7 +72,7 @@ open class IapService(
 
         // 4. Determine subscription PxID - use originalTransactionId or generate one
         val subscriptionPxid = verifyResult.originalTransactionId ?: run {
-            "pxid-${platformStr}-${UUID.randomUUID()}"
+            "pxid-${platformStr}-${UuidV7.generate()}"
         }
 
         // Check for existing active subscription with same pxid (idempotency)
@@ -105,7 +106,7 @@ open class IapService(
         // 6. Construct and upsert Subscription entity
         val now = Instant.now()
         val subscription = Subscription {
-            id = UUID.randomUUID()
+            id = UuidV7.generate()
             this.appId = appId
             this.subscriptionPxid = subscriptionPxid
             this.originalTransactionId = verifyResult.originalTransactionId
@@ -258,7 +259,7 @@ open class IapService(
         processed: Boolean = false
     ) {
         val notif = StoreNotification {
-            id = UUID.randomUUID()
+            id = UuidV7.generate()
             this.appId = appId
             this.platform = platform
             this.subscriptionPxid = subscriptionPxid

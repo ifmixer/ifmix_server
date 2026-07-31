@@ -16,6 +16,7 @@ import com.ifmix.api.core.repository.auth.AuthProviderIdentityRepository
 import com.ifmix.api.core.service.appconfig.AppConfigRepo
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.transaction.annotation.Transactional
+import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
@@ -63,7 +64,7 @@ open class AuthService(
         val identity = if (normalizedEmail != null) {
             identityRepo.findByTenantAndEmail(tenantId, normalizedEmail) ?: run {
                 val newIdentity = AuthIdentity {
-                    id = UUID.randomUUID()
+                    id = UuidV7.generate()
                     authTenant { id = tenantUUID }
                     rawEmail = verified.email
                     email = normalizedEmail
@@ -88,7 +89,7 @@ open class AuthService(
                 identityRepo.findById(existingProvider.authIdentity.id)!!
             } else {
                 val newIdentity = AuthIdentity {
-                    id = UUID.randomUUID()
+                    id = UuidV7.generate()
                     authTenant { id = tenantUUID }
                     rawEmail = null
                     email = null
@@ -130,7 +131,7 @@ open class AuthService(
         val deviceSecretHash = Hashing.sha256Base64Url(rawDeviceSecret)
         val now = Instant.now()
         val deviceSecretEntity = AuthDeviceSecret {
-            id = UUID.randomUUID()
+            id = UuidV7.generate()
             authTenant { id = tenantUUID }
             authIdentity { id = identity.id }
             secretHash = deviceSecretHash
@@ -148,7 +149,7 @@ open class AuthService(
         val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
         val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         val refreshTokenEntity = AppRefreshToken {
-            id = UUID.randomUUID()
+            id = UuidV7.generate()
             this.appId = UUID.fromString(ctx.appId)
             appUser { id = appUserId }
             deviceSecret { id = savedDeviceSecret.id }
@@ -210,7 +211,7 @@ open class AuthService(
         val now = Instant.now()
         val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         val refreshTokenEntity = AppRefreshToken {
-            id = UUID.randomUUID()
+            id = UuidV7.generate()
             this.appId = appId
             appUser { id = appUserId }
             deviceSecret { id = foundSecret.id }
@@ -253,7 +254,7 @@ open class AuthService(
         val newTokenHash = Hashing.sha256Base64Url(rawNewToken)
         val now = Instant.now()
         val newExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
-        val newTokenId = UUID.randomUUID()
+        val newTokenId = UuidV7.generate()
 
         val newTokenEntity = AppRefreshToken {
             id = newTokenId

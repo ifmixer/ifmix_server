@@ -7,6 +7,7 @@ import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Component
+import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
@@ -34,7 +35,7 @@ class AppUserRepository(
 
         // Create new AppUser using Jimmer draft lambda
         val newUser = AppUser {
-            id = UUID.randomUUID()
+            id = UuidV7.generate()
             this.appId = appId
             authIdentity { id = authIdentityId }
             metadata = null

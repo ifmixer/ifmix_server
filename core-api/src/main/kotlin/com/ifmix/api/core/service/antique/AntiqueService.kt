@@ -8,6 +8,7 @@ import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.repository.antique.ScanRecordRepository
 import com.ifmix.api.core.entity.antique.ScanRecord
 import org.springframework.transaction.annotation.Transactional
+import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Duration
 import java.util.UUID
 
@@ -31,11 +32,11 @@ open class AntiqueService(
         }
 
         // 生成预签名上传 URL
-        val objectKey = "antique/${UUID.randomUUID()}.png"
+        val objectKey = "antique/${UuidV7.generate()}.png"
         val uploadUrl = objectStorage.presignUpload(objectKey, "image/png", Duration.ofMinutes(5))
 
         // 创建 ScanRecord
-        val scanId = UUID.randomUUID().toString()
+        val scanId = UuidV7.generate().toString()
         return scanRepo.create(
             appId = ctx.appId,
             scanId = scanId,

@@ -1,5 +1,6 @@
 package com.ifmix.api.core.infra.ai
 
+import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.service.antique.ScanResult
 import com.ifmix.api.core.service.antique.ScanRunner
@@ -106,7 +107,7 @@ open class SpringAiScanRunner(
         // Semua model + key sudah dicoba, tidak ada yang berhasil
         log.error("All models exhausted — AI_UNAVAILABLE")
         return ScanResult(
-            scanId = ctx.installId ?: java.util.UUID.randomUUID().toString(),
+            scanId = ctx.installId ?: UuidV7.generate().toString(),
             status = ScanResult.Status.FAILED,
             errorMessage = "All AI models exhausted. No API keys available or all rate-limited.",
         )
@@ -147,7 +148,7 @@ open class SpringAiScanRunner(
             mapper.readValue(jsonOnly, ScanResult::class.java)
                 ?.let { it.copy(modelName = modelName, apiKeyId = keyId.takeLast(8)) }
                 ?: ScanResult(
-                    scanId = java.util.UUID.randomUUID().toString(),
+                    scanId = UuidV7.generate().toString(),
                     status = ScanResult.Status.COMPLETED,
                     errorMessage = "Could not parse JSON fields",
                     modelName = modelName,
@@ -156,7 +157,7 @@ open class SpringAiScanRunner(
         } catch (e: Exception) {
             log.error("Failed to parse AI response [${jsonText.take(200)}]: ${e.message}")
             ScanResult(
-                scanId = java.util.UUID.randomUUID().toString(),
+                scanId = UuidV7.generate().toString(),
                 status = ScanResult.Status.COMPLETED,
                 name = jsonText.take(100),
                 notes = "raw_response: $jsonText",

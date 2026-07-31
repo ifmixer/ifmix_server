@@ -11,6 +11,7 @@ import com.ifmix.api.core.repository.collection.CollectionRepository
 import com.ifmix.api.core.repository.collection.CollectionItemRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
@@ -49,7 +50,7 @@ open class CollectionService(
     ): Collection {
         val now = Instant.now()
         val entity = Collection {
-            id = UUID.randomUUID()
+            id = UuidV7.generate()
             this.appId = appId
             this.userId = userId
             this.installId = installId

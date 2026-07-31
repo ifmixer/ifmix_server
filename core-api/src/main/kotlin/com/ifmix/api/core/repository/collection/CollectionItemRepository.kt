@@ -11,6 +11,7 @@ import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Component
+import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
@@ -37,7 +38,7 @@ class CollectionItemRepository(
         // Insert new item using Jimmer draft syntax
         val now = Instant.now()
         val item = CollectionItem {
-            id = UUID.randomUUID()
+            id = UuidV7.generate()
             this.appId = appId
             collection { id = collectionId }
             scanRecord { id = scanRecordId }

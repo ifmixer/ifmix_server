@@ -4,6 +4,7 @@ import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import com.ifmix.api.core.entity.antique.ScanRecord
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.springframework.stereotype.Component
+import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
@@ -29,7 +30,7 @@ class ScanRecordRepository(
     ): ScanRecord {
         val now = Instant.now()
         val entity = ScanRecord {
-            id = UUID.randomUUID()
+            id = UuidV7.generate()
             this.appId = UUID.fromString(appId)
             this.scanId = scanId
             this.imageUrl = imageUrl

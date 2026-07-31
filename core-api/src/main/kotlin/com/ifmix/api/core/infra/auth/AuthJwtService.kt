@@ -1,5 +1,6 @@
 package com.ifmix.api.core.infra.auth
 
+import com.ifmix.api.core.infra.db.UuidV7
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -28,7 +29,7 @@ class AuthJwtService(
             .issuer(issuer)
             .subject(appUserId)
             .audience(listOf(appId))
-            .jwtID(java.util.UUID.randomUUID().toString())
+            .jwtID(UuidV7.generate().toString())
             .issueTime(now)
             .expirationTime(Date(now.time + accessTtlSec * 1000))
             .build()
