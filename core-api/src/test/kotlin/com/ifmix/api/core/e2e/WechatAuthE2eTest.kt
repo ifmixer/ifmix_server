@@ -1,14 +1,10 @@
 package com.ifmix.api.core.e2e
 
-import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.*
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import com.ifmix.api.core.e2e.support.E2eTestBase
 import com.ifmix.api.core.e2e.support.TestFixtures
 import org.junit.jupiter.api.*
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 
 /**
  * 微信登录 E2E 测试。
@@ -22,26 +18,12 @@ class WechatAuthE2eTest : E2eTestBase() {
     @Autowired
     lateinit var fixtures: TestFixtures
 
+    private val wireMock get() = wireMockServer
+
     @BeforeEach
     fun setup() {
         fixtures.seedMinimal()
         wireMock.resetAll()
-    }
-
-    companion object {
-        private val wireMock = WireMockServer(wireMockConfig().dynamicPort()).apply { start() }
-
-        @AfterAll
-        @JvmStatic
-        fun stopWireMock() {
-            wireMock.stop()
-        }
-
-        @DynamicPropertySource
-        @JvmStatic
-        fun configureWechatUrl(registry: DynamicPropertyRegistry) {
-            registry.add("app.auth.wechat-api-url") { "http://localhost:${wireMock.port()}" }
-        }
     }
 
     private fun stubWechatTokenSuccess(

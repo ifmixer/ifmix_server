@@ -1,5 +1,7 @@
 package com.ifmix.api.core.e2e.support
 
+import com.github.tomakehurst.wiremock.WireMockServer
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
@@ -10,19 +12,16 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 
 /**
  * E2E 测试基类。
  *
- * 自动启动 PostgreSQL + Redis 容器，Spring Boot 以 RANDOM_PORT 启动。
+ * 使用 Singleton Container Pattern：PostgreSQL + Redis 容器在整个 JVM 生命周期内共享。
  * Flyway 自动执行所有 migration（含 V8 core_ 前缀）。
  *
  * 用法：继承此类，用 webClient 发真实 HTTP 请求。
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
 @ActiveProfiles("test")
 abstract class E2eTestBase {
 
@@ -41,17 +40,21 @@ abstract class E2eTestBase {
         const val TEST_APP_ID = "00000000-0000-0000-0000-000000000001"
         const val TEST_INSTALL_ID = "00000000-0000-0000-0000-000000000099"
 
-        @Container
+        /** WireMock server shared by all E2E tests (for mocking external APIs like WeChat) */
+        @JvmStatic
+        val wireMockServer: WireMockServer = WireMockServer(wireMockConfig().dynamicPort()).apply { start() }
+
         @JvmStatic
         val postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:16-alpine")
             .withDatabaseName("ifmix_test")
             .withUsername("test")
             .withPassword("test")
+            .apply { start() }
 
-        @Container
         @JvmStatic
         val redis: GenericContainer<*> = GenericContainer("redis:7-alpine")
             .withExposedPorts(6379)
+            .apply { start() }
 
         @DynamicPropertySource
         @JvmStatic
@@ -67,6 +70,7 @@ abstract class E2eTestBase {
             }
             registry.add("app.storage.type") { "none" }
             registry.add("spring.ai.openai.api-key") { "sk-test" }
+            registry.add("app.auth.wechat-api-url") { wireMockServer.baseUrl() }
         }
     }
 
