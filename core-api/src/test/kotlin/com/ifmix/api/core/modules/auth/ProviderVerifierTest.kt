@@ -17,7 +17,9 @@ private fun cfg() = AppConfig(
     appleAppAppleId = null, appleIssuerId = null, appleKeyId = null, applePrivateKey = null,
     appleServicesId = "com.x.svc",
     googleServiceAccount = null, googleClientIds = GoogleClientIds(ios = "gid-ios", android = "gid-and", web = "gid-web"),
-    productTierMap = emptyMap(), iapEnv = "production", createdAt = null, updatedAt = null,
+    productTierMap = emptyMap(), iapEnv = "production",
+    wechatAppId = null, wechatAppSecret = null,
+    createdAt = null, updatedAt = null,
 )
 
 private fun jwt(aud: String, sub: String = "sub123") = Jwt.withTokenValue("t")
