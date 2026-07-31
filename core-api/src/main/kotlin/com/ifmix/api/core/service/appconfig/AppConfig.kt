@@ -20,6 +20,8 @@ data class AppConfig(
     val googleClientIds: GoogleClientIds,
     val productTierMap: Map<String, String>,
     val iapEnv: String,
+    val wechatAppId: String?,
+    val wechatAppSecret: String?,
     val createdAt: java.time.Instant?,
     val updatedAt: java.time.Instant?,
 )
@@ -32,6 +34,7 @@ data class AppConfigPatch(
     val apple: AppleConfig? = null,
     val google: GoogleConfig? = null,
     val iap: IapConfig? = null,
+    val wechat: WechatConfig? = null,
 )
 
 /** Holder for Client IDs in flattened view */
@@ -57,4 +60,9 @@ data class GoogleConfig(
 data class IapConfig(
     val productTierMap: Map<String, String> = emptyMap(),
     val env: String? = null,
+)
+
+data class WechatConfig(
+    val appId: String? = null,
+    val appSecret: String? = null,
 )

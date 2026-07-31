@@ -39,6 +39,7 @@ class AppConfigRepo(
         val apple = config.appleConfig
         val google = config.googleConfig
         val iap = config.iapConfig
+        val wechat = config.wechatConfig
         return AppConfig(
             id = config.id.toString(),
             appId = config.appId.toString(),
@@ -59,6 +60,8 @@ class AppConfigRepo(
             ),
             productTierMap = iap.productTierMap,
             iapEnv = iap.env ?: "production",
+            wechatAppId = wechat.appId,
+            wechatAppSecret = wechat.appSecret,
             createdAt = config.createdAt,
             updatedAt = config.updatedAt,
         )
