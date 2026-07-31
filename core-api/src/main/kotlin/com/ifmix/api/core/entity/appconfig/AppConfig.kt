@@ -32,6 +32,10 @@ interface AppConfig : AppScopedProps {
     @Serialized
     val iapConfig: IapConfigValue
 
+    /** JSONB — 微信开放平台配置 */
+    @Serialized
+    val wechatConfig: WechatConfigValue
+
     val revision: Int
 
     @LogicalDeleted("now")
@@ -64,4 +68,9 @@ data class GoogleClientIdsValue(
 data class IapConfigValue(
     val productTierMap: Map<String, String> = emptyMap(),
     val env: String? = null,
+)
+
+data class WechatConfigValue(
+    val appId: String? = null,
+    val appSecret: String? = null,
 )
