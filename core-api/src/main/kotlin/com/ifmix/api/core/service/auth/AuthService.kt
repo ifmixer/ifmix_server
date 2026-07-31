@@ -175,6 +175,8 @@ open class AuthService(
                 authIdentityId = identity.id.toString(),
                 appUserId = appUserId.toString(),
                 installId = ctx.installId,
+                clientIp = ctx.clientIp,
+                clientPlatform = ctx.clientPlatform?.name,
             )
         )
 

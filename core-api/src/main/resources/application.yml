@@ -17,7 +17,10 @@ server:
   port: ${PORT:3001}
 
 springdoc:
+  api-docs:
+    path: /core/api-docs/json
   swagger-ui:
+    path: /core/api-docs/swagger-ui/index.html
     persist-authorization: true
 
 app:
