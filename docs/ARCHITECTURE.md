@@ -106,11 +106,12 @@ ifmix 是一个面向移动端（iOS/Android）的后端 API 服务，核心功�
 - **条件加载**: `@ConditionalOnMissingBean` / `@ConditionalOnProperty` 实现 stub ↔ 真实实现切换
 
 ### 数据库
+- **表名前缀**: 所有表使用 `core_` 前缀（如 `core_todo`, `core_app_user`）
 - **读写分离**: `ReadWriteRoutingDataSource` 根据 `@Transactional(readOnly=true)` 自动路由
 - **游标分页**: 基于 UUIDv7 (时间有序) 的 `id < cursor ORDER BY id DESC LIMIT n+1`
 - **多租户过滤**: Jimmer `AppScopedFilter` 全局注入 `WHERE app_id = ?`
 - **软删除**: Jimmer `@LogicalDeleted` 自动过滤
-- **Flyway**: V1-V7 migration，不可回退
+- **Flyway**: V1-V7 migration + V8 表名前缀重命名，不可回退
 
 ### AI 扫描
 - **模型 fallback**: 主模型 → fallback 列表，按顺序尝试
@@ -193,6 +194,10 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 
 - **框架**: JUnit 5 + Mockito + assertk
 - **集成测试**: Testcontainers PostgreSQL
+- **E2E 测试**: `WebTestClient` + Testcontainers (PostgreSQL + Redis)
+  - 每次发布前运行: `./gradlew :core-api:test`
+  - 单独运行 E2E: `./gradlew :core-api:test --tests "com.ifmix.api.core.e2e.*"`
+  - 详见 [E2E 测试方案](E2E_TESTING.md)
 - **路由测试**: H2 内存数据库
 - **命令**: `./gradlew :core-api:test`
 

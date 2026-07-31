@@ -43,6 +43,7 @@
 
 ### 数据库
 - 使用 Jimmer ORM，实体定义在 `entity/` 下
+- **所有表名带 `core_` 前缀**（如 `core_todo`, `core_app_user`, `core_scan_record`）
 - UUIDv7 作为主键（时间有序，支持游标分页）
 - 游标分页: `WHERE id < cursor ORDER BY id DESC LIMIT n+1`
 - 读写分离: `@Transactional(readOnly=true)` 自动路由到 reader
