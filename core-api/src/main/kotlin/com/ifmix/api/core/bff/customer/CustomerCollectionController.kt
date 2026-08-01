@@ -42,19 +42,19 @@ class CustomerCollectionController(
     }
 
     /** 添加收藏条目（幂等）。 */
-    @Operation(summary = "添加收藏（幂等）", description = "scanRecordId 为 ScanDto.id（UUIDv7）。重复添加不会报错。")
+    @Operation(summary = "添加收藏（幂等）", description = "scanRecordId 为 ScanDto.id（UUIDv7），必须属于当前用户，否则返回 404。重复添加不会报错。")
     @PostMapping("/mutation/collection/addItem")
     fun addItem(ctx: RequestContext, @Valid @RequestBody req: AddItemReq): AddItemRes =
         service.addItem(ctx, req)
 
     /** 批量移除收藏条目（软删）。 */
-    @Operation(summary = "批量移除收藏", description = "scanRecordIds 为 ScanDto.id 数组。")
+    @Operation(summary = "批量移除收藏", description = "scanRecordIds 为 ScanDto.id 数组，必须属于当前用户。")
     @PostMapping("/mutation/collection/removeItems")
     fun removeItems(ctx: RequestContext, @Valid @RequestBody req: RemoveItemsReq): RemoveItemsRes =
         service.removeItems(ctx, req)
 
     /** 列出收藏夹中的扫描记录（游标分页）。 */
-    @Operation(summary = "列出收藏夹中的扫描记录", description = "固定按 createdAt DESC 排序，不支持自定义排序。limit 默认 20，上限 100。body 完全可选。")
+    @Operation(summary = "列出收藏夹中的扫描记录", description = "按当前用户过滤。固定按 createdAt DESC 排序，不支持自定义排序。limit 默认 20，上限 100。body 完全可选。collectionId 当前可不传，服务端自动用默认夹。")
     @PutMapping("/query/collection/listItems")
     fun listItems(
         ctx: RequestContext,

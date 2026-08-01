@@ -55,6 +55,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
         summary = "按 ID 获取扫描记录",
         description = """
             id 为 UUIDv7 格式的扫描记录主键（即 NewScanRes.id / ScanDto.id）。
+            按当前用户过滤，他人的 id 返回 404。
             ScanDto.result 可能为 null（仅当记录通过内部 createOne 创建但未触发 AI 时）。
             imageUrl 是预签名 URL，有效期约 1 小时，过期后用 imageKey 调 storage/presignDownload 续签。
         """,
@@ -67,6 +68,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
     @Operation(
         summary = "游标分页查询扫描记录",
         description = """
+            按当前用户过滤，只返回自己的记录。
             默认按 createdAt DESC 排序，limit 默认 20，上限 100。
             body 完全可选，不传等同默认参数。
         """,

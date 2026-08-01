@@ -143,7 +143,7 @@ class OpenApiConfig {
         /** 公共 header 参数。全部 required: false（middleware 自动注入）。 */
         val COMMON_HEADERS: LinkedHashMap<String, Parameter> = linkedMapOf(
             "x-app-id" to Parameter().`in`("header").name("x-app-id")
-                .description("租户 App ID（uuid）。服务端必填，由 middleware 自动注入。")
+                .description("租户 App ID（uuid）。客户端 SDK 由 middleware 统一注入，故标可选；缺失时返回 400000。")
                 .required(false).schema(StringSchema().apply { format = "uuid" }),
             "x-install-id" to Parameter().`in`("header").name("x-install-id")
                 .description("设备安装标识（uuid）")

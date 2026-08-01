@@ -79,7 +79,7 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
         summary = "获取预签名下载 URL",
         description = """
             用 imageKey 换取临时下载 URL。durationSeconds 默认 3600，上限 86400。
-            服务端校验 objectKey 归属（必须属于当前 appId）。
+            服务端校验 imageKey 归属（必须属于当前用户的 installId 或 userId）。
             需要 Bearer token。
         """,
     )
@@ -91,7 +91,7 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
         // 校验 objectKey 格式
         validateObjectKey(ctx, req.imageKey)
 
-        val url = antiqueService.presignedDownloadUrl(req.imageKey, Duration.ofSeconds(req.durationSeconds))
+        val url = antiqueService.presignedDownloadUrl(req.imageKey, Duration.ofSeconds(req.durationSeconds ?: 3600L))
         return PresignedDownloadResponse(url)
     }
 
@@ -138,7 +138,8 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
         /** 即 ScanDto.imageKey，presignUpload 返回的 imageKey */
         val imageKey: String,
         /** 签名 URL 有效时长（秒），默认 3600，上限 86400 */
-        val durationSeconds: Long = 3600,
+        @io.swagger.v3.oas.annotations.media.Schema(defaultValue = "3600", maximum = "86400")
+        val durationSeconds: Long? = null,
     )
 
     data class PresignedUploadResponse(val uploadUrl: String, val imageKey: String)

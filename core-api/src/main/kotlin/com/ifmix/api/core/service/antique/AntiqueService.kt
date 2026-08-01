@@ -167,6 +167,7 @@ open class AntiqueService(
 
 data class ScanDto(
     val id: String,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "历史兼容字段，前端不需要使用。", deprecated = true)
     val scanId: String?,
     val imageUrl: String,
     val imageKey: String?,
