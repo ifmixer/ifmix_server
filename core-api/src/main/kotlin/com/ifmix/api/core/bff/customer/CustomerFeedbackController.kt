@@ -1,5 +1,6 @@
 package com.ifmix.api.core.bff.customer
 
+import com.ifmix.api.core.entity.enums.FeedbackCategory
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.service.feedback.FeedbackService
 import io.swagger.v3.oas.annotations.Operation
@@ -8,17 +9,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-
-/** 反馈分类枚举。 */
-enum class FeedbackCategory {
-    LIKED,
-    PRICE_TOO_HIGH,
-    PRICE_TOO_LOW,
-    PRICE_MISSING,
-    WRONG_IDENTIFICATION,
-    FEATURE_REQUEST,
-    MORE_RECOMMENDATIONS,
-}
 
 /** 提交反馈请求体。身份由 header 推导，客户端不可指定。 */
 data class SubmitFeedbackReq(

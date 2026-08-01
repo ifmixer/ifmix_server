@@ -1,5 +1,6 @@
 package com.ifmix.api.core.service.antique
 
+import com.ifmix.api.core.entity.enums.ScanStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tools.jackson.module.kotlin.KotlinModule
@@ -16,7 +17,7 @@ class ScanResultJsonTest {
     fun `serializes to snake_case`() {
         val result = ScanResult(
             scanId = "abc-123",
-            status = ScanResult.Status.COMPLETED,
+            status = ScanStatus.COMPLETED,
             isAntique = true,
             name = "青花瓷瓶",
             description = "一件精美的明代青花瓷瓶",
@@ -35,9 +36,9 @@ class ScanResultJsonTest {
             priceMax = 10000.0,
             priceCurrency = "CNY",
             valueConfidence = 0.75,
-            authenticity = "authentic",
+            authenticity = ScanResult.Authenticity.AUTHENTIC,
             authenticityConfidence = 0.88,
-            condition = "good",
+            condition = ScanResult.Condition.GOOD,
             score = 78,
             confidence = 0.85,
             tags = listOf("瓷器", "明代", "青花"),
@@ -89,7 +90,7 @@ class ScanResultJsonTest {
             "shape": "鼎形",
             "height_cm": 28.5,
             "weight_g": 15000.0,
-            "condition": "fair",
+            "condition": "FAIR",
             "score": 65,
             "confidence": 0.80,
             "tags": ["青铜", "商代"],
@@ -100,7 +101,7 @@ class ScanResultJsonTest {
         val result = snakeMapper.readValue(json, ScanResult::class.java)
 
         assertThat(result.scanId).isEqualTo("test-001")
-        assertThat(result.status).isEqualTo(ScanResult.Status.COMPLETED)
+        assertThat(result.status).isEqualTo(ScanStatus.COMPLETED)
         assertThat(result.isAntique).isTrue()
         assertThat(result.name).isEqualTo("青铜鼎")
         assertThat(result.primaryCategory).isEqualTo("青铜器")
@@ -110,7 +111,7 @@ class ScanResultJsonTest {
         assertThat(result.material).isEqualTo("青铜")
         assertThat(result.heightCm).isEqualTo(28.5)
         assertThat(result.weightG).isEqualTo(15000.0)
-        assertThat(result.condition).isEqualTo("fair")
+        assertThat(result.condition).isEqualTo(ScanResult.Condition.FAIR)
         assertThat(result.score).isEqualTo(65)
         assertThat(result.confidence).isEqualTo(0.80)
         assertThat(result.tags).containsExactly("青铜", "商代")
@@ -122,7 +123,7 @@ class ScanResultJsonTest {
     fun `null fields serialize as null`() {
         val result = ScanResult(
             scanId = "minimal",
-            status = ScanResult.Status.PENDING,
+            status = ScanStatus.PENDING,
         )
         val json = snakeMapper.writeValueAsString(result)
         assertThat(json).contains("\"is_antique\":null")
@@ -134,7 +135,7 @@ class ScanResultJsonTest {
     fun `empty lists serialize as empty arrays`() {
         val result = ScanResult(
             scanId = "lists-test",
-            status = ScanResult.Status.COMPLETED,
+            status = ScanStatus.COMPLETED,
             isAntique = true,
             name = "test",
         )

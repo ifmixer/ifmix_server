@@ -2,15 +2,15 @@ package com.ifmix.api.core.entity.appconfig
 
 import org.babyfish.jimmer.sql.*
 import com.ifmix.api.core.entity.AppScopedProps
-import java.time.Instant
+import com.ifmix.api.core.entity.CreatedAtProps
 import java.util.UUID
 
 /**
- * per-app 配置（版本化：追加式，deletedAt 标记历史版本；至多一条当前版本）。
+ * per-app 配置版本。追加式；enabled=true 的为当前生效版本。
  */
 @Entity
-@Table(name = "core_app_config")
-interface AppConfig : AppScopedProps {
+@Table(name = "core_app_config_version")
+interface AppConfigVersion : AppScopedProps, CreatedAtProps {
     @Id
     val id: UUID
 
@@ -38,11 +38,11 @@ interface AppConfig : AppScopedProps {
 
     val revision: Int
 
-    @LogicalDeleted("now")
-    val deletedAt: Instant?
+    /** 是否为当前生效版本 */
+    val enabled: Boolean
 
-    val createdAt: Instant
-    val updatedAt: Instant
+    /** 配置标识符 */
+    val slug: String
 }
 
 /** JSONB 内嵌值对象 */

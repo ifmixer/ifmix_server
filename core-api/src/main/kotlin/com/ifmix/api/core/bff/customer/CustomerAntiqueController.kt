@@ -5,9 +5,11 @@ import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.service.antique.AntiqueService
 import com.ifmix.api.core.service.antique.CreateScanRequest
+import com.ifmix.api.core.service.antique.DeleteScanRes
 import com.ifmix.api.core.service.antique.NewScanReq
 import com.ifmix.api.core.service.antique.NewScanRes
 import com.ifmix.api.core.service.antique.ScanDto
+import com.ifmix.api.core.service.antique.UpdateScanReq
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
@@ -35,7 +37,6 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             id 关系说明：
             - NewScanRes.id = ScanDto.id = 数据库主键（UUIDv7）
             - 所有需要传 scanRecordId 的地方（收藏/反馈/getById）都用这个 id
-            - ScanDto.scanId 是历史兼容字段，前端不需要使用
         """,
     )
     @PostMapping("/mutation/antique/newScan")
@@ -55,9 +56,9 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
         summary = "按 ID 获取扫描记录",
         description = """
             id 为 UUIDv7 格式的扫描记录主键（即 NewScanRes.id / ScanDto.id）。
-            按当前用户过滤，他人的 id 返回 404。
+            按当前用户过滤，他人的 id 返回 404。已软删的记录也返回 404。
             ScanDto.result 可能为 null（仅当记录通过内部 createOne 创建但未触发 AI 时）。
-            imageUrl 是预签名 URL，有效期约 1 小时，过期后用 imageKey 调 storage/presignDownload 续签。
+            图片通过 imageKeys 中的 objectKey 调 storage/presignDownload 获取临时 URL。
         """,
     )
     @PutMapping("/query/antique/getById")
@@ -68,7 +69,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
     @Operation(
         summary = "游标分页查询扫描记录",
         description = """
-            按当前用户过滤，只返回自己的记录。
+            按当前用户过滤，只返回自己的记录。已软删记录不会出现。
             默认按 createdAt DESC 排序，limit 默认 20，上限 100。
             body 完全可选，不传等同默认参数。
         """,
@@ -83,6 +84,36 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             with(antiqueService) { record.toDto() }
         }
         return Page(dtos, page.nextCursor, page.hasMore)
+    }
+
+    @Operation(
+        summary = "删除扫描记录",
+        description = """
+            软删除（标记 deletedAt），不可恢复。同时自动从所有收藏夹中移除。
+            按当前用户过滤，他人的 id 返回 404。
+            已软删的记录不会出现在 findByCursor / listItems 列表中；getById 也返回 404。
+            ScanDto 不暴露 deletedAt 字段。
+            删除不退还扫描配额（日配额为消耗计数，删除记录不影响已用额度）。
+        """,
+    )
+    @PostMapping("/mutation/antique/deleteById")
+    fun deleteById(ctx: RequestContext, @Valid @RequestBody req: ByIdRequest): DeleteScanRes {
+        antiqueService.deleteScan(ctx, req.id.toString())
+        return DeleteScanRes(deleted = true)
+    }
+
+    @Operation(
+        summary = "更新扫描记录",
+        description = """
+            当前支持修改 name 和 userNotes。其他字段不可编辑。
+            按当前用户过滤，他人的 id 返回 404。
+            name: 不传=不修改；传 null=清空（回退到 AI result.name 快照）；传字符串=用户改名。
+            userNotes: 不传=不修改；传 null=清空；传字符串=设置用户备注。
+        """,
+    )
+    @PostMapping("/mutation/antique/updateOne")
+    fun updateOne(ctx: RequestContext, @Valid @RequestBody req: UpdateScanReq): ScanDto {
+        return antiqueService.updateScan(ctx, req)
     }
 
     data class ByIdRequest(val id: java.util.UUID)

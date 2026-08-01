@@ -1,12 +1,14 @@
 package com.ifmix.api.core.infra.http
 
+import java.util.UUID
+
 /**
  * 不可变请求上下文，显式作为方法参数在 controller -> service -> repo 之间传递。
  * appId 非空（由请求头校验保证）；其余可空。userId 预留给未来 auth 模块。
  */
 data class RequestContext(
     val appId: String,
-    val installId: String? = null,
+    val installId: UUID? = null,
     val lang: String? = null,
     val currency: String? = null,
     val country: String? = null,

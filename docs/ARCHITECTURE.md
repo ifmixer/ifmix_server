@@ -113,6 +113,89 @@ ifmix 是一个面向移动端（iOS/Android）的后端 API 服务，核心功�
 - **软删除**: Jimmer `@LogicalDeleted` 自动过滤
 - **Flyway**: V1-V7 migration + V8 表名前缀重命名，不可回退
 
+### 枚举设计规范
+
+**全链路方案：PG SMALLINT ↔ Kotlin enum(code) ↔ JSON String**
+
+1. **PG 层**: `SMALLINT NOT NULL DEFAULT xx`，存数字编码
+2. **Kotlin Entity 层**: 用 `enum class` + 手动 `code: Int` 属性 + Jimmer `@EnumType(ORDINAL)` / `@EnumItem(ordinal=N)` 自动映射
+3. **DTO / JSON 序列化层**: 对外输出枚举名称字符串（如 `"COMPLETED"`），**不暴露数字编码**
+4. **前端**: 只看到字符串枚举名，不需要知道内部编码
+
+**编码规则：**
+- **0 保留不用**（不表示任何状态）
+- 同组内连续用十位：100, 110, 120...
+- 不同组间隔 100：10x, 20x, 30x...
+- 方便后续在组内插入新值，不影响已有编码
+- 可利用范围判断做分组：`code >= 20` 表示某类状态集合
+
+**示例：**
+```kotlin
+@EnumType(EnumType.Strategy.ORDINAL)
+enum class ScanStatus(val code: Int) {
+    @EnumItem(ordinal = 100)
+    PENDING(100),      // 待处理组 100~199
+
+    @EnumItem(ordinal = 110)
+    PROCESSING(110),
+
+    @EnumItem(ordinal = 200)
+    COMPLETED(200),    // 完成组 200~299
+
+    @EnumItem(ordinal = 300)
+    FAILED(300);       // 失败组 300~399
+
+    companion object {
+        private val byCode = entries.associateBy { it.code }
+        fun fromCode(code: Int): ScanStatus = byCode[code]
+            ?: throw IllegalArgumentException("Unknown ScanStatus code: $code")
+    }
+}
+```
+
+**Jimmer 映射方式**：使用 `@EnumType(EnumType.Strategy.ORDINAL)` + `@EnumItem(ordinal = N)` 注解，
+Jimmer 自动处理 Entity ↔ DB 的双向映射，无需 ScalarProvider 或 ValueConverter。
+Entity 属性直接用枚举类型（如 `val status: ScanStatus`）。
+
+```sql
+-- PG migration
+ALTER TABLE core_scan_record ALTER COLUMN status TYPE SMALLINT USING (
+    CASE status
+        WHEN 'PENDING' THEN 100
+        WHEN 'PROCESSING' THEN 110
+        WHEN 'COMPLETED' THEN 200
+        WHEN 'FAILED' THEN 300
+    END
+);
+ALTER TABLE core_scan_record ALTER COLUMN status SET NOT NULL;
+ALTER TABLE core_scan_record ALTER COLUMN status SET DEFAULT 100;
+```
+
+**适用范围：**
+- 业务枚举（状态、分类、平台等）全部用此方案
+- 来自外部系统的不可控值（如商店 subStatus）保持 VARCHAR
+
+**已定义的编码表：**
+
+| 枚举 | 值 | 编码 |
+|------|-----|------|
+| ScanStatus.PENDING | 待处理 | 100 |
+| ScanStatus.PROCESSING | 处理中 | 110 |
+| ScanStatus.COMPLETED | 已完成 | 200 |
+| ScanStatus.FAILED | 失败 | 300 |
+| Tier.FREE | 免费 | 100 |
+| Tier.PRO | 专业版 | 200 |
+| Tier.ENTERPRISE | 企业版 | 300 |
+| FeedbackCategory.LIKED | 喜欢 | 100 |
+| FeedbackCategory.PRICE_TOO_HIGH | 价格过高 | 200 |
+| FeedbackCategory.PRICE_TOO_LOW | 价格过低 | 210 |
+| FeedbackCategory.PRICE_MISSING | 缺少价格 | 220 |
+| FeedbackCategory.WRONG_IDENTIFICATION | 识别错误 | 300 |
+| FeedbackCategory.FEATURE_REQUEST | 功能建议 | 400 |
+| FeedbackCategory.MORE_RECOMMENDATIONS | 更多推荐 | 410 |
+| Platform.APPLE | 苹果 | 100 |
+| Platform.GOOGLE | 谷歌 | 200 |
+
 ### AI 扫描
 - **模型 fallback**: 主模型 → fallback 列表，按顺序尝试
 - **Key 重试**: 每个模型尝试所有可用 key（内层循环），不止一个

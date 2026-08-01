@@ -1,7 +1,7 @@
 package com.ifmix.api.core.entity.auth
 
 import org.babyfish.jimmer.sql.*
-import java.time.Instant
+import com.ifmix.api.core.entity.MutableProps
 import java.util.UUID
 
 /**
@@ -9,12 +9,10 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "core_auth_tenant")
-interface AuthTenant {
+interface AuthTenant : MutableProps {
     @Id
     val id: UUID
 
     val jwtPrivateKeyPem: String?
     val jwtIssuer: String?
-
-    val createdAt: Instant
-    val updatedAt: Instant}
+}

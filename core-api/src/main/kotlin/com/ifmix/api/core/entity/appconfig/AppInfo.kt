@@ -1,7 +1,7 @@
 package com.ifmix.api.core.entity.appconfig
 
 import org.babyfish.jimmer.sql.*
-import java.time.Instant
+import com.ifmix.api.core.entity.MutableProps
 import java.util.UUID
 
 /**
@@ -9,13 +9,11 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "core_app_info")
-interface AppInfo {
+interface AppInfo : MutableProps {
     @Id
     val id: UUID
 
     val name: String?
     val description: String?
-    val slug: String?
-
-    val createdAt: Instant
-    val updatedAt: Instant}
+    val slug: String
+}

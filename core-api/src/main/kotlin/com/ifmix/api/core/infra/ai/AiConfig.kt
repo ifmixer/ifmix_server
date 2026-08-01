@@ -35,7 +35,7 @@ class AiConfig {
                     AgnesKeyStore.AgnesKeyDoc(
                         id = key.id.toString(),
                         key = key.key ?: "",
-                        type = key.type,
+                        type = key.type.name,
                         rateLimit = key.rateLimit,
                         windowSec = key.windowSec,
                         models = key.models,
@@ -59,10 +59,11 @@ class AiConfig {
         factory: AgnesChatClientFactory,
         store: AgnesKeyStore,
         @Value("\${app.agnes.ai.modelFallbackOrder:llama-4.0-mini,miro-4}") fallbackOrder: String,
+        @org.springframework.beans.factory.annotation.Qualifier("snakeCaseMapper") snakeCaseMapper: tools.jackson.databind.ObjectMapper,
     ): SpringAiScanRunner {
         val models = fallbackOrder.split(",")
             .map { it.trim() }
             .filter { it.isNotBlank() }
-        return SpringAiScanRunner(factory, store, models)
+        return SpringAiScanRunner(factory, store, models, snakeCaseMapper)
     }
 }

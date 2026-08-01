@@ -2,6 +2,7 @@ package com.ifmix.api.core.entity.auth
 
 import org.babyfish.jimmer.sql.*
 import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.entity.MutableProps
 import java.time.Instant
 import java.util.UUID
 
@@ -10,7 +11,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "core_app_refresh_token")
-interface AppRefreshToken : AppScopedProps {
+interface AppRefreshToken : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
@@ -29,6 +30,4 @@ interface AppRefreshToken : AppScopedProps {
     val expiresAt: Instant?
     val revokedAt: Instant?
     val replacedBy: UUID?
-
-    val createdAt: Instant
-    val updatedAt: Instant}
+}

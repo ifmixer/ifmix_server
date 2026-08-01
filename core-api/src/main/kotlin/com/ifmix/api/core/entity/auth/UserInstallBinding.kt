@@ -1,6 +1,7 @@
 package com.ifmix.api.core.entity.auth
 
 import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.entity.MutableProps
 import org.babyfish.jimmer.sql.*
 import java.time.Instant
 import java.util.UUID
@@ -11,7 +12,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "core_user_install_binding")
-interface UserInstallBinding : AppScopedProps {
+interface UserInstallBinding : AppScopedProps, MutableProps {
 
     @Id
     val id: UUID
@@ -20,7 +21,7 @@ interface UserInstallBinding : AppScopedProps {
 
     val userId: UUID
 
-    val installId: String
+    val installId: UUID
 
     /** 首次在此 install 上登录的时间 */
     val firstSeenAt: Instant
@@ -34,7 +35,4 @@ interface UserInstallBinding : AppScopedProps {
     val clientIp: String?
 
     val clientPlatform: String?
-
-    val createdAt: Instant
-    val updatedAt: Instant
 }

@@ -1,5 +1,7 @@
 package com.ifmix.api.core.service.antique
 
+import com.ifmix.api.core.entity.antique.ImageRef
+import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.RequestContext
@@ -23,14 +25,9 @@ open class AntiqueService(
     private val objectStorage: ObjectStorage,
     private val rateLimiter: RateLimiter,
     private val scanRepo: ScanRecordRepository,
+    @org.springframework.beans.factory.annotation.Qualifier("snakeCaseMapper")
+    private val snakeCaseMapper: tools.jackson.databind.ObjectMapper,
 ) {
-
-    private val objectMapper: tools.jackson.databind.ObjectMapper by lazy {
-        tools.jackson.databind.json.JsonMapper.builder()
-            .addModule(tools.jackson.module.kotlin.KotlinModule.Builder().build())
-            .propertyNamingStrategy(tools.jackson.databind.PropertyNamingStrategies.SNAKE_CASE)
-            .build()
-    }
 
     /**
      * P0-1: AI 识别端点 — 接受已上传图片的 objectKey，调用 ScanRunner 获取结果。
@@ -54,7 +51,7 @@ open class AntiqueService(
 
         // 序列化结果为 JSON
         val resultJson = try {
-            objectMapper.writeValueAsString(scanResult)
+            snakeCaseMapper.writeValueAsString(scanResult)
         } catch (_: Exception) {
             null
         }
@@ -62,11 +59,9 @@ open class AntiqueService(
         // 创建 ScanRecord
         val record = scanRepo.create(
             appId = ctx.appId,
-            scanId = scanResult.scanId,
-            imageUrl = req.imageKey,
-            status = scanResult.status.name,
-            tier = "FREE",
-            relatedId = null,
+            imageKeys = listOf(ImageRef(key = req.imageKey)),
+            status = scanResult.status,
+            tier = Tier.FREE,
             clientIp = ctx.clientIp,
             resultJson = resultJson,
         )
@@ -88,17 +83,13 @@ open class AntiqueService(
 
         // 生成预签名上传 URL
         val objectKey = "antique/${UuidV7.generate()}.png"
-        val uploadUrl = objectStorage.presignUpload(objectKey, "image/png", Duration.ofMinutes(5))
 
         // 创建 ScanRecord
-        val scanId = UuidV7.generate().toString()
         return scanRepo.create(
             appId = ctx.appId,
-            scanId = scanId,
-            imageUrl = uploadUrl,
-            status = Status.PENDING.name,
-            tier = "FREE",
-            relatedId = request.relatedId,
+            imageKeys = listOf(ImageRef(key = objectKey)),
+            status = ScanStatus.PENDING,
+            tier = Tier.FREE,
             clientIp = ctx.clientIp,
         )
     }
@@ -129,6 +120,32 @@ open class AntiqueService(
     }
 
     /**
+     * 软删除扫描记录。Jimmer @LogicalDeleted 自动设置 deletedAt。
+     */
+    @Transactional
+    fun deleteScan(ctx: RequestContext, id: String) {
+        val uuid = try { UUID.fromString(id) } catch (_: Exception) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID")
+        }
+        scanRepo.findById(uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
+        // TODO: 校验归属（当前用户）
+        scanRepo.deleteById(uuid)
+    }
+
+    /**
+     * 更新扫描记录（name / notes）。
+     */
+    @Transactional
+    fun updateScan(ctx: RequestContext, req: UpdateScanReq): ScanDto {
+        val uuid = try { UUID.fromString(req.id) } catch (_: Exception) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID")
+        }
+        val record = scanRepo.findById(uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
+        // TODO: 校验归属 + 实现更新
+        return record.toDto()
+    }
+
+    /**
      * 从 ScanRecord 转换为 ScanDto。
      * 尝试从 resultJson 解析 ScanResult 对象，并提取字段。
      */
@@ -136,17 +153,16 @@ open class AntiqueService(
         val parsedResult = parseResultJson(this.resultJson)
         return ScanDto(
             id = id.toString(),
-            scanId = scanId,
-            imageUrl = imageUrl ?: "",
-            imageKey = imageUrl, // imageUrl 实际存的是 imageKey
-            name = parsedResult?.name,
+            imageKeys = imageKeys.map { it.key },
+            name = userDisplayName ?: parsedResult?.name,
             isAntique = parsedResult?.isAntique,
             currency = parsedResult?.priceCurrency,
+            userNotes = userNotes,
             collected = false, // 暂无 collected 字段，默认 false
-            status = status?.let { try { ScanResult.Status.valueOf(it) } catch (_: Exception) { null } },
+            status = status,
             result = parsedResult,
             language = null, // ScanRecord 无 language 字段
-            tier = tier?.let { try { Tier.valueOf(it) } catch (_: Exception) { null } },
+            tier = tier,
             createdAt = createdAt.toEpochMilli(),
             updatedAt = updatedAt.toEpochMilli(),
         )
@@ -158,32 +174,44 @@ open class AntiqueService(
     private fun parseResultJson(json: String?): ScanResult? {
         if (json.isNullOrBlank()) return null
         return try {
-            objectMapper.readValue(json, ScanResult::class.java)
+            snakeCaseMapper.readValue(json, ScanResult::class.java)
         } catch (_: Exception) {
             null
         }
     }
 }
 
+@io.swagger.v3.oas.annotations.media.Schema(description = "扫描记录 DTO。列表页和详情页统一使用。")
 data class ScanDto(
+    @io.swagger.v3.oas.annotations.media.Schema(description = "记录主键（UUIDv7）。所有需要传 scanRecordId 的地方都用这个。")
     val id: String,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "历史兼容字段，前端不需要使用。", deprecated = true)
-    val scanId: String?,
-    val imageUrl: String,
-    val imageKey: String?,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "图片 objectKey 列表（永久标识）。用于调 presignDownload 续签 URL。")
+    val imageKeys: List<String>,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "古物名称。初始为 AI result.name 的快照；用户通过 updateOne 改名后变为用户设定值。列表页优先用此字段，为 null 时 fallback 到 result.name。")
     val name: String?,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "是否古物快照（从 result.isAntique 提取）。列表页优先用此字段。")
     val isAntique: Boolean?,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "扫描时用户设置的货币（来自 x-currency header）。")
     val currency: String?,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "用户自定义备注（通过 updateOne 设置）。")
+    val userNotes: String?,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "是否已被当前用户收藏。")
     val collected: Boolean,
-    val status: ScanResult.Status?,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "扫描状态。customer 接口中通常为 COMPLETED。")
+    val status: ScanStatus,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "完整 AI 识别结果。status=COMPLETED 时非 null；status=PENDING 时为 null。")
     val result: ScanResult?,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "扫描时的语言设置（来自 x-lang header 存档）。")
     val language: String?,
-    val tier: Tier?,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "扫描发生时用户的订阅档位。")
+    val tier: Tier,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "创建时间（epoch millis）")
     val createdAt: Long,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "最后更新时间（epoch millis）")
     val updatedAt: Long?,
 )
 
-data class CreateScanRequest(val relatedId: String?)
+data class CreateScanRequest(val dummy: String? = null)
 
 data class NewScanReq(val imageKey: String)
 
@@ -192,4 +220,16 @@ data class NewScanRes(
     val result: ScanResult,
 )
 
-enum class Status { PENDING, IN_PROGRESS, COMPLETED, FAILED }
+data class DeleteScanRes(
+    @io.swagger.v3.oas.annotations.media.Schema(description = "是否删除成功")
+    val deleted: Boolean,
+)
+
+data class UpdateScanReq(
+    @io.swagger.v3.oas.annotations.media.Schema(description = "记录 ID（UUIDv7）")
+    val id: String,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "新名称。不传=不修改；传 null=清空（回退到 result.name 快照）；传字符串=设为用户自定义名称。")
+    val name: String? = null,
+    @io.swagger.v3.oas.annotations.media.Schema(description = "用户备注。不传=不修改；传 null=清空；传字符串=设为用户备注。")
+    val userNotes: String? = null,
+)

@@ -61,6 +61,7 @@ class AuthConfig {
         "google" to GoogleVerifier(googleJwtDecoder),
         "apple" to AppleVerifier(appleJwtDecoder),
         "wechat" to WechatVerifier(wechatRestClient),
+        "anonymous" to AnonymousVerifier(),
     )
 
     @Bean

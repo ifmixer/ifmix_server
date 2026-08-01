@@ -47,6 +47,12 @@
 - UUIDv7 作为主键（时间有序，支持游标分页）
 - 游标分页: `WHERE id < cursor ORDER BY id DESC LIMIT n+1`
 - 读写分离: `@Transactional(readOnly=true)` 自动路由到 reader
+- **枚举字段用 SMALLINT 存数字编码**（不用 VARCHAR、不用 PG ENUM）
+  - Kotlin 用 `enum class Xxx(val code: Int)`，手动指定编码
+  - 0 保留不用；同组连续（100,110,120）；不同组间隔 100
+  - Jimmer 用 `ValueConverter<Enum, Int>` 做双向转换
+  - 对外 API 输出字符串名（`"COMPLETED"`），不暴露数字
+  - 详见 `docs/ARCHITECTURE.md` 的「枚举设计规范」
 
 ### 存储上传
 - objectKey 格式: `app_{appId}/i_{installId}/...` 或 `app_{appId}/u_{userId}/...`

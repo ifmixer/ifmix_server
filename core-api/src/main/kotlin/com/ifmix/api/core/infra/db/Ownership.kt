@@ -1,6 +1,7 @@
 package com.ifmix.api.core.infra.db
 
 import com.ifmix.api.core.infra.http.RequestContext
+import java.util.UUID
 
 /**
  * 行归属判定：登录 userId 或 installId 命中；匿名仅 installId。
@@ -10,5 +11,5 @@ import com.ifmix.api.core.infra.http.RequestContext
  * @param installId 行记录中的 installId（可为 null）
  * @return 当前用户是否拥有该行
  */
-fun ownsRow(ctx: RequestContext, userId: String?, installId: String?): Boolean =
+fun ownsRow(ctx: RequestContext, userId: String?, installId: UUID?): Boolean =
     (ctx.userId != null && userId == ctx.userId) || (installId != null && installId == ctx.installId)

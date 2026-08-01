@@ -70,3 +70,21 @@ class AppleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
         return jwt.toVerified()
     }
 }
+
+/**
+ * 匿名登录验证器。credential 即 "anon_{installId}"，直接信任。
+ * 不走外部验证，仅生成一个固定结构的 VerifiedProvider。
+ */
+class AnonymousVerifier : ProviderVerifier {
+    override val provider = "anonymous"
+    override fun verify(config: AppConfig, platform: ClientPlatform?, idToken: String): VerifiedProvider {
+        // idToken 实际上是 "anon_{installId}"
+        return VerifiedProvider(
+            accountId = idToken,
+            email = "$idToken@anonymous.local",
+            emailVerified = false,
+            phone = null,
+            userMetadata = emptyMap(),
+        )
+    }
+}

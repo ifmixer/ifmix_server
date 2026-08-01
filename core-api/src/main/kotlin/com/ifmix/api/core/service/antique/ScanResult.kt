@@ -1,5 +1,6 @@
 package com.ifmix.api.core.service.antique
 
+import com.ifmix.api.core.entity.enums.ScanStatus
 import io.swagger.v3.oas.annotations.media.Schema
 
 /**
@@ -13,14 +14,14 @@ import io.swagger.v3.oas.annotations.media.Schema
  * - **详情区**：material(s), technique(s), shape, colors, decorations, inscription, heightCm/widthCm/depthCm/weightG
  * - **折叠区**：confidence, yearFrom/yearTo, priceMin/priceMax/priceCurrency, authenticityNotes, flaws, restorationHistory, notes, tags, aliases, nameEn
  */
-@Schema(description = "AI 古物识别结果。所有文本字段为模型自由输出，跟随 x-lang 返回对应语言。")
+@Schema(description = "AI 古物识别结果。文本字段（name/dynasty/description/primaryCategory 等）跟随 x-lang 返回本地化文本；authenticity/condition 为固定英文枚举 token，不本地化。")
 data class ScanResult(
     // ---- 基础标识 ----
     @Schema(description = "历史兼容字段，前端不需要使用。", deprecated = true)
     val scanId: String,
 
     @Schema(description = "扫描状态。customer 接口中通常为 COMPLETED。PENDING 仅出现在内部创建但未触发 AI 的记录。")
-    val status: Status = Status.PENDING,
+    val status: ScanStatus = ScanStatus.PENDING,
 
     // ---- 首屏必显 ----
     @Schema(description = "是否判定为古物（true=古物，false=非古物/现代物品）")
@@ -122,8 +123,8 @@ data class ScanResult(
     val valueConfidence: Double? = null,
 
     // ---- 真伪鉴定 ----
-    @Schema(description = "真伪判定（AI 自由输出，常见值: authentic / suspicious / fake / uncertain）")
-    val authenticity: String? = null,
+    @Schema(description = "真伪判定（固定英文 token，不跟随 x-lang）。前端用于徽章分类。服务端保证返回值在枚举范围内，模型集合外输出统一映射为 UNCERTAIN。")
+    val authenticity: Authenticity? = null,
 
     @Schema(description = "真伪判定置信度", minimum = "0", maximum = "1")
     val authenticityConfidence: Double? = null,
@@ -132,8 +133,8 @@ data class ScanResult(
     val authenticityNotes: String? = null,
 
     // ---- 保存状况 ----
-    @Schema(description = "保存状况（AI 自由输出，常见值: pristine / excellent / good / fair / poor / damaged）")
-    val condition: String? = null,
+    @Schema(description = "保存状况（固定英文 token，不跟随 x-lang）。服务端保证返回值在枚举范围内，模型集合外输出统一映射为 FAIR。前端可用穷举分支。")
+    val condition: Condition? = null,
 
     @Schema(description = "瑕疵描述列表")
     val flaws: List<String> = emptyList(),
@@ -163,10 +164,21 @@ data class ScanResult(
     @Schema(description = "AI 分析完成时间（epoch millis）")
     val analyzedAt: Long? = null,
 ) {
-    enum class Status {
-        PENDING,
-        PROCESSING,
-        COMPLETED,
-        FAILED,
+    /** 真伪判定枚举（固定英文 token）。 */
+    enum class Authenticity {
+        AUTHENTIC,
+        SUSPICIOUS,
+        FAKE,
+        UNCERTAIN,
+    }
+
+    /** 保存状况枚举（固定英文 token）。 */
+    enum class Condition {
+        PRISTINE,
+        EXCELLENT,
+        GOOD,
+        FAIR,
+        POOR,
+        DAMAGED,
     }
 }

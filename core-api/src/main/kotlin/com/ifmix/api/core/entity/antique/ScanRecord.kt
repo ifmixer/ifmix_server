@@ -1,8 +1,10 @@
 package com.ifmix.api.core.entity.antique
 
-import org.babyfish.jimmer.sql.*
 import com.ifmix.api.core.entity.AppScopedProps
-import java.time.Instant
+import com.ifmix.api.core.entity.SoftDeletableProps
+import com.ifmix.api.core.entity.enums.ScanStatus
+import com.ifmix.api.core.infra.ratelimit.Tier
+import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 /**
@@ -10,23 +12,27 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "core_scan_record")
-interface ScanRecord : AppScopedProps {
+interface ScanRecord : AppScopedProps, SoftDeletableProps {
     @Id
     val id: UUID
 
     override val appId: UUID
 
-    val scanId: String?
-    val imageUrl: String?
+    /** 图片列表（JSONB 对象数组） */
+    @Serialized
+    val imageKeys: List<ImageRef>
+
     val resultJson: String?
-    val status: String?
-    val tier: String?
+
+    val status: ScanStatus
+
+    val tier: Tier
+
     val clientIp: String?
-    val relatedId: String?
 
-    @LogicalDeleted("now")
-    val deletedAt: Instant?
+    /** 用户自定义名称（通过 updateOne 设置） */
+    val userDisplayName: String?
 
-    val createdAt: Instant
-    val updatedAt: Instant
+    /** 用户备注（通过 updateOne 设置） */
+    val userNotes: String?
 }

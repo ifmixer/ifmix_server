@@ -1,11 +1,11 @@
 package com.ifmix.api.core.service.appconfig
 
-import com.ifmix.api.core.entity.appconfig.AppConfig as AppConfigEntity
+import com.ifmix.api.core.entity.appconfig.AppConfigVersion
 import org.springframework.stereotype.Service
 import java.util.UUID
 
 /**
- * app_config 读取：按 appId / appleBundleId / androidPackageName 查"当前版本"（deletedAt=null），
+ * app_config_version 读取：按 appId / appleBundleId / androidPackageName 查 enabled=true 的当前版本，
  * 映射成扁平 [AppConfig]，内存缓存 TTL 60s。写用 [newVersion]（版本化，事务内）。
  *
  * 基于 Jimmer + PostgreSQL 实现。
@@ -35,7 +35,7 @@ class AppConfigRepo(
         return config?.let { toFlat(it) }
     }
 
-    private fun toFlat(config: AppConfigEntity): AppConfig {
+    private fun toFlat(config: AppConfigVersion): AppConfig {
         val apple = config.appleConfig
         val google = config.googleConfig
         val iap = config.iapConfig
@@ -63,7 +63,6 @@ class AppConfigRepo(
             wechatAppId = wechat.appId,
             wechatAppSecret = wechat.appSecret,
             createdAt = config.createdAt,
-            updatedAt = config.updatedAt,
         )
     }
 }

@@ -135,8 +135,8 @@ class EnvelopeSchemaCustomizer : GlobalOpenApiCustomizer {
             description = """
                 业务错误码（字符串）。完整取值：
                 - "200000" — 成功
-                - "400000" — 参数错误 (INVALID_REQUEST)
-                - "400002" — 应用配置缺失 (APP_CONFIG_MISSING)
+                - "400000" — 参数错误 / x-app-id 缺失或格式错误 (INVALID_REQUEST)
+                - "400002" — appId 合法但后台未配置对应 AppConfig (APP_CONFIG_MISSING)
                 - "401000" — 未鉴权 / token 无效 (UNAUTHORIZED)
                 - "401001" — 第三方登录失败 (AUTH_PROVIDER_FAILED)
                 - "402000" — IAP 验证失败 (IAP_VERIFY_FAILED)

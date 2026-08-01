@@ -2,7 +2,9 @@ package com.ifmix.api.core.repository.ai
 
 import com.ifmix.api.core.entity.ai.AgnesKey
 import com.ifmix.api.core.entity.ai.appId
+import com.ifmix.api.core.entity.ai.id
 import com.ifmix.api.core.entity.ai.unavailableUntil
+import com.ifmix.api.core.entity.ai.updatedAt
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -41,23 +43,13 @@ class AgnesKeyRepository(sql: KSqlClient,) : BaseAppCrudRepository<AgnesKey>(sql
     }
 
     /**
-     * 标记 key 不可用（设置冷却时间）。
+     * 标记 key 不可用（设置冷却时间）。只更新必要字段。
      */
     fun markUnavailable(keyId: UUID, until: Instant) {
-        val existing = findById(keyId) ?: return
-        val updated = AgnesKey {
-            id = keyId
-            appId = existing.appId
-            key = existing.key
-            email = existing.email
-            type = existing.type
-            rateLimit = existing.rateLimit
-            windowSec = existing.windowSec
-            models = existing.models
-            unavailableUntil = until
-            createdAt = existing.createdAt
-            updatedAt = Instant.now()
-        }
-        save(updated)
+        sql.createUpdate(AgnesKey::class) {
+            where(table.id eq keyId)
+            set(table.unavailableUntil, until)
+            set(table.updatedAt, Instant.now())
+        }.execute()
     }
 }

@@ -62,7 +62,7 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
         }
 
         // 服务端生成 objectKey
-        val objectKey = "app_${ctx.appId}/i_$installId/scan/${UuidV7.generate()}.$ext"
+        val objectKey = "app_${ctx.appId}/i_${installId}/scan/${UuidV7.generate()}.$ext"
 
         val contentTypeStr = when (req.contentType) {
             ContentType.IMAGE_JPEG -> "image/jpeg"

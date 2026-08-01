@@ -1,4 +1,0 @@
-export com.ifmix.api.core.entity.appconfig.AppConfig
-AppConfigView {
-    #allScalars
-}

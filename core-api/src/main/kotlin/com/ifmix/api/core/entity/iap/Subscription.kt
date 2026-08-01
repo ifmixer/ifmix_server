@@ -1,13 +1,15 @@
 package com.ifmix.api.core.entity.iap
 
-import org.babyfish.jimmer.sql.*
 import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.entity.SoftDeletableProps
+import com.ifmix.api.core.service.iap.Platform
+import org.babyfish.jimmer.sql.*
 import java.time.Instant
 import java.util.UUID
 
 @Entity
 @Table(name = "core_subscription")
-interface Subscription : AppScopedProps {
+interface Subscription : AppScopedProps, SoftDeletableProps {
 
     @Id
     val id: UUID
@@ -19,7 +21,7 @@ interface Subscription : AppScopedProps {
 
     val originalTransactionId: String?
     val productId: String?
-    val platform: String?
+    val platform: Platform
     val active: Boolean
     val subStatus: String?
     val expiryDate: Instant?
@@ -27,10 +29,4 @@ interface Subscription : AppScopedProps {
 
     @Serialized
     val rawResponse: Map<String, Any?>?
-
-    @LogicalDeleted("now")
-    val deletedAt: Instant?
-
-    val createdAt: Instant
-    val updatedAt: Instant
 }

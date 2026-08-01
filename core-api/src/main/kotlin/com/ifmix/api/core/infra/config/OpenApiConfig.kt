@@ -105,6 +105,7 @@ class OpenApiConfig {
             "/auth/wechat",
             "/auth/exchange",
             "/auth/refresh",
+            "/auth/anonymous",
         )
 
         override fun customise(openApi: OpenAPI) {

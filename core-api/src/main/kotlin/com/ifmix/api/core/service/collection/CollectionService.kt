@@ -46,7 +46,7 @@ open class CollectionService(
     private fun createDefaultCollection(
         appId: UUID,
         userId: String?,
-        installId: String?,
+        installId: UUID?,
     ): Collection {
         val now = Instant.now()
         val entity = Collection {

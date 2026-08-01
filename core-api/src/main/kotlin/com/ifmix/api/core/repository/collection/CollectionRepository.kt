@@ -16,7 +16,7 @@ import java.util.UUID
 class CollectionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collection>(sql, Collection::class) {
 
     /** Find default collection for app by optional userId or installId */
-    fun findDefault(appId: UUID, installId: String?, userId: String?): Collection? {
+    fun findDefault(appId: UUID, installId: UUID?, userId: String?): Collection? {
         // Try userId first
         if (userId != null) {
             val byUser = sql.createQuery(Collection::class) {

@@ -26,7 +26,7 @@ class FeedbackService(
     fun submit(ctx: RequestContext, req: SubmitFeedbackReq): SubmitFeedbackRes {
         val appId = runCatching { UUID.fromString(ctx.appId) }.getOrNull()
             ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id must be a UUID")
-        val installId = runCatching { UUID.fromString(ctx.installId) }.getOrNull()
+        val installId = ctx.installId
             ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-install-id must be a UUID")
         val userId = ctx.userId?.let { runCatching { UUID.fromString(it) }.getOrNull() }
 
@@ -34,7 +34,7 @@ class FeedbackService(
             appId = appId,
             installId = installId,
             userId = userId,
-            category = req.category.name,
+            category = req.category,
             comment = req.comment,
             scanRecordId = req.scanRecordId?.let { runCatching { UUID.fromString(it) }.getOrNull() },
         )

@@ -23,7 +23,6 @@ data class AppConfig(
     val wechatAppId: String?,
     val wechatAppSecret: String?,
     val createdAt: java.time.Instant?,
-    val updatedAt: java.time.Instant?,
 )
 
 /** 写入 app_config 新版本用的分组 patch（缺省字段沿用当前版本）。 */

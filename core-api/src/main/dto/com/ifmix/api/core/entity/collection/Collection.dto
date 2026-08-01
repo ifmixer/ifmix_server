@@ -11,13 +11,13 @@ CollectionDto {
         id
         scanRecord {
             id
-            scanId
-            imageUrl
+            imageKeys
             resultJson
             status
             tier
             clientIp
-            relatedId
+            userDisplayName
+            userNotes
         }
     }
 }

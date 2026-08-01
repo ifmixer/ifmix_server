@@ -27,7 +27,7 @@ private fun wechatCfg(appId: String? = "wx_test_id", appSecret: String? = "wx_te
     googleServiceAccount = null, googleClientIds = GoogleClientIds(),
     productTierMap = emptyMap(), iapEnv = "production",
     wechatAppId = appId, wechatAppSecret = appSecret,
-    createdAt = null, updatedAt = null,
+    createdAt = null,
 )
 
 class WechatVerifierTest {

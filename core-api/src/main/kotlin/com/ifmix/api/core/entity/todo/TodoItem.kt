@@ -1,13 +1,13 @@
 package com.ifmix.api.core.entity.todo
 
 import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.entity.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
-import java.time.Instant
 import java.util.UUID
 
 @Entity
 @Table(name = "core_todo_item")
-interface TodoItem : AppScopedProps {
+interface TodoItem : AppScopedProps, SoftDeletableProps {
 
     @Id
     val id: UUID
@@ -20,11 +20,4 @@ interface TodoItem : AppScopedProps {
     val content: String
 
     val done: Boolean
-
-    @LogicalDeleted("now")
-    val deletedAt: Instant?
-
-    val createdAt: Instant
-
-    val updatedAt: Instant
 }

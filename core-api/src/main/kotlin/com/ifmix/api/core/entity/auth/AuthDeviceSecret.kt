@@ -1,6 +1,7 @@
 package com.ifmix.api.core.entity.auth
 
 import org.babyfish.jimmer.sql.*
+import com.ifmix.api.core.entity.MutableProps
 import java.time.Instant
 import java.util.UUID
 
@@ -9,7 +10,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "core_auth_device_secret")
-interface AuthDeviceSecret {
+interface AuthDeviceSecret : MutableProps {
     @Id
     val id: UUID
 
@@ -26,6 +27,4 @@ interface AuthDeviceSecret {
     val expiresAt: Instant?
     val revokedAt: Instant?
     val lastUsedAt: Instant?
-
-    val createdAt: Instant
-    val updatedAt: Instant}
+}

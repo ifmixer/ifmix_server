@@ -33,7 +33,7 @@ class UserInstallBindingRepository(
     fun recordBinding(
         appId: UUID,
         userId: UUID,
-        installId: String,
+        installId: UUID,
         clientIp: String?,
         clientPlatform: String?,
     ) {

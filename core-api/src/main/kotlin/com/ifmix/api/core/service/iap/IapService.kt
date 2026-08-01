@@ -109,7 +109,7 @@ open class IapService(
             this.subscriptionPxid = subscriptionPxid
             this.originalTransactionId = verifyResult.originalTransactionId
             this.productId = req.productId
-            this.platform = req.platform.name
+            this.platform = req.platform
             this.active = true
             this.subStatus = subStatus
             this.expiryDate = verifyResult.expiryDate

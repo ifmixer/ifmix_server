@@ -1,5 +1,6 @@
 package com.ifmix.api.core.infra.ai
 
+import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.service.antique.ScanResult
@@ -26,6 +27,7 @@ open class SpringAiScanRunner(
     private val chatClientFactory: AgnesChatClientFactory,
     private val keyStore: AgnesKeyStore,
     private val fallbackModels: List<String>,
+    private val snakeCaseMapper: tools.jackson.databind.ObjectMapper,
 ) : ScanRunner {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -99,8 +101,8 @@ open class SpringAiScanRunner(
         // 所有 model + key 都失败
         log.error("All models exhausted — AI_UNAVAILABLE")
         return ScanResult(
-            scanId = ctx.installId ?: UuidV7.generate().toString(),
-            status = ScanResult.Status.FAILED,
+            scanId = UuidV7.generate().toString(),
+            status = ScanStatus.FAILED,
             errorMessage = "All AI models exhausted. No API keys available or all rate-limited.",
         )
     }
@@ -168,22 +170,17 @@ open class SpringAiScanRunner(
                 cleaned
             }
 
-            val mapper = tools.jackson.databind.json.JsonMapper.builder()
-                .addModule(tools.jackson.module.kotlin.KotlinModule.Builder().build())
-                .propertyNamingStrategy(tools.jackson.databind.PropertyNamingStrategies.SNAKE_CASE)
-                .build()
-
-            mapper.readValue(jsonOnly, ScanResult::class.java)
+            snakeCaseMapper.readValue(jsonOnly, ScanResult::class.java)
                 ?: ScanResult(
                     scanId = UuidV7.generate().toString(),
-                    status = ScanResult.Status.COMPLETED,
+                    status = ScanStatus.COMPLETED,
                     errorMessage = "Could not parse JSON fields",
                 )
         } catch (e: Exception) {
             log.error("Failed to parse AI response [${jsonText.take(200)}]: ${e.message}")
             ScanResult(
                 scanId = UuidV7.generate().toString(),
-                status = ScanResult.Status.COMPLETED,
+                status = ScanStatus.COMPLETED,
                 name = jsonText.take(100),
                 notes = "raw_response: $jsonText",
                 errorMessage = "JSON parsing fallback: ${e.message}",

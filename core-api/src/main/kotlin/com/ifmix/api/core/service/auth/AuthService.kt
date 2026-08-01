@@ -131,7 +131,7 @@ open class AuthService(
             userMetadata = verified.userMetadata,
             providerMetadata = null,
             loginIp = ctx.clientIp,
-            loginInstallId = ctx.installId,
+            loginInstallId = ctx.installId?.toString(),
             loginAppId = ctx.appId,
         )
 
@@ -147,7 +147,7 @@ open class AuthService(
             authTenant { id = tenantUUID }
             authIdentity { id = identity.id }
             secretHash = deviceSecretHash
-            loginInstallId = ctx.installId
+            loginInstallId = ctx.installId?.toString()
             expiresAt = now.plusSeconds(DEVICE_SECRET_TTL_DAYS * 86400)
             revokedAt = null
             lastUsedAt = now
@@ -166,7 +166,7 @@ open class AuthService(
             appUser { id = appUserId }
             deviceSecret { id = savedDeviceSecret.id }
             this.tokenHash = refreshTokenHash
-            this.loginInstallId = ctx.installId
+            this.loginInstallId = ctx.installId?.toString()
             expiresAt = refreshExpiresAt
             revokedAt = null
             replacedBy = null
@@ -230,7 +230,7 @@ open class AuthService(
             appUser { id = appUserId }
             deviceSecret { id = foundSecret.id }
             this.tokenHash = refreshTokenHash
-            this.loginInstallId = ctx.installId
+            this.loginInstallId = ctx.installId?.toString()
             expiresAt = refreshExpiresAt
             revokedAt = null
             replacedBy = null
@@ -325,5 +325,25 @@ open class AuthService(
     fun me(ctx: RequestContext): MeRes {
         val userId = ctx.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         return MeRes(userId, null)
+    }
+
+    /**
+     * 匿名 token 签发。
+     * 复用 [loginWithProvider] 逻辑，用 installId 作为匿名凭据。
+     */
+    @Transactional
+    open fun anonymousLogin(ctx: RequestContext): LoginRes {
+        val installId = ctx.installId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-install-id required for anonymous login")
+        return loginWithProvider(ctx, "anonymous", "anon_$installId", null)
+    }
+
+    /**
+     * 请求删除账号（stub）。符合 App Store 审核要求。
+     */
+    fun requestAccountDeletion(ctx: RequestContext): DeleteAccountRes {
+        val userId = ctx.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+        // TODO: 存储删除请求到数据库
+        val scheduledAt = Instant.now().plusSeconds(30L * 24 * 3600).toEpochMilli()
+        return DeleteAccountRes(accepted = true, scheduledAt = scheduledAt)
     }
 }

@@ -1,4 +1,12 @@
 package com.ifmix.api.core.infra.db
 
-/** 游标分页结果。nextCursor 为最后一条的 id（hex），无更多则 null。 */
-data class Page<T>(val items: List<T>, val nextCursor: String?, val hasMore: Boolean)
+import io.swagger.v3.oas.annotations.media.Schema
+
+@Schema(description = "游标分页结果")
+data class Page<T>(
+    val items: List<T>,
+    @Schema(description = "下一页游标（不透明字符串，原样回传给 cursor 参数，不要解析）。hasMore=false 时为 null。")
+    val nextCursor: String?,
+    @Schema(description = "是否还有下一页")
+    val hasMore: Boolean,
+)

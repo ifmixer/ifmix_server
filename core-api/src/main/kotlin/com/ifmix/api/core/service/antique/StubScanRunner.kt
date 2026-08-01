@@ -1,5 +1,6 @@
 package com.ifmix.api.core.service.antique
 
+import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.RequestContext
 
@@ -13,7 +14,7 @@ class StubScanRunner : ScanRunner {
     override suspend fun run(ctx: RequestContext, imageUrl: String): ScanResult =
         ScanResult(
             scanId = UuidV7.generate().toString(),
-            status = ScanResult.Status.COMPLETED,
+            status = ScanStatus.COMPLETED,
             isAntique = false,
             name = "stub",
         )

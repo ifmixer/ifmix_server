@@ -31,4 +31,15 @@ class JacksonConfig {
 
     @Bean
     fun kotlinModule(): KotlinModule = KotlinModule.Builder().build()
+
+    /**
+     * snake_case 命名的 ObjectMapper，用于 AI 模型 JSON 交互。
+     * 与 Spring 默认的 camelCase mapper 分开，通过 @Qualifier("snakeCaseMapper") 注入。
+     */
+    @Bean("snakeCaseMapper")
+    fun snakeCaseMapper(): tools.jackson.databind.ObjectMapper =
+        tools.jackson.databind.json.JsonMapper.builder()
+            .addModule(KotlinModule.Builder().build())
+            .propertyNamingStrategy(tools.jackson.databind.PropertyNamingStrategies.SNAKE_CASE)
+            .build()
 }

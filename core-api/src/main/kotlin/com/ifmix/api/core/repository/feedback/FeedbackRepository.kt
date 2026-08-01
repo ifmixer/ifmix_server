@@ -1,5 +1,6 @@
 package com.ifmix.api.core.repository.feedback
 
+import com.ifmix.api.core.entity.enums.FeedbackCategory
 import com.ifmix.api.core.entity.feedback.Feedback
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
@@ -20,7 +21,7 @@ class FeedbackRepository(sql: KSqlClient) : BaseAppCrudRepository<Feedback>(sql,
         appId: UUID,
         installId: UUID,
         userId: UUID?,
-        category: String,
+        category: FeedbackCategory,
         comment: String?,
         scanRecordId: UUID?,
     ): Feedback {

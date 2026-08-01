@@ -8,6 +8,7 @@ import org.springframework.web.bind.support.WebDataBinderFactory
 import org.springframework.web.context.request.NativeWebRequest
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.method.support.ModelAndViewContainer
+import java.util.UUID
 
 /** 把校验后的请求头组装成 RequestContext，注入到控制器方法参数。 */
 class RequestContextArgumentResolver : HandlerMethodArgumentResolver {
@@ -26,7 +27,9 @@ class RequestContextArgumentResolver : HandlerMethodArgumentResolver {
 
         return RequestContext(
             appId = header(webRequest, RequestHeaders.APP_ID) ?: "",
-            installId = header(webRequest, RequestHeaders.INSTALL_ID),
+            installId = header(webRequest, RequestHeaders.INSTALL_ID)?.let {
+                try { UUID.fromString(it) } catch (_: Exception) { null }
+            },
             lang = header(webRequest, RequestHeaders.LANG),
             currency = header(webRequest, RequestHeaders.CURRENCY),
             country = header(webRequest, RequestHeaders.COUNTRY),

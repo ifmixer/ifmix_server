@@ -1,8 +1,9 @@
 package com.ifmix.api.core.entity.feedback
 
 import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.entity.CreatedAtProps
+import com.ifmix.api.core.entity.enums.FeedbackCategory
 import org.babyfish.jimmer.sql.*
-import java.time.Instant
 import java.util.UUID
 
 /**
@@ -10,7 +11,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "core_feedback")
-interface Feedback : AppScopedProps {
+interface Feedback : AppScopedProps, CreatedAtProps {
 
     @Id
     val id: UUID
@@ -24,9 +25,7 @@ interface Feedback : AppScopedProps {
 
     val scanRecordId: UUID?
 
-    val category: String
+    val category: FeedbackCategory
 
     val comment: String?
-
-    val createdAt: Instant
 }
