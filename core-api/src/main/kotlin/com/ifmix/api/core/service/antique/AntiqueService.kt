@@ -4,7 +4,7 @@ import com.ifmix.api.core.entity.antique.ImageRef
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.ratelimit.RateLimiter
 import com.ifmix.api.core.infra.ratelimit.Tier
 import com.ifmix.api.core.infra.storage.ObjectStorage
@@ -33,7 +33,7 @@ open class AntiqueService(
      * P0-1: AI 识别端点 — 接受已上传图片的 objectKey，调用 ScanRunner 获取结果。
      */
     @Transactional
-    fun newScan(ctx: RequestContext, req: NewScanReq): NewScanRes {
+    fun newScan(ctx: OperationContext, req: NewScanReq): NewScanRes {
         // 限流检查
         val subject = ctx.appId
         val limitResult = rateLimiter.check(ctx, subject)
@@ -58,6 +58,7 @@ open class AntiqueService(
 
         // 创建 ScanRecord
         val record = scanRepo.create(
+            ctx = ctx,
             appId = ctx.appId,
             imageKeys = listOf(ImageRef(key = req.imageKey)),
             status = scanResult.status,
@@ -73,7 +74,7 @@ open class AntiqueService(
     }
 
     @Transactional
-    fun createScan(ctx: RequestContext, request: CreateScanRequest): ScanRecord {
+    fun createScan(ctx: OperationContext, request: CreateScanRequest): ScanRecord {
         // 限流检查
         val subject = ctx.appId
         val limitResult = rateLimiter.check(ctx, subject)
@@ -86,6 +87,7 @@ open class AntiqueService(
 
         // 创建 ScanRecord
         return scanRepo.create(
+            ctx = ctx,
             appId = ctx.appId,
             imageKeys = listOf(ImageRef(key = objectKey)),
             status = ScanStatus.PENDING,
@@ -94,28 +96,28 @@ open class AntiqueService(
         )
     }
 
-    fun getScanResult(ctx: RequestContext, id: String): ScanDto {
+    fun getScanResult(ctx: OperationContext, id: String): ScanDto {
         val uuid = try {
             UUID.fromString(id)
         } catch (_: Exception) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID format")
         }
-        val record = scanRepo.findById(uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
+        val record = scanRepo.findById(ctx, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
         return record.toDto()
     }
 
     fun findByCursor(
-        ctx: RequestContext,
+        ctx: OperationContext,
         input: com.ifmix.api.core.infra.db.CursorQueryInput = com.ifmix.api.core.infra.db.CursorQueryInput(),
     ): com.ifmix.api.core.infra.db.Page<ScanRecord> {
-        return scanRepo.findByCursorForApp(UUID.fromString(ctx.appId), input)
+        return scanRepo.findByCursorForApp(ctx, UUID.fromString(ctx.appId), input)
     }
 
-    fun presignedUploadUrl(objectKey: String, contentType: String, duration: Duration): String {
+    fun presignedUploadUrl(ctx: OperationContext, objectKey: String, contentType: String, duration: Duration): String {
         return objectStorage.presignUpload(objectKey, contentType, duration)
     }
 
-    fun presignedDownloadUrl(objectKey: String, duration: Duration): String {
+    fun presignedDownloadUrl(ctx: OperationContext, objectKey: String, duration: Duration): String {
         return objectStorage.presignDownload(objectKey, duration)
     }
 
@@ -123,24 +125,24 @@ open class AntiqueService(
      * 软删除扫描记录。Jimmer @LogicalDeleted 自动设置 deletedAt。
      */
     @Transactional
-    fun deleteScan(ctx: RequestContext, id: String) {
+    fun deleteScan(ctx: OperationContext, id: String) {
         val uuid = try { UUID.fromString(id) } catch (_: Exception) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID")
         }
-        scanRepo.findById(uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
+        scanRepo.findById(ctx, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
         // TODO: 校验归属（当前用户）
-        scanRepo.deleteById(uuid)
+        scanRepo.deleteById(ctx, uuid)
     }
 
     /**
      * 更新扫描记录（name / notes）。
      */
     @Transactional
-    fun updateScan(ctx: RequestContext, req: UpdateScanReq): ScanDto {
+    fun updateScan(ctx: OperationContext, req: UpdateScanReq): ScanDto {
         val uuid = try { UUID.fromString(req.id) } catch (_: Exception) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID")
         }
-        val record = scanRepo.findById(uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
+        val record = scanRepo.findById(ctx, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
         // TODO: 校验归属 + 实现更新
         return record.toDto()
     }

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.iap.IapService
 import com.ifmix.api.core.service.iap.VerifyReq
 import com.ifmix.api.core.service.iap.VerifyRes
@@ -32,7 +32,7 @@ class CustomerIapController(private val iapService: IapService) {
     )
     @PostMapping("/mutation/iap/verify")
     fun verify(
-        ctx: RequestContext,
+        ctx: OperationContext,
         @Valid @RequestBody req: VerifyReq,
     ): VerifyRes {
         return iapService.verifyPurchase(ctx, req)

@@ -7,6 +7,7 @@ import com.ifmix.api.core.entity.antique.id
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.ratelimit.Tier
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -23,7 +24,7 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
     /**
      * 按 appId 过滤 + 游标分页，使用 SQL 层面完成（不全量加载）。
      */
-    fun findByCursorForApp(appId: UUID, input: CursorQueryInput = CursorQueryInput()): Page<ScanRecord> {
+    fun findByCursorForApp(ctx: OperationContext, appId: UUID, input: CursorQueryInput = CursorQueryInput()): Page<ScanRecord> {
         val limit = input.effectiveLimit()
         val cursor = input.cursor?.let {
             try { UUID.fromString(it) } catch (_: Exception) { null }
@@ -49,6 +50,7 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
 
     /** Create a new scan record using Jimmer draft lambda. */
     fun create(
+        ctx: OperationContext,
         appId: String,
         imageKeys: List<ImageRef>,
         status: ScanStatus,
@@ -68,6 +70,6 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
             this.createdAt = now
             this.updatedAt = now
         }
-        return save(entity)
+        return save(ctx, entity)
     }
 }

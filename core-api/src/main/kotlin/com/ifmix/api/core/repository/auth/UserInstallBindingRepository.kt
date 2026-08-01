@@ -10,6 +10,7 @@ import com.ifmix.api.core.entity.auth.loginCount
 import com.ifmix.api.core.entity.auth.updatedAt
 import com.ifmix.api.core.entity.auth.userId
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -31,6 +32,7 @@ class UserInstallBindingRepository(
      * - 已存在 → 更新 lastSeenAt、loginCount++、clientIp/platform
      */
     fun recordBinding(
+        ctx: OperationContext,
         appId: UUID,
         userId: UUID,
         installId: UUID,
@@ -59,7 +61,7 @@ class UserInstallBindingRepository(
                 this.createdAt = now
                 this.updatedAt = now
             }
-            save(entity)
+            save(ctx, entity)
         } else {
             sql.createUpdate(UserInstallBinding::class) {
                 set(table.lastSeenAt, now)

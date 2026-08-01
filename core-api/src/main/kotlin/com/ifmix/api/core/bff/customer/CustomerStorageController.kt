@@ -3,7 +3,7 @@ package com.ifmix.api.core.bff.customer
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.antique.AntiqueService
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
@@ -48,7 +48,7 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
     )
     @PostMapping("/mutation/storage/presignUpload")
     fun presignUpload(
-        ctx: RequestContext,
+        ctx: OperationContext,
         @Valid @RequestBody req: PresignUploadReq,
     ): PresignedUploadResponse {
         val installId = ctx.installId
@@ -70,7 +70,7 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
             ContentType.IMAGE_WEBP -> "image/webp"
         }
 
-        val url = antiqueService.presignedUploadUrl(objectKey, contentTypeStr, Duration.ofSeconds(300))
+        val url = antiqueService.presignedUploadUrl(ctx, objectKey, contentTypeStr, Duration.ofSeconds(300))
         return PresignedUploadResponse(uploadUrl = url, imageKey = objectKey)
     }
 
@@ -85,13 +85,13 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
     )
     @PostMapping("/mutation/storage/presignDownload")
     fun presignDownload(
-        ctx: RequestContext,
+        ctx: OperationContext,
         @Valid @RequestBody req: PresignDownloadReq,
     ): PresignedDownloadResponse {
         // 校验 objectKey 格式
         validateObjectKey(ctx, req.imageKey)
 
-        val url = antiqueService.presignedDownloadUrl(req.imageKey, Duration.ofSeconds(req.durationSeconds ?: 3600L))
+        val url = antiqueService.presignedDownloadUrl(ctx, req.imageKey, Duration.ofSeconds(req.durationSeconds ?: 3600L))
         return PresignedDownloadResponse(url)
     }
 
@@ -101,7 +101,7 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
      * 2. objectKey 中的 appId 必须与请求头中的 appId 一致
      * 3. 不能包含路径遍历字符（..）
      */
-    private fun validateObjectKey(ctx: RequestContext, objectKey: String) {
+    private fun validateObjectKey(ctx: OperationContext, objectKey: String) {
         // 防止路径遍历
         if (objectKey.contains("..")) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "objectKey: path traversal not allowed")

@@ -3,6 +3,7 @@ package com.ifmix.api.core.repository.base
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.http.OperationContext
 import org.babyfish.jimmer.Input
 import org.babyfish.jimmer.View
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
@@ -19,33 +20,33 @@ abstract class BaseCrudRepository<E : Any>(
     protected val sql: KSqlClient,
     protected val entityType: KClass<E>,
 ) {
-    open fun findById(id: UUID): E? =
+    open fun findById(ctx: OperationContext, id: UUID): E? =
         sql.entities.findById(entityType, id)
 
-    open fun <V : View<E>> findById(id: UUID, viewType: KClass<V>): V? =
+    open fun <V : View<E>> findById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V? =
         sql.entities.findById(viewType, id)
 
-    open fun insert(input: Input<E>): E =
+    open fun insert(ctx: OperationContext, input: Input<E>): E =
         sql.entities.save(input) {
             setMode(SaveMode.INSERT_ONLY)
         }.modifiedEntity
 
-    open fun update(input: Input<E>): E =
+    open fun update(ctx: OperationContext, input: Input<E>): E =
         sql.entities.save(input) {
             setMode(SaveMode.UPDATE_ONLY)
         }.modifiedEntity
 
-    open fun save(input: Input<E>): E =
+    open fun save(ctx: OperationContext, input: Input<E>): E =
         sql.entities.save(input).modifiedEntity
 
-    open fun save(entity: E): E =
+    open fun save(ctx: OperationContext, entity: E): E =
         sql.entities.save(entity).modifiedEntity
 
-    open fun deleteById(id: UUID) {
+    open fun deleteById(ctx: OperationContext, id: UUID) {
         sql.entities.delete(entityType, id)
     }
 
-    open fun findAll(): List<E> =
+    open fun findAll(ctx: OperationContext): List<E> =
         sql.entities.findAll(entityType)
 
     /**
@@ -54,7 +55,7 @@ abstract class BaseCrudRepository<E : Any>(
      *
      * 子类若需要额外过滤条件（如 appId），应覆写此方法。
      */
-    open fun findByCursor(input: CursorQueryInput = CursorQueryInput()): Page<E> {
+    open fun findByCursor(ctx: OperationContext, input: CursorQueryInput = CursorQueryInput()): Page<E> {
         val limit = input.effectiveLimit()
         val cursor = input.cursor?.let {
             try { UUID.fromString(it) } catch (_: Exception) { null }

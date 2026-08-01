@@ -2,7 +2,7 @@ package com.ifmix.api.core.service.antique
 
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 
 /**
  * 占位 ScanRunner：未接入真实 AI（app.storage.type != s3 / 无 Agnes key）时的回落实现，
@@ -11,7 +11,7 @@ import com.ifmix.api.core.infra.http.RequestContext
  */
 class StubScanRunner : ScanRunner {
 
-    override suspend fun run(ctx: RequestContext, imageUrl: String): ScanResult =
+    override suspend fun run(ctx: OperationContext, imageUrl: String): ScanResult =
         ScanResult(
             scanId = UuidV7.generate().toString(),
             status = ScanStatus.COMPLETED,

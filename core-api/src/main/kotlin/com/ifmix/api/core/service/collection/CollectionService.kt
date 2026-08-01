@@ -3,7 +3,7 @@ package com.ifmix.api.core.service.collection
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.appIdAsUUID
 import com.ifmix.api.core.entity.antique.ScanRecord
 import com.ifmix.api.core.entity.collection.Collection
@@ -29,21 +29,22 @@ open class CollectionService(
      * 按 userId 优先匹配，若无 userId 则按 installId 匹配。
      */
     @Transactional
-    fun getDefault(ctx: RequestContext): Collection {
+    fun getDefault(ctx: OperationContext): Collection {
         val appId = ctx.appIdAsUUID()
         val userId = ctx.userId
         val installId = ctx.installId
 
-        var collection = collectionRepo.findDefault(appId, installId, userId)
+        var collection = collectionRepo.findDefault(ctx, appId, installId, userId)
 
         if (collection == null) {
-            collection = createDefaultCollection(appId, userId, installId)
+            collection = createDefaultCollection(ctx, appId, userId, installId)
         }
 
         return collection
     }
 
     private fun createDefaultCollection(
+        ctx: OperationContext,
         appId: UUID,
         userId: String?,
         installId: UUID?,
@@ -59,7 +60,7 @@ open class CollectionService(
             updatedAt = now
             deletedAt = null
         }
-        return collectionRepo.save(entity)
+        return collectionRepo.save(ctx, entity)
     }
 
     /**
@@ -67,7 +68,7 @@ open class CollectionService(
      * 幂等操作：重复添加不会创建重复项。
      */
     @Transactional
-    fun addItem(ctx: RequestContext, req: AddItemReq): AddItemRes {
+    fun addItem(ctx: OperationContext, req: AddItemReq): AddItemRes {
         val scanRecordIdUUID = try {
             UUID.fromString(req.scanRecordId)
         } catch (e: Exception) {
@@ -79,7 +80,7 @@ open class CollectionService(
             else -> getDefault(ctx).id
         }
 
-        val itemId = itemRepo.insertIfAbsent(ctx.appIdAsUUID(), collectionId, scanRecordIdUUID)
+        val itemId = itemRepo.insertIfAbsent(ctx, ctx.appIdAsUUID(), collectionId, scanRecordIdUUID)
         return AddItemRes(id = itemId.toString())
     }
 
@@ -87,7 +88,7 @@ open class CollectionService(
      * 批量从收藏中移除扫描记录（软删除）。
      */
     @Transactional
-    fun removeItems(ctx: RequestContext, req: RemoveItemsReq): RemoveItemsRes {
+    fun removeItems(ctx: OperationContext, req: RemoveItemsReq): RemoveItemsRes {
         if (req.scanRecordIds.isEmpty()) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "scanRecordIds cannot be empty")
         }
@@ -106,7 +107,7 @@ open class CollectionService(
             else -> getDefault(ctx).id
         }
 
-        val deletedCount = itemRepo.softDeleteByScanIds(appId, collectionId, parsedIds)
+        val deletedCount = itemRepo.softDeleteByScanIds(ctx, appId, collectionId, parsedIds)
         return RemoveItemsRes(deletedCount.toInt())
     }
 
@@ -115,7 +116,7 @@ open class CollectionService(
      * 返回包含扫描详情的 Page<ScanRecord>。
      */
     @Transactional
-    fun listItems(ctx: RequestContext, req: ListItemsReq?): Page<ScanRecord> {
+    fun listItems(ctx: OperationContext, req: ListItemsReq?): Page<ScanRecord> {
         val appId = ctx.appIdAsUUID()
 
         val collectionId = when {
@@ -126,7 +127,7 @@ open class CollectionService(
         val limit = req?.limit ?: 20
         val cursor = req?.cursor?.let { try { UUID.fromString(it) } catch (e: Exception) { null } }
 
-        val collectionItems = itemRepo.listWithScanRecords(appId, collectionId, limit, cursor)
+        val collectionItems = itemRepo.listWithScanRecords(ctx, appId, collectionId, limit, cursor)
         val scanRecords = collectionItems.items.mapNotNull { item -> item.scanRecord }
 
         val nextCursor = if (collectionItems.hasMore && collectionItems.items.isNotEmpty()) {

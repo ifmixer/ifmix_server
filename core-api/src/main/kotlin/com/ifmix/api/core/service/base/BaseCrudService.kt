@@ -4,7 +4,7 @@ import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.entity.AppScopedProps
 import org.babyfish.jimmer.Input
 import org.babyfish.jimmer.View
@@ -22,43 +22,43 @@ open class BaseCrudService<E : Any>(
     protected val repo: BaseCrudRepository<E>,
 ) {
     @Transactional(readOnly = true)
-    open fun findById(id: UUID): E? =
-        repo.findById(id)
+    open fun findById(ctx: OperationContext, id: UUID): E? =
+        repo.findById(ctx, id)
 
     @Transactional(readOnly = true)
-    open fun getById(id: UUID): E =
-        repo.findById(id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+    open fun getById(ctx: OperationContext, id: UUID): E =
+        repo.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     @Transactional(readOnly = true)
-    open fun <V : View<E>> findById(id: UUID, viewType: KClass<V>): V? =
-        repo.findById(id, viewType)
+    open fun <V : View<E>> findById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V? =
+        repo.findById(ctx, id, viewType)
 
     @Transactional(readOnly = true)
-    open fun <V : View<E>> getById(id: UUID, viewType: KClass<V>): V =
-        repo.findById(id, viewType) ?: throw ApiError(ErrorCode.NOT_FOUND)
+    open fun <V : View<E>> getById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V =
+        repo.findById(ctx, id, viewType) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     /**
      * 游标分页：委托 repository 的 SQL 分页实现。
      */
     @Transactional(readOnly = true)
-    open fun findByCursor(input: CursorQueryInput = CursorQueryInput()): Page<E> =
-        repo.findByCursor(input)
+    open fun findByCursor(ctx: OperationContext, input: CursorQueryInput = CursorQueryInput()): Page<E> =
+        repo.findByCursor(ctx, input)
 
     @Transactional
-    open fun create(input: Input<E>): E =
-        repo.insert(input)
+    open fun create(ctx: OperationContext, input: Input<E>): E =
+        repo.insert(ctx, input)
 
     @Transactional
-    open fun update(input: Input<E>): E =
-        repo.update(input)
+    open fun update(ctx: OperationContext, input: Input<E>): E =
+        repo.update(ctx, input)
 
     @Transactional
-    open fun save(input: Input<E>): E =
-        repo.save(input)
+    open fun save(ctx: OperationContext, input: Input<E>): E =
+        repo.save(ctx, input)
 
     @Transactional
-    open fun deleteById(id: UUID) =
-        repo.deleteById(id)
+    open fun deleteById(ctx: OperationContext, id: UUID) =
+        repo.deleteById(ctx, id)
 }
 
 /**

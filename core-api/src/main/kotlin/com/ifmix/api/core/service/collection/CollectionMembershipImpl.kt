@@ -1,6 +1,6 @@
 package com.ifmix.api.core.service.collection
 
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.appIdAsUUID
 import com.ifmix.api.core.repository.collection.CollectionItemRepository
 import com.ifmix.api.core.repository.collection.CollectionRepository
@@ -15,12 +15,12 @@ class CollectionMembershipImpl(
     private val collectionRepo: CollectionRepository,
 ) : CollectionMembership {
 
-    override fun isCollected(ctx: RequestContext, scanRecordId: String): Boolean {
+    override fun isCollected(ctx: OperationContext, scanRecordId: String): Boolean {
         try {
             val scanRecordIdUUID = UUID.fromString(scanRecordId)
             val appId = ctx.appIdAsUUID()
-            val collection = collectionRepo.findDefault(appId, ctx.installId, ctx.userId) ?: return false
-            return itemRepo.existsByScanRecordId(collection.id, scanRecordIdUUID)
+            val collection = collectionRepo.findDefault(ctx, appId, ctx.installId, ctx.userId) ?: return false
+            return itemRepo.existsByScanRecordId(ctx, collection.id, scanRecordIdUUID)
         } catch (e: Exception) {
             return false
         }

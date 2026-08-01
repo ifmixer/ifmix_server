@@ -7,7 +7,7 @@ import com.ifmix.api.core.infra.auth.AuthJwtService
 import com.ifmix.api.core.infra.auth.Hashing
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.auth.AppRefreshTokenRepository
 import com.ifmix.api.core.repository.auth.AppUserRepository
 import com.ifmix.api.core.repository.auth.AuthDeviceSecretRepository
@@ -45,23 +45,23 @@ open class AuthService(
         private const val DEVICE_SECRET_TTL_DAYS = 365L
     }
 
-    private fun tenantId(ctx: RequestContext): String =
-        appConfigRepo.getByAppId(ctx.appId)?.authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
+    private fun tenantId(ctx: OperationContext): String =
+        appConfigRepo.getByAppId(ctx)?.authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
     @Transactional
-    fun loginWithIdToken(ctx: RequestContext, provider: String, req: ProviderLoginReq): LoginRes {
+    fun loginWithIdToken(ctx: OperationContext, provider: String, req: ProviderLoginReq): LoginRes {
         return loginWithProvider(ctx, provider, req.idToken, req.deviceSecret)
     }
 
     @Transactional
-    fun loginWithCode(ctx: RequestContext, provider: String, req: WechatLoginReq): LoginRes {
+    fun loginWithCode(ctx: OperationContext, provider: String, req: WechatLoginReq): LoginRes {
         return loginWithProvider(ctx, provider, req.code, req.deviceSecret)
     }
 
     @Transactional
-    fun loginWithProvider(ctx: RequestContext, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
+    fun loginWithProvider(ctx: OperationContext, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
         // 1. Resolve app config & tenant
-        val config = appConfigRepo.getByAppId(ctx.appId) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
+        val config = appConfigRepo.getByAppId(ctx) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val tenantId = config.authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val tenantUUID = UUID.fromString(tenantId)
 
@@ -74,7 +74,7 @@ open class AuthService(
         // 4. Find or create AuthIdentity
         val normalizedEmail = verified.email?.lowercase()
         val identity = if (normalizedEmail != null) {
-            identityRepo.findByTenantAndEmail(tenantId, normalizedEmail) ?: run {
+            identityRepo.findByTenantAndEmail(ctx, tenantId, normalizedEmail) ?: run {
                 val newIdentity = AuthIdentity {
                     id = UuidV7.generate()
                     authTenant { id = tenantUUID }
@@ -90,15 +90,15 @@ open class AuthService(
                     createdAt = Instant.now()
                     updatedAt = Instant.now()
                 }
-                identityRepo.save(newIdentity)
+                identityRepo.save(ctx, newIdentity)
             }
         } else {
             // No email — look up existing provider identity first
             val existingProvider = providerIdentityRepo.findByProviderAndAccountId(
-                tenantId, provider, verified.accountId
+                ctx, tenantId, provider, verified.accountId
             )
             if (existingProvider != null) {
-                identityRepo.findById(existingProvider.authIdentity.id)!!
+                identityRepo.findById(ctx, existingProvider.authIdentity.id)!!
             } else {
                 val newIdentity = AuthIdentity {
                     id = UuidV7.generate()
@@ -115,12 +115,13 @@ open class AuthService(
                     createdAt = Instant.now()
                     updatedAt = Instant.now()
                 }
-                identityRepo.save(newIdentity)
+                identityRepo.save(ctx, newIdentity)
             }
         }
 
         // 5. Upsert AuthProviderIdentity
         providerIdentityRepo.upsert(
+            ctx = ctx,
             tenantId = tenantId,
             provider = provider,
             providerAccountId = verified.accountId,
@@ -136,7 +137,7 @@ open class AuthService(
         )
 
         // 6. Ensure AppUser
-        val appUserId = appUserRepo.ensure(UUID.fromString(ctx.appId), identity.id)
+        val appUserId = appUserRepo.ensure(ctx, UUID.fromString(ctx.appId), identity.id)
 
         // 7. Issue device secret
         val rawDeviceSecret = Hashing.randomTokenBase64Url()
@@ -154,7 +155,7 @@ open class AuthService(
             createdAt = now
             updatedAt = now
         }
-        val savedDeviceSecret = deviceSecretRepo.save(deviceSecretEntity)
+        val savedDeviceSecret = deviceSecretRepo.save(ctx, deviceSecretEntity)
 
         // 8. Issue refresh token
         val rawRefreshToken = Hashing.randomTokenBase64Url()
@@ -173,7 +174,7 @@ open class AuthService(
             createdAt = now
             updatedAt = now
         }
-        refreshRepo.save(refreshTokenEntity)
+        refreshRepo.save(ctx, refreshTokenEntity)
 
         // 9. Sign access token
         val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId)
@@ -187,6 +188,7 @@ open class AuthService(
                 installId = ctx.installId,
                 clientIp = ctx.clientIp,
                 clientPlatform = ctx.clientPlatform?.name,
+                ctx = ctx,
             )
         )
 
@@ -202,22 +204,22 @@ open class AuthService(
     }
 
     @Transactional
-    fun exchange(ctx: RequestContext, req: ExchangeReq): ExchangeRes {
+    fun exchange(ctx: OperationContext, req: ExchangeReq): ExchangeRes {
         val appId = UUID.fromString(ctx.appId)
 
         // 1. Hash the provided device secret
         val secretHash = Hashing.sha256Base64Url(req.deviceSecret!!)
 
         // 2. Find valid device secret
-        val foundSecret = deviceSecretRepo.findValidByHash(secretHash)
+        val foundSecret = deviceSecretRepo.findValidByHash(ctx, secretHash)
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or expired device secret")
 
         // 3. Touch device secret (update lastUsedAt)
-        deviceSecretRepo.touch(foundSecret.id)
+        deviceSecretRepo.touch(ctx, foundSecret.id)
 
         // 4. Find AppUser via identity
         val identityId = foundSecret.authIdentity.id
-        val appUserId = appUserRepo.ensure(appId, identityId)
+        val appUserId = appUserRepo.ensure(ctx, appId, identityId)
 
         // 5. Issue new refresh token
         val rawRefreshToken = Hashing.randomTokenBase64Url()
@@ -237,7 +239,7 @@ open class AuthService(
             createdAt = now
             updatedAt = now
         }
-        refreshRepo.save(refreshTokenEntity)
+        refreshRepo.save(ctx, refreshTokenEntity)
 
         // 6. Sign access token
         val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId)
@@ -248,19 +250,19 @@ open class AuthService(
             refreshToken = rawRefreshToken,
             refreshExpiresAt = refreshExpiresAt,
             expiresIn = accessTtlSec,
-            user = UserDto(id = appUserId.toString(), email = identityRepo.findById(identityId)?.email),
+            user = UserDto(id = appUserId.toString(), email = identityRepo.findById(ctx, identityId)?.email),
         )
     }
 
     @Transactional
-    fun refresh(ctx: RequestContext, req: RefreshReq): RefreshRes {
+    fun refresh(ctx: OperationContext, req: RefreshReq): RefreshRes {
         val appId = UUID.fromString(ctx.appId)
 
         // 1. Hash the provided refresh token
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
 
         // 2. Find valid token
-        val oldToken = refreshRepo.findValidByHash(appId, tokenHash)
+        val oldToken = refreshRepo.findValidByHash(ctx, appId, tokenHash)
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or expired refresh token")
 
         // 3. Generate new refresh token
@@ -282,10 +284,10 @@ open class AuthService(
             createdAt = now
             updatedAt = now
         }
-        refreshRepo.save(newTokenEntity)
+        refreshRepo.save(ctx, newTokenEntity)
 
         // 4. Revoke old token
-        refreshRepo.revoke(oldToken.id, replacedBy = newTokenId)
+        refreshRepo.revoke(ctx, oldToken.id, replacedBy = newTokenId)
 
         // 5. Sign new access token
         val appUserId = oldToken.appUser.id
@@ -301,28 +303,28 @@ open class AuthService(
     }
 
     @Transactional
-    fun logout(ctx: RequestContext, req: LogoutReq): LogoutRes {
+    fun logout(ctx: OperationContext, req: LogoutReq): LogoutRes {
         val appId = UUID.fromString(ctx.appId)
 
         // 1. Hash the provided refresh token
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
 
         // 2. Find token (valid or not - we still revoke it)
-        val token = refreshRepo.findValidByHash(appId, tokenHash)
+        val token = refreshRepo.findValidByHash(ctx, appId, tokenHash)
         if (token != null) {
             // 3. Revoke refresh token
-            refreshRepo.revoke(token.id)
+            refreshRepo.revoke(ctx, token.id)
 
             // 4. If device secret is linked, revoke it too
             token.deviceSecret?.let { ds ->
-                deviceSecretRepo.revoke(ds.id)
+                deviceSecretRepo.revoke(ctx, ds.id)
             }
         }
 
         return LogoutRes(ok = true)
     }
 
-    fun me(ctx: RequestContext): MeRes {
+    fun me(ctx: OperationContext): MeRes {
         val userId = ctx.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         return MeRes(userId, null)
     }
@@ -332,7 +334,7 @@ open class AuthService(
      * 复用 [loginWithProvider] 逻辑，用 installId 作为匿名凭据。
      */
     @Transactional
-    open fun anonymousLogin(ctx: RequestContext): LoginRes {
+    open fun anonymousLogin(ctx: OperationContext): LoginRes {
         val installId = ctx.installId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-install-id required for anonymous login")
         return loginWithProvider(ctx, "anonymous", "anon_$installId", null)
     }
@@ -340,7 +342,7 @@ open class AuthService(
     /**
      * 请求删除账号（stub）。符合 App Store 审核要求。
      */
-    fun requestAccountDeletion(ctx: RequestContext): DeleteAccountRes {
+    fun requestAccountDeletion(ctx: OperationContext): DeleteAccountRes {
         val userId = ctx.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         // TODO: 存储删除请求到数据库
         val scheduledAt = Instant.now().plusSeconds(30L * 24 * 3600).toEpochMilli()

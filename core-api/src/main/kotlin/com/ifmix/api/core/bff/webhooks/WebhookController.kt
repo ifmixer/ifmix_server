@@ -1,6 +1,6 @@
 package com.ifmix.api.core.bff.webhooks
 
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.appconfig.AppConfigRepo
 import com.ifmix.api.core.service.iap.IapService
 import com.ifmix.api.core.service.iap.NotificationDecoder
@@ -68,8 +68,9 @@ class WebhookController(
             val bundleId = extractBundleId(payloadJson)
 
             // 4. 通过 bundleId 反查 appId
+            val systemCtx = OperationContext(appId = "webhook-apple", userId = "system")
             val appId = if (bundleId != null) {
-                appConfigRepo.getByAppleBundleId(bundleId)?.appId
+                appConfigRepo.getByAppleBundleId(systemCtx, bundleId)?.appId
             } else null
 
             if (appId == null) {
@@ -77,8 +78,8 @@ class WebhookController(
                 return ResponseEntity.badRequest().body("unknown app")
             }
 
-            // 5. 构建 RequestContext 并处理通知
-            val ctx = RequestContext(appId = appId, userId = "system")
+            // 5. 构建 OperationContext 并处理通知
+            val ctx = OperationContext(appId = appId, userId = "system")
             iapService.handleAppleNotification(ctx, rawPayload, appleDecoder)
             return ResponseEntity.ok("ok")
 
@@ -101,8 +102,9 @@ class WebhookController(
             val packageName = extractGooglePackageName(rawPayload)
 
             // 2. 通过 packageName 反查 appId
+            val systemCtx = OperationContext(appId = "webhook-google", userId = "system")
             val appId = if (packageName != null) {
-                appConfigRepo.getByAndroidPackage(packageName)?.appId
+                appConfigRepo.getByAndroidPackage(systemCtx, packageName)?.appId
             } else null
 
             if (appId == null) {
@@ -111,7 +113,7 @@ class WebhookController(
             }
 
             // 3. 处理通知
-            val ctx = RequestContext(appId = appId, userId = "system")
+            val ctx = OperationContext(appId = appId, userId = "system")
             iapService.handleGoogleNotification(ctx, rawPayload, googleDecoder)
             return ResponseEntity.ok("ok")
 

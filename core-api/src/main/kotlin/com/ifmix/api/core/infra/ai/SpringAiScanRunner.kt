@@ -2,7 +2,7 @@ package com.ifmix.api.core.infra.ai
 
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.antique.ScanResult
 import com.ifmix.api.core.service.antique.ScanRunner
 import org.slf4j.LoggerFactory
@@ -32,7 +32,7 @@ open class SpringAiScanRunner(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override suspend fun run(ctx: RequestContext, imageUrl: String): ScanResult {
+    override suspend fun run(ctx: OperationContext, imageUrl: String): ScanResult {
         val states = keyStore.init()
 
         // 模型列表：主模型 + fallback

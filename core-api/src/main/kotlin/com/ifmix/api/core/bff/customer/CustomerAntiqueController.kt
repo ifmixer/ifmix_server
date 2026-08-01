@@ -2,7 +2,7 @@ package com.ifmix.api.core.bff.customer
 
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.antique.AntiqueService
 import com.ifmix.api.core.service.antique.CreateScanRequest
 import com.ifmix.api.core.service.antique.DeleteScanRes
@@ -40,14 +40,14 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
         """,
     )
     @PostMapping("/mutation/antique/newScan")
-    fun newScan(ctx: RequestContext, @Valid @RequestBody req: NewScanReq): NewScanRes {
+    fun newScan(ctx: OperationContext, @Valid @RequestBody req: NewScanReq): NewScanRes {
         return antiqueService.newScan(ctx, req)
     }
 
     /** 创建扫描任务（脚手架 CRUD，保留兼容）。 */
     @io.swagger.v3.oas.annotations.Hidden
     @PostMapping("/mutation/antique/createOne")
-    fun createOne(ctx: RequestContext, @Valid @RequestBody req: CreateScanRequest): ScanDto {
+    fun createOne(ctx: OperationContext, @Valid @RequestBody req: CreateScanRequest): ScanDto {
         val record = antiqueService.createScan(ctx, req)
         return with(antiqueService) { record.toDto() }
     }
@@ -62,7 +62,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
         """,
     )
     @PutMapping("/query/antique/getById")
-    fun getById(ctx: RequestContext, @Valid @RequestBody req: ByIdRequest): ScanDto {
+    fun getById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): ScanDto {
         return antiqueService.getScanResult(ctx, req.id.toString())
     }
 
@@ -76,7 +76,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
     )
     @PutMapping("/query/antique/findByCursor")
     fun findByCursor(
-        ctx: RequestContext,
+        ctx: OperationContext,
         @RequestBody(required = false) input: CursorQueryInput?,
     ): Page<ScanDto> {
         val page = antiqueService.findByCursor(ctx, input ?: CursorQueryInput())
@@ -97,7 +97,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
         """,
     )
     @PostMapping("/mutation/antique/deleteById")
-    fun deleteById(ctx: RequestContext, @Valid @RequestBody req: ByIdRequest): DeleteScanRes {
+    fun deleteById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): DeleteScanRes {
         antiqueService.deleteScan(ctx, req.id.toString())
         return DeleteScanRes(deleted = true)
     }
@@ -112,7 +112,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
         """,
     )
     @PostMapping("/mutation/antique/updateOne")
-    fun updateOne(ctx: RequestContext, @Valid @RequestBody req: UpdateScanReq): ScanDto {
+    fun updateOne(ctx: OperationContext, @Valid @RequestBody req: UpdateScanReq): ScanDto {
         return antiqueService.updateScan(ctx, req)
     }
 

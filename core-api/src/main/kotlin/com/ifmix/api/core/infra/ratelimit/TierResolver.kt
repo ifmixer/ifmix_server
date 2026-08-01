@@ -26,18 +26,18 @@ enum class Tier(val code: Int) {
             ?: throw IllegalArgumentException("Unknown Tier code: $code")
 
         /** 默认返回 FREE。 */
-        fun from(ctx: com.ifmix.api.core.infra.http.RequestContext): Tier = FREE
+        fun from(ctx: com.ifmix.api.core.infra.http.OperationContext): Tier = FREE
     }
 }
 
 /** 将请求上下文映射为一个 Tier。默认实现一律返回 FREE。 */
 interface TierResolver {
-    fun resolve(ctx: com.ifmix.api.core.infra.http.RequestContext): Tier
+    fun resolve(ctx: com.ifmix.api.core.infra.http.OperationContext): Tier
 }
 
 /** 基础实现：所有用户走 FREE 档。后续可按付费等级/白名单等扩展。 */
 class FreeTierResolver : TierResolver {
-    override fun resolve(ctx: com.ifmix.api.core.infra.http.RequestContext): Tier = Tier.FREE
+    override fun resolve(ctx: com.ifmix.api.core.infra.http.OperationContext): Tier = Tier.FREE
 }
 
 /**
@@ -49,11 +49,11 @@ interface RateLimitSubjectResolver {
     /**
      * @param clientIp 客户端真实 IP（由调用方传入）
      */
-    fun resolve(ctx: com.ifmix.api.core.infra.http.RequestContext, clientIp: String): String
+    fun resolve(ctx: com.ifmix.api.core.infra.http.OperationContext, clientIp: String): String
 }
 
 /** 默认实现：userId ?: ip ?: "unknown"。 */
 class DefaultRateLimitSubjectResolver : RateLimitSubjectResolver {
-    override fun resolve(ctx: com.ifmix.api.core.infra.http.RequestContext, clientIp: String): String =
+    override fun resolve(ctx: com.ifmix.api.core.infra.http.OperationContext, clientIp: String): String =
         ctx.userId ?: if (clientIp.isNotBlank()) clientIp else "unknown"
 }

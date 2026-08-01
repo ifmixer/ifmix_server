@@ -1,6 +1,7 @@
 package com.ifmix.api.core.service.appconfig
 
 import com.ifmix.api.core.entity.appconfig.AppConfigVersion
+import com.ifmix.api.core.infra.http.OperationContext
 import org.springframework.stereotype.Service
 import java.util.UUID
 
@@ -15,23 +16,23 @@ class AppConfigRepo(
     private val repo: com.ifmix.api.core.repository.appconfig.AppConfigRepository,
 ) {
 
-    fun getByAppId(appId: String): AppConfig? {
+    fun getByAppId(ctx: OperationContext): AppConfig? {
         return try {
-            val uuid = UUID.fromString(appId)
-            val current = repo.findCurrentByAppId(uuid)
+            val uuid = UUID.fromString(ctx.appId)
+            val current = repo.findCurrentByAppId(ctx, uuid)
             current?.let { toFlat(it) }
         } catch (_: Exception) {
             null
         }
     }
 
-    fun getByAppleBundleId(bundleId: String): AppConfig? {
-        val config = repo.findByBundleId(bundleId)
+    fun getByAppleBundleId(ctx: OperationContext, bundleId: String): AppConfig? {
+        val config = repo.findByBundleId(ctx, bundleId)
         return config?.let { toFlat(it) }
     }
 
-    fun getByAndroidPackage(pkg: String): AppConfig? {
-        val config = repo.findByAndroidPackage(pkg)
+    fun getByAndroidPackage(ctx: OperationContext, pkg: String): AppConfig? {
+        val config = repo.findByAndroidPackage(ctx, pkg)
         return config?.let { toFlat(it) }
     }
 

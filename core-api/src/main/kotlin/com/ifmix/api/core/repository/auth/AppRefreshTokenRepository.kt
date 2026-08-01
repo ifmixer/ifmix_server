@@ -8,6 +8,7 @@ import com.ifmix.api.core.entity.auth.replacedBy
 import com.ifmix.api.core.entity.auth.revokedAt
 import com.ifmix.api.core.entity.auth.tokenHash
 import com.ifmix.api.core.entity.auth.updatedAt
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -23,7 +24,7 @@ class AppRefreshTokenRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppRef
      * Find a valid refresh token by (appId, tokenHash).
      * Valid = not revoked and not expired.
      */
-    fun findValidByHash(appId: UUID, tokenHash: String): AppRefreshToken? {
+    fun findValidByHash(ctx: OperationContext, appId: UUID, tokenHash: String): AppRefreshToken? {
         val now = Instant.now()
         return sql.createQuery(AppRefreshToken::class) {
             where(table.appId eq appId)
@@ -37,7 +38,7 @@ class AppRefreshTokenRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppRef
     /**
      * Revoke a refresh token: set revokedAt and optionally replacedBy.
      */
-    fun revoke(id: UUID, replacedBy: UUID? = null) {
+    fun revoke(ctx: OperationContext, id: UUID, replacedBy: UUID? = null) {
         sql.createUpdate(AppRefreshToken::class) {
             set(table.revokedAt, Instant.now())
             set(table.updatedAt, Instant.now())

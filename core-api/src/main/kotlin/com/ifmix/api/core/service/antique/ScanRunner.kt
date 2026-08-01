@@ -1,6 +1,6 @@
 package com.ifmix.api.core.service.antique
 
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 
 /**
  * 古物扫描执行器接口。
@@ -17,5 +17,5 @@ interface ScanRunner {
      * @param imageUrl 预签名上传后的图片 URL
      * @return 扫描结果（可能为异步 pending）
      */
-    suspend fun run(ctx: RequestContext, imageUrl: String): ScanResult
+    suspend fun run(ctx: OperationContext, imageUrl: String): ScanResult
 }

@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
 import com.ifmix.api.core.entity.todo.dto.TodoView
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.todo.TodoService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
@@ -28,24 +28,24 @@ class CustomerTodoController(private val todoService: TodoService) {
 
     @PutMapping("/query/todo/findByCursor")
     fun findByCursor(
-        ctx: RequestContext,
+        ctx: OperationContext,
         @RequestBody(required = false) input: CursorQueryInput?,
     ): Page<TodoView> = todoService.findViewByCursor(ctx, input ?: CursorQueryInput())
 
     @PutMapping("/query/todo/getById")
-    fun getById(ctx: RequestContext, @Valid @RequestBody req: TodoIdRequest): TodoView =
+    fun getById(ctx: OperationContext, @Valid @RequestBody req: TodoIdRequest): TodoView =
         todoService.getView(ctx, req.id)
 
     @PostMapping("/mutation/todo/createOne")
-    fun createOne(ctx: RequestContext, @Valid @RequestBody req: TodoCreateInput): TodoView =
+    fun createOne(ctx: OperationContext, @Valid @RequestBody req: TodoCreateInput): TodoView =
         todoService.createOne(ctx, req)
 
     @PostMapping("/mutation/todo/updateOne")
-    fun updateOne(ctx: RequestContext, @Valid @RequestBody req: TodoUpdateInput): TodoView =
+    fun updateOne(ctx: OperationContext, @Valid @RequestBody req: TodoUpdateInput): TodoView =
         todoService.updateOne(ctx, req)
 
     @PostMapping("/mutation/todo/deleteById")
-    fun deleteById(ctx: RequestContext, @Valid @RequestBody req: TodoIdRequest): DeleteResult =
+    fun deleteById(ctx: OperationContext, @Valid @RequestBody req: TodoIdRequest): DeleteResult =
         DeleteResult(deleted = todoService.deleteOne(ctx, req.id))
 
     data class TodoIdRequest(val id: UUID)

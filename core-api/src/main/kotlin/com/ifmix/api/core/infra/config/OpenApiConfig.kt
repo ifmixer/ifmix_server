@@ -8,7 +8,7 @@ import io.swagger.v3.oas.models.parameters.Parameter
 import io.swagger.v3.oas.models.security.SecurityRequirement
 import io.swagger.v3.oas.models.security.SecurityScheme
 import io.swagger.v3.oas.models.servers.Server
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import org.springdoc.core.customizers.GlobalOpenApiCustomizer
 import org.springdoc.core.models.GroupedOpenApi
 import org.springdoc.core.utils.SpringDocUtils
@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Configuration
 class OpenApiConfig {
 
     init {
-        SpringDocUtils.getConfig().addRequestWrapperToIgnore(RequestContext::class.java)
+        SpringDocUtils.getConfig().addRequestWrapperToIgnore(OperationContext::class.java)
         SpringDocUtils.getConfig().replaceWithClass(java.time.Instant::class.java, Long::class.javaObjectType)
     }
 

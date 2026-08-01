@@ -4,6 +4,7 @@ import com.ifmix.api.core.entity.auth.AuthProviderIdentity
 import com.ifmix.api.core.entity.auth.authTenantId
 import com.ifmix.api.core.entity.auth.provider
 import com.ifmix.api.core.entity.auth.providerAccountId
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.base.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -17,7 +18,7 @@ import java.util.UUID
 class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {
 
     /** Find by tenantId + provider + providerAccountId using Jimmer query DSL */
-    fun findByProviderAndAccountId(tenantId: String, provider: String, providerAccountId: String): AuthProviderIdentity? {
+    fun findByProviderAndAccountId(ctx: OperationContext, tenantId: String, provider: String, providerAccountId: String): AuthProviderIdentity? {
         val tenantUUID = UUID.fromString(tenantId)
         return sql.createQuery(AuthProviderIdentity::class) {
             where(table.authTenantId eq tenantUUID)
@@ -32,6 +33,7 @@ class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<Auth
      * Returns the saved AuthProviderIdentity.
      */
     fun upsert(
+        ctx: OperationContext,
         tenantId: String,
         provider: String,
         providerAccountId: String,
@@ -45,7 +47,7 @@ class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<Auth
         loginInstallId: String?,
         loginAppId: String?,
     ): AuthProviderIdentity {
-        val existing = findByProviderAndAccountId(tenantId, provider, providerAccountId)
+        val existing = findByProviderAndAccountId(ctx, tenantId, provider, providerAccountId)
 
         val tenantUUID = UUID.fromString(tenantId)
         val now = Instant.now()
@@ -67,6 +69,6 @@ class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<Auth
             createdAt = existing?.createdAt ?: now
             updatedAt = now
         }
-        return save(entity)
+        return save(ctx, entity)
     }
 }

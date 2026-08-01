@@ -2,13 +2,13 @@ package com.ifmix.api.core.infra.config
 
 import com.ifmix.api.core.infra.auth.AuthInterceptor
 import com.ifmix.api.core.infra.http.HeaderValidationInterceptor
-import com.ifmix.api.core.infra.http.RequestContextArgumentResolver
+import com.ifmix.api.core.infra.http.OperationContextArgumentResolver
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
-/** 注册请求头校验拦截器（仅 customer/app-admin）与 RequestContext 参数解析器。 */
+/** 注册请求头校验拦截器（仅 customer/app-admin）与 OperationContext 参数解析器。 */
 @Configuration
 class WebConfig(
     private val headerValidationInterceptor: HeaderValidationInterceptor,
@@ -37,6 +37,6 @@ class WebConfig(
     }
 
     override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
-        resolvers.add(RequestContextArgumentResolver())
+        resolvers.add(OperationContextArgumentResolver())
     }
 }

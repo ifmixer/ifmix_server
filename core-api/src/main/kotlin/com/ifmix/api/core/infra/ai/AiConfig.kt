@@ -1,5 +1,6 @@
 package com.ifmix.api.core.infra.ai
 
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.ai.AgnesKeyRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -31,7 +32,8 @@ class AiConfig {
         return AgnesKeyStore(
             redis = redis,
             loadKeys = {
-                agnesKeyRepo.findAllEnabled().map { key ->
+                val systemCtx = OperationContext(appId = "system")
+                agnesKeyRepo.findAllEnabled(systemCtx).map { key ->
                     AgnesKeyStore.AgnesKeyDoc(
                         id = key.id.toString(),
                         key = key.key ?: "",

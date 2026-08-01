@@ -11,7 +11,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 
-class RequestContextResolutionTest {
+class OperationContextResolutionTest {
 
     private val validAppId = "01234567-89ab-cdef-0123-456789abcdef"
     private lateinit var mvc: MockMvc
@@ -19,7 +19,7 @@ class RequestContextResolutionTest {
     @BeforeEach
     fun setUp() {
         mvc = MockMvcBuilders.standaloneSetup(CtxController())
-            .setCustomArgumentResolvers(RequestContextArgumentResolver())
+            .setCustomArgumentResolvers(OperationContextArgumentResolver())
             .addInterceptors(HeaderValidationInterceptor())
             .setControllerAdvice(GlobalExceptionHandler(true), EnvelopeResponseAdvice())
             .build()
@@ -71,7 +71,7 @@ class RequestContextResolutionTest {
     @RestController
     class CtxController {
         @GetMapping("/customer/core/query/ctx/echo")
-        fun echo(ctx: RequestContext): Map<String, Any?> = mapOf(
+        fun echo(ctx: OperationContext): Map<String, Any?> = mapOf(
             "appId" to ctx.appId,
             "lang" to ctx.lang,
             "platform" to ctx.clientPlatform?.name,

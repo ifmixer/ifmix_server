@@ -1,17 +1,17 @@
 package com.ifmix.api.core.infra.jimmer
 
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 
 /**
- * RequestContext holder for thread-local storage during request processing.
+ * OperationContext holder for thread-local storage during request processing.
  * Used by controllers to propagate appId and other context to services/repositories.
  */
-object RequestContextHolder {
-    private val holder = ThreadLocal<RequestContext>()
+object OperationContextHolder {
+    private val holder = ThreadLocal<OperationContext>()
 
-    fun set(ctx: RequestContext) = holder.set(ctx)
-    fun current(): RequestContext = holder.get()
-        ?: throw IllegalStateException("No RequestContext in current thread")
+    fun set(ctx: OperationContext) = holder.set(ctx)
+    fun current(): OperationContext = holder.get()
+        ?: throw IllegalStateException("No OperationContext in current thread")
     fun clear() = holder.remove()
 }
 

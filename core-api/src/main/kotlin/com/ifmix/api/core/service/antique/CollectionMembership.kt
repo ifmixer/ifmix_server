@@ -1,6 +1,6 @@
 package com.ifmix.api.core.service.antique
 
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 
 /**
  * 收藏归属端口：scanRecordId 是否在调用方的默认收藏夹中。
@@ -17,5 +17,5 @@ fun interface CollectionMembership {
      * @param scanRecordId 扫描记录 ID（scan_record._id hex）
      * @return 是否已收藏
      */
-    fun isCollected(ctx: RequestContext, scanRecordId: String): Boolean
+    fun isCollected(ctx: OperationContext, scanRecordId: String): Boolean
 }

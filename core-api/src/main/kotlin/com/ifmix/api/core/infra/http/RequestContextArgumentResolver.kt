@@ -10,11 +10,11 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.method.support.ModelAndViewContainer
 import java.util.UUID
 
-/** 把校验后的请求头组装成 RequestContext，注入到控制器方法参数。 */
-class RequestContextArgumentResolver : HandlerMethodArgumentResolver {
+/** 把校验后的请求头组装成 OperationContext，注入到控制器方法参数。 */
+class OperationContextArgumentResolver : HandlerMethodArgumentResolver {
 
     override fun supportsParameter(parameter: MethodParameter): Boolean =
-        parameter.parameterType == RequestContext::class.java
+        parameter.parameterType == OperationContext::class.java
 
     override fun resolveArgument(
         parameter: MethodParameter,
@@ -25,7 +25,7 @@ class RequestContextArgumentResolver : HandlerMethodArgumentResolver {
         // 从 AuthInterceptor 读取已验证的 userId（如果拦截器已执行）
         val userId = (webRequest.getAttribute(AuthInterceptor.ATTR_USER_ID, RequestAttributes.SCOPE_REQUEST) as? String)
 
-        return RequestContext(
+        return OperationContext(
             appId = header(webRequest, RequestHeaders.APP_ID) ?: "",
             installId = header(webRequest, RequestHeaders.INSTALL_ID)?.let {
                 try { UUID.fromString(it) } catch (_: Exception) { null }

@@ -20,7 +20,7 @@ class RateLimiter(
      * 检查是否超限。命中则抛 RATE_LIMITED；未命中则消耗一次配额并返回 true。
      * 同时返回当前已用次数供调试。
      */
-    fun check(ctx: com.ifmix.api.core.infra.http.RequestContext, subject: String): CheckResult {
+    fun check(ctx: com.ifmix.api.core.infra.http.OperationContext, subject: String): CheckResult {
         val tier = tierResolver.resolve(ctx)
         val limit = config.limitFor(tier)
         val dayKey = utcDayKey(subject)

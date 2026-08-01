@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.customer
 
 import com.ifmix.api.core.entity.enums.FeedbackCategory
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.feedback.FeedbackService
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
@@ -28,6 +28,6 @@ class CustomerFeedbackController(private val feedbackService: FeedbackService) {
     /** 提交反馈。appId / userId / installId 由 header 推导，客户端不可指定。 */
     @Operation(summary = "提交反馈", description = "scanRecordId 为 ScanDto.id（可选），必须属于当前用户。身份由 header 推导，客户端不可伪造。")
     @PostMapping("/mutation/feedback/submit")
-    fun submit(ctx: RequestContext, @Valid @RequestBody req: SubmitFeedbackReq): SubmitFeedbackRes =
+    fun submit(ctx: OperationContext, @Valid @RequestBody req: SubmitFeedbackReq): SubmitFeedbackRes =
         feedbackService.submit(ctx, req)
 }

@@ -2,7 +2,7 @@ package com.ifmix.api.core.service.iap
 
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.iap.SubscriptionRepository
 import com.ifmix.api.core.repository.iap.StoreNotificationRepository
 import com.ifmix.api.core.entity.iap.Subscription
@@ -48,7 +48,7 @@ open class IapService(
      * 验证一笔购买并写入订阅记录。
      */
     @Transactional
-    fun verifyPurchase(ctx: RequestContext, req: VerifyReq): VerifyRes {
+    fun verifyPurchase(ctx: OperationContext, req: VerifyReq): VerifyRes {
         val appId = ctx.appId.toUUIDOrNull() ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
         // 1. Select verifier based on platform (already an enum, no parsing needed)
@@ -66,7 +66,7 @@ open class IapService(
         val verifyResult = verifier.verify(input)
 
         // 3. Map productId to product tier from AppConfig
-        val config = appConfigRepo.getByAppId(appId.toString()) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
+        val config = appConfigRepo.getByAppId(ctx) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val productTierMap = config.productTierMap
         val tier = tierOf(req.productId, productTierMap) ?: com.ifmix.api.core.infra.ratelimit.Tier.FREE
 
@@ -76,7 +76,7 @@ open class IapService(
         }
 
         // Check for existing active subscription with same pxid (idempotency)
-        val existingSub = subscriptionRepo.findActiveByPxid(appId, subscriptionPxid)
+        val existingSub = subscriptionRepo.findActiveByPxid(ctx, appId, subscriptionPxid)
         if (existingSub != null) {
             return VerifyRes(
                 expiresAt = existingSub.expiryDate?.toEpochMilli(),
@@ -125,7 +125,7 @@ open class IapService(
             updatedAt = now
         }
 
-        val savedSub = subscriptionRepo.upsertSubscription(subscription)
+        val savedSub = subscriptionRepo.upsertSubscription(ctx, subscription)
 
         // 7. Return result
         return VerifyRes(
@@ -139,14 +139,14 @@ open class IapService(
     /**
      * Handle Apple Server Notifications.
      */
-    fun handleAppleNotification(ctx: RequestContext, rawPayload: String, decoder: NotificationDecoder) {
+    fun handleAppleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) {
         handleNotification(ctx, rawPayload, decoder, "APPLE")
     }
 
     /**
      * Handle Google Play notification.
      */
-    fun handleGoogleNotification(ctx: RequestContext, rawPayload: String, decoder: NotificationDecoder) {
+    fun handleGoogleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) {
         handleNotification(ctx, rawPayload, decoder, "GOOGLE")
     }
 
@@ -154,7 +154,7 @@ open class IapService(
      * Internal unified notification handling logic.
      */
     @Transactional
-    fun handleNotification(ctx: RequestContext, rawPayload: String, decoder: NotificationDecoder, platform: String) {
+    fun handleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder, platform: String) {
         val appId = ctx.appId.toUUIDOrNull() ?: return
 
         // Decode the notification
@@ -167,63 +167,63 @@ open class IapService(
         }
 
         // Check idempotency using platform + subscriptionPxid as key
-        if (storeNotificationRepo.existsByPlatformAndToken(platform, decoderResult.subscriptionPxid)) {
+        if (storeNotificationRepo.existsByPlatformAndToken(ctx, platform, decoderResult.subscriptionPxid)) {
             // Already processed, skip
             return
         }
 
         // Find the subscription by subscriptionPxid
-        var subscription = subscriptionRepo.findActiveByPxid(appId, decoderResult.subscriptionPxid)
+        var subscription = subscriptionRepo.findActiveByPxid(ctx, appId, decoderResult.subscriptionPxid)
         if (subscription == null) {
             // Try finding any (including inactive/deleted but not physically deleted) subscription
-            subscription = subscriptionRepo.findByPxid(appId, decoderResult.subscriptionPxid)
+            subscription = subscriptionRepo.findByPxid(ctx, appId, decoderResult.subscriptionPxid)
         }
 
         // If subscription doesn't exist at all, create a minimal record or just log
         if (subscription == null) {
             // Log the notification without subscription reference
-            createStoreNotification(platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+            createStoreNotification(ctx, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
             return
         }
 
         // Update subscription based on notification type
         when (decoderResult.type) {
-            NotificationType.REFUNDED -> updateSubscription(subscription) {
+            NotificationType.REFUNDED -> updateSubscription(ctx, subscription) {
                 active = false
                 subStatus = "refunded"
                 expiryDate = null
             }
-            NotificationType.CANCELLED -> updateSubscription(subscription) {
+            NotificationType.CANCELLED -> updateSubscription(ctx, subscription) {
                 active = false
                 subStatus = "cancelled"
             }
-            NotificationType.RENEWED -> updateSubscription(subscription) {
+            NotificationType.RENEWED -> updateSubscription(ctx, subscription) {
                 active = true
                 subStatus = "renewed"
                 // Use timestamp from decoded notification or add duration
                 expiryDate = decoderResult.timestamp.plus(Duration.ofDays(30))
             }
-            NotificationType.BILLING_RETRY -> updateSubscription(subscription) {
+            NotificationType.BILLING_RETRY -> updateSubscription(ctx, subscription) {
                 // Check billing retry outcome - keep state as-is but update timestamp
             }
             NotificationType.GRACE_PERIOD_EXPIRED,
-            NotificationType.EXPIRED -> updateSubscription(subscription) {
+            NotificationType.EXPIRED -> updateSubscription(ctx, subscription) {
                 active = false
                 subStatus = decoderResult.type.name.lowercase()
             }
-            else -> updateSubscription(subscription) {
+            else -> updateSubscription(ctx, subscription) {
                 // For other types like SUBSCRIBED, WARNING, OK, acknowledge but don't change state drastically
             }
         }
 
         // Create/store the notification record as processed
-        createStoreNotification(platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+        createStoreNotification(ctx, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
     }
 
     /**
      * Helper to create an updated copy of a Subscription using Jimmer's immutable draft pattern.
      */
-    private fun updateSubscription(sub: Subscription, block: SubscriptionDraft.() -> Unit): Subscription {
+    private fun updateSubscription(ctx: OperationContext, sub: Subscription, block: SubscriptionDraft.() -> Unit): Subscription {
         val updated = Subscription {
             id = sub.id
             appId = sub.appId
@@ -240,13 +240,14 @@ open class IapService(
             updatedAt = Instant.now()
             block()
         }
-        return subscriptionRepo.upsertSubscription(updated)
+        return subscriptionRepo.upsertSubscription(ctx, updated)
     }
 
     /**
      * Helper to create or update a StoreNotification record.
      */
     private fun createStoreNotification(
+        ctx: OperationContext,
         platform: String,
         subscriptionPxid: String,
         rawPayload: String,
@@ -268,7 +269,7 @@ open class IapService(
             this.updatedAt = Instant.now()
         }
         // Note: BaseCrudRepository has save() method that works for upsert
-        storeNotificationRepo.save(notif)
+        storeNotificationRepo.save(ctx, notif)
     }
 
     // Extension to convert string to UUID safely
