@@ -49,7 +49,7 @@ open class IapService(
      */
     @Transactional
     fun verifyPurchase(ctx: OperationContext, req: VerifyReq): VerifyRes {
-        val appId = ctx.appId.toUUIDOrNull() ?: throw ApiError(ErrorCode.INVALID_REQUEST)
+        val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
         // 1. Select verifier based on platform (already an enum, no parsing needed)
         val verifier = verifierMap[req.platform.name] ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: ${req.platform}")
@@ -155,7 +155,7 @@ open class IapService(
      */
     @Transactional
     fun handleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder, platform: String) {
-        val appId = ctx.appId.toUUIDOrNull() ?: return
+        val appId = ctx.appId ?: return
 
         // Decode the notification
         val decodedPlatform = if (platform == "APPLE") Platform.APPLE else Platform.GOOGLE

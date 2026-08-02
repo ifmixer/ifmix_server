@@ -31,7 +31,7 @@ open class CollectionService(
     @Transactional
     fun getDefault(ctx: OperationContext): Collection {
         val appId = ctx.appIdAsUUID()
-        val userId = ctx.userId
+        val userId = ctx.userId?.toString()
         val installId = ctx.installId
 
         var collection = collectionRepo.findDefault(ctx, appId, installId, userId)

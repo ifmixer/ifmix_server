@@ -11,13 +11,13 @@ import java.util.UUID
  * 将来扩展：多集群 DB handle、显式事务等。
  */
 data class OperationContext(
-    val appId: String,
+    val appId: UUID?,
     val installId: UUID? = null,
     val lang: String? = null,
     val currency: String? = null,
     val country: String? = null,
     val clientPlatform: ClientPlatform? = null,
-    val userId: String? = null,
+    val userId: UUID? = null,
     val clientIp: String? = null,
     /** true = 允许读从库（仅影响 ReadWriteRoutingDataSource）。事务内自动走主库。 */
     val readFromReplica: Boolean = false,

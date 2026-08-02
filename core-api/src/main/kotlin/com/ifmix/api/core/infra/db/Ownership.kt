@@ -11,5 +11,5 @@ import java.util.UUID
  * @param installId 行记录中的 installId（可为 null）
  * @return 当前用户是否拥有该行
  */
-fun ownsRow(ctx: OperationContext, userId: String?, installId: UUID?): Boolean =
+fun ownsRow(ctx: OperationContext, userId: UUID?, installId: UUID?): Boolean =
     (ctx.userId != null && userId == ctx.userId) || (installId != null && installId == ctx.installId)

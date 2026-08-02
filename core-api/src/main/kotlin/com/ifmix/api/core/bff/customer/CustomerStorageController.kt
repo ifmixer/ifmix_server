@@ -117,7 +117,7 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
 
         // appId 一致性校验：objectKey 中的 appId 必须与请求头中的 appId 一致
         val keyAppId = objectKey.substringAfter("app_").substringBefore("/")
-        if (!keyAppId.equals(ctx.appId, ignoreCase = true)) {
+        if (!keyAppId.equals(ctx.appId.toString(), ignoreCase = true)) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "objectKey: appId mismatch")
         }
     }

@@ -32,7 +32,7 @@ class AiConfig {
         return AgnesKeyStore(
             redis = redis,
             loadKeys = {
-                val systemCtx = OperationContext(appId = "system")
+                val systemCtx = OperationContext(appId = null)
                 agnesKeyRepo.findAllEnabled(systemCtx).map { key ->
                     AgnesKeyStore.AgnesKeyDoc(
                         id = key.id.toString(),

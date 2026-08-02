@@ -51,6 +51,5 @@ class TodoService(
         todoRepo.deleteForApp(ctx, ctx.appUuid(), id)
 
     private fun OperationContext.appUuid(): UUID =
-        runCatching { UUID.fromString(appId) }.getOrNull()
-            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id must be a UUID")
+        appId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id must be a UUID")
 }

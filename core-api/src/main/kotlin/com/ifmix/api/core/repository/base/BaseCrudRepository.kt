@@ -94,9 +94,48 @@ abstract class BaseCrudRepository<E : Any>(
 
 /**
  * 面向多租户实体的 Repository。
- * 类型约束要求 E 实现 AppScopedProps，AppScopedFilter 全局自动注入租户过滤。
+ * 类型约束要求 E 实现 AppScopedProps。
+ * 重写 findByCursor 自动按 ctx.appId 过滤。
  */
 abstract class BaseAppCrudRepository<E : AppScopedProps>(
     sql: KSqlClient,
     entityType: KClass<E>,
-) : BaseCrudRepository<E>(sql, entityType)
+) : BaseCrudRepository<E>(sql, entityType) {
+
+    /**
+     * 游标分页 + 自动按 appId 过滤。
+     * 子类无需再手动写 findByCursorForApp。
+     */
+    override fun findByCursor(ctx: OperationContext, input: CursorQueryInput): Page<E> {
+        val limit = input.effectiveLimit()
+        val cursor = input.cursor?.let {
+            try { UUID.fromString(it) } catch (_: Exception) { null }
+        }
+        val appId = ctx.appId!!
+
+        val items = sql.createQuery(entityType) {
+            where(table.get<UUID>("appId") eq appId)
+            if (cursor != null) {
+                where(table.getId<UUID>() lt cursor)
+            }
+            orderBy(table.getId<UUID>().desc())
+            select(table)
+        }.limit(limit + 1).execute()
+
+        val hasMore = items.size > limit
+        val pageItems = if (hasMore) items.take(limit) else items
+        val nextCursor = if (hasMore) {
+            pageItems.lastOrNull()?.let { getEntityId(it)?.toString() }
+        } else null
+
+        return Page(pageItems, nextCursor, hasMore)
+    }
+
+    private fun getEntityId(entity: Any): UUID? {
+        return try {
+            entity.javaClass.getMethod("id").invoke(entity) as? UUID
+        } catch (_: Exception) {
+            null
+        }
+    }
+}

@@ -35,7 +35,7 @@ open class AntiqueService(
     @Transactional
     fun newScan(ctx: OperationContext, req: NewScanReq): NewScanRes {
         // 限流检查
-        val subject = ctx.appId
+        val subject = ctx.appId.toString()
         val limitResult = rateLimiter.check(ctx, subject)
         if (!limitResult.allowed) {
             throw ApiError(ErrorCode.RATE_LIMITED, "daily limit exceeded")
@@ -59,7 +59,7 @@ open class AntiqueService(
         // 创建 ScanRecord
         val record = scanRepo.create(
             ctx = ctx,
-            appId = ctx.appId,
+            appId = ctx.appId!!,
             imageKeys = listOf(ImageRef(key = req.imageKey)),
             status = scanResult.status,
             tier = Tier.FREE,
@@ -76,7 +76,7 @@ open class AntiqueService(
     @Transactional
     fun createScan(ctx: OperationContext, request: CreateScanRequest): ScanRecord {
         // 限流检查
-        val subject = ctx.appId
+        val subject = ctx.appId.toString()
         val limitResult = rateLimiter.check(ctx, subject)
         if (!limitResult.allowed) {
             throw ApiError(ErrorCode.RATE_LIMITED, "daily limit exceeded")
@@ -88,7 +88,7 @@ open class AntiqueService(
         // 创建 ScanRecord
         return scanRepo.create(
             ctx = ctx,
-            appId = ctx.appId,
+            appId = ctx.appId!!,
             imageKeys = listOf(ImageRef(key = objectKey)),
             status = ScanStatus.PENDING,
             tier = Tier.FREE,
@@ -110,7 +110,7 @@ open class AntiqueService(
         ctx: OperationContext,
         input: com.ifmix.api.core.infra.db.CursorQueryInput = com.ifmix.api.core.infra.db.CursorQueryInput(),
     ): com.ifmix.api.core.infra.db.Page<ScanRecord> {
-        return scanRepo.findByCursorForApp(ctx, UUID.fromString(ctx.appId), input)
+        return scanRepo.findByCursor(ctx, input)
     }
 
     fun presignedUploadUrl(ctx: OperationContext, objectKey: String, contentType: String, duration: Duration): String {

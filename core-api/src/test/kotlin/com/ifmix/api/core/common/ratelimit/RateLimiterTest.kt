@@ -11,6 +11,7 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.redis.core.StringRedisTemplate
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 @ExtendWith(MockitoExtension::class)
@@ -23,7 +24,7 @@ class RateLimiterTest {
     private lateinit var ops: org.springframework.data.redis.core.ValueOperations<String, String>
 
     private lateinit var limiter: RateLimiter
-    private val ctx = OperationContext(appId = "test-app")
+    private val ctx = OperationContext(appId = UUID.fromString("00000000-0000-0000-0000-000000000099"))
 
     @BeforeEach
     fun setUp() {

@@ -26,7 +26,9 @@ class OperationContextArgumentResolver : HandlerMethodArgumentResolver {
         val userId = (webRequest.getAttribute(AuthInterceptor.ATTR_USER_ID, RequestAttributes.SCOPE_REQUEST) as? String)
 
         return OperationContext(
-            appId = header(webRequest, RequestHeaders.APP_ID) ?: "",
+            appId = header(webRequest, RequestHeaders.APP_ID)?.let {
+                try { UUID.fromString(it) } catch (_: Exception) { null }
+            },
             installId = header(webRequest, RequestHeaders.INSTALL_ID)?.let {
                 try { UUID.fromString(it) } catch (_: Exception) { null }
             },
@@ -34,7 +36,9 @@ class OperationContextArgumentResolver : HandlerMethodArgumentResolver {
             currency = header(webRequest, RequestHeaders.CURRENCY),
             country = header(webRequest, RequestHeaders.COUNTRY),
             clientPlatform = ClientPlatform.fromHeader(header(webRequest, RequestHeaders.CLIENT_PLATFORM)),
-            userId = userId,
+            userId = userId?.let {
+                try { UUID.fromString(it) } catch (_: Exception) { null }
+            },
         )
     }
 

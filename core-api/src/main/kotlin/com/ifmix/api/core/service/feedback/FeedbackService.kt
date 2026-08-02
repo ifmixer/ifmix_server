@@ -24,11 +24,11 @@ class FeedbackService(
     /** 提交反馈，返回新建记录的 ID。身份从 ctx 推导。 */
     @Transactional
     fun submit(ctx: OperationContext, req: SubmitFeedbackReq): SubmitFeedbackRes {
-        val appId = runCatching { UUID.fromString(ctx.appId) }.getOrNull()
+        val appId = ctx.appId
             ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id must be a UUID")
         val installId = ctx.installId
             ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-install-id must be a UUID")
-        val userId = ctx.userId?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+        val userId = ctx.userId
 
         val saved = feedbackRepo.create(
             ctx = ctx,

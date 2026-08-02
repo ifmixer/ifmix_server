@@ -19,7 +19,7 @@ class CollectionMembershipImpl(
         try {
             val scanRecordIdUUID = UUID.fromString(scanRecordId)
             val appId = ctx.appIdAsUUID()
-            val collection = collectionRepo.findDefault(ctx, appId, ctx.installId, ctx.userId) ?: return false
+            val collection = collectionRepo.findDefault(ctx, appId, ctx.installId, ctx.userId?.toString()) ?: return false
             return itemRepo.existsByScanRecordId(ctx, collection.id, scanRecordIdUUID)
         } catch (e: Exception) {
             return false

@@ -133,11 +133,11 @@ open class AuthService(
             providerMetadata = null,
             loginIp = ctx.clientIp,
             loginInstallId = ctx.installId?.toString(),
-            loginAppId = ctx.appId,
+            loginAppId = ctx.appId?.toString(),
         )
 
         // 6. Ensure AppUser
-        val appUserId = appUserRepo.ensure(ctx, UUID.fromString(ctx.appId), identity.id)
+        val appUserId = appUserRepo.ensure(ctx, ctx.appId!!, identity.id)
 
         // 7. Issue device secret
         val rawDeviceSecret = Hashing.randomTokenBase64Url()
@@ -163,7 +163,7 @@ open class AuthService(
         val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         val refreshTokenEntity = AppRefreshToken {
             id = UuidV7.generate()
-            this.appId = UUID.fromString(ctx.appId)
+            this.appId = ctx.appId!!
             appUser { id = appUserId }
             deviceSecret { id = savedDeviceSecret.id }
             this.tokenHash = refreshTokenHash
@@ -177,12 +177,12 @@ open class AuthService(
         refreshRepo.save(ctx, refreshTokenEntity)
 
         // 9. Sign access token
-        val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId)
+        val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId!!.toString())
 
         // 10. Publish event
         events.publishEvent(
             AuthLoggedInEvent(
-                appId = ctx.appId,
+                appId = ctx.appId!!.toString(),
                 authIdentityId = identity.id.toString(),
                 appUserId = appUserId.toString(),
                 installId = ctx.installId,
@@ -205,7 +205,7 @@ open class AuthService(
 
     @Transactional
     fun exchange(ctx: OperationContext, req: ExchangeReq): ExchangeRes {
-        val appId = UUID.fromString(ctx.appId)
+        val appId = ctx.appId!!
 
         // 1. Hash the provided device secret
         val secretHash = Hashing.sha256Base64Url(req.deviceSecret!!)
@@ -242,7 +242,7 @@ open class AuthService(
         refreshRepo.save(ctx, refreshTokenEntity)
 
         // 6. Sign access token
-        val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId)
+        val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId!!.toString())
 
         // 7. Return
         return ExchangeRes(
@@ -256,7 +256,7 @@ open class AuthService(
 
     @Transactional
     fun refresh(ctx: OperationContext, req: RefreshReq): RefreshRes {
-        val appId = UUID.fromString(ctx.appId)
+        val appId = ctx.appId!!
 
         // 1. Hash the provided refresh token
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
@@ -291,7 +291,7 @@ open class AuthService(
 
         // 5. Sign new access token
         val appUserId = oldToken.appUser.id
-        val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId)
+        val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId!!.toString())
 
         // 6. Return
         return RefreshRes(
@@ -304,7 +304,7 @@ open class AuthService(
 
     @Transactional
     fun logout(ctx: OperationContext, req: LogoutReq): LogoutRes {
-        val appId = UUID.fromString(ctx.appId)
+        val appId = ctx.appId!!
 
         // 1. Hash the provided refresh token
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
@@ -326,7 +326,7 @@ open class AuthService(
 
     fun me(ctx: OperationContext): MeRes {
         val userId = ctx.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
-        return MeRes(userId, null)
+        return MeRes(userId.toString(), null)
     }
 
     /**

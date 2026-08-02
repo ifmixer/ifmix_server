@@ -15,6 +15,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.net.URI
+import java.util.UUID
 
 /**
  * Webhook 控制器：接收各商店的推送通知。
@@ -39,6 +40,7 @@ class WebhookController(
 
     companion object {
         private const val APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
+        private val SYSTEM_USER_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
     }
 
     /**
@@ -68,9 +70,11 @@ class WebhookController(
             val bundleId = extractBundleId(payloadJson)
 
             // 4. 通过 bundleId 反查 appId
-            val systemCtx = OperationContext(appId = "webhook-apple", userId = "system")
+            val systemCtx = OperationContext(appId = null, userId = SYSTEM_USER_ID)
             val appId = if (bundleId != null) {
-                appConfigRepo.getByAppleBundleId(systemCtx, bundleId)?.appId
+                appConfigRepo.getByAppleBundleId(systemCtx, bundleId)?.appId?.let {
+                    try { UUID.fromString(it) } catch (_: Exception) { null }
+                }
             } else null
 
             if (appId == null) {
@@ -79,7 +83,7 @@ class WebhookController(
             }
 
             // 5. 构建 OperationContext 并处理通知
-            val ctx = OperationContext(appId = appId, userId = "system")
+            val ctx = OperationContext(appId = appId, userId = SYSTEM_USER_ID)
             iapService.handleAppleNotification(ctx, rawPayload, appleDecoder)
             return ResponseEntity.ok("ok")
 
@@ -102,9 +106,11 @@ class WebhookController(
             val packageName = extractGooglePackageName(rawPayload)
 
             // 2. 通过 packageName 反查 appId
-            val systemCtx = OperationContext(appId = "webhook-google", userId = "system")
+            val systemCtx = OperationContext(appId = null, userId = SYSTEM_USER_ID)
             val appId = if (packageName != null) {
-                appConfigRepo.getByAndroidPackage(systemCtx, packageName)?.appId
+                appConfigRepo.getByAndroidPackage(systemCtx, packageName)?.appId?.let {
+                    try { UUID.fromString(it) } catch (_: Exception) { null }
+                }
             } else null
 
             if (appId == null) {
@@ -113,7 +119,7 @@ class WebhookController(
             }
 
             // 3. 处理通知
-            val ctx = OperationContext(appId = appId, userId = "system")
+            val ctx = OperationContext(appId = appId, userId = SYSTEM_USER_ID)
             iapService.handleGoogleNotification(ctx, rawPayload, googleDecoder)
             return ResponseEntity.ok("ok")
 

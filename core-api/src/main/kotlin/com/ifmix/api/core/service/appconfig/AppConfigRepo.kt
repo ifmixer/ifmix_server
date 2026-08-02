@@ -17,13 +17,9 @@ class AppConfigRepo(
 ) {
 
     fun getByAppId(ctx: OperationContext): AppConfig? {
-        return try {
-            val uuid = UUID.fromString(ctx.appId)
-            val current = repo.findCurrentByAppId(ctx, uuid)
-            current?.let { toFlat(it) }
-        } catch (_: Exception) {
-            null
-        }
+        val uuid = ctx.appId ?: return null
+        val current = repo.findCurrentByAppId(ctx, uuid)
+        return current?.let { toFlat(it) }
     }
 
     fun getByAppleBundleId(ctx: OperationContext, bundleId: String): AppConfig? {

@@ -55,5 +55,5 @@ interface RateLimitSubjectResolver {
 /** 默认实现：userId ?: ip ?: "unknown"。 */
 class DefaultRateLimitSubjectResolver : RateLimitSubjectResolver {
     override fun resolve(ctx: com.ifmix.api.core.infra.http.OperationContext, clientIp: String): String =
-        ctx.userId ?: if (clientIp.isNotBlank()) clientIp else "unknown"
+        ctx.userId?.toString() ?: if (clientIp.isNotBlank()) clientIp else "unknown"
 }

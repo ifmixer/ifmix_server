@@ -2,9 +2,6 @@ package com.ifmix.api.core.infra.http
 
 import java.util.UUID
 
-/** Parse appId as UUID, throw INVALID_REQUEST if malformed. */
-fun OperationContext.appIdAsUUID(): UUID = try {
-    UUID.fromString(appId)
-} catch (e: Exception) {
-    throw ApiError(ErrorCode.INVALID_REQUEST, "Invalid app ID")
-}
+/** Return appId as non-null UUID or throw INVALID_REQUEST. */
+fun OperationContext.appIdAsUUID(): UUID =
+    appId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Invalid app ID")
