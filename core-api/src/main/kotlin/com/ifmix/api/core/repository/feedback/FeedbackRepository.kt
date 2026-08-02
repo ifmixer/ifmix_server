@@ -3,7 +3,7 @@ package com.ifmix.api.core.repository.feedback
 import com.ifmix.api.core.entity.enums.FeedbackCategory
 import com.ifmix.api.core.entity.feedback.Feedback
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -19,7 +19,7 @@ class FeedbackRepository(sql: KSqlClient) : BaseAppCrudRepository<Feedback>(sql,
      * appId / installId / userId / id / createdAt 由服务端注入，不接受客户端传入。
      */
     fun create(
-        repoCtx: RepoContext,
+        ctx: OperationContext,
         appId: UUID,
         installId: UUID,
         userId: UUID?,

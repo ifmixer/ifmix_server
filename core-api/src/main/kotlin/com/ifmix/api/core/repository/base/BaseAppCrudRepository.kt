@@ -4,7 +4,7 @@ import com.ifmix.api.core.common.types.SortOrder
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.http.OperationContext
 import org.babyfish.jimmer.Input
 import org.babyfish.jimmer.View
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
@@ -26,21 +26,21 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
 
     // ==================== 带 appId 的查询 ====================
 
-    open fun findById(repoCtx: RepoContext, appId: UUID, id: UUID): E? =
+    open fun findById(ctx: OperationContext, appId: UUID, id: UUID): E? =
         sql.createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
             select(table)
         }.limit(1).execute().firstOrNull()
 
-    open fun <V : View<E>> findById(repoCtx: RepoContext, appId: UUID, id: UUID, viewType: KClass<V>): V? =
+    open fun <V : View<E>> findById(ctx: OperationContext, appId: UUID, id: UUID, viewType: KClass<V>): V? =
         sql.createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
             select(table.fetch(viewType))
         }.limit(1).execute().firstOrNull()
 
-    open fun findByIds(repoCtx: RepoContext, appId: UUID, ids: List<UUID>): List<E> {
+    open fun findByIds(ctx: OperationContext, appId: UUID, ids: List<UUID>): List<E> {
         if (ids.isEmpty()) return emptyList()
         return sql.createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
@@ -49,7 +49,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         }.execute()
     }
 
-    open fun <V : View<E>> findByIds(repoCtx: RepoContext, appId: UUID, ids: List<UUID>, viewType: KClass<V>): List<V> {
+    open fun <V : View<E>> findByIds(ctx: OperationContext, appId: UUID, ids: List<UUID>, viewType: KClass<V>): List<V> {
         if (ids.isEmpty()) return emptyList()
         return sql.createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
@@ -60,7 +60,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
 
     // ==================== 带 appId 的删除 ====================
 
-    open fun deleteForApp(repoCtx: RepoContext, appId: UUID, id: UUID): Boolean {
+    open fun deleteForApp(ctx: OperationContext, appId: UUID, id: UUID): Boolean {
         val count = sql.createDelete(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
@@ -68,7 +68,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         return count > 0
     }
 
-    open fun deleteForApp(repoCtx: RepoContext, appId: UUID, ids: List<UUID>): Int {
+    open fun deleteForApp(ctx: OperationContext, appId: UUID, ids: List<UUID>): Int {
         if (ids.isEmpty()) return 0
         return sql.createDelete(entityType) {
             where(table.get<UUID>("appId") eq appId)
@@ -78,7 +78,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
 
     // ==================== 游标分页（带 appId） ====================
 
-    open fun findByCursor(repoCtx: RepoContext, appId: UUID, input: CursorQueryInput = CursorQueryInput()): Page<E> {
+    open fun findByCursor(ctx: OperationContext, appId: UUID, input: CursorQueryInput = CursorQueryInput()): Page<E> {
         val limit = input.effectiveLimit()
         val cursor = input.cursor?.let {
             try { UUID.fromString(it) } catch (_: Exception) { null }
@@ -107,7 +107,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
      * 支持按 id / createdAt / updatedAt 排序，cursor 为对应字段的值。
      */
     open fun <V : View<E>> findViewByCursor(
-        repoCtx: RepoContext,
+        ctx: OperationContext,
         appId: UUID,
         viewType: KClass<V>,
         input: CursorQueryInput = CursorQueryInput(),

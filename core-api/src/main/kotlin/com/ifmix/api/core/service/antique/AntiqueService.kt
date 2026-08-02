@@ -59,7 +59,7 @@ open class AntiqueService(
 
         // 创建 ScanRecord（result 字段由 Jimmer @Serialized 自动序列化为 JSONB）
         val record = scanRepo.create(
-            repoCtx =  ctx.repoCtx,
+            ctx =  ctx,
             appId = ctx.appId!!,
             imageKeys = req.images.map { ImageRef(key = it.imageKey) },
             status = scanResult.status,
@@ -74,7 +74,7 @@ open class AntiqueService(
     }
 
     fun getScanById(ctx: OperationContext, id: UUID): ScanRecordView {
-        val record = scanRepo.findById(ctx.repoCtx, id)
+        val record = scanRepo.findById(ctx, id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
         return ScanRecordView(record)
     }
@@ -83,7 +83,7 @@ open class AntiqueService(
         ctx: OperationContext,
         input: CursorQueryInput = CursorQueryInput(),
     ): Page<ScanRecord> {
-        return scanRepo.findByCursor(ctx.repoCtx, input)
+        return scanRepo.findByCursor(ctx, input)
     }
 
     fun presignedUploadUrl(ctx: OperationContext, objectKey: String, contentType: String, duration: Duration): String {
@@ -99,9 +99,9 @@ open class AntiqueService(
      */
     @Transactional
     fun deleteScan(ctx: OperationContext, id: UUID) {
-        scanRepo.findById(ctx.repoCtx, id) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
+        scanRepo.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
         // TODO: 校验归属（当前用户）
-        scanRepo.deleteById(ctx.repoCtx, id)
+        scanRepo.deleteById(ctx, id)
     }
 
     /**
@@ -109,7 +109,7 @@ open class AntiqueService(
      */
     @Transactional
     fun updateScan(ctx: OperationContext, req: UpdateScanReq): ScanRecordView {
-        val record = scanRepo.findById(ctx.repoCtx, req.id)
+        val record = scanRepo.findById(ctx, req.id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
         // TODO: 校验归属 + 实现更新
         return ScanRecordView(record)

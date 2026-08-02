@@ -7,7 +7,7 @@ import com.ifmix.api.core.entity.antique.id
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import com.ifmix.api.core.service.antique.ScanResult
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -23,7 +23,7 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
 
     /** Create a new scan record using Jimmer draft lambda. */
     fun create(
-        repoCtx: RepoContext,
+        ctx: OperationContext,
         appId: UUID,
         imageKeys: List<ImageRef>,
         status: ScanStatus,
@@ -41,6 +41,6 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
             this.createdAt = now
             this.updatedAt = now
         }
-        return save(repoCtx, entity)
+        return save(ctx, entity)
     }
 }

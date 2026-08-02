@@ -34,7 +34,7 @@ open class CollectionService(
         val userId = ctx.userId
         val installId = ctx.installId
 
-        var collection = collectionRepo.findDefault(ctx.repoCtx, appId, installId, userId)
+        var collection = collectionRepo.findDefault(ctx, appId, installId, userId)
 
         if (collection == null) {
             collection = createDefaultCollection(ctx, appId, userId, installId)
@@ -60,7 +60,7 @@ open class CollectionService(
             updatedAt = now
             deletedAt = null
         }
-        return collectionRepo.save(ctx.repoCtx, entity)
+        return collectionRepo.save(ctx, entity)
     }
 
     /**
@@ -71,7 +71,7 @@ open class CollectionService(
     fun addItem(ctx: OperationContext, req: AddItemReq): AddItemRes {
         val collectionId = req.collectionId ?: getDefault(ctx).id
 
-        val itemId = itemRepo.insertIfAbsent(ctx.repoCtx, ctx.appIdAsUUID(), collectionId, req.scanRecordId)
+        val itemId = itemRepo.insertIfAbsent(ctx, ctx.appIdAsUUID(), collectionId, req.scanRecordId)
         return AddItemRes(id = itemId)
     }
 
@@ -87,7 +87,7 @@ open class CollectionService(
         val appId = ctx.appIdAsUUID()
         val collectionId = req.collectionId ?: getDefault(ctx).id
 
-        val deletedCount = itemRepo.softDeleteByScanIds(ctx.repoCtx, appId, collectionId, req.scanRecordIds)
+        val deletedCount = itemRepo.softDeleteByScanIds(ctx, appId, collectionId, req.scanRecordIds)
         return RemoveItemsRes(deletedCount.toInt())
     }
 
@@ -107,7 +107,7 @@ open class CollectionService(
         val limit = req?.limit ?: 20
         val cursor = req?.cursor?.let { try { UUID.fromString(it) } catch (e: Exception) { null } }
 
-        val collectionItems = itemRepo.listWithScanRecords(ctx.repoCtx, appId, collectionId, limit, cursor)
+        val collectionItems = itemRepo.listWithScanRecords(ctx, appId, collectionId, limit, cursor)
         val scanRecords = collectionItems.items.mapNotNull { item -> item.scanRecord }
 
         val nextCursor = if (collectionItems.hasMore && collectionItems.items.isNotEmpty()) {

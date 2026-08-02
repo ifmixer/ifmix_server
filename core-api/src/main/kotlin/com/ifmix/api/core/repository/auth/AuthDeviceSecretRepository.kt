@@ -7,7 +7,7 @@ import com.ifmix.api.core.entity.auth.lastUsedAt
 import com.ifmix.api.core.entity.auth.revokedAt
 import com.ifmix.api.core.entity.auth.secretHash
 import com.ifmix.api.core.entity.auth.updatedAt
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.base.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -22,7 +22,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient,) : BaseCrudRepository<AuthDevi
     /**
      * Find a valid (not expired, not revoked) device secret by its hash.
      */
-    fun findValidByHash(repoCtx: RepoContext, secretHash: String): AuthDeviceSecret? {
+    fun findValidByHash(ctx: OperationContext, secretHash: String): AuthDeviceSecret? {
         val now = Instant.now()
         return sql.createQuery(AuthDeviceSecret::class) {
             where(table.secretHash eq secretHash)
@@ -35,7 +35,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient,) : BaseCrudRepository<AuthDevi
     /**
      * Touch: update lastUsedAt to now.
      */
-    fun touch(repoCtx: RepoContext, id: UUID) {
+    fun touch(ctx: OperationContext, id: UUID) {
         sql.createUpdate(AuthDeviceSecret::class) {
             set(table.lastUsedAt, Instant.now())
             set(table.updatedAt, Instant.now())
@@ -46,7 +46,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient,) : BaseCrudRepository<AuthDevi
     /**
      * Revoke a device secret by setting revokedAt.
      */
-    fun revoke(repoCtx: RepoContext, id: UUID) {
+    fun revoke(ctx: OperationContext, id: UUID) {
         sql.createUpdate(AuthDeviceSecret::class) {
             set(table.revokedAt, Instant.now())
             set(table.updatedAt, Instant.now())

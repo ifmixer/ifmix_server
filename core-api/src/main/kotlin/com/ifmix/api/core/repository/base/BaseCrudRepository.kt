@@ -2,7 +2,7 @@ package com.ifmix.api.core.repository.base
 
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.http.OperationContext
 import org.babyfish.jimmer.Input
 import org.babyfish.jimmer.View
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
@@ -19,60 +19,60 @@ abstract class BaseCrudRepository<E : Any>(
     protected val sql: KSqlClient,
     protected val entityType: KClass<E>,
 ) {
-    open fun findById(repoCtx: RepoContext, id: UUID): E? =
+    open fun findById(ctx: OperationContext, id: UUID): E? =
         sql.entities.findById(entityType, id)
 
-    open fun <V : View<E>> findById(repoCtx: RepoContext, id: UUID, viewType: KClass<V>): V? =
+    open fun <V : View<E>> findById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V? =
         sql.entities.findById(viewType, id)
 
-    open fun findByIds(repoCtx: RepoContext, ids: List<UUID>): List<E> =
+    open fun findByIds(ctx: OperationContext, ids: List<UUID>): List<E> =
         if (ids.isEmpty()) emptyList() else sql.entities.findByIds(entityType, ids)
 
-    open fun <V : View<E>> findByIds(repoCtx: RepoContext, ids: List<UUID>, viewType: KClass<V>): List<V> =
+    open fun <V : View<E>> findByIds(ctx: OperationContext, ids: List<UUID>, viewType: KClass<V>): List<V> =
         if (ids.isEmpty()) emptyList() else sql.entities.findByIds(viewType, ids)
 
-    open fun insert(repoCtx: RepoContext, input: Input<E>): E =
+    open fun insert(ctx: OperationContext, input: Input<E>): E =
         sql.entities.save(input) {
             setMode(SaveMode.INSERT_ONLY)
         }.modifiedEntity
 
-    open fun insertAll(repoCtx: RepoContext, inputs: List<Input<E>>): List<E> =
+    open fun insertAll(ctx: OperationContext, inputs: List<Input<E>>): List<E> =
         if (inputs.isEmpty()) emptyList()
         else sql.entities.saveInputs(inputs) {
             setMode(SaveMode.INSERT_ONLY)
         }.items.map { it.modifiedEntity }
 
-    open fun update(repoCtx: RepoContext, input: Input<E>): E =
+    open fun update(ctx: OperationContext, input: Input<E>): E =
         sql.entities.save(input) {
             setMode(SaveMode.UPDATE_ONLY)
         }.modifiedEntity
 
-    open fun updateAll(repoCtx: RepoContext, inputs: List<Input<E>>): List<E> =
+    open fun updateAll(ctx: OperationContext, inputs: List<Input<E>>): List<E> =
         if (inputs.isEmpty()) emptyList()
         else sql.entities.saveInputs(inputs) {
             setMode(SaveMode.UPDATE_ONLY)
         }.items.map { it.modifiedEntity }
 
-    open fun save(repoCtx: RepoContext, input: Input<E>): E =
+    open fun save(ctx: OperationContext, input: Input<E>): E =
         sql.entities.save(input).modifiedEntity
 
-    open fun save(repoCtx: RepoContext, entity: E): E =
+    open fun save(ctx: OperationContext, entity: E): E =
         sql.entities.save(entity).modifiedEntity
 
-    open fun saveAll(repoCtx: RepoContext, entities: List<E>): List<E> =
+    open fun saveAll(ctx: OperationContext, entities: List<E>): List<E> =
         if (entities.isEmpty()) emptyList()
         else sql.entities.saveEntities(entities).items.map { it.modifiedEntity }
 
-    open fun deleteById(repoCtx: RepoContext, id: UUID) {
+    open fun deleteById(ctx: OperationContext, id: UUID) {
         sql.entities.delete(entityType, id)
     }
 
-    open fun deleteByIds(repoCtx: RepoContext, ids: List<UUID>) {
+    open fun deleteByIds(ctx: OperationContext, ids: List<UUID>) {
         if (ids.isEmpty()) return
         sql.entities.deleteAll(entityType, ids)
     }
 
-    open fun findAll(repoCtx: RepoContext): List<E> =
+    open fun findAll(ctx: OperationContext): List<E> =
         sql.entities.findAll(entityType)
 
     /**
@@ -81,7 +81,7 @@ abstract class BaseCrudRepository<E : Any>(
      *
      * 子类若需要额外过滤条件（如 appId），应覆写此方法。
      */
-    open fun findByCursor(repoCtx: RepoContext, input: CursorQueryInput = CursorQueryInput()): Page<E> {
+    open fun findByCursor(ctx: OperationContext, input: CursorQueryInput = CursorQueryInput()): Page<E> {
         val limit = input.effectiveLimit()
         val cursor = input.cursor?.let {
             try { UUID.fromString(it) } catch (_: Exception) { null }

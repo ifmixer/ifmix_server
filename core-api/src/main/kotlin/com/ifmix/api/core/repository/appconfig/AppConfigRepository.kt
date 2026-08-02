@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.appconfig.appId
 import com.ifmix.api.core.entity.appconfig.appleBundleId
 import com.ifmix.api.core.entity.appconfig.androidPackageName
 import com.ifmix.api.core.entity.appconfig.enabled
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -16,7 +16,7 @@ import java.util.UUID
 class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigVersion>(sql, AppConfigVersion::class) {
 
     /** Find current enabled config by appId. */
-    fun findCurrentByAppId(repoCtx: RepoContext, appId: UUID): AppConfigVersion? {
+    fun findCurrentByAppId(ctx: OperationContext, appId: UUID): AppConfigVersion? {
         return sql.createQuery(AppConfigVersion::class) {
             where(table.appId eq appId)
             where(table.enabled eq true)
@@ -25,7 +25,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigVers
     }
 
     /** Find config by Apple bundle ID (enabled only) */
-    fun findByBundleId(repoCtx: RepoContext, bundleId: String): AppConfigVersion? {
+    fun findByBundleId(ctx: OperationContext, bundleId: String): AppConfigVersion? {
         return sql.createQuery(AppConfigVersion::class) {
             where(table.appleBundleId eq bundleId)
             where(table.enabled eq true)
@@ -34,7 +34,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigVers
     }
 
     /** Find config by Android package name (enabled only) */
-    fun findByAndroidPackage(repoCtx: RepoContext, pkg: String): AppConfigVersion? {
+    fun findByAndroidPackage(ctx: OperationContext, pkg: String): AppConfigVersion? {
         return sql.createQuery(AppConfigVersion::class) {
             where(table.androidPackageName eq pkg)
             where(table.enabled eq true)

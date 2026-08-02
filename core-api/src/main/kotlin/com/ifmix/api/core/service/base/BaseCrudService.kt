@@ -23,42 +23,42 @@ open class BaseCrudService<E : Any>(
 ) {
     @Transactional(readOnly = true)
     open fun findById(ctx: OperationContext, id: UUID): E? =
-        repo.findById(ctx.repoCtx, id)
+        repo.findById(ctx, id)
 
     @Transactional(readOnly = true)
     open fun getById(ctx: OperationContext, id: UUID): E =
-        repo.findById(ctx.repoCtx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        repo.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     @Transactional(readOnly = true)
     open fun <V : View<E>> findById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V? =
-        repo.findById(ctx.repoCtx, id, viewType)
+        repo.findById(ctx, id, viewType)
 
     @Transactional(readOnly = true)
     open fun <V : View<E>> getById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V =
-        repo.findById(ctx.repoCtx, id, viewType) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        repo.findById(ctx, id, viewType) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     /**
      * 游标分页：委托 repository 的 SQL 分页实现。
      */
     @Transactional(readOnly = true)
     open fun findByCursor(ctx: OperationContext, input: CursorQueryInput = CursorQueryInput()): Page<E> =
-        repo.findByCursor(ctx.repoCtx, input)
+        repo.findByCursor(ctx, input)
 
     @Transactional
     open fun create(ctx: OperationContext, input: Input<E>): E =
-        repo.insert(ctx.repoCtx, input)
+        repo.insert(ctx, input)
 
     @Transactional
     open fun update(ctx: OperationContext, input: Input<E>): E =
-        repo.update(ctx.repoCtx, input)
+        repo.update(ctx, input)
 
     @Transactional
     open fun save(ctx: OperationContext, input: Input<E>): E =
-        repo.save(ctx.repoCtx, input)
+        repo.save(ctx, input)
 
     @Transactional
     open fun deleteById(ctx: OperationContext, id: UUID) =
-        repo.deleteById(ctx.repoCtx, id)
+        repo.deleteById(ctx, id)
 }
 
 /**

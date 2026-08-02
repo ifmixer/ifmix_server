@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.iap.active
 import com.ifmix.api.core.entity.iap.appId
 import com.ifmix.api.core.entity.iap.originalTransactionId
 import com.ifmix.api.core.entity.iap.subscriptionPxid
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -20,15 +20,15 @@ class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscript
      * Upsert subscription based on subscriptionPxid key.
      * Uses Jimmer's save which upserts when @Key is defined.
      */
-    fun upsertSubscription(repoCtx: RepoContext, entity: Subscription): Subscription {
-        return save(repoCtx, entity)
+    fun upsertSubscription(ctx: OperationContext, entity: Subscription): Subscription {
+        return save(ctx, entity)
     }
 
     /**
      * Find active subscription by appId and subscriptionPxid.
      * @LogicalDeleted auto-filters deleted records.
      */
-    fun findActiveByPxid(repoCtx: RepoContext, appId: UUID, pxid: String): Subscription? {
+    fun findActiveByPxid(ctx: OperationContext, appId: UUID, pxid: String): Subscription? {
         return sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.subscriptionPxid eq pxid)
@@ -40,7 +40,7 @@ class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscript
     /**
      * Find any non-deleted subscription by pxid (regardless of active status).
      */
-    fun findByPxid(repoCtx: RepoContext, appId: UUID, pxid: String): Subscription? {
+    fun findByPxid(ctx: OperationContext, appId: UUID, pxid: String): Subscription? {
         return sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.subscriptionPxid eq pxid)
@@ -52,13 +52,13 @@ class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscript
      * Find subscription by originalTransactionId and update it.
      * @LogicalDeleted auto-filters deleted records.
      */
-    fun updateByOriginalTxn(repoCtx: RepoContext, appId: UUID, originalTxnId: String, updater: (Subscription) -> Subscription): Subscription? {
+    fun updateByOriginalTxn(ctx: OperationContext, appId: UUID, originalTxnId: String, updater: (Subscription) -> Subscription): Subscription? {
         val existing = sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.originalTransactionId eq originalTxnId)
             select(table)
         }.fetchOneOrNull() ?: return null
         val updated = updater(existing)
-        return save(repoCtx, updated)
+        return save(ctx, updated)
     }
 }
