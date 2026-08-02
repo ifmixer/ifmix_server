@@ -1,7 +1,5 @@
 package com.ifmix.api.core.infra.config
 
-import com.ifmix.api.core.infra.codec.toBase58
-import com.ifmix.api.core.infra.codec.toUuidFromBase58
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import tools.jackson.core.JsonGenerator
@@ -32,20 +30,6 @@ class JacksonConfig {
         })
     }
 
-    /** UUID ↔ Base58 (22 chars, URL-safe) */
-    @Bean
-    fun uuidBase58Module(): JacksonModule = tools.jackson.databind.module.SimpleModule("UuidBase58").apply {
-        addSerializer(UUID::class.java, object : ValueSerializer<UUID>() {
-            override fun serialize(value: UUID, gen: JsonGenerator, ctx: SerializationContext) {
-                gen.writeString(value.toBase58())
-            }
-        })
-        addDeserializer(UUID::class.java, object : ValueDeserializer<UUID>() {
-            override fun deserialize(p: JsonParser, ctx: DeserializationContext): UUID =
-                p.text.toUuidFromBase58()
-        })
-    }
-
     @Bean
     fun kotlinModule(): KotlinModule = KotlinModule.Builder().build()
 
@@ -56,7 +40,6 @@ class JacksonConfig {
     fun snakeCaseMapper(): tools.jackson.databind.ObjectMapper =
         tools.jackson.databind.json.JsonMapper.builder()
             .addModule(KotlinModule.Builder().build())
-            .addModule(uuidBase58Module())
             .propertyNamingStrategy(tools.jackson.databind.PropertyNamingStrategies.SNAKE_CASE)
             .build()
 }

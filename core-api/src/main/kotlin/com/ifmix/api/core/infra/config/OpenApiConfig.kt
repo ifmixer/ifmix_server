@@ -3,8 +3,6 @@ package com.ifmix.api.core.infra.config
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
-import io.swagger.v3.oas.models.media.StringSchema
-import io.swagger.v3.oas.models.parameters.Parameter
 import io.swagger.v3.oas.models.security.SecurityRequirement
 import io.swagger.v3.oas.models.security.SecurityScheme
 import io.swagger.v3.oas.models.servers.Server
@@ -66,11 +64,6 @@ class OpenApiConfig {
             .addSecuritySchemes("xJsVersion", SecurityScheme().type(SecurityScheme.Type.APIKEY).`in`(SecurityScheme.In.HEADER).name("x-js-version").description("JS 版本"))
             .addSecuritySchemes("xClientPlatform", SecurityScheme().type(SecurityScheme.Type.APIKEY).`in`(SecurityScheme.In.HEADER).name("x-client-platform").description("客户端平台：android | ios | web"))
 
-        // 注册公共 header parameters（给 codegen 用）
-        for ((name, param) in COMMON_HEADERS) {
-            components.addParameters(name, param)
-        }
-
         return OpenAPI()
             .info(Info().title("ifmix customer BFF").version("1.0.0"))
             .servers(listOf(Server().url("http://localhost:3001").description("Local development")))
@@ -92,9 +85,8 @@ class OpenApiConfig {
 
     /**
      * GlobalOpenApiCustomizer:
-     * 1. 注入 header parameters ($ref)
-     * 2. 免鉴权接口 security: []
-     * 3. operationId 加模块前缀
+     * 1. 免鉴权接口 security: []
+     * 2. operationId 加模块前缀
      */
     @Bean
     fun headerAndSecurityCustomizer(): GlobalOpenApiCustomizer = object : GlobalOpenApiCustomizer {
@@ -112,16 +104,6 @@ class OpenApiConfig {
             val paths = openApi.paths ?: return
             for ((path, pathItem) in paths) {
                 for (operation in pathItem.readOperations()) {
-                    // 注入 header $ref
-                    val params = operation.parameters
-                        ?: mutableListOf<Parameter>().also { operation.parameters = it }
-                    val existing = params.mapNotNull { it.name ?: it.`$ref`?.substringAfterLast('/') }.toSet()
-                    for (name in COMMON_HEADERS.keys) {
-                        if (name !in existing) {
-                            params.add(Parameter().`$ref`("#/components/parameters/$name"))
-                        }
-                    }
-
                     // 免鉴权
                     if (publicPaths.any { path.endsWith(it) }) {
                         operation.security = emptyList()
@@ -140,33 +122,4 @@ class OpenApiConfig {
         }
     }
 
-    companion object {
-        /** 公共 header 参数。全部 required: false（middleware 自动注入）。 */
-        val COMMON_HEADERS: LinkedHashMap<String, Parameter> = linkedMapOf(
-            "x-app-id" to Parameter().`in`("header").name("x-app-id")
-                .description("租户 App ID（uuid）。客户端 SDK 由 middleware 统一注入，故标可选；缺失时返回 400000。")
-                .required(false).schema(StringSchema().apply { format = "uuid" }),
-            "x-install-id" to Parameter().`in`("header").name("x-install-id")
-                .description("设备安装标识（uuid）")
-                .required(false).schema(StringSchema().apply { format = "uuid" }),
-            "x-lang" to Parameter().`in`("header").name("x-lang")
-                .description("语言代码，如 en / zh-Hans。影响 AI 结果语言。")
-                .required(false).schema(StringSchema()),
-            "x-currency" to Parameter().`in`("header").name("x-currency")
-                .description("货币代码，如 USD / CNY")
-                .required(false).schema(StringSchema()),
-            "x-country" to Parameter().`in`("header").name("x-country")
-                .description("国家代码，如 US / CN")
-                .required(false).schema(StringSchema()),
-            "x-native-version" to Parameter().`in`("header").name("x-native-version")
-                .description("原生应用版本号，如 1.2.0")
-                .required(false).schema(StringSchema()),
-            "x-js-version" to Parameter().`in`("header").name("x-js-version")
-                .description("JS bundle 版本号，如 1.2.3")
-                .required(false).schema(StringSchema()),
-            "x-client-platform" to Parameter().`in`("header").name("x-client-platform")
-                .description("客户端平台")
-                .required(false).schema(StringSchema().apply { enum = listOf("android", "ios", "web") }),
-        )
-    }
 }

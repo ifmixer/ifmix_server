@@ -22,6 +22,7 @@ springdoc:
   swagger-ui:
     path: /core/api-docs/swagger-ui/index.html
     persist-authorization: true
+  use-fqn: true
 
 app:
   datasource:

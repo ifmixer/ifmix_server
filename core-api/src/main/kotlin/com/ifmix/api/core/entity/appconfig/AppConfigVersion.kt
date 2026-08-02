@@ -20,21 +20,9 @@ interface AppConfigVersion : AppScopedProps, CreatedAtProps {
     val appleBundleId: String?
     val androidPackageName: String?
 
-    /** JSONB — Apple 相关配置 */
+    /** JSONB — 所有平台配置聚合 */
     @Serialized
-    val appleConfig: AppleConfigValue
-
-    /** JSONB — Google 相关配置 */
-    @Serialized
-    val googleConfig: GoogleConfigValue
-
-    /** JSONB — IAP 相关配置 */
-    @Serialized
-    val iapConfig: IapConfigValue
-
-    /** JSONB — 微信开放平台配置 */
-    @Serialized
-    val wechatConfig: WechatConfigValue
+    val content: ConfigContent
 
     val revision: Int
 
@@ -45,7 +33,15 @@ interface AppConfigVersion : AppScopedProps, CreatedAtProps {
     val slug: String
 }
 
-/** JSONB 内嵌值对象 */
+/** 聚合 JSONB 值对象 */
+data class ConfigContent(
+    val apple: AppleConfigValue = AppleConfigValue(),
+    val google: GoogleConfigValue = GoogleConfigValue(),
+    val iap: IapConfigValue = IapConfigValue(),
+    val wechat: WechatConfigValue = WechatConfigValue(),
+)
+
+/** Apple 相关配置 */
 data class AppleConfigValue(
     val appAppleId: String? = null,
     val issuerId: String? = null,

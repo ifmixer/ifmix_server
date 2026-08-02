@@ -49,20 +49,13 @@ class CustomerAuthController(private val authService: AuthService) {
     fun wechat(ctx: OperationContext, @Valid @RequestBody req: WechatLoginReq): LoginRes =
         authService.loginWithCode(ctx, "wechat", req)
 
-    @io.swagger.v3.oas.annotations.Parameter(
-        name = "x-install-id",
-        `in` = io.swagger.v3.oas.annotations.enums.ParameterIn.HEADER,
-        required = true,
-        description = "设备安装标识（uuid）。此接口必填，用于建/取匿名用户。",
-        schema = io.swagger.v3.oas.annotations.media.Schema(type = "string", format = "uuid"),
-    )
     @Operation(
         summary = "匿名 token 签发",
         description = """
         未登录用户获取匿名 access token，以支持登录前的扫描流程。
         服务端按 installId 建/取一个匿名用户，返回和正常登录相同结构的 token。
         客户端可统一走 Bearer token 流程，无需「有 token / 没 token」两套分支。
-        免鉴权。
+        免鉴权。x-install-id 必填。
         幂等：同一个 installId 反复调用返回同一个匿名用户（同一个 user.id）。
         token 丢失后可重新调用获取新 token，用户数据不会丢失。
         匿名 deviceSecret 不可用于 auth/exchange（SSO 交换仅限已登录用户）。

@@ -33,10 +33,11 @@ class AppConfigRepo(
     }
 
     private fun toFlat(config: AppConfigVersion): AppConfig {
-        val apple = config.appleConfig
-        val google = config.googleConfig
-        val iap = config.iapConfig
-        val wechat = config.wechatConfig
+        val c = config.content
+        val apple = c.apple
+        val google = c.google
+        val iap = c.iap
+        val wechat = c.wechat
         return AppConfig(
             id = config.id.toString(),
             appId = config.appId.toString(),
