@@ -1,4 +1,4 @@
-package com.ifmix.api.core.common.types
+package com.ifmix.api.core.infra.types
 
 import java.util.UUID
 
@@ -9,7 +9,7 @@ data class ByIdRequest(val id: UUID)
 data class ByIdsRequest(val ids: List<UUID>)
 
 /** 通用操作结果 */
-data class OperationResult(val success: Boolean = true)
+data class OperationResult(val success: Boolean = true, val modifiedCount: Int?=null)
 
 /** 上传分类（决定 objectKey 路径中的目录名） */
 enum class UploadCategory(val path: String) {

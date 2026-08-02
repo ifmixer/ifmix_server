@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.common.types.ByIdRequest
-import com.ifmix.api.core.common.types.OperationResult
+import com.ifmix.api.core.infra.types.ByIdRequest
+import com.ifmix.api.core.infra.types.OperationResult
 import com.ifmix.api.core.entity.antique.dto.ScanRecordView
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page

@@ -1,8 +1,8 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.common.types.ByIdRequest
-import com.ifmix.api.core.common.types.ByIdsRequest
-import com.ifmix.api.core.common.types.OperationResult
+import com.ifmix.api.core.infra.types.ByIdRequest
+import com.ifmix.api.core.infra.types.ByIdsRequest
+import com.ifmix.api.core.infra.types.OperationResult
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
 import com.ifmix.api.core.entity.todo.dto.TodoView
@@ -57,11 +57,12 @@ class CustomerTodoController(private val todoService: TodoService) {
     }
 
     @PostMapping("/mutation/todo/updateOne")
-    fun updateOne(ctx: OperationContext, @Valid @RequestBody req: TodoUpdateInput): TodoView {
+    fun updateOne(ctx: OperationContext, @Valid @RequestBody req: TodoUpdateInput): OperationResult {
         ctx.mustGetInstallId()
         val existing = todoService.getTodo(ctx, req.id)
         checkOwnership(ctx, existing)
-        return todoService.updateOne(ctx, req)
+        val updated = todoService.updateOne(ctx, req)
+        return OperationResult(success = updated, modifiedCount = if (updated) 1 else 0)
     }
 
     @PostMapping("/mutation/todo/deleteById")
@@ -78,7 +79,33 @@ class CustomerTodoController(private val todoService: TodoService) {
         ctx.mustGetInstallId()
         // TODO: 批量 item 归属校验待完善（需通过 item → todo 查归属）
         val count = todoService.deleteItems(ctx, req.ids)
-        return OperationResult(success = count > 0)
+        return OperationResult(success = count == req.ids.size, modifiedCount = count)
+    }
+
+    @PutMapping("/query/todo/getByIds")
+    fun getByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): List<TodoView> {
+        ctx.mustGetInstallId()
+        val todos = todoService.getByIds(ctx, req.ids)
+        return todos.filter { ownsRow(ctx, it.userId, it.installId) }
+    }
+
+    @PostMapping("/mutation/todo/updateByIds")
+    fun updateByIds(ctx: OperationContext, @Valid @RequestBody req: List<TodoUpdateInput>): OperationResult {
+        ctx.mustGetInstallId()
+        val ids = req.map { it.id }
+        val todos = todoService.getByIds(ctx, ids)
+        todos.forEach { checkOwnership(ctx, it) }
+        val count = todoService.updateByIds(ctx, req)
+        return OperationResult(success = count == req.size, modifiedCount = count)
+    }
+
+    @PostMapping("/mutation/todo/deleteByIds")
+    fun deleteByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): OperationResult {
+        ctx.mustGetInstallId()
+        val todos = todoService.getByIds(ctx, req.ids)
+        todos.forEach { checkOwnership(ctx, it) }
+        val count = todoService.deleteByIds(ctx, req.ids)
+        return OperationResult(success = count == req.ids.size, modifiedCount = count)
     }
 
     // ==================== 内部 ====================

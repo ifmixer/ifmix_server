@@ -1,13 +1,11 @@
 package com.ifmix.api.core.repository.base
 
-import com.ifmix.api.core.common.types.SortOrder
+import com.ifmix.api.core.infra.types.SortOrder
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.OperationContext
-import org.babyfish.jimmer.Input
 import org.babyfish.jimmer.View
-import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import java.time.Instant

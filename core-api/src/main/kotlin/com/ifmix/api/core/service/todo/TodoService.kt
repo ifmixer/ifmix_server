@@ -40,14 +40,27 @@ class TodoService(
     }
 
     @Transactional
-    fun updateOne(ctx: OperationContext, input: TodoUpdateInput): TodoView {
-        todoRepo.update(ctx, input) ?: throw ApiError(ErrorCode.NOT_FOUND)
-        return todoRepo.findTodoById(ctx, input.id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+    fun updateOne(ctx: OperationContext, input: TodoUpdateInput): Boolean {
+        return todoRepo.update(ctx, input) != null
     }
 
     @Transactional
     fun deleteOne(ctx: OperationContext, id: UUID): Boolean =
         todoRepo.deleteTodo(ctx, id)
+
+    @Transactional(readOnly = true)
+    fun getByIds(ctx: OperationContext, ids: List<UUID>): List<TodoView> =
+        todoRepo.findTodosByIds(ctx, ids)
+
+    @Transactional
+    fun updateByIds(ctx: OperationContext, inputs: List<TodoUpdateInput>): Int {
+        if (inputs.isEmpty()) return 0
+        return todoRepo.batchUpdate(ctx, inputs).size
+    }
+
+    @Transactional
+    fun deleteByIds(ctx: OperationContext, ids: List<UUID>): Int =
+        todoRepo.deleteTodosByIds(ctx, ids)
 
     @Transactional
     fun deleteItems(ctx: OperationContext, itemIds: List<UUID>): Int =

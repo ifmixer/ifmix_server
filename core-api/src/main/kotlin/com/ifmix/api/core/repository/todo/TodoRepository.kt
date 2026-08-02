@@ -69,6 +69,24 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         }.modifiedEntity
     }
 
+    /** 批量更新。 */
+    fun batchUpdate(ctx: OperationContext, inputs: List<TodoUpdateInput>): List<Todo> {
+        if (inputs.isEmpty()) return emptyList()
+        val appId = ctx.mustGetAppId()
+        val entities = inputs.map { input ->
+            input.toEntity {
+                this.appId = appId
+                items().forEach {
+                    if (it.id == null) it.id = UuidV7.generate()
+                    it.appId = appId
+                }
+            }
+        }
+        return sql.entities.saveEntities(entities) {
+            setAssociatedMode(Todo::items, AssociatedSaveMode.MERGE)
+        }.items.map { it.modifiedEntity }
+    }
+
     /** 删除单条 todo。 */
     fun deleteTodo(ctx: OperationContext, id: UUID): Boolean {
         val appId = ctx.mustGetAppId()
@@ -86,6 +104,27 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         return sql.createDelete(TodoItem::class) {
             where(table.id valueIn itemIds)
             where(table.appId eq appId)
+        }.execute()
+    }
+
+    /** 批量按 id 查 TodoView。 */
+    fun findTodosByIds(ctx: OperationContext, ids: List<UUID>): List<TodoView> {
+        if (ids.isEmpty()) return emptyList()
+        val appId = ctx.mustGetAppId()
+        return sql.createQuery(Todo::class) {
+            where(table.appId eq appId)
+            where(table.id valueIn ids)
+            select(table.fetch(TodoView::class))
+        }.execute()
+    }
+
+    /** 批量删除 todo。 */
+    fun deleteTodosByIds(ctx: OperationContext, ids: List<UUID>): Int {
+        if (ids.isEmpty()) return 0
+        val appId = ctx.mustGetAppId()
+        return sql.createDelete(Todo::class) {
+            where(table.appId eq appId)
+            where(table.id valueIn ids)
         }.execute()
     }
 }
