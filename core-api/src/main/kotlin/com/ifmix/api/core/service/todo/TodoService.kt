@@ -17,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 /**
- * Todo 业务逻辑。标准 CRUD 由 BaseAppCrudService 提供。
- * 对外（BFF）一律以 [TodoView] 交互，租户由 ctx.appId 强制约束。
+ * Todo 业务编排。
+ * 权限校验（ownership）由 Controller 层负责，Service 只做数据操作。
  */
 @Service
 class TodoService(
@@ -31,27 +31,25 @@ class TodoService(
 
     @Transactional(readOnly = true)
     fun getTodo(ctx: OperationContext, id: UUID): TodoView =
-        todoRepo.findTodoById(ctx, ctx.mustGetAppId(), id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        todoRepo.findTodoById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     @Transactional
     fun createOne(ctx: OperationContext, input: TodoCreateInput): TodoView {
-        val appId = ctx.mustGetAppId()
-        val saved = todoRepo.create(ctx, appId, input)
-        return todoRepo.findTodoById(ctx, appId, saved.id) ?: throw ApiError(ErrorCode.INTERNAL)
+        val saved = todoRepo.create(ctx, input)
+        return todoRepo.findTodoById(ctx, saved.id) ?: throw ApiError(ErrorCode.INTERNAL)
     }
 
     @Transactional
     fun updateOne(ctx: OperationContext, input: TodoUpdateInput): TodoView {
-        val appId = ctx.mustGetAppId()
-        todoRepo.update(ctx, appId, input) ?: throw ApiError(ErrorCode.NOT_FOUND)
-        return todoRepo.findTodoById(ctx, appId, input.id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        todoRepo.update(ctx, input) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        return todoRepo.findTodoById(ctx, input.id) ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
     @Transactional
     fun deleteOne(ctx: OperationContext, id: UUID): Boolean =
-        todoRepo.deleteForApp(ctx, ctx.mustGetAppId(), id)
+        todoRepo.deleteTodo(ctx, id)
 
     @Transactional
     fun deleteItems(ctx: OperationContext, itemIds: List<UUID>): Int =
-        todoRepo.deleteItemsByIds(ctx, ctx.mustGetAppId(), itemIds)
+        todoRepo.deleteItemsByIds(ctx, itemIds)
 }

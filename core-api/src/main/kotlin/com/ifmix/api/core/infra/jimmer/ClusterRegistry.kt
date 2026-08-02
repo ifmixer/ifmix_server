@@ -7,6 +7,9 @@ import org.babyfish.jimmer.sql.DraftInterceptor
 import org.babyfish.jimmer.sql.dialect.PostgresDialect
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.newKSqlClient
+import org.babyfish.jimmer.sql.runtime.Executor
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import javax.sql.DataSource
 
@@ -22,7 +25,9 @@ import javax.sql.DataSource
 class ClusterRegistry(
     private val props: ClusterProperties,
     private val draftInterceptors: List<DraftInterceptor<*, *>>,
+    @Value("\${app.show-sql:false}") private val showSql: Boolean,
 ) {
+    private val log = LoggerFactory.getLogger(ClusterRegistry::class.java)
     val writerDataSource: HikariDataSource by lazy { createDataSource(props.writer, "pg-writer") }
     val readerDataSource: HikariDataSource by lazy { createDataSource(props.reader, "pg-reader") }
     val routingDataSource: ReadWriteRoutingDataSource by lazy { ReadWriteRoutingDataSource(writerDataSource, readerDataSource) }
@@ -42,6 +47,10 @@ class ClusterRegistry(
                 }
             }
             setDialect(PostgresDialect())
+            if (showSql) {
+                setExecutor(Executor.log())
+                setExecutorContextPrefixes(listOf("com.ifmix.api.core"))
+            }
             for (interceptor in draftInterceptors) {
                 addDraftInterceptor(interceptor)
             }

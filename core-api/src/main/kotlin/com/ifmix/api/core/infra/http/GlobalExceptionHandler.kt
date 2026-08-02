@@ -1,5 +1,6 @@
 package com.ifmix.api.core.infra.http
 
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 class GlobalExceptionHandler(
     @param:Value("\${app.expose-errors:true}") private val exposeErrors: Boolean,
 ) {
+    private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(ApiError::class)
     fun handleApiError(ex: ApiError): ResponseEntity<*> {
@@ -47,6 +49,7 @@ class GlobalExceptionHandler(
 
     @ExceptionHandler(Exception::class)
     fun handleGeneric(ex: Exception): ResponseEntity<Envelope<Nothing>> {
+        log.error("Unhandled exception", ex)
         val msg = if (exposeErrors) (ex.message ?: "error") else "internal error"
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(Envelope.error(ErrorCode.INTERNAL.externalCode, msg))
