@@ -8,6 +8,7 @@ import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
+import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.todo.TodoRepository
 import com.ifmix.api.core.service.base.BaseAppCrudService
@@ -25,31 +26,28 @@ class TodoService(
 ) : BaseAppCrudService<Todo>(todoRepo) {
 
     @Transactional(readOnly = true)
-    fun findViewByCursor(ctx: OperationContext, input: CursorQueryInput): Page<TodoView> =
-        todoRepo.findViewByCursorForApp(ctx.repo, ctx.appUuid(), input)
+    fun findTodoByCursor(ctx: OperationContext, input: CursorQueryInput): Page<TodoView> =
+        todoRepo.findViewByCursor(ctx.repo, ctx.mustGetAppId(), TodoView::class, input)
 
     @Transactional(readOnly = true)
-    fun getView(ctx: OperationContext, id: UUID): TodoView =
-        todoRepo.findViewById(ctx.repo, ctx.appUuid(), id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+    fun getTodo(ctx: OperationContext, id: UUID): TodoView =
+        todoRepo.findTodoById(ctx.repo, ctx.mustGetAppId(), id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     @Transactional
     fun createOne(ctx: OperationContext, input: TodoCreateInput): TodoView {
-        val appId = ctx.appUuid()
+        val appId = ctx.mustGetAppId()
         val saved = todoRepo.create(ctx.repo, appId, input)
-        return todoRepo.findViewById(ctx.repo, appId, saved.id) ?: throw ApiError(ErrorCode.INTERNAL)
+        return todoRepo.findTodoById(ctx.repo, appId, saved.id) ?: throw ApiError(ErrorCode.INTERNAL)
     }
 
     @Transactional
     fun updateOne(ctx: OperationContext, input: TodoUpdateInput): TodoView {
-        val appId = ctx.appUuid()
+        val appId = ctx.mustGetAppId()
         todoRepo.update(ctx.repo, appId, input) ?: throw ApiError(ErrorCode.NOT_FOUND)
-        return todoRepo.findViewById(ctx.repo, appId, input.id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        return todoRepo.findTodoById(ctx.repo, appId, input.id) ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
     @Transactional
     fun deleteOne(ctx: OperationContext, id: UUID): Boolean =
-        todoRepo.deleteForApp(ctx.repo, ctx.appUuid(), id)
-
-    private fun OperationContext.appUuid(): UUID =
-        appId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id must be a UUID")
+        todoRepo.deleteForApp(ctx.repo, ctx.mustGetAppId(), id)
 }

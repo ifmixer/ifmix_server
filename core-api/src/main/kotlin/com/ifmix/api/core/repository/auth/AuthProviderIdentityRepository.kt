@@ -18,7 +18,7 @@ import java.util.UUID
 class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {
 
     /** Find by tenantId + provider + providerAccountId using Jimmer query DSL */
-    fun findByProviderAndAccountId(repo: RepoContext, tenantId: String, provider: String, providerAccountId: String): AuthProviderIdentity? {
+    fun findByProviderAndAccountId(repoCtx: RepoContext, tenantId: String, provider: String, providerAccountId: String): AuthProviderIdentity? {
         val tenantUUID = UUID.fromString(tenantId)
         return sql.createQuery(AuthProviderIdentity::class) {
             where(table.authTenantId eq tenantUUID)
@@ -33,7 +33,7 @@ class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<Auth
      * Returns the saved AuthProviderIdentity.
      */
     fun upsert(
-        repo: RepoContext,
+        repoCtx: RepoContext,
         tenantId: String,
         provider: String,
         providerAccountId: String,

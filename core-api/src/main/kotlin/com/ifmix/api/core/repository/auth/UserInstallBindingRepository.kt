@@ -32,7 +32,7 @@ class UserInstallBindingRepository(
      * - 已存在 → 更新 lastSeenAt、loginCount++、clientIp/platform
      */
     fun recordBinding(
-        repo: RepoContext,
+        repoCtx: RepoContext,
         appId: UUID,
         userId: UUID,
         installId: UUID,

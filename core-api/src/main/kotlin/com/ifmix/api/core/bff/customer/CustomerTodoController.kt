@@ -31,11 +31,11 @@ class CustomerTodoController(private val todoService: TodoService) {
     fun findByCursor(
         ctx: OperationContext,
         @RequestBody(required = false) input: CursorQueryInput?,
-    ): Page<TodoView> = todoService.findViewByCursor(ctx, input ?: CursorQueryInput())
+    ): Page<TodoView> = todoService.findTodoByCursor(ctx, input ?: CursorQueryInput())
 
     @PutMapping("/query/todo/getById")
     fun getById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): TodoView =
-        todoService.getView(ctx, req.id)
+        todoService.getTodo(ctx, req.id)
 
     @PostMapping("/mutation/todo/createOne")
     fun createOne(ctx: OperationContext, @Valid @RequestBody req: TodoCreateInput): TodoView =

@@ -15,7 +15,7 @@ import java.util.UUID
 class AuthIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<AuthIdentity>(sql, AuthIdentity::class) {
 
     /** Find identity by tenant ID and email using Jimmer query DSL */
-    fun findByTenantAndEmail(repo: RepoContext, tenantId: String, email: String): AuthIdentity? {
+    fun findByTenantAndEmail(repoCtx: RepoContext, tenantId: String, email: String): AuthIdentity? {
         val tenantUUID = UUID.fromString(tenantId)
         return sql.createQuery(AuthIdentity::class) {
             where(table.authTenantId eq tenantUUID)

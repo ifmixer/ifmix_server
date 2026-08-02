@@ -19,7 +19,7 @@ class StoreNotificationRepository(sql: KSqlClient,) : BaseAppCrudRepository<Stor
      * Used for idempotency in notification handling.
      * @LogicalDeleted auto-filters deleted records.
      */
-    fun existsByPlatformAndToken(repo: RepoContext, platform: String, purchaseToken: String): Boolean {
+    fun existsByPlatformAndToken(repoCtx: RepoContext, platform: String, purchaseToken: String): Boolean {
         val results = sql.createQuery(StoreNotification::class) {
             where(table.platform eq platform)
             where(table.purchaseToken eq purchaseToken)

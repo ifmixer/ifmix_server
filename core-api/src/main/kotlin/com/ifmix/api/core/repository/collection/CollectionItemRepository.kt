@@ -24,7 +24,7 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
      * Idempotent insert - returns existing or new item ID.
      * @LogicalDeleted auto-filters deleted items.
      */
-    fun insertIfAbsent(repo: RepoContext, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
+    fun insertIfAbsent(repoCtx: RepoContext, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
         val existing = sql.createQuery(CollectionItem::class) {
             where(table.appId eq appId)
             where(table.collectionId eq collectionId)
@@ -52,7 +52,7 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
      * Batch soft delete for multiple scan records in a collection.
      * @LogicalDeleted auto-filters already-deleted items.
      */
-    fun softDeleteByScanIds(repo: RepoContext, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Long {
+    fun softDeleteByScanIds(repoCtx: RepoContext, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Long {
         if (scanRecordIds.isEmpty()) return 0L
         val items = sql.createQuery(CollectionItem::class) {
             where(table.appId eq appId)
@@ -69,7 +69,7 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
      * @LogicalDeleted auto-filters deleted items.
      */
     fun listWithScanRecords(
-        repo: RepoContext,
+        repoCtx: RepoContext,
         appId: UUID,
         collectionId: UUID,
         limit: Int,
@@ -95,7 +95,7 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
     }
 
     /** Check if a scan record exists in a collection (non-deleted, auto-filtered by @LogicalDeleted) */
-    fun existsByScanRecordId(repo: RepoContext, collectionId: UUID, scanRecordId: UUID): Boolean {
+    fun existsByScanRecordId(repoCtx: RepoContext, collectionId: UUID, scanRecordId: UUID): Boolean {
         val results = sql.createQuery(CollectionItem::class) {
             where(table.collectionId eq collectionId)
             where(table.scanRecordId eq scanRecordId)

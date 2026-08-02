@@ -20,7 +20,7 @@ class AgnesKeyRepository(sql: KSqlClient,) : BaseAppCrudRepository<AgnesKey>(sql
      * 查找所有启用的 key（未软删、供 AiConfig 加载）。
      * @LogicalDeleted 自动过滤 deletedAt IS NOT NULL。
      */
-    fun findAllEnabled(repo: RepoContext): List<AgnesKey> {
+    fun findAllEnabled(repoCtx: RepoContext): List<AgnesKey> {
         return sql.createQuery(AgnesKey::class) {
             select(table)
         }.execute()
@@ -29,7 +29,7 @@ class AgnesKeyRepository(sql: KSqlClient,) : BaseAppCrudRepository<AgnesKey>(sql
     /**
      * 查找可用 key（未冷却、未软删、appId 匹配）。
      */
-    fun findAvailable(repo: RepoContext, appId: UUID): List<AgnesKey> {
+    fun findAvailable(repoCtx: RepoContext, appId: UUID): List<AgnesKey> {
         val now = Instant.now()
         return sql.createQuery(AgnesKey::class) {
             where(table.appId eq appId)
@@ -46,7 +46,7 @@ class AgnesKeyRepository(sql: KSqlClient,) : BaseAppCrudRepository<AgnesKey>(sql
     /**
      * 标记 key 不可用（设置冷却时间）。只更新必要字段。
      */
-    fun markUnavailable(repo: RepoContext, keyId: UUID, until: Instant) {
+    fun markUnavailable(repoCtx: RepoContext, keyId: UUID, until: Instant) {
         sql.createUpdate(AgnesKey::class) {
             where(table.id eq keyId)
             set(table.unavailableUntil, until)

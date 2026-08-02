@@ -20,33 +20,33 @@ abstract class BaseCrudRepository<E : Any>(
     protected val sql: KSqlClient,
     protected val entityType: KClass<E>,
 ) {
-    open fun findById(repo: RepoContext, id: UUID): E? =
+    open fun findById(repoCtx: RepoContext, id: UUID): E? =
         sql.entities.findById(entityType, id)
 
-    open fun <V : View<E>> findById(repo: RepoContext, id: UUID, viewType: KClass<V>): V? =
+    open fun <V : View<E>> findById(repoCtx: RepoContext, id: UUID, viewType: KClass<V>): V? =
         sql.entities.findById(viewType, id)
 
-    open fun insert(repo: RepoContext, input: Input<E>): E =
+    open fun insert(repoCtx: RepoContext, input: Input<E>): E =
         sql.entities.save(input) {
             setMode(SaveMode.INSERT_ONLY)
         }.modifiedEntity
 
-    open fun update(repo: RepoContext, input: Input<E>): E =
+    open fun update(repoCtx: RepoContext, input: Input<E>): E =
         sql.entities.save(input) {
             setMode(SaveMode.UPDATE_ONLY)
         }.modifiedEntity
 
-    open fun save(repo: RepoContext, input: Input<E>): E =
+    open fun save(repoCtx: RepoContext, input: Input<E>): E =
         sql.entities.save(input).modifiedEntity
 
-    open fun save(repo: RepoContext, entity: E): E =
+    open fun save(repoCtx: RepoContext, entity: E): E =
         sql.entities.save(entity).modifiedEntity
 
-    open fun deleteById(repo: RepoContext, id: UUID) {
+    open fun deleteById(repoCtx: RepoContext, id: UUID) {
         sql.entities.delete(entityType, id)
     }
 
-    open fun findAll(repo: RepoContext): List<E> =
+    open fun findAll(repoCtx: RepoContext): List<E> =
         sql.entities.findAll(entityType)
 
     /**
@@ -55,7 +55,7 @@ abstract class BaseCrudRepository<E : Any>(
      *
      * 子类若需要额外过滤条件（如 appId），应覆写此方法。
      */
-    open fun findByCursor(repo: RepoContext, input: CursorQueryInput = CursorQueryInput()): Page<E> {
+    open fun findByCursor(repoCtx: RepoContext, input: CursorQueryInput = CursorQueryInput()): Page<E> {
         val limit = input.effectiveLimit()
         val cursor = input.cursor?.let {
             try { UUID.fromString(it) } catch (_: Exception) { null }
@@ -106,7 +106,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
      * 游标分页 + 按 appId 过滤。
      * appId 由 Service 层从 OperationContext 取出后显式传入。
      */
-    open fun findByCursor(repo: RepoContext, appId: UUID, input: CursorQueryInput = CursorQueryInput()): Page<E> {
+    open fun findByCursor(repoCtx: RepoContext, appId: UUID, input: CursorQueryInput = CursorQueryInput()): Page<E> {
         val limit = input.effectiveLimit()
         val cursor = input.cursor?.let {
             try { UUID.fromString(it) } catch (_: Exception) { null }
@@ -131,13 +131,49 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
     }
 
     /**
-     * 不带 appId 的 findByCursor 默认走父类实现（全局无过滤），
-     * 子类可按需覆写。
+     * 游标分页 + 按 appId 过滤 + View 投影。
+     * 用于返回 Jimmer 生成的 View DTO 而不是完整 entity。
      */
+    open fun <V : org.babyfish.jimmer.View<E>> findViewByCursor(
+        repoCtx: RepoContext,
+        appId: UUID,
+        viewType: KClass<V>,
+        input: CursorQueryInput = CursorQueryInput(),
+    ): Page<V> {
+        val limit = input.effectiveLimit()
+        val cursor = input.cursor?.let {
+            try { UUID.fromString(it) } catch (_: Exception) { null }
+        }
+
+        val items = sql.createQuery(entityType) {
+            where(table.get<UUID>("appId") eq appId)
+            if (cursor != null) {
+                where(table.getId<UUID>() lt cursor)
+            }
+            orderBy(table.getId<UUID>().desc())
+            select(table.fetch(viewType))
+        }.limit(limit + 1).execute()
+
+        val hasMore = items.size > limit
+        val pageItems = if (hasMore) items.take(limit) else items
+        val nextCursor = if (hasMore) {
+            pageItems.lastOrNull()?.let { getViewId(it)?.toString() }
+        } else null
+
+        return Page(pageItems, nextCursor, hasMore)
+    }
 
     private fun getEntityId(entity: Any): UUID? {
         return try {
             entity.javaClass.getMethod("id").invoke(entity) as? UUID
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun getViewId(view: Any): UUID? {
+        return try {
+            view.javaClass.getMethod("id").invoke(view) as? UUID
         } catch (_: Exception) {
             null
         }

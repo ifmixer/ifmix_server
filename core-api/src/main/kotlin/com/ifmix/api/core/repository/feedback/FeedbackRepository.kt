@@ -19,7 +19,7 @@ class FeedbackRepository(sql: KSqlClient) : BaseAppCrudRepository<Feedback>(sql,
      * appId / installId / userId / id / createdAt 由服务端注入，不接受客户端传入。
      */
     fun create(
-        repo: RepoContext,
+        repoCtx: RepoContext,
         appId: UUID,
         installId: UUID,
         userId: UUID?,

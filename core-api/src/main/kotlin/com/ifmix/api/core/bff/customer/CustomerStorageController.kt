@@ -1,43 +1,31 @@
 package com.ifmix.api.core.bff.customer
 
+import com.ifmix.api.core.common.types.ContentType
+import com.ifmix.api.core.common.types.UploadCategory
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.http.mustGetAppId
+import com.ifmix.api.core.infra.http.mustGetInstallId
 import com.ifmix.api.core.service.antique.AntiqueService
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.web.bind.annotation.*
-import com.fasterxml.jackson.annotation.JsonProperty
 import java.time.Duration
 
 /**
  * customer BFF 的对象存储路由。
- * 仅在 AntiqueService bean 存在时加载。
  *
- * P0-2: objectKey 由服务端生成，客户端只指定 contentType。
- * objectKey 格式: app_{appId}/i_{installId}/scan/{uuid}.{ext}
+ * objectKey 格式: app/{appId}/install/{installId}[/user/{userId}]/{category}/{uuid}.{ext}
+ * user/{userId} 只在已登录时拼接。
  */
 @RestController
 @RequestMapping("/customer/core")
 @ConditionalOnBean(AntiqueService::class)
 class CustomerStorageController(private val antiqueService: AntiqueService) {
 
-    companion object {
-        /**
-         * objectKey 合法格式正则（用于 presignDownload 校验）：
-         * app_{uuid}/i_{non-empty}/...  或  app_{uuid}/u_{non-empty}/...
-         */
-        private val OBJECT_KEY_PATTERN = Regex(
-            "^app_[0-9a-fA-F\\-]{36}/(i_[^/]+|u_[^/]+)/.+"
-        )
-    }
-
-    /**
-     * 生成预签名上传 URL。
-     * objectKey 由服务端生成，格式: app_{appId}/i_{installId}/scan/{uuid}.{ext}
-     */
     @Operation(
         summary = "获取预签名上传 URL",
         description = """
@@ -51,30 +39,23 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
         ctx: OperationContext,
         @Valid @RequestBody req: PresignUploadReq,
     ): PresignedUploadResponse {
-        val installId = ctx.installId
-            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-install-id header is required")
+        val appId = ctx.mustGetAppId()
+        val installId = ctx.mustGetInstallId()
 
-        // 根据 contentType 决定文件扩展名
-        val ext = when (req.contentType) {
-            ContentType.IMAGE_JPEG -> "jpg"
-            ContentType.IMAGE_PNG -> "png"
-            ContentType.IMAGE_WEBP -> "webp"
+        // 构建 objectKey: app/{appId}/install/{installId}[/user/{userId}]/{category}/{uuid}.{ext}
+        val pathParts = buildList {
+            add("app/$appId")
+            add("install/$installId")
+            if (ctx.userId != null) add("user/${ctx.userId}")
+            add(req.category.path)
+            add("${UuidV7.generate()}.${req.contentType.extension}")
         }
+        val objectKey = pathParts.joinToString("/")
 
-        // 服务端生成 objectKey
-        val objectKey = "app_${ctx.appId}/i_${installId}/scan/${UuidV7.generate()}.$ext"
-
-        val contentTypeStr = when (req.contentType) {
-            ContentType.IMAGE_JPEG -> "image/jpeg"
-            ContentType.IMAGE_PNG -> "image/png"
-            ContentType.IMAGE_WEBP -> "image/webp"
-        }
-
-        val url = antiqueService.presignedUploadUrl(ctx, objectKey, contentTypeStr, Duration.ofSeconds(300))
+        val url = antiqueService.presignedUploadUrl(ctx, objectKey, req.contentType.mimeType, Duration.ofSeconds(300))
         return PresignedUploadResponse(uploadUrl = url, imageKey = objectKey)
     }
 
-    /** 生成预签名下载 URL。暂不验证权限。 */
     @Operation(
         summary = "获取预签名下载 URL",
         description = """
@@ -88,54 +69,41 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
         ctx: OperationContext,
         @Valid @RequestBody req: PresignDownloadReq,
     ): PresignedDownloadResponse {
-        // 校验 objectKey 格式
         validateObjectKey(ctx, req.imageKey)
-
         val url = antiqueService.presignedDownloadUrl(ctx, req.imageKey, Duration.ofSeconds(req.durationSeconds ?: 3600L))
         return PresignedDownloadResponse(url)
     }
 
     /**
-     * 校验 objectKey 格式：
-     * 1. 必须匹配 app_{appId}/(i_{installId}|u_{userId})/... 格式
-     * 2. objectKey 中的 appId 必须与请求头中的 appId 一致
-     * 3. 不能包含路径遍历字符（..）
+     * 校验 objectKey 格式和归属：
+     * 1. 不能包含路径遍历（..）
+     * 2. 必须以 app/{appId}/ 开头且 appId 匹配
+     * 3. 必须包含 install/{installId} 且匹配当前用户
      */
     private fun validateObjectKey(ctx: OperationContext, objectKey: String) {
-        // 防止路径遍历
         if (objectKey.contains("..")) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "objectKey: path traversal not allowed")
+            throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: path traversal not allowed")
         }
-
-        // 格式校验
-        if (!OBJECT_KEY_PATTERN.matches(objectKey)) {
-            throw ApiError(
-                ErrorCode.INVALID_REQUEST,
-                "objectKey: must match format app_{appId}/i_{installId}/... or app_{appId}/u_{userId}/..."
-            )
+        val appId = ctx.mustGetAppId()
+        if (!objectKey.startsWith("app/$appId/")) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: appId mismatch")
         }
-
-        // appId 一致性校验：objectKey 中的 appId 必须与请求头中的 appId 一致
-        val keyAppId = objectKey.substringAfter("app_").substringBefore("/")
-        if (!keyAppId.equals(ctx.appId.toString(), ignoreCase = true)) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "objectKey: appId mismatch")
+        // 校验 installId 归属
+        val installId = ctx.installId
+        if (installId != null && !objectKey.contains("install/$installId")) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: installId mismatch")
         }
     }
 
     // ---- DTOs ----
 
     data class PresignUploadReq(
+        val category: UploadCategory,
         val contentType: ContentType,
     )
 
-    enum class ContentType {
-        @JsonProperty("image/jpeg") IMAGE_JPEG,
-        @JsonProperty("image/png") IMAGE_PNG,
-        @JsonProperty("image/webp") IMAGE_WEBP,
-    }
-
     data class PresignDownloadReq(
-        /** 即 ScanRecordView.imageKeys 中的 key，presignUpload 返回的 imageKey */
+        /** ScanRecord.imageKeys 中的 key，presignUpload 返回的 imageKey */
         val imageKey: String,
         /** 签名 URL 有效时长（秒），默认 3600，上限 86400 */
         @io.swagger.v3.oas.annotations.media.Schema(defaultValue = "3600", maximum = "86400")

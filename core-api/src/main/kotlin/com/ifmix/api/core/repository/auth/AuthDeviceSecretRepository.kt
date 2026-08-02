@@ -22,7 +22,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient,) : BaseCrudRepository<AuthDevi
     /**
      * Find a valid (not expired, not revoked) device secret by its hash.
      */
-    fun findValidByHash(repo: RepoContext, secretHash: String): AuthDeviceSecret? {
+    fun findValidByHash(repoCtx: RepoContext, secretHash: String): AuthDeviceSecret? {
         val now = Instant.now()
         return sql.createQuery(AuthDeviceSecret::class) {
             where(table.secretHash eq secretHash)
@@ -35,7 +35,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient,) : BaseCrudRepository<AuthDevi
     /**
      * Touch: update lastUsedAt to now.
      */
-    fun touch(repo: RepoContext, id: UUID) {
+    fun touch(repoCtx: RepoContext, id: UUID) {
         sql.createUpdate(AuthDeviceSecret::class) {
             set(table.lastUsedAt, Instant.now())
             set(table.updatedAt, Instant.now())
@@ -46,7 +46,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient,) : BaseCrudRepository<AuthDevi
     /**
      * Revoke a device secret by setting revokedAt.
      */
-    fun revoke(repo: RepoContext, id: UUID) {
+    fun revoke(repoCtx: RepoContext, id: UUID) {
         sql.createUpdate(AuthDeviceSecret::class) {
             set(table.revokedAt, Instant.now())
             set(table.updatedAt, Instant.now())

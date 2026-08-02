@@ -17,7 +17,7 @@ import java.util.UUID
 class AppUserRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppUser>(sql, AppUser::class) {
 
     /** Find AppUser by appId and authIdentityId using Jimmer query DSL */
-    fun findByAppAndIdentity(repo: RepoContext, appId: UUID, authIdentityId: UUID): AppUser? {
+    fun findByAppAndIdentity(repoCtx: RepoContext, appId: UUID, authIdentityId: UUID): AppUser? {
         return sql.createQuery(AppUser::class) {
             where(table.appId eq appId)
             where(table.authIdentityId eq authIdentityId)
@@ -28,7 +28,7 @@ class AppUserRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppUser>(sql, 
     /**
      * Ensure app_user exists for (appId, authIdentityId). Returns appUserId.
      */
-    fun ensure(repo: RepoContext, appId: UUID, authIdentityId: UUID): UUID {
+    fun ensure(repoCtx: RepoContext, appId: UUID, authIdentityId: UUID): UUID {
         val existing = findByAppAndIdentity(repo, appId, authIdentityId)
         if (existing != null) return existing.id
 

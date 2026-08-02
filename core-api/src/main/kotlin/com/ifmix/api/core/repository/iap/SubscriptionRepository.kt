@@ -20,7 +20,7 @@ class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscript
      * Upsert subscription based on subscriptionPxid key.
      * Uses Jimmer's save which upserts when @Key is defined.
      */
-    fun upsertSubscription(repo: RepoContext, entity: Subscription): Subscription {
+    fun upsertSubscription(repoCtx: RepoContext, entity: Subscription): Subscription {
         return save(repo, entity)
     }
 
@@ -28,7 +28,7 @@ class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscript
      * Find active subscription by appId and subscriptionPxid.
      * @LogicalDeleted auto-filters deleted records.
      */
-    fun findActiveByPxid(repo: RepoContext, appId: UUID, pxid: String): Subscription? {
+    fun findActiveByPxid(repoCtx: RepoContext, appId: UUID, pxid: String): Subscription? {
         return sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.subscriptionPxid eq pxid)
@@ -40,7 +40,7 @@ class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscript
     /**
      * Find any non-deleted subscription by pxid (regardless of active status).
      */
-    fun findByPxid(repo: RepoContext, appId: UUID, pxid: String): Subscription? {
+    fun findByPxid(repoCtx: RepoContext, appId: UUID, pxid: String): Subscription? {
         return sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.subscriptionPxid eq pxid)
@@ -52,7 +52,7 @@ class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscript
      * Find subscription by originalTransactionId and update it.
      * @LogicalDeleted auto-filters deleted records.
      */
-    fun updateByOriginalTxn(repo: RepoContext, appId: UUID, originalTxnId: String, updater: (Subscription) -> Subscription): Subscription? {
+    fun updateByOriginalTxn(repoCtx: RepoContext, appId: UUID, originalTxnId: String, updater: (Subscription) -> Subscription): Subscription? {
         val existing = sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.originalTransactionId eq originalTxnId)

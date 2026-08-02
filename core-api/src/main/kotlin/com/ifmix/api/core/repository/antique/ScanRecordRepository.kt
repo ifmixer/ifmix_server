@@ -23,7 +23,7 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
 
     /** Create a new scan record using Jimmer draft lambda. */
     fun create(
-        repo: RepoContext,
+        repoCtx: RepoContext,
         appId: UUID,
         imageKeys: List<ImageRef>,
         status: ScanStatus,

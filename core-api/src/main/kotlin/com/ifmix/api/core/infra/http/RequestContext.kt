@@ -25,7 +25,7 @@ data class OperationContext(
     /** 认证主体（JWT 解码后的身份，匿名时为 null） */
     val principal: Principal? = null,
     /** Repository 层上下文（基础设施引用） */
-    val repo: RepoContext = RepoContext(),
+    val repoCtx: RepoContext = RepoContext(),
 )
 
 @Deprecated("Use OperationContext", ReplaceWith("OperationContext"))

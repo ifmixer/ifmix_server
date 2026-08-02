@@ -24,7 +24,7 @@ class AppRefreshTokenRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppRef
      * Find a valid refresh token by (appId, tokenHash).
      * Valid = not revoked and not expired.
      */
-    fun findValidByHash(repo: RepoContext, appId: UUID, tokenHash: String): AppRefreshToken? {
+    fun findValidByHash(repoCtx: RepoContext, appId: UUID, tokenHash: String): AppRefreshToken? {
         val now = Instant.now()
         return sql.createQuery(AppRefreshToken::class) {
             where(table.appId eq appId)
@@ -38,7 +38,7 @@ class AppRefreshTokenRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppRef
     /**
      * Revoke a refresh token: set revokedAt and optionally replacedBy.
      */
-    fun revoke(repo: RepoContext, id: UUID, replacedBy: UUID? = null) {
+    fun revoke(repoCtx: RepoContext, id: UUID, replacedBy: UUID? = null) {
         sql.createUpdate(AppRefreshToken::class) {
             set(table.revokedAt, Instant.now())
             set(table.updatedAt, Instant.now())
