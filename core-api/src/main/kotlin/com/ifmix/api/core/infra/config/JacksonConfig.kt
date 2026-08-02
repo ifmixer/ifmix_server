@@ -1,5 +1,7 @@
 package com.ifmix.api.core.infra.config
 
+import com.ifmix.api.core.infra.codec.toBase58
+import com.ifmix.api.core.infra.codec.toUuidFromBase58
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import tools.jackson.core.JsonGenerator
@@ -11,8 +13,9 @@ import tools.jackson.databind.ValueDeserializer
 import tools.jackson.databind.ValueSerializer
 import tools.jackson.module.kotlin.KotlinModule
 import java.time.Instant
+import java.util.UUID
 
-/** 全局 Jackson 3 定制：Instant 出站为 epoch 毫秒整数，入站从 epoch 毫秒解析。 */
+/** 全局 Jackson 3 定制。 */
 @Configuration
 class JacksonConfig {
 
@@ -29,12 +32,26 @@ class JacksonConfig {
         })
     }
 
+    /** UUID ↔ Base58 (22 chars, URL-safe) */
+    @Bean
+    fun uuidBase58Module(): JacksonModule = tools.jackson.databind.module.SimpleModule("UuidBase58").apply {
+        addSerializer(UUID::class.java, object : ValueSerializer<UUID>() {
+            override fun serialize(value: UUID, gen: JsonGenerator, ctx: SerializationContext) {
+                gen.writeString(value.toBase58())
+            }
+        })
+        addDeserializer(UUID::class.java, object : ValueDeserializer<UUID>() {
+            override fun deserialize(p: JsonParser, ctx: DeserializationContext): UUID =
+                p.text.toUuidFromBase58()
+        })
+    }
+
     @Bean
     fun kotlinModule(): KotlinModule = KotlinModule.Builder().build()
 
     /**
      * snake_case 命名的 ObjectMapper，用于 AI 模型 JSON 交互。
-     * 与 Spring 默认的 camelCase mapper 分开，通过 @Qualifier("snakeCaseMapper") 注入。
+     * 注意：不注册 UUID Base58 模块（AI 模型不用 base58 UUID）。
      */
     @Bean("snakeCaseMapper")
     fun snakeCaseMapper(): tools.jackson.databind.ObjectMapper =
