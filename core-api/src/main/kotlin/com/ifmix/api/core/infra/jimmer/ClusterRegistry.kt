@@ -3,6 +3,7 @@ package com.ifmix.api.core.infra.jimmer
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import jakarta.annotation.PreDestroy
+import org.babyfish.jimmer.sql.DraftInterceptor
 import org.babyfish.jimmer.sql.dialect.PostgresDialect
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.newKSqlClient
@@ -20,6 +21,7 @@ import javax.sql.DataSource
 @Component
 class ClusterRegistry(
     private val props: ClusterProperties,
+    private val draftInterceptors: List<DraftInterceptor<*, *>>,
 ) {
     val writerDataSource: HikariDataSource by lazy { createDataSource(props.writer, "pg-writer") }
     val readerDataSource: HikariDataSource by lazy { createDataSource(props.reader, "pg-reader") }
@@ -40,6 +42,9 @@ class ClusterRegistry(
                 }
             }
             setDialect(PostgresDialect())
+            for (interceptor in draftInterceptors) {
+                addDraftInterceptor(interceptor)
+            }
         }
     }
 

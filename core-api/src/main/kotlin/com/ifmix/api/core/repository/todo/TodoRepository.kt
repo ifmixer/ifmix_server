@@ -37,29 +37,30 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         }.limit(1).execute().firstOrNull()
 
     fun create(repoCtx: RepoContext, appId: UUID, input: TodoCreateInput): Todo {
-        val now = Instant.now()
-        val entity = Todo {
+        val entity = input.toEntity {
             id = UuidV7.generate()
             this.appId = appId
-            title = input.title
-            done = input.done
-            createdAt = now
-            updatedAt = now
+            items().forEach {
+                it.id = UuidV7.generate()
+                it.appId = appId
+            }
         }
-        return sql.entities.save(entity) { setMode(SaveMode.INSERT_ONLY) }.modifiedEntity
+        return sql.entities.save(entity) {
+            setMode(SaveMode.INSERT_ONLY)
+        }.modifiedEntity
     }
 
     /** 更新；id 不属于当前租户时返回 null（不泄漏其他租户的存在性）。 */
     fun update(repoCtx: RepoContext, appId: UUID, input: TodoUpdateInput): Todo? {
         if (!existsForApp(appId, input.id)) return null
-        val entity = Todo {
-            id = input.id
+        val entity = input.toEntity {
             this.appId = appId
-            title = input.title
-            done = input.done
-            updatedAt = Instant.now()
+            items().forEach {
+                if (it.id == null) it.id = UuidV7.generate()
+                it.appId = appId
+            }
         }
-        return sql.entities.save(entity) { setMode(SaveMode.UPDATE_ONLY) }.modifiedEntity
+        return sql.entities.save(entity).modifiedEntity
     }
 
     /** 软删（实体标了 @LogicalDeleted）。返回 false 表示该 id 不属于当前租户。 */
