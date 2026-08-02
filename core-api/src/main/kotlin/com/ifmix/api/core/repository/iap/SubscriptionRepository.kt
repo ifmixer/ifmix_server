@@ -21,7 +21,7 @@ class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscript
      * Uses Jimmer's save which upserts when @Key is defined.
      */
     fun upsertSubscription(repoCtx: RepoContext, entity: Subscription): Subscription {
-        return save(repo, entity)
+        return save(repoCtx, entity)
     }
 
     /**
@@ -59,6 +59,6 @@ class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscript
             select(table)
         }.fetchOneOrNull() ?: return null
         val updated = updater(existing)
-        return save(repo, updated)
+        return save(repoCtx, updated)
     }
 }

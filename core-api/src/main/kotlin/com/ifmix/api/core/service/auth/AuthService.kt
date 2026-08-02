@@ -74,7 +74,7 @@ open class AuthService(
         // 4. Find or create AuthIdentity
         val normalizedEmail = verified.email?.lowercase()
         val identity = if (normalizedEmail != null) {
-            identityRepo.findByTenantAndEmail(ctx.repo, tenantId, normalizedEmail) ?: run {
+            identityRepo.findByTenantAndEmail(ctx.repoCtx, tenantId, normalizedEmail) ?: run {
                 val newIdentity = AuthIdentity {
                     id = UuidV7.generate()
                     authTenant { id = tenantUUID }
@@ -90,15 +90,15 @@ open class AuthService(
                     createdAt = Instant.now()
                     updatedAt = Instant.now()
                 }
-                identityRepo.save(ctx.repo, newIdentity)
+                identityRepo.save(ctx.repoCtx, newIdentity)
             }
         } else {
             // No email — look up existing provider identity first
             val existingProvider = providerIdentityRepo.findByProviderAndAccountId(
-                ctx.repo, tenantId, provider, verified.accountId
+                ctx.repoCtx, tenantId, provider, verified.accountId
             )
             if (existingProvider != null) {
-                identityRepo.findById(ctx.repo, existingProvider.authIdentity.id)!!
+                identityRepo.findById(ctx.repoCtx, existingProvider.authIdentity.id)!!
             } else {
                 val newIdentity = AuthIdentity {
                     id = UuidV7.generate()
@@ -115,13 +115,13 @@ open class AuthService(
                     createdAt = Instant.now()
                     updatedAt = Instant.now()
                 }
-                identityRepo.save(ctx.repo, newIdentity)
+                identityRepo.save(ctx.repoCtx, newIdentity)
             }
         }
 
         // 5. Upsert AuthProviderIdentity
         providerIdentityRepo.upsert(
-            repo = ctx.repo,
+            repoCtx = ctx.repoCtx,
             tenantId = tenantId,
             provider = provider,
             providerAccountId = verified.accountId,
@@ -137,7 +137,7 @@ open class AuthService(
         )
 
         // 6. Ensure AppUser
-        val appUserId = appUserRepo.ensure(ctx.repo, ctx.appId!!, identity.id)
+        val appUserId = appUserRepo.ensure(ctx.repoCtx, ctx.appId!!, identity.id)
 
         // 7. Issue device secret
         val rawDeviceSecret = Hashing.randomTokenBase64Url()
@@ -155,7 +155,7 @@ open class AuthService(
             createdAt = now
             updatedAt = now
         }
-        val savedDeviceSecret = deviceSecretRepo.save(ctx.repo, deviceSecretEntity)
+        val savedDeviceSecret = deviceSecretRepo.save(ctx.repoCtx, deviceSecretEntity)
 
         // 8. Issue refresh token
         val rawRefreshToken = Hashing.randomTokenBase64Url()
@@ -174,7 +174,7 @@ open class AuthService(
             createdAt = now
             updatedAt = now
         }
-        refreshRepo.save(ctx.repo, refreshTokenEntity)
+        refreshRepo.save(ctx.repoCtx, refreshTokenEntity)
 
         // 9. Sign access token
         val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId!!.toString())
@@ -211,15 +211,15 @@ open class AuthService(
         val secretHash = Hashing.sha256Base64Url(req.deviceSecret!!)
 
         // 2. Find valid device secret
-        val foundSecret = deviceSecretRepo.findValidByHash(ctx.repo, secretHash)
+        val foundSecret = deviceSecretRepo.findValidByHash(ctx.repoCtx, secretHash)
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or expired device secret")
 
         // 3. Touch device secret (update lastUsedAt)
-        deviceSecretRepo.touch(ctx.repo, foundSecret.id)
+        deviceSecretRepo.touch(ctx.repoCtx, foundSecret.id)
 
         // 4. Find AppUser via identity
         val identityId = foundSecret.authIdentity.id
-        val appUserId = appUserRepo.ensure(ctx.repo, appId, identityId)
+        val appUserId = appUserRepo.ensure(ctx.repoCtx, appId, identityId)
 
         // 5. Issue new refresh token
         val rawRefreshToken = Hashing.randomTokenBase64Url()
@@ -239,7 +239,7 @@ open class AuthService(
             createdAt = now
             updatedAt = now
         }
-        refreshRepo.save(ctx.repo, refreshTokenEntity)
+        refreshRepo.save(ctx.repoCtx, refreshTokenEntity)
 
         // 6. Sign access token
         val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId!!.toString())
@@ -250,7 +250,7 @@ open class AuthService(
             refreshToken = rawRefreshToken,
             refreshExpiresAt = refreshExpiresAt,
             expiresIn = accessTtlSec,
-            user = UserDto(id = appUserId, email = identityRepo.findById(ctx.repo, identityId)?.email),
+            user = UserDto(id = appUserId, email = identityRepo.findById(ctx.repoCtx, identityId)?.email),
         )
     }
 
@@ -262,7 +262,7 @@ open class AuthService(
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
 
         // 2. Find valid token
-        val oldToken = refreshRepo.findValidByHash(ctx.repo, appId, tokenHash)
+        val oldToken = refreshRepo.findValidByHash(ctx.repoCtx, appId, tokenHash)
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or expired refresh token")
 
         // 3. Generate new refresh token
@@ -284,10 +284,10 @@ open class AuthService(
             createdAt = now
             updatedAt = now
         }
-        refreshRepo.save(ctx.repo, newTokenEntity)
+        refreshRepo.save(ctx.repoCtx, newTokenEntity)
 
         // 4. Revoke old token
-        refreshRepo.revoke(ctx.repo, oldToken.id, replacedBy = newTokenId)
+        refreshRepo.revoke(ctx.repoCtx, oldToken.id, replacedBy = newTokenId)
 
         // 5. Sign new access token
         val appUserId = oldToken.appUser.id
@@ -310,14 +310,14 @@ open class AuthService(
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
 
         // 2. Find token (valid or not - we still revoke it)
-        val token = refreshRepo.findValidByHash(ctx.repo, appId, tokenHash)
+        val token = refreshRepo.findValidByHash(ctx.repoCtx, appId, tokenHash)
         if (token != null) {
             // 3. Revoke refresh token
-            refreshRepo.revoke(ctx.repo, token.id)
+            refreshRepo.revoke(ctx.repoCtx, token.id)
 
             // 4. If device secret is linked, revoke it too
             token.deviceSecret?.let { ds ->
-                deviceSecretRepo.revoke(ctx.repo, ds.id)
+                deviceSecretRepo.revoke(ctx.repoCtx, ds.id)
             }
         }
 

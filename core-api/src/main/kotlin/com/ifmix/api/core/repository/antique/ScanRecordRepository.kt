@@ -41,6 +41,6 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
             this.createdAt = now
             this.updatedAt = now
         }
-        return save(repo, entity)
+        return save(repoCtx, entity)
     }
 }

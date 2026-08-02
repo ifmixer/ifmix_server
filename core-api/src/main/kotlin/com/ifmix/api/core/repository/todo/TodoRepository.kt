@@ -65,7 +65,7 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
     /** 软删（实体标了 @LogicalDeleted）。返回 false 表示该 id 不属于当前租户。 */
     fun deleteForApp(repoCtx: RepoContext, appId: UUID, id: UUID): Boolean {
         if (!existsForApp(appId, id)) return false
-        deleteById(repo, id)
+        deleteById(repoCtx, id)
         return true
     }
 

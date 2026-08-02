@@ -30,7 +30,7 @@ class FeedbackService(
         val userId = ctx.userId
 
         val saved = feedbackRepo.create(
-            repo = ctx.repo,
+            repoCtx = ctx.repoCtx,
             appId = appId,
             installId = installId,
             userId = userId,

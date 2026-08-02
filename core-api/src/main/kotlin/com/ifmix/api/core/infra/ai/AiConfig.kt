@@ -32,7 +32,7 @@ class AiConfig {
         return AgnesKeyStore(
             redis = redis,
             loadKeys = {
-                val repoCtx = com.ifmix.api.core.infra.db.RepoContext()
+                val repoCtx =  com.ifmix.api.core.infra.db.RepoContext()
                 agnesKeyRepo.findAllEnabled(repoCtx).map { key ->
                     AgnesKeyStore.AgnesKeyDoc(
                         id = key.id.toString(),

@@ -47,7 +47,7 @@ class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<Auth
         loginInstallId: String?,
         loginAppId: String?,
     ): AuthProviderIdentity {
-        val existing = findByProviderAndAccountId(repo, tenantId, provider, providerAccountId)
+        val existing = findByProviderAndAccountId(repoCtx, tenantId, provider, providerAccountId)
 
         val tenantUUID = UUID.fromString(tenantId)
         val now = Instant.now()
@@ -69,6 +69,6 @@ class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<Auth
             createdAt = existing?.createdAt ?: now
             updatedAt = now
         }
-        return save(repo, entity)
+        return save(repoCtx, entity)
     }
 }

@@ -45,7 +45,7 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
             updatedAt = now
             deletedAt = null
         }
-        return save(repo, item).id
+        return save(repoCtx, item).id
     }
 
     /**
@@ -60,7 +60,7 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
             where(table.scanRecordId valueIn scanRecordIds)
             select(table)
         }.execute()
-        items.forEach { deleteById(repo, it.id) }
+        items.forEach { deleteById(repoCtx, it.id) }
         return items.size.toLong()
     }
 

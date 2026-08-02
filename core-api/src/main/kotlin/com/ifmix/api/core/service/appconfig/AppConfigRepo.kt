@@ -18,17 +18,17 @@ class AppConfigRepo(
 
     fun getByAppId(ctx: OperationContext): AppConfig? {
         val uuid = ctx.appId ?: return null
-        val current = repo.findCurrentByAppId(ctx.repo, uuid)
+        val current = repo.findCurrentByAppId(ctx.repoCtx, uuid)
         return current?.let { toFlat(it) }
     }
 
     fun getByAppleBundleId(ctx: OperationContext, bundleId: String): AppConfig? {
-        val config = repo.findByBundleId(ctx.repo, bundleId)
+        val config = repo.findByBundleId(ctx.repoCtx, bundleId)
         return config?.let { toFlat(it) }
     }
 
     fun getByAndroidPackage(ctx: OperationContext, pkg: String): AppConfig? {
-        val config = repo.findByAndroidPackage(ctx.repo, pkg)
+        val config = repo.findByAndroidPackage(ctx.repoCtx, pkg)
         return config?.let { toFlat(it) }
     }
 

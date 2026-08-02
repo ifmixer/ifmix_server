@@ -29,7 +29,7 @@ class AppUserRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppUser>(sql, 
      * Ensure app_user exists for (appId, authIdentityId). Returns appUserId.
      */
     fun ensure(repoCtx: RepoContext, appId: UUID, authIdentityId: UUID): UUID {
-        val existing = findByAppAndIdentity(repo, appId, authIdentityId)
+        val existing = findByAppAndIdentity(repoCtx, appId, authIdentityId)
         if (existing != null) return existing.id
 
         // Create new AppUser using Jimmer draft lambda
@@ -41,6 +41,6 @@ class AppUserRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppUser>(sql, 
             createdAt = Instant.now()
             updatedAt = Instant.now()
         }
-        return save(repo, newUser).id
+        return save(repoCtx, newUser).id
     }
 }

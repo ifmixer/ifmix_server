@@ -1568,7 +1568,7 @@ class BaseRepositoryTest : AbstractMongoTest() {
 
     @BeforeEach
     fun init() {
-        repo = BaseRepository(mongoTemplate, TodoDocument::class.java, softDelete = true)
+        repoCtx = BaseRepository(mongoTemplate, TodoDocument::class.java, softDelete = true)
     }
 
     private fun insertTodo(title: String): String {
@@ -1836,7 +1836,7 @@ class BaseAppRepositoryTest : AbstractMongoTest() {
 
     @BeforeEach
     fun init() {
-        repo = BaseAppRepository(mongoTemplate, TodoDocument::class.java, softDelete = true)
+        repoCtx = BaseAppRepository(mongoTemplate, TodoDocument::class.java, softDelete = true)
     }
 
     private fun insert(ctx: RequestContext, title: String): String {

@@ -61,7 +61,7 @@ class UserInstallBindingRepository(
                 this.createdAt = now
                 this.updatedAt = now
             }
-            save(repo, entity)
+            save(repoCtx, entity)
         } else {
             sql.createUpdate(UserInstallBinding::class) {
                 set(table.lastSeenAt, now)

@@ -1167,7 +1167,7 @@ class BaseCrudRepositoryTest : AbstractJimmerTest() {
             .locations("classpath:db/migration")
             .load()
             .migrate()
-        repo = TestTodoRepository(registry)
+        repoCtx = TestTodoRepository(registry)
         RequestContextHolder.set(ctx)
     }
 
@@ -1408,7 +1408,7 @@ class TodoServiceJimmerTest : AbstractJimmerTest() {
             .locations("classpath:db/migration")
             .load()
             .migrate()
-        val repo = TodoRepository(registry)
+        val repoCtx = TodoRepository(registry)
         service = TodoService(repo)
         RequestContextHolder.set(ctx)
     }
@@ -1647,7 +1647,7 @@ class FeedbackServiceJimmerTest : AbstractJimmerTest() {
             .locations("classpath:db/migration")
             .load()
             .migrate()
-        val repo = FeedbackRepository(registry)
+        val repoCtx = FeedbackRepository(registry)
         service = FeedbackService(repo)
         RequestContextHolder.set(ctx)
     }
