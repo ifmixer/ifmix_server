@@ -12,9 +12,8 @@ CollectionDto {
         scanRecord {
             id
             imageKeys
-            resultJson
+            result
             status
-            tier
             clientIp
             userDisplayName
             userNotes

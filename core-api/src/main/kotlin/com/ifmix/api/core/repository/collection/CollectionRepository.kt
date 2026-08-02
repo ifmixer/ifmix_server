@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.collection.appId
 import com.ifmix.api.core.entity.collection.installId
 import com.ifmix.api.core.entity.collection.isDefault
 import com.ifmix.api.core.entity.collection.userId
-import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -17,7 +17,7 @@ import java.util.UUID
 class CollectionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collection>(sql, Collection::class) {
 
     /** Find default collection for app by optional userId or installId */
-    fun findDefault(ctx: OperationContext, appId: UUID, installId: UUID?, userId: String?): Collection? {
+    fun findDefault(repo: RepoContext, appId: UUID, installId: UUID?, userId: UUID?): Collection? {
         // Try userId first
         if (userId != null) {
             val byUser = sql.createQuery(Collection::class) {

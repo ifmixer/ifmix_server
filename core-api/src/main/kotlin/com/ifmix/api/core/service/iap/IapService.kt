@@ -76,7 +76,7 @@ open class IapService(
         }
 
         // Check for existing active subscription with same pxid (idempotency)
-        val existingSub = subscriptionRepo.findActiveByPxid(ctx, appId, subscriptionPxid)
+        val existingSub = subscriptionRepo.findActiveByPxid(ctx.repo, appId, subscriptionPxid)
         if (existingSub != null) {
             return VerifyRes(
                 expiresAt = existingSub.expiryDate?.toEpochMilli(),
@@ -125,7 +125,7 @@ open class IapService(
             updatedAt = now
         }
 
-        val savedSub = subscriptionRepo.upsertSubscription(ctx, subscription)
+        val savedSub = subscriptionRepo.upsertSubscription(ctx.repo, subscription)
 
         // 7. Return result
         return VerifyRes(
@@ -167,16 +167,16 @@ open class IapService(
         }
 
         // Check idempotency using platform + subscriptionPxid as key
-        if (storeNotificationRepo.existsByPlatformAndToken(ctx, platform, decoderResult.subscriptionPxid)) {
+        if (storeNotificationRepo.existsByPlatformAndToken(ctx.repo, platform, decoderResult.subscriptionPxid)) {
             // Already processed, skip
             return
         }
 
         // Find the subscription by subscriptionPxid
-        var subscription = subscriptionRepo.findActiveByPxid(ctx, appId, decoderResult.subscriptionPxid)
+        var subscription = subscriptionRepo.findActiveByPxid(ctx.repo, appId, decoderResult.subscriptionPxid)
         if (subscription == null) {
             // Try finding any (including inactive/deleted but not physically deleted) subscription
-            subscription = subscriptionRepo.findByPxid(ctx, appId, decoderResult.subscriptionPxid)
+            subscription = subscriptionRepo.findByPxid(ctx.repo, appId, decoderResult.subscriptionPxid)
         }
 
         // If subscription doesn't exist at all, create a minimal record or just log
@@ -240,7 +240,7 @@ open class IapService(
             updatedAt = Instant.now()
             block()
         }
-        return subscriptionRepo.upsertSubscription(ctx, updated)
+        return subscriptionRepo.upsertSubscription(ctx.repo, updated)
     }
 
     /**
@@ -269,7 +269,7 @@ open class IapService(
             this.updatedAt = Instant.now()
         }
         // Note: BaseCrudRepository has save() method that works for upsert
-        storeNotificationRepo.save(ctx, notif)
+        storeNotificationRepo.save(ctx.repo, notif)
     }
 
     // Extension to convert string to UUID safely

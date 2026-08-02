@@ -12,6 +12,5 @@ ScanRecordListItem {
 input ScanRecordCreateInput {
     imageKeys
     status
-    tier
     clientIp
 }

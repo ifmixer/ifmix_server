@@ -22,7 +22,7 @@ data class SubmitFeedbackRes(val id: String)
 
 /** customer BFF 的反馈路由。 */
 @RestController
-@RequestMapping("/customer/core", produces = ["application/json"])
+@RequestMapping("/customer/core")
 class CustomerFeedbackController(private val feedbackService: FeedbackService) {
 
     /** 提交反馈。appId / userId / installId 由 header 推导，客户端不可指定。 */

@@ -1,5 +1,6 @@
 package com.ifmix.api.core.infra.http
 
+import com.ifmix.api.core.infra.db.RepoContext
 import java.security.Principal
 import java.util.UUID
 
@@ -23,6 +24,8 @@ data class OperationContext(
     val readFromReplica: Boolean = false,
     /** 认证主体（JWT 解码后的身份，匿名时为 null） */
     val principal: Principal? = null,
+    /** Repository 层上下文（基础设施引用） */
+    val repo: RepoContext = RepoContext(),
 )
 
 @Deprecated("Use OperationContext", ReplaceWith("OperationContext"))

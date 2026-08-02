@@ -6,11 +6,9 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.ratelimit.RateLimiter
-import com.ifmix.api.core.infra.ratelimit.Tier
 import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.repository.antique.ScanRecordRepository
 import com.ifmix.api.core.entity.antique.ScanRecord
-import kotlinx.coroutines.runBlocking
 import org.springframework.transaction.annotation.Transactional
 import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Duration
@@ -25,8 +23,6 @@ open class AntiqueService(
     private val objectStorage: ObjectStorage,
     private val rateLimiter: RateLimiter,
     private val scanRepo: ScanRecordRepository,
-    @org.springframework.beans.factory.annotation.Qualifier("snakeCaseMapper")
-    private val snakeCaseMapper: tools.jackson.databind.ObjectMapper,
 ) {
 
     /**
@@ -41,58 +37,36 @@ open class AntiqueService(
             throw ApiError(ErrorCode.RATE_LIMITED, "daily limit exceeded")
         }
 
-        // 生成预签名下载 URL 供 AI 模型访问图片
-        val imageUrl = objectStorage.presignDownload(req.imageKey, Duration.ofMinutes(30))
-
-        // 调用 ScanRunner（suspend fun，用 runBlocking 包装）
-        val scanResult = runBlocking {
-            scanRunner.run(ctx, imageUrl)
+        if (req.images.isEmpty()) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "images must not be empty")
         }
 
-        // 序列化结果为 JSON
-        val resultJson = try {
-            snakeCaseMapper.writeValueAsString(scanResult)
-        } catch (_: Exception) {
-            null
-        }
+        // 构建 ScanInput：为每张图片生成预签名下载 URL
+        val scanInput = ScanInput(
+            items = req.images.map { img ->
+                ScanMediaItem(
+                    imageUrl = objectStorage.presignDownload(img.imageKey, Duration.ofMinutes(30)),
+                    mediaType = img.mediaType,
+                )
+            },
+        )
 
-        // 创建 ScanRecord
+        // 调用 AI 扫描（同步）
+        val scanResult = scanRunner.run(ctx, scanInput)
+
+        // 创建 ScanRecord（result 字段由 Jimmer @Serialized 自动序列化为 JSONB）
         val record = scanRepo.create(
-            ctx = ctx,
+            repo = ctx.repo,
             appId = ctx.appId!!,
-            imageKeys = listOf(ImageRef(key = req.imageKey)),
+            imageKeys = req.images.map { ImageRef(key = it.imageKey) },
             status = scanResult.status,
-            tier = Tier.FREE,
             clientIp = ctx.clientIp,
-            resultJson = resultJson,
+            result = scanResult,
         )
 
         return NewScanRes(
             id = record.id.toString(),
             result = scanResult,
-        )
-    }
-
-    @Transactional
-    fun createScan(ctx: OperationContext, request: CreateScanRequest): ScanRecord {
-        // 限流检查
-        val subject = ctx.appId.toString()
-        val limitResult = rateLimiter.check(ctx, subject)
-        if (!limitResult.allowed) {
-            throw ApiError(ErrorCode.RATE_LIMITED, "daily limit exceeded")
-        }
-
-        // 生成预签名上传 URL
-        val objectKey = "antique/${UuidV7.generate()}.png"
-
-        // 创建 ScanRecord
-        return scanRepo.create(
-            ctx = ctx,
-            appId = ctx.appId!!,
-            imageKeys = listOf(ImageRef(key = objectKey)),
-            status = ScanStatus.PENDING,
-            tier = Tier.FREE,
-            clientIp = ctx.clientIp,
         )
     }
 
@@ -102,7 +76,7 @@ open class AntiqueService(
         } catch (_: Exception) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID format")
         }
-        val record = scanRepo.findById(ctx, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
+        val record = scanRepo.findById(ctx.repo, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
         return record.toDto()
     }
 
@@ -110,7 +84,7 @@ open class AntiqueService(
         ctx: OperationContext,
         input: com.ifmix.api.core.infra.db.CursorQueryInput = com.ifmix.api.core.infra.db.CursorQueryInput(),
     ): com.ifmix.api.core.infra.db.Page<ScanRecord> {
-        return scanRepo.findByCursor(ctx, input)
+        return scanRepo.findByCursor(ctx.repo, input)
     }
 
     fun presignedUploadUrl(ctx: OperationContext, objectKey: String, contentType: String, duration: Duration): String {
@@ -129,9 +103,9 @@ open class AntiqueService(
         val uuid = try { UUID.fromString(id) } catch (_: Exception) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID")
         }
-        scanRepo.findById(ctx, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
+        scanRepo.findById(ctx.repo, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
         // TODO: 校验归属（当前用户）
-        scanRepo.deleteById(ctx, uuid)
+        scanRepo.deleteById(ctx.repo, uuid)
     }
 
     /**
@@ -142,47 +116,31 @@ open class AntiqueService(
         val uuid = try { UUID.fromString(req.id) } catch (_: Exception) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID")
         }
-        val record = scanRepo.findById(ctx, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
+        val record = scanRepo.findById(ctx.repo, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
         // TODO: 校验归属 + 实现更新
         return record.toDto()
     }
 
     /**
      * 从 ScanRecord 转换为 ScanDto。
-     * 尝试从 resultJson 解析 ScanResult 对象，并提取字段。
+     * 从 ScanRecord 构建 DTO。result 字段由 Jimmer @Serialized 自动反序列化。
      */
     fun ScanRecord.toDto(): ScanDto {
-        val parsedResult = parseResultJson(this.resultJson)
         return ScanDto(
             id = id.toString(),
             imageKeys = imageKeys.map { it.key },
-            name = userDisplayName ?: parsedResult?.name,
-            isAntique = parsedResult?.isAntique,
-            currency = parsedResult?.priceCurrency,
+            name = userDisplayName ?: result?.name,
+            isAntique = result?.isAntique,
+            currency = result?.priceCurrency,
             userNotes = userNotes,
-            collected = false, // 暂无 collected 字段，默认 false
+            collected = false, // TODO: 查收藏状态
             status = status,
-            result = parsedResult,
-            language = null, // ScanRecord 无 language 字段
-            tier = tier,
+            result = result,
             createdAt = createdAt.toEpochMilli(),
             updatedAt = updatedAt.toEpochMilli(),
         )
     }
-
-    /**
-     * 解析 resultJson 为 ScanResult 对象。
-     */
-    private fun parseResultJson(json: String?): ScanResult? {
-        if (json.isNullOrBlank()) return null
-        return try {
-            snakeCaseMapper.readValue(json, ScanResult::class.java)
-        } catch (_: Exception) {
-            null
-        }
-    }
 }
-
 @io.swagger.v3.oas.annotations.media.Schema(description = "扫描记录 DTO。列表页和详情页统一使用。")
 data class ScanDto(
     @io.swagger.v3.oas.annotations.media.Schema(description = "记录主键（UUIDv7）。所有需要传 scanRecordId 的地方都用这个。")
@@ -203,19 +161,22 @@ data class ScanDto(
     val status: ScanStatus,
     @io.swagger.v3.oas.annotations.media.Schema(description = "完整 AI 识别结果。status=COMPLETED 时非 null；status=PENDING 时为 null。")
     val result: ScanResult?,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "扫描时的语言设置（来自 x-lang header 存档）。")
-    val language: String?,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "扫描发生时用户的订阅档位。")
-    val tier: Tier,
     @io.swagger.v3.oas.annotations.media.Schema(description = "创建时间（epoch millis）")
     val createdAt: Long,
     @io.swagger.v3.oas.annotations.media.Schema(description = "最后更新时间（epoch millis）")
     val updatedAt: Long?,
 )
 
-data class CreateScanRequest(val dummy: String? = null)
 
-data class NewScanReq(val imageKey: String)
+/** API 输入：扫描图片项 */
+data class NewScanImageInput(
+    /** presignUpload 返回的 imageKey */
+    val imageKey: String,
+    /** MIME 类型（image/jpeg, image/png, image/webp） */
+    val mediaType: String,
+)
+
+data class NewScanReq(val images: List<NewScanImageInput>)
 
 data class NewScanRes(
     val id: String,

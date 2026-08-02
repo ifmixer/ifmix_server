@@ -3,7 +3,7 @@ package com.ifmix.api.core.repository.auth
 import com.ifmix.api.core.entity.auth.AuthIdentity
 import com.ifmix.api.core.entity.auth.authTenantId
 import com.ifmix.api.core.entity.auth.email
-import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.repository.base.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -15,7 +15,7 @@ import java.util.UUID
 class AuthIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<AuthIdentity>(sql, AuthIdentity::class) {
 
     /** Find identity by tenant ID and email using Jimmer query DSL */
-    fun findByTenantAndEmail(ctx: OperationContext, tenantId: String, email: String): AuthIdentity? {
+    fun findByTenantAndEmail(repo: RepoContext, tenantId: String, email: String): AuthIdentity? {
         val tenantUUID = UUID.fromString(tenantId)
         return sql.createQuery(AuthIdentity::class) {
             where(table.authTenantId eq tenantUUID)

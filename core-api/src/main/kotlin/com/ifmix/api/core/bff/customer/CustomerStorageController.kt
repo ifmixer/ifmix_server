@@ -20,7 +20,7 @@ import java.time.Duration
  * objectKey 格式: app_{appId}/i_{installId}/scan/{uuid}.{ext}
  */
 @RestController
-@RequestMapping("/customer/core", produces = ["application/json"])
+@RequestMapping("/customer/core")
 @ConditionalOnBean(AntiqueService::class)
 class CustomerStorageController(private val antiqueService: AntiqueService) {
 

@@ -4,6 +4,7 @@ import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.antique.ScanResult
+import com.ifmix.api.core.service.antique.ScanInput
 import com.ifmix.api.core.service.antique.ScanRunner
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.messages.UserMessage
@@ -32,11 +33,18 @@ open class SpringAiScanRunner(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override suspend fun run(ctx: OperationContext, imageUrl: String): ScanResult {
+    override fun run(ctx: OperationContext, input: ScanInput): ScanResult {
         val states = keyStore.init()
 
         // 模型列表：主模型 + fallback
         val allModels = listOf(chatClientFactory.defaultModel) + fallbackModels
+
+        // 构建多图 media 列表
+        val mediaItems = input.items.map { item ->
+            val mimeType = org.springframework.util.MimeTypeUtils.parseMimeType(item.mediaType)
+            Media(mimeType, java.net.URI.create(item.imageUrl))
+        }
+        val primaryImageUrl = input.items.first().imageUrl
 
         for (model in allModels) {
             // 内层循环：对当前 model 尝试所有可用 key
@@ -58,11 +66,10 @@ open class SpringAiScanRunner(
                     val apiKey = doc?.key ?: continue
                     val client = chatClientFactory.forKey(apiKey, model)
 
-                    // 构造多模态 prompt
-                    val media = Media(MimeTypeUtils.IMAGE_PNG, URI.create(imageUrl))
+                    // 构造多模态 prompt（支持多图）
                     val userMsg = UserMessage.builder()
-                        .text(ScanPrompt.userPrompt(imageUrl))
-                        .media(media)
+                        .text(ScanPrompt.userPrompt(primaryImageUrl))
+                        .media(*mediaItems.toTypedArray())
                         .build()
 
                     val prompt = Prompt(userMsg)

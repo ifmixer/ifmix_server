@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*
  * 受保护接口（需 JWT）：POST /auth/logout, /auth/deleteAccount, PUT /auth/me
  */
 @RestController
-@RequestMapping("/customer/core", produces = ["application/json"])
+@RequestMapping("/customer/core")
 class CustomerAuthController(private val authService: AuthService) {
 
     @Operation(

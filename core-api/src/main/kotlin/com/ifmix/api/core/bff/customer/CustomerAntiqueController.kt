@@ -4,7 +4,6 @@ import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.antique.AntiqueService
-import com.ifmix.api.core.service.antique.CreateScanRequest
 import com.ifmix.api.core.service.antique.DeleteScanRes
 import com.ifmix.api.core.service.antique.NewScanReq
 import com.ifmix.api.core.service.antique.NewScanRes
@@ -23,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController
  * customer BFF 的古物扫描路由。
  */
 @RestController
-@RequestMapping("/customer/core", produces = ["application/json"])
+@RequestMapping("/customer/core")
 @ConditionalOnBean(AntiqueService::class)
 class CustomerAntiqueController(private val antiqueService: AntiqueService) {
 
@@ -42,14 +41,6 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
     @PostMapping("/mutation/antique/newScan")
     fun newScan(ctx: OperationContext, @Valid @RequestBody req: NewScanReq): NewScanRes {
         return antiqueService.newScan(ctx, req)
-    }
-
-    /** 创建扫描任务（脚手架 CRUD，保留兼容）。 */
-    @io.swagger.v3.oas.annotations.Hidden
-    @PostMapping("/mutation/antique/createOne")
-    fun createOne(ctx: OperationContext, @Valid @RequestBody req: CreateScanRequest): ScanDto {
-        val record = antiqueService.createScan(ctx, req)
-        return with(antiqueService) { record.toDto() }
     }
 
     @Operation(

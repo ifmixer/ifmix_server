@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController
  * customer BFF 的收藏路由。
  */
 @RestController
-@RequestMapping("/customer/core", produces = ["application/json"])
+@RequestMapping("/customer/core")
 class CustomerCollectionController(
     private val service: CollectionService,
     private val antiqueService: AntiqueService,

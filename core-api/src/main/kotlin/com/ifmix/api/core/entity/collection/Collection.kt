@@ -15,7 +15,7 @@ interface Collection : AppScopedProps, SoftDeletableProps {
     override val appId: UUID
 
     val installId: UUID?
-    val userId: String?
+    val userId: UUID?
     val isDefault: Boolean
 
     @OneToMany(mappedBy = "collection")

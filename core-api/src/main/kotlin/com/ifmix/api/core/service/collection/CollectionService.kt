@@ -31,10 +31,10 @@ open class CollectionService(
     @Transactional
     fun getDefault(ctx: OperationContext): Collection {
         val appId = ctx.appIdAsUUID()
-        val userId = ctx.userId?.toString()
+        val userId = ctx.userId
         val installId = ctx.installId
 
-        var collection = collectionRepo.findDefault(ctx, appId, installId, userId)
+        var collection = collectionRepo.findDefault(ctx.repo, appId, installId, userId)
 
         if (collection == null) {
             collection = createDefaultCollection(ctx, appId, userId, installId)
@@ -46,7 +46,7 @@ open class CollectionService(
     private fun createDefaultCollection(
         ctx: OperationContext,
         appId: UUID,
-        userId: String?,
+        userId: UUID?,
         installId: UUID?,
     ): Collection {
         val now = Instant.now()
@@ -60,7 +60,7 @@ open class CollectionService(
             updatedAt = now
             deletedAt = null
         }
-        return collectionRepo.save(ctx, entity)
+        return collectionRepo.save(ctx.repo, entity)
     }
 
     /**
@@ -80,7 +80,7 @@ open class CollectionService(
             else -> getDefault(ctx).id
         }
 
-        val itemId = itemRepo.insertIfAbsent(ctx, ctx.appIdAsUUID(), collectionId, scanRecordIdUUID)
+        val itemId = itemRepo.insertIfAbsent(ctx.repo, ctx.appIdAsUUID(), collectionId, scanRecordIdUUID)
         return AddItemRes(id = itemId.toString())
     }
 
@@ -107,7 +107,7 @@ open class CollectionService(
             else -> getDefault(ctx).id
         }
 
-        val deletedCount = itemRepo.softDeleteByScanIds(ctx, appId, collectionId, parsedIds)
+        val deletedCount = itemRepo.softDeleteByScanIds(ctx.repo, appId, collectionId, parsedIds)
         return RemoveItemsRes(deletedCount.toInt())
     }
 
@@ -127,7 +127,7 @@ open class CollectionService(
         val limit = req?.limit ?: 20
         val cursor = req?.cursor?.let { try { UUID.fromString(it) } catch (e: Exception) { null } }
 
-        val collectionItems = itemRepo.listWithScanRecords(ctx, appId, collectionId, limit, cursor)
+        val collectionItems = itemRepo.listWithScanRecords(ctx.repo, appId, collectionId, limit, cursor)
         val scanRecords = collectionItems.items.mapNotNull { item -> item.scanRecord }
 
         val nextCursor = if (collectionItems.hasMore && collectionItems.items.isNotEmpty()) {

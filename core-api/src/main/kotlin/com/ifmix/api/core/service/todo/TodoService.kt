@@ -26,29 +26,29 @@ class TodoService(
 
     @Transactional(readOnly = true)
     fun findViewByCursor(ctx: OperationContext, input: CursorQueryInput): Page<TodoView> =
-        todoRepo.findViewByCursorForApp(ctx, ctx.appUuid(), input)
+        todoRepo.findViewByCursorForApp(ctx.repo, ctx.appUuid(), input)
 
     @Transactional(readOnly = true)
     fun getView(ctx: OperationContext, id: UUID): TodoView =
-        todoRepo.findViewById(ctx, ctx.appUuid(), id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        todoRepo.findViewById(ctx.repo, ctx.appUuid(), id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     @Transactional
     fun createOne(ctx: OperationContext, input: TodoCreateInput): TodoView {
         val appId = ctx.appUuid()
-        val saved = todoRepo.create(ctx, appId, input)
-        return todoRepo.findViewById(ctx, appId, saved.id) ?: throw ApiError(ErrorCode.INTERNAL)
+        val saved = todoRepo.create(ctx.repo, appId, input)
+        return todoRepo.findViewById(ctx.repo, appId, saved.id) ?: throw ApiError(ErrorCode.INTERNAL)
     }
 
     @Transactional
     fun updateOne(ctx: OperationContext, input: TodoUpdateInput): TodoView {
         val appId = ctx.appUuid()
-        todoRepo.update(ctx, appId, input) ?: throw ApiError(ErrorCode.NOT_FOUND)
-        return todoRepo.findViewById(ctx, appId, input.id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        todoRepo.update(ctx.repo, appId, input) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        return todoRepo.findViewById(ctx.repo, appId, input.id) ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
     @Transactional
     fun deleteOne(ctx: OperationContext, id: UUID): Boolean =
-        todoRepo.deleteForApp(ctx, ctx.appUuid(), id)
+        todoRepo.deleteForApp(ctx.repo, ctx.appUuid(), id)
 
     private fun OperationContext.appUuid(): UUID =
         appId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id must be a UUID")

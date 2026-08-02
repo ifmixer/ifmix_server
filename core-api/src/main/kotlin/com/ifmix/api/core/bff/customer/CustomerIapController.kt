@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*
  * 仅在 IapService bean 存在时加载。
  */
 @RestController
-@RequestMapping("/customer/core", produces = ["application/json"])
+@RequestMapping("/customer/core")
 @ConditionalOnBean(IapService::class)
 class CustomerIapController(private val iapService: IapService) {
 

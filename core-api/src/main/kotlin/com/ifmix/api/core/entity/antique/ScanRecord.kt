@@ -3,7 +3,7 @@ package com.ifmix.api.core.entity.antique
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps
 import com.ifmix.api.core.entity.enums.ScanStatus
-import com.ifmix.api.core.infra.ratelimit.Tier
+import com.ifmix.api.core.service.antique.ScanResult
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
@@ -22,11 +22,12 @@ interface ScanRecord : AppScopedProps, SoftDeletableProps {
     @Serialized
     val imageKeys: List<ImageRef>
 
-    val resultJson: String?
+    /** AI 识别结果（JSONB，@Serialized 自动序列化/反序列化） */
+    @Serialized
+    @Column(name = "result_json")
+    val result: ScanResult?
 
     val status: ScanStatus
-
-    val tier: Tier
 
     val clientIp: String?
 
