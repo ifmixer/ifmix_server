@@ -51,12 +51,12 @@ class JacksonConfig {
 
     /**
      * snake_case 命名的 ObjectMapper，用于 AI 模型 JSON 交互。
-     * 注意：不注册 UUID Base58 模块（AI 模型不用 base58 UUID）。
      */
     @Bean("snakeCaseMapper")
     fun snakeCaseMapper(): tools.jackson.databind.ObjectMapper =
         tools.jackson.databind.json.JsonMapper.builder()
             .addModule(KotlinModule.Builder().build())
+            .addModule(uuidBase58Module())
             .propertyNamingStrategy(tools.jackson.databind.PropertyNamingStrategies.SNAKE_CASE)
             .build()
 }

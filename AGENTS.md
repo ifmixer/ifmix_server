@@ -45,6 +45,11 @@
 - 使用 Jimmer ORM，实体定义在 `entity/` 下
 - **所有表名带 `core_` 前缀**（如 `core_todo`, `core_app_user`, `core_scan_record`）
 - UUIDv7 作为主键（时间有序，支持游标分页）
+- **UUID 字符串统一用 22 位 Base58 URL-safe 编码**（不用原始 36 位格式）
+  - PG/Jimmer 层：原生 UUID 类型
+  - REST API / Redis JSON / 前端交互：22 位 Base58
+  - Jackson 全局模块自动转换（`JacksonConfig.uuidBase58Module`）
+  - 工具类：`infra/codec/Base58.kt`（`uuid.toBase58()` / `str.toUuidFromBase58()`）
 - 游标分页: `WHERE id < cursor ORDER BY id DESC LIMIT n+1`
 - 读写分离: `@Transactional(readOnly=true)` 自动路由到 reader
 - **枚举字段用 SMALLINT 存数字编码**（不用 VARCHAR、不用 PG ENUM）

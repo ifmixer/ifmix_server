@@ -109,9 +109,33 @@ ifmix 是一个面向移动端（iOS/Android）的后端 API 服务，核心功�
 - **表名前缀**: 所有表使用 `core_` 前缀（如 `core_todo`, `core_app_user`）
 - **读写分离**: `ReadWriteRoutingDataSource` 根据 `@Transactional(readOnly=true)` 自动路由
 - **游标分页**: 基于 UUIDv7 (时间有序) 的 `id < cursor ORDER BY id DESC LIMIT n+1`
-- **多租户过滤**: Jimmer `AppScopedFilter` 全局注入 `WHERE app_id = ?`
+- **多租户过滤**: `BaseAppCrudRepository.findByCursor` 自动注入 `WHERE app_id = ?`
 - **软删除**: Jimmer `@LogicalDeleted` 自动过滤
-- **Flyway**: V1-V7 migration + V8 表名前缀重命名，不可回退
+- **Flyway**: V1-V13 migration，不可回退
+
+### UUID 表示规范
+
+**如无特殊原因，UUID 对应的字符串统一使用 22 位 Base58 URL-safe 编码，而不是原始 36 位格式。**
+
+- **存储层**：PG 和 Jimmer 使用原生 `UUID` 类型（16 字节二进制）
+- **传输层**：REST API、Redis JSON、前端交互统一使用 22 位 Base58 字符串
+- **编码**：Bitcoin Base58 字母表（`123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz`），无 0/O/I/l，全 URL-safe
+- **实现**：Spring 全局 Jackson 模块自动序列化/反序列化（`JacksonConfig.uuidBase58Module`），包括 `snakeCaseMapper`
+
+示例：
+```
+UUID:   0192afa0-1234-7abc-8def-123456789abc
+Base58: 6Bk3HqKgSRVxp9MvRy2Nue  (22 chars)
+```
+
+工具类位于 `infra/codec/Base58.kt`：
+```kotlin
+import com.ifmix.api.core.infra.codec.toBase58
+import com.ifmix.api.core.infra.codec.toUuidFromBase58
+
+val encoded: String = uuid.toBase58()        // UUID → 22 chars
+val decoded: UUID = encoded.toUuidFromBase58() // 22 chars → UUID
+```
 
 ### 枚举设计规范
 
