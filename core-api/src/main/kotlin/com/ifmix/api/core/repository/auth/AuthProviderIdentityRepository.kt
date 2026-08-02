@@ -44,8 +44,8 @@ class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<Auth
         userMetadata: Map<String, Any?>?,
         providerMetadata: Map<String, Any?>?,
         loginIp: String?,
-        loginInstallId: String?,
-        loginAppId: String?,
+        loginInstallId: UUID?,
+        loginAppId: UUID?,
     ): AuthProviderIdentity {
         val existing = findByProviderAndAccountId(repoCtx, tenantId, provider, providerAccountId)
 

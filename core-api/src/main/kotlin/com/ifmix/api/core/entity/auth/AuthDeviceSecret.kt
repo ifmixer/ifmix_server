@@ -23,7 +23,7 @@ interface AuthDeviceSecret : MutableProps {
     val authIdentity: AuthIdentity
 
     val secretHash: String
-    val loginInstallId: String?
+    val loginInstallId: UUID?
     val expiresAt: Instant?
     val revokedAt: Instant?
     val lastUsedAt: Instant?

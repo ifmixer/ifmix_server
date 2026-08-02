@@ -132,8 +132,8 @@ open class AuthService(
             userMetadata = verified.userMetadata,
             providerMetadata = null,
             loginIp = ctx.clientIp,
-            loginInstallId = ctx.installId?.toString(),
-            loginAppId = ctx.appId?.toString(),
+            loginInstallId = ctx.installId,
+            loginAppId = ctx.appId
         )
 
         // 6. Ensure AppUser
@@ -148,7 +148,7 @@ open class AuthService(
             authTenant { id = tenantUUID }
             authIdentity { id = identity.id }
             secretHash = deviceSecretHash
-            loginInstallId = ctx.installId?.toString()
+            loginInstallId = ctx.installId
             expiresAt = now.plusSeconds(DEVICE_SECRET_TTL_DAYS * 86400)
             revokedAt = null
             lastUsedAt = now
@@ -167,7 +167,7 @@ open class AuthService(
             appUser { id = appUserId }
             deviceSecret { id = savedDeviceSecret.id }
             this.tokenHash = refreshTokenHash
-            this.loginInstallId = ctx.installId?.toString()
+            this.loginInstallId = ctx.installId
             expiresAt = refreshExpiresAt
             revokedAt = null
             replacedBy = null
@@ -232,7 +232,7 @@ open class AuthService(
             appUser { id = appUserId }
             deviceSecret { id = foundSecret.id }
             this.tokenHash = refreshTokenHash
-            this.loginInstallId = ctx.installId?.toString()
+            this.loginInstallId = ctx.installId
             expiresAt = refreshExpiresAt
             revokedAt = null
             replacedBy = null

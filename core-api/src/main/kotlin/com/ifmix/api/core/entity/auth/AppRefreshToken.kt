@@ -26,7 +26,7 @@ interface AppRefreshToken : AppScopedProps, MutableProps {
     val deviceSecret: AuthDeviceSecret?
 
     val tokenHash: String
-    val loginInstallId: String?
+    val loginInstallId: UUID?
     val expiresAt: Instant?
     val revokedAt: Instant?
     val replacedBy: UUID?

@@ -33,6 +33,6 @@ interface AuthProviderIdentity : MutableProps {
     val providerMetadata: Map<String, Any?>?
 
     val loginIp: String?
-    val loginInstallId: String?
-    val loginAppId: String?
+    val loginInstallId: UUID?
+    val loginAppId: UUID?
 }
