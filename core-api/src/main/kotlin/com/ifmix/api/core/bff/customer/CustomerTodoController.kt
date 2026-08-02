@@ -1,5 +1,7 @@
 package com.ifmix.api.core.bff.customer
 
+import com.ifmix.api.core.common.types.ByIdRequest
+import com.ifmix.api.core.common.types.OperationResult
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
 import com.ifmix.api.core.entity.todo.dto.TodoView
@@ -13,7 +15,6 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import java.util.UUID
 
 /**
  * customer BFF 的 todo 路由。PUT=query，POST=mutation。
@@ -33,7 +34,7 @@ class CustomerTodoController(private val todoService: TodoService) {
     ): Page<TodoView> = todoService.findViewByCursor(ctx, input ?: CursorQueryInput())
 
     @PutMapping("/query/todo/getById")
-    fun getById(ctx: OperationContext, @Valid @RequestBody req: TodoIdRequest): TodoView =
+    fun getById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): TodoView =
         todoService.getView(ctx, req.id)
 
     @PostMapping("/mutation/todo/createOne")
@@ -45,10 +46,8 @@ class CustomerTodoController(private val todoService: TodoService) {
         todoService.updateOne(ctx, req)
 
     @PostMapping("/mutation/todo/deleteById")
-    fun deleteById(ctx: OperationContext, @Valid @RequestBody req: TodoIdRequest): DeleteResult =
-        DeleteResult(deleted = todoService.deleteOne(ctx, req.id))
-
-    data class TodoIdRequest(val id: UUID)
-
-    data class DeleteResult(val deleted: Boolean)
+    fun deleteById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): OperationResult {
+        val deleted = todoService.deleteOne(ctx, req.id)
+        return OperationResult(success = deleted)
+    }
 }

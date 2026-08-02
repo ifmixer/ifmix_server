@@ -3,8 +3,9 @@ package com.ifmix.api.core.service.auth
 import com.ifmix.api.core.infra.ratelimit.Tier
 import com.ifmix.api.core.service.iap.SubscriptionState
 import java.time.Instant
+import java.util.UUID
 
-data class UserDto(val id: String, val email: String?)
+data class UserDto(val id: UUID, val email: String?)
 
 /** Google / Apple 登录请求。idToken 必填。 */
 data class ProviderLoginReq(
@@ -47,7 +48,7 @@ data class LogoutReq(val refreshToken: String)
 data class LogoutRes(val ok: Boolean)
 
 data class MeRes(
-    val id: String,
+    val id: UUID,
     val email: String?,
     /** 当前订阅档位 */
     val tier: Tier = Tier.FREE,

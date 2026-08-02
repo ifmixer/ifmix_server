@@ -107,7 +107,7 @@ data class ScanResult(
     val weightG: Double? = null,
 
     // ---- 价值评估 ----
-    @Schema(description = "服务端格式化的价格范围（含货币符号，如「¥5,000-10,000」）。前端可直接展示，无需配合 priceCurrency 处理。与 ScanDto.currency 无关。")
+    @Schema(description = "服务端格式化的价格范围（含货币符号，如「¥5,000-10,000」）。前端可直接展示，无需配合 priceCurrency 处理。")
     val priceRange: String? = null,
 
     @Schema(description = "估价最低值（数值，单位由 priceCurrency 决定）。用于前端自定义格式化场景。")

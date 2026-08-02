@@ -1,13 +1,14 @@
 package com.ifmix.api.core.bff.customer
 
+import com.ifmix.api.core.common.types.ByIdRequest
+import com.ifmix.api.core.common.types.OperationResult
+import com.ifmix.api.core.entity.antique.dto.ScanRecordView
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.antique.AntiqueService
-import com.ifmix.api.core.service.antique.DeleteScanRes
 import com.ifmix.api.core.service.antique.NewScanReq
 import com.ifmix.api.core.service.antique.NewScanRes
-import com.ifmix.api.core.service.antique.ScanDto
 import com.ifmix.api.core.service.antique.UpdateScanReq
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
@@ -34,7 +35,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             失败场景走 ErrorEnvelope（503000 AI_UNAVAILABLE 或 429000 RATE_LIMITED）。
             
             id 关系说明：
-            - NewScanRes.id = ScanDto.id = 数据库主键（UUIDv7）
+            - NewScanRes.id = ScanRecordView.id = 数据库主键（UUIDv7）
             - 所有需要传 scanRecordId 的地方（收藏/反馈/getById）都用这个 id
         """,
     )
@@ -46,15 +47,15 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
     @Operation(
         summary = "按 ID 获取扫描记录",
         description = """
-            id 为 UUIDv7 格式的扫描记录主键（即 NewScanRes.id / ScanDto.id）。
+            id 为 UUIDv7 格式的扫描记录主键（即 NewScanRes.id）。
             按当前用户过滤，他人的 id 返回 404。已软删的记录也返回 404。
-            ScanDto.result 可能为 null（仅当记录通过内部 createOne 创建但未触发 AI 时）。
+            result 可能为 null（仅当记录通过内部 createOne 创建但未触发 AI 时）。
             图片通过 imageKeys 中的 objectKey 调 storage/presignDownload 获取临时 URL。
         """,
     )
     @PutMapping("/query/antique/getById")
-    fun getById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): ScanDto {
-        return antiqueService.getScanResult(ctx, req.id.toString())
+    fun getById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): ScanRecordView {
+        return antiqueService.getScanById(ctx, req.id)
     }
 
     @Operation(
@@ -69,12 +70,10 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
     fun findByCursor(
         ctx: OperationContext,
         @RequestBody(required = false) input: CursorQueryInput?,
-    ): Page<ScanDto> {
+    ): Page<ScanRecordView> {
         val page = antiqueService.findByCursor(ctx, input ?: CursorQueryInput())
-        val dtos = page.items.map { record ->
-            with(antiqueService) { record.toDto() }
-        }
-        return Page(dtos, page.nextCursor, page.hasMore)
+        val views = page.items.map { ScanRecordView(it) }
+        return Page(views, page.nextCursor, page.hasMore)
     }
 
     @Operation(
@@ -83,14 +82,13 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             软删除（标记 deletedAt），不可恢复。同时自动从所有收藏夹中移除。
             按当前用户过滤，他人的 id 返回 404。
             已软删的记录不会出现在 findByCursor / listItems 列表中；getById 也返回 404。
-            ScanDto 不暴露 deletedAt 字段。
             删除不退还扫描配额（日配额为消耗计数，删除记录不影响已用额度）。
         """,
     )
     @PostMapping("/mutation/antique/deleteById")
-    fun deleteById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): DeleteScanRes {
-        antiqueService.deleteScan(ctx, req.id.toString())
-        return DeleteScanRes(deleted = true)
+    fun deleteById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): OperationResult {
+        antiqueService.deleteScan(ctx, req.id)
+        return OperationResult()
     }
 
     @Operation(
@@ -103,9 +101,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
         """,
     )
     @PostMapping("/mutation/antique/updateOne")
-    fun updateOne(ctx: OperationContext, @Valid @RequestBody req: UpdateScanReq): ScanDto {
+    fun updateOne(ctx: OperationContext, @Valid @RequestBody req: UpdateScanReq): ScanRecordView {
         return antiqueService.updateScan(ctx, req)
     }
-
-    data class ByIdRequest(val id: java.util.UUID)
 }

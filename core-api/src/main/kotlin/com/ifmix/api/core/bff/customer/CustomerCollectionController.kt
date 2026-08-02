@@ -1,9 +1,8 @@
 package com.ifmix.api.core.bff.customer
 
+import com.ifmix.api.core.entity.antique.dto.ScanRecordView
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.service.antique.AntiqueService
-import com.ifmix.api.core.service.antique.ScanDto
 import com.ifmix.api.core.service.collection.AddItemReq
 import com.ifmix.api.core.service.collection.AddItemRes
 import com.ifmix.api.core.service.collection.CollectionService
@@ -26,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/customer/core")
 class CustomerCollectionController(
     private val service: CollectionService,
-    private val antiqueService: AntiqueService,
 ) {
 
     /** 获取（或创建）默认收藏夹。 */
@@ -35,20 +33,20 @@ class CustomerCollectionController(
     fun getDefault(ctx: OperationContext): GetDefaultRes {
         val collection = service.getDefault(ctx)
         return GetDefaultRes(
-            id = collection.id.toString(),
+            id = collection.id,
             isDefault = collection.isDefault,
             createdAt = collection.createdAt.toEpochMilli(),
         )
     }
 
     /** 添加收藏条目（幂等）。 */
-    @Operation(summary = "添加收藏（幂等）", description = "scanRecordId 为 ScanDto.id（UUIDv7），必须属于当前用户，否则返回 404。重复添加不会报错。")
+    @Operation(summary = "添加收藏（幂等）", description = "scanRecordId 为扫描记录 ID（UUIDv7），必须属于当前用户，否则返回 404。重复添加不会报错。")
     @PostMapping("/mutation/collection/addItem")
     fun addItem(ctx: OperationContext, @Valid @RequestBody req: AddItemReq): AddItemRes =
         service.addItem(ctx, req)
 
     /** 批量移除收藏条目（软删）。 */
-    @Operation(summary = "批量移除收藏", description = "scanRecordIds 为 ScanDto.id 数组，必须属于当前用户。")
+    @Operation(summary = "批量移除收藏", description = "scanRecordIds 为扫描记录 ID 数组，必须属于当前用户。")
     @PostMapping("/mutation/collection/removeItems")
     fun removeItems(ctx: OperationContext, @Valid @RequestBody req: RemoveItemsReq): RemoveItemsRes =
         service.removeItems(ctx, req)
@@ -59,11 +57,9 @@ class CustomerCollectionController(
     fun listItems(
         ctx: OperationContext,
         @RequestBody(required = false) req: ListItemsReq?,
-    ): Page<ScanDto> {
+    ): Page<ScanRecordView> {
         val page = service.listItems(ctx, req)
-        val dtos = page.items.map { record ->
-            with(antiqueService) { record.toDto() }
-        }
-        return Page(dtos, page.nextCursor, page.hasMore)
+        val views = page.items.map { ScanRecordView(it) }
+        return Page(views, page.nextCursor, page.hasMore)
     }
 }

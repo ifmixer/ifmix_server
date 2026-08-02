@@ -182,9 +182,9 @@ open class AuthService(
         // 10. Publish event
         events.publishEvent(
             AuthLoggedInEvent(
-                appId = ctx.appId!!.toString(),
+                appId = ctx.appId!!,
                 authIdentityId = identity.id.toString(),
-                appUserId = appUserId.toString(),
+                appUserId = appUserId,
                 installId = ctx.installId,
                 clientIp = ctx.clientIp,
                 clientPlatform = ctx.clientPlatform?.name,
@@ -199,7 +199,7 @@ open class AuthService(
             refreshExpiresAt = refreshExpiresAt,
             deviceSecret = rawDeviceSecret,
             expiresIn = accessTtlSec,
-            user = UserDto(id = appUserId.toString(), email = identity.email),
+            user = UserDto(id = appUserId, email = identity.email),
         )
     }
 
@@ -250,7 +250,7 @@ open class AuthService(
             refreshToken = rawRefreshToken,
             refreshExpiresAt = refreshExpiresAt,
             expiresIn = accessTtlSec,
-            user = UserDto(id = appUserId.toString(), email = identityRepo.findById(ctx.repo, identityId)?.email),
+            user = UserDto(id = appUserId, email = identityRepo.findById(ctx.repo, identityId)?.email),
         )
     }
 
@@ -326,7 +326,7 @@ open class AuthService(
 
     fun me(ctx: OperationContext): MeRes {
         val userId = ctx.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
-        return MeRes(userId.toString(), null)
+        return MeRes(userId, null)
     }
 
     /**

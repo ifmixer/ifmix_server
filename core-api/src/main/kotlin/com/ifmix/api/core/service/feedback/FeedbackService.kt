@@ -10,7 +10,6 @@ import com.ifmix.api.core.repository.feedback.FeedbackRepository
 import com.ifmix.api.core.service.base.BaseAppCrudService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.UUID
 
 /**
  * Feedback 业务逻辑。继承自 BaseAppCrudService，获得基本 CRUD 操作。
@@ -37,8 +36,8 @@ class FeedbackService(
             userId = userId,
             category = req.category,
             comment = req.comment,
-            scanRecordId = req.scanRecordId?.let { runCatching { UUID.fromString(it) }.getOrNull() },
+            scanRecordId = req.scanRecordId,
         )
-        return SubmitFeedbackRes(id = saved.id.toString())
+        return SubmitFeedbackRes(id = saved.id)
     }
 }

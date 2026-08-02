@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
-import java.util.UUID
 
 /**
  * 登录后处理：
@@ -26,8 +25,8 @@ class MergeOnLoginListener(
             if (e.installId != null) {
                 bindingRepo.recordBinding(
                     repo = e.ctx.repo,
-                    appId = UUID.fromString(e.appId),
-                    userId = UUID.fromString(e.appUserId),
+                    appId = e.appId,
+                    userId = e.appUserId,
                     installId = e.installId,
                     clientIp = e.clientIp,
                     clientPlatform = e.clientPlatform,

@@ -135,7 +135,7 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
     }
 
     data class PresignDownloadReq(
-        /** 即 ScanDto.imageKey，presignUpload 返回的 imageKey */
+        /** 即 ScanRecordView.imageKeys 中的 key，presignUpload 返回的 imageKey */
         val imageKey: String,
         /** 签名 URL 有效时长（秒），默认 3600，上限 86400 */
         @io.swagger.v3.oas.annotations.media.Schema(defaultValue = "3600", maximum = "86400")

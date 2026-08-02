@@ -1,16 +1,19 @@
 package com.ifmix.api.core.service.antique
 
 import com.ifmix.api.core.entity.antique.ImageRef
+import com.ifmix.api.core.entity.antique.ScanRecord
+import com.ifmix.api.core.entity.antique.dto.ScanRecordView
 import com.ifmix.api.core.entity.enums.ScanStatus
+import com.ifmix.api.core.infra.db.CursorQueryInput
+import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.ratelimit.RateLimiter
 import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.repository.antique.ScanRecordRepository
-import com.ifmix.api.core.entity.antique.ScanRecord
 import org.springframework.transaction.annotation.Transactional
-import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Duration
 import java.util.UUID
 
@@ -65,25 +68,21 @@ open class AntiqueService(
         )
 
         return NewScanRes(
-            id = record.id.toString(),
+            id = record.id,
             result = scanResult,
         )
     }
 
-    fun getScanResult(ctx: OperationContext, id: String): ScanDto {
-        val uuid = try {
-            UUID.fromString(id)
-        } catch (_: Exception) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID format")
-        }
-        val record = scanRepo.findById(ctx.repo, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
-        return record.toDto()
+    fun getScanById(ctx: OperationContext, id: UUID): ScanRecordView {
+        val record = scanRepo.findById(ctx.repo, id)
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
+        return ScanRecordView(record)
     }
 
     fun findByCursor(
         ctx: OperationContext,
-        input: com.ifmix.api.core.infra.db.CursorQueryInput = com.ifmix.api.core.infra.db.CursorQueryInput(),
-    ): com.ifmix.api.core.infra.db.Page<ScanRecord> {
+        input: CursorQueryInput = CursorQueryInput(),
+    ): Page<ScanRecord> {
         return scanRepo.findByCursor(ctx.repo, input)
     }
 
@@ -99,74 +98,23 @@ open class AntiqueService(
      * 软删除扫描记录。Jimmer @LogicalDeleted 自动设置 deletedAt。
      */
     @Transactional
-    fun deleteScan(ctx: OperationContext, id: String) {
-        val uuid = try { UUID.fromString(id) } catch (_: Exception) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID")
-        }
-        scanRepo.findById(ctx.repo, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
+    fun deleteScan(ctx: OperationContext, id: UUID) {
+        scanRepo.findById(ctx.repo, id) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
         // TODO: 校验归属（当前用户）
-        scanRepo.deleteById(ctx.repo, uuid)
+        scanRepo.deleteById(ctx.repo, id)
     }
 
     /**
      * 更新扫描记录（name / notes）。
      */
     @Transactional
-    fun updateScan(ctx: OperationContext, req: UpdateScanReq): ScanDto {
-        val uuid = try { UUID.fromString(req.id) } catch (_: Exception) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid UUID")
-        }
-        val record = scanRepo.findById(ctx.repo, uuid) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
+    fun updateScan(ctx: OperationContext, req: UpdateScanReq): ScanRecordView {
+        val record = scanRepo.findById(ctx.repo, req.id)
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
         // TODO: 校验归属 + 实现更新
-        return record.toDto()
-    }
-
-    /**
-     * 从 ScanRecord 转换为 ScanDto。
-     * 从 ScanRecord 构建 DTO。result 字段由 Jimmer @Serialized 自动反序列化。
-     */
-    fun ScanRecord.toDto(): ScanDto {
-        return ScanDto(
-            id = id.toString(),
-            imageKeys = imageKeys.map { it.key },
-            name = userDisplayName ?: result?.name,
-            isAntique = result?.isAntique,
-            currency = result?.priceCurrency,
-            userNotes = userNotes,
-            collected = false, // TODO: 查收藏状态
-            status = status,
-            result = result,
-            createdAt = createdAt.toEpochMilli(),
-            updatedAt = updatedAt.toEpochMilli(),
-        )
+        return ScanRecordView(record)
     }
 }
-@io.swagger.v3.oas.annotations.media.Schema(description = "扫描记录 DTO。列表页和详情页统一使用。")
-data class ScanDto(
-    @io.swagger.v3.oas.annotations.media.Schema(description = "记录主键（UUIDv7）。所有需要传 scanRecordId 的地方都用这个。")
-    val id: String,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "图片 objectKey 列表（永久标识）。用于调 presignDownload 续签 URL。")
-    val imageKeys: List<String>,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "古物名称。初始为 AI result.name 的快照；用户通过 updateOne 改名后变为用户设定值。列表页优先用此字段，为 null 时 fallback 到 result.name。")
-    val name: String?,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "是否古物快照（从 result.isAntique 提取）。列表页优先用此字段。")
-    val isAntique: Boolean?,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "扫描时用户设置的货币（来自 x-currency header）。")
-    val currency: String?,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "用户自定义备注（通过 updateOne 设置）。")
-    val userNotes: String?,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "是否已被当前用户收藏。")
-    val collected: Boolean,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "扫描状态。customer 接口中通常为 COMPLETED。")
-    val status: ScanStatus,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "完整 AI 识别结果。status=COMPLETED 时非 null；status=PENDING 时为 null。")
-    val result: ScanResult?,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "创建时间（epoch millis）")
-    val createdAt: Long,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "最后更新时间（epoch millis）")
-    val updatedAt: Long?,
-)
-
 
 /** API 输入：扫描图片项 */
 data class NewScanImageInput(
@@ -179,18 +127,13 @@ data class NewScanImageInput(
 data class NewScanReq(val images: List<NewScanImageInput>)
 
 data class NewScanRes(
-    val id: String,
+    val id: UUID,
     val result: ScanResult,
-)
-
-data class DeleteScanRes(
-    @io.swagger.v3.oas.annotations.media.Schema(description = "是否删除成功")
-    val deleted: Boolean,
 )
 
 data class UpdateScanReq(
     @io.swagger.v3.oas.annotations.media.Schema(description = "记录 ID（UUIDv7）")
-    val id: String,
+    val id: UUID,
     @io.swagger.v3.oas.annotations.media.Schema(description = "新名称。不传=不修改；传 null=清空（回退到 result.name 快照）；传字符串=设为用户自定义名称。")
     val name: String? = null,
     @io.swagger.v3.oas.annotations.media.Schema(description = "用户备注。不传=不修改；传 null=清空；传字符串=设为用户备注。")

@@ -1,14 +1,20 @@
 export com.ifmix.api.core.entity.antique.ScanRecord
+
 ScanRecordView {
     #allScalars
 }
+
 ScanRecordListItem {
     id
     status
     imageKeys
+    result
     userDisplayName
+    userNotes
     createdAt
+    updatedAt
 }
+
 input ScanRecordCreateInput {
     imageKeys
     status
