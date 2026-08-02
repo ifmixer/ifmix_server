@@ -62,8 +62,7 @@ open class BaseCrudService<E : Any>(
 }
 
 /**
- * 面向多租户实体的 Service。
- * 类型约束要求 E 实现 AppScopedProps。
+ * 面向多租户实体的 Service 基类。
  */
 open class BaseAppCrudService<E : AppScopedProps>(
     repo: BaseAppCrudRepository<E>,

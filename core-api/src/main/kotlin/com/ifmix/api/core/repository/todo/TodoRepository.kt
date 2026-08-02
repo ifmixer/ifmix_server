@@ -1,6 +1,7 @@
 package com.ifmix.api.core.repository.todo
 
 import com.ifmix.api.core.entity.todo.Todo
+import com.ifmix.api.core.entity.todo.TodoItem
 import com.ifmix.api.core.entity.todo.appId
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
@@ -11,11 +12,13 @@ import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
+import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.desc
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
+import org.babyfish.jimmer.sql.kt.ast.expression.valueIn
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
@@ -60,19 +63,17 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
                 it.appId = appId
             }
         }
-        return sql.entities.save(entity).modifiedEntity
+        return sql.entities.save(entity) {
+            setAssociatedMode(Todo::items, AssociatedSaveMode.MERGE)
+        }.modifiedEntity
     }
 
-    /** 软删（实体标了 @LogicalDeleted）。返回 false 表示该 id 不属于当前租户。 */
-    fun deleteForApp(repoCtx: RepoContext, appId: UUID, id: UUID): Boolean {
-        if (!existsForApp(appId, id)) return false
-        deleteById(repoCtx, id)
-        return true
+    /** 批量软删 todo items。仅删除属于指定 appId 的 items。 */
+    fun deleteItemsByIds(repoCtx: RepoContext, appId: UUID, itemIds: List<UUID>): Int {
+        if (itemIds.isEmpty()) return 0
+        return sql.createDelete(TodoItem::class) {
+            where(table.getId<UUID>() valueIn itemIds)
+            where(table.get<UUID>("appId") eq appId)
+        }.execute()
     }
-
-    private fun existsForApp(appId: UUID, id: UUID): Boolean =
-        sql.createQuery(Todo::class) {
-            where(table.appId eq appId, table.id eq id)
-            select(table.id)
-        }.limit(1).execute().isNotEmpty()
 }

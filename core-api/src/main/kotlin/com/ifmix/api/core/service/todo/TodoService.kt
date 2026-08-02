@@ -50,4 +50,8 @@ class TodoService(
     @Transactional
     fun deleteOne(ctx: OperationContext, id: UUID): Boolean =
         todoRepo.deleteForApp(ctx.repoCtx, ctx.mustGetAppId(), id)
+
+    @Transactional
+    fun deleteItems(ctx: OperationContext, itemIds: List<UUID>): Int =
+        todoRepo.deleteItemsByIds(ctx.repoCtx, ctx.mustGetAppId(), itemIds)
 }

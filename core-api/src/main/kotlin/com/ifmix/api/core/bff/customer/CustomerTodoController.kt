@@ -1,6 +1,7 @@
 package com.ifmix.api.core.bff.customer
 
 import com.ifmix.api.core.common.types.ByIdRequest
+import com.ifmix.api.core.common.types.ByIdsRequest
 import com.ifmix.api.core.common.types.OperationResult
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
@@ -48,5 +49,11 @@ class CustomerTodoController(private val todoService: TodoService) {
     fun deleteById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): OperationResult {
         val deleted = todoService.deleteOne(ctx, req.id)
         return OperationResult(success = deleted)
+    }
+
+    @PostMapping("/mutation/todo/deleteItemsByIds")
+    fun deleteItemsByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): OperationResult {
+        val count = todoService.deleteItems(ctx, req.ids)
+        return OperationResult(success = count > 0)
     }
 }

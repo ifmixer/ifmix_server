@@ -1,5 +1,6 @@
 package com.ifmix.api.core.infra.db
 
+import com.ifmix.api.core.common.types.SortOrder
 import io.swagger.v3.oas.annotations.media.Schema
 
 /**
@@ -12,30 +13,18 @@ import io.swagger.v3.oas.annotations.media.Schema
 data class CursorQueryInput(
     @Schema(description = "上一页返回的 nextCursor，首次请求不传")
     val cursor: String? = null,
-    @Schema(description = "排序字段，默认 CREATED_AT")
-    val sortBy: SortField? = null,
+    @Schema(description = "排序字段，默认 id")
+    val sortBy: String = "id",
     @Schema(description = "排序方向，默认 DESC")
-    val order: Order? = null,
+    val order: SortOrder = SortOrder.DESC,
     @Schema(description = "每页条数，默认 20，上限 100", minimum = "1", maximum = "100")
-    val limit: Int? = null,
+    val limit: Int = DEFAULT_LIMIT,
 ) {
-    enum class SortField {
-        CREATED_AT,
-        UPDATED_AT,
-        ID;
 
-        fun toColumnName(): String = when (this) {
-            CREATED_AT -> "createdAt"
-            UPDATED_AT -> "updatedAt"
-            ID -> "id"
-        }
-    }
 
-    enum class Order { ASC, DESC }
-
-    fun effectiveSortBy(): String = (sortBy ?: SortField.CREATED_AT).toColumnName()
-    fun effectiveOrder(): Order = order ?: Order.DESC
-    fun effectiveLimit(): Int = (limit ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
+    fun effectiveSortBy(): String = sortBy
+    fun effectiveOrder(): SortOrder = order
+    fun effectiveLimit(): Int = limit.coerceIn(1, MAX_LIMIT)
 
     companion object {
         const val DEFAULT_LIMIT = 20

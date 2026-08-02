@@ -26,7 +26,7 @@ class CursorQueryInputTest {
         val input = CursorQueryInput()
         assertThat(input.sortBy).isNull()
         assertThat(input.order).isNull()
-        assertThat(input.effectiveSortBy()).isEqualTo("createdAt")
+        assertThat(input.effectiveSortBy()).isEqualTo("id")
         assertThat(input.effectiveOrder()).isEqualTo(CursorQueryInput.Order.DESC)
     }
 }

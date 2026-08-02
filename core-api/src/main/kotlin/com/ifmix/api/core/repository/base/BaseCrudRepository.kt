@@ -1,6 +1,5 @@
 package com.ifmix.api.core.repository.base
 
-import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.db.RepoContext
@@ -26,15 +25,33 @@ abstract class BaseCrudRepository<E : Any>(
     open fun <V : View<E>> findById(repoCtx: RepoContext, id: UUID, viewType: KClass<V>): V? =
         sql.entities.findById(viewType, id)
 
+    open fun findByIds(repoCtx: RepoContext, ids: List<UUID>): List<E> =
+        if (ids.isEmpty()) emptyList() else sql.entities.findByIds(entityType, ids)
+
+    open fun <V : View<E>> findByIds(repoCtx: RepoContext, ids: List<UUID>, viewType: KClass<V>): List<V> =
+        if (ids.isEmpty()) emptyList() else sql.entities.findByIds(viewType, ids)
+
     open fun insert(repoCtx: RepoContext, input: Input<E>): E =
         sql.entities.save(input) {
             setMode(SaveMode.INSERT_ONLY)
         }.modifiedEntity
 
+    open fun insertAll(repoCtx: RepoContext, inputs: List<Input<E>>): List<E> =
+        if (inputs.isEmpty()) emptyList()
+        else sql.entities.saveInputs(inputs) {
+            setMode(SaveMode.INSERT_ONLY)
+        }.items.map { it.modifiedEntity }
+
     open fun update(repoCtx: RepoContext, input: Input<E>): E =
         sql.entities.save(input) {
             setMode(SaveMode.UPDATE_ONLY)
         }.modifiedEntity
+
+    open fun updateAll(repoCtx: RepoContext, inputs: List<Input<E>>): List<E> =
+        if (inputs.isEmpty()) emptyList()
+        else sql.entities.saveInputs(inputs) {
+            setMode(SaveMode.UPDATE_ONLY)
+        }.items.map { it.modifiedEntity }
 
     open fun save(repoCtx: RepoContext, input: Input<E>): E =
         sql.entities.save(input).modifiedEntity
@@ -42,8 +59,17 @@ abstract class BaseCrudRepository<E : Any>(
     open fun save(repoCtx: RepoContext, entity: E): E =
         sql.entities.save(entity).modifiedEntity
 
+    open fun saveAll(repoCtx: RepoContext, entities: List<E>): List<E> =
+        if (entities.isEmpty()) emptyList()
+        else sql.entities.saveEntities(entities).items.map { it.modifiedEntity }
+
     open fun deleteById(repoCtx: RepoContext, id: UUID) {
         sql.entities.delete(entityType, id)
+    }
+
+    open fun deleteByIds(repoCtx: RepoContext, ids: List<UUID>) {
+        if (ids.isEmpty()) return
+        sql.entities.deleteAll(entityType, ids)
     }
 
     open fun findAll(repoCtx: RepoContext): List<E> =
@@ -82,98 +108,10 @@ abstract class BaseCrudRepository<E : Any>(
     /**
      * 获取实体的 id 值。通过反射获取 id() 方法（Jimmer 生成的接口方法）。
      */
-    private fun getEntityId(entity: Any): UUID? {
+    protected fun getEntityId(entity: Any): UUID? {
         return try {
-            val method = entity.javaClass.getMethod("id")
+            val method = entity.javaClass.getMethod("getId")
             method.invoke(entity) as? UUID
-        } catch (_: Exception) {
-            null
-        }
-    }
-}
-
-/**
- * 面向多租户实体的 Repository。
- * 类型约束要求 E 实现 AppScopedProps。
- * 覆写 findByCursor 自动按 appId 过滤。
- */
-abstract class BaseAppCrudRepository<E : AppScopedProps>(
-    sql: KSqlClient,
-    entityType: KClass<E>,
-) : BaseCrudRepository<E>(sql, entityType) {
-
-    /**
-     * 游标分页 + 按 appId 过滤。
-     * appId 由 Service 层从 OperationContext 取出后显式传入。
-     */
-    open fun findByCursor(repoCtx: RepoContext, appId: UUID, input: CursorQueryInput = CursorQueryInput()): Page<E> {
-        val limit = input.effectiveLimit()
-        val cursor = input.cursor?.let {
-            try { UUID.fromString(it) } catch (_: Exception) { null }
-        }
-
-        val items = sql.createQuery(entityType) {
-            where(table.get<UUID>("appId") eq appId)
-            if (cursor != null) {
-                where(table.getId<UUID>() lt cursor)
-            }
-            orderBy(table.getId<UUID>().desc())
-            select(table)
-        }.limit(limit + 1).execute()
-
-        val hasMore = items.size > limit
-        val pageItems = if (hasMore) items.take(limit) else items
-        val nextCursor = if (hasMore) {
-            pageItems.lastOrNull()?.let { getEntityId(it)?.toString() }
-        } else null
-
-        return Page(pageItems, nextCursor, hasMore)
-    }
-
-    /**
-     * 游标分页 + 按 appId 过滤 + View 投影。
-     * 用于返回 Jimmer 生成的 View DTO 而不是完整 entity。
-     */
-    open fun <V : org.babyfish.jimmer.View<E>> findViewByCursor(
-        repoCtx: RepoContext,
-        appId: UUID,
-        viewType: KClass<V>,
-        input: CursorQueryInput = CursorQueryInput(),
-    ): Page<V> {
-        val limit = input.effectiveLimit()
-        val cursor = input.cursor?.let {
-            try { UUID.fromString(it) } catch (_: Exception) { null }
-        }
-
-        val items = sql.createQuery(entityType) {
-            where(table.get<UUID>("appId") eq appId)
-            if (cursor != null) {
-                where(table.getId<UUID>() lt cursor)
-            }
-            orderBy(table.getId<UUID>().desc())
-            select(table.fetch(viewType))
-        }.limit(limit + 1).execute()
-
-        val hasMore = items.size > limit
-        val pageItems = if (hasMore) items.take(limit) else items
-        val nextCursor = if (hasMore) {
-            pageItems.lastOrNull()?.let { getViewId(it)?.toString() }
-        } else null
-
-        return Page(pageItems, nextCursor, hasMore)
-    }
-
-    private fun getEntityId(entity: Any): UUID? {
-        return try {
-            entity.javaClass.getMethod("id").invoke(entity) as? UUID
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun getViewId(view: Any): UUID? {
-        return try {
-            view.javaClass.getMethod("id").invoke(view) as? UUID
         } catch (_: Exception) {
             null
         }
