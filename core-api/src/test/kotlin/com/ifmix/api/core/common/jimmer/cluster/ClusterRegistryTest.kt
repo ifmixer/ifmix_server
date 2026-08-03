@@ -18,7 +18,7 @@ class ClusterRegistryTest {
 
     @Test
     fun `sqlClient is singleton`() {
-        val registry = ClusterRegistry(buildProps())
+        val registry = ClusterRegistry(buildProps(), emptyList(), false)
         try {
             val c1 = registry.sqlClient
             val c2 = registry.sqlClient
@@ -30,7 +30,7 @@ class ClusterRegistryTest {
 
     @Test
     fun `routingDataSource is created`() {
-        val registry = ClusterRegistry(buildProps())
+        val registry = ClusterRegistry(buildProps(), emptyList(), false)
         try {
             assertThat(registry.routingDataSource).isNotNull()
         } finally {
