@@ -4,6 +4,7 @@ import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionCreateInput
 import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionView
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
+import com.ifmix.api.core.infra.types.ToggleRevisionRequest
 import com.ifmix.api.core.service.appconfig.AppConfigService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
@@ -46,7 +47,4 @@ class AppConfigController(private val appConfigService: AppConfigService) {
     }
 }
 
-data class ToggleRevisionRequest(
-    val id: UUID,
-    val enabled: Boolean,
-)
+

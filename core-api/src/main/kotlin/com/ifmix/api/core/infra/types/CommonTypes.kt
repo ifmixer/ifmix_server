@@ -25,3 +25,8 @@ enum class ContentType(val mimeType: String, val extension: String) {
 
 
 enum class SortOrder { ASC, DESC }
+
+data class ToggleRevisionRequest(
+    val id: UUID,
+    val enabled: Boolean,
+)

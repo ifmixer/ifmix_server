@@ -31,6 +31,9 @@ interface AppConfigRevision : AppScopedProps, CreatedAtProps {
 
     /** 配置标识符 */
     val slug: String
+
+    /** 版本备注，创建时必填 */
+    val comment: String
 }
 
 /** 聚合 JSONB 值对象 */
