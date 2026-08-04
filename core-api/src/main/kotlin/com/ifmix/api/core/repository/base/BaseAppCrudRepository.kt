@@ -91,13 +91,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
             select(table)
         }.limit(limit + 1).execute()
 
-        val hasMore = items.size > limit
-        val pageItems = if (hasMore) items.take(limit) else items
-        val nextCursor = if (hasMore) {
-            pageItems.lastOrNull()?.let { getEntityId(it)?.toString() }
-        } else null
-
-        return Page(pageItems, nextCursor, hasMore)
+        return Page.of(items, limit) { getEntityId(it)?.toString() }
     }
 
     /**
@@ -153,13 +147,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
             select(table.fetch(viewType))
         }.limit(limit + 1).execute()
 
-        val hasMore = items.size > limit
-        val pageItems = if (hasMore) items.take(limit) else items
-        val nextCursor = if (hasMore) {
-            pageItems.lastOrNull()?.let { extractCursor(it, sortBy) }
-        } else null
-
-        return Page(pageItems, nextCursor, hasMore)
+        return Page.of(items, limit) { extractCursor(it, sortBy) }
     }
 
     // ==================== 辅助 ====================

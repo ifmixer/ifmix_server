@@ -1,10 +1,10 @@
 package com.ifmix.api.core.service.auth
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.ifmix.api.core.entity.appconfig.AppConfigRevision
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.service.appconfig.AppConfig
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 
@@ -17,10 +17,11 @@ import org.springframework.web.client.RestClientException
 class WechatVerifier(private val restClient: RestClient) : ProviderVerifier {
     override val provider = "wechat"
 
-    override fun verify(config: AppConfig, platform: ClientPlatform?, credential: String): VerifiedProvider {
-        val appId = config.wechatAppId
+    override fun verify(config: AppConfigRevision, platform: ClientPlatform?, credential: String): VerifiedProvider {
+        val wechat = config.content.wechat
+        val appId = wechat.appId
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING, "wechat appId not configured")
-        val appSecret = config.wechatAppSecret
+        val appSecret = wechat.appSecret
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING, "wechat appSecret not configured")
 
         // 1. Exchange code for access_token + openid + unionid

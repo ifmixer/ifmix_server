@@ -19,7 +19,7 @@ import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevision>(sql, AppConfigRevision::class) {
+class AppConfigRevisionRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevision>(sql, AppConfigRevision::class) {
 
     /** Find current enabled config by appId. Throws if not found. */
     fun mustFindCurrentRevision(ctx: OperationContext): AppConfigRevision {

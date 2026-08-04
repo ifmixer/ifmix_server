@@ -1,6 +1,6 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.entity.antique.dto.ScanRecordView
+import com.ifmix.api.core.entity.collection.dto.CollectionItemView
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.service.collection.AddItemReq
@@ -51,15 +51,13 @@ class CustomerCollectionController(
     fun removeItems(ctx: OperationContext, @Valid @RequestBody req: RemoveItemsReq): RemoveItemsRes =
         service.removeItems(ctx, req)
 
-    /** 列出收藏夹中的扫描记录（游标分页）。 */
-    @Operation(summary = "列出收藏夹中的扫描记录", description = "按当前用户过滤。固定按 createdAt DESC 排序，不支持自定义排序。limit 默认 20，上限 100。body 完全可选。collectionId 当前可不传，服务端自动用默认夹。")
-    @PutMapping("/query/collection/listItems")
-    fun listItems(
+    /** 列出收藏夹中的条目（游标分页）。 */
+    @Operation(summary = "列出收藏夹中的条目", description = "按当前用户过滤。固定按 createdAt DESC 排序，不支持自定义排序。limit 默认 20，上限 100。body 完全可选。collectionId 当前可不传，服务端自动用默认夹。")
+    @PutMapping("/query/collection/findItemsByCursor")
+    fun findItemsByCursor(
         ctx: OperationContext,
         @RequestBody(required = false) req: ListItemsReq?,
-    ): Page<ScanRecordView> {
-        val page = service.listItems(ctx, req)
-        val views = page.items.map { ScanRecordView(it) }
-        return Page(views, page.nextCursor, page.hasMore)
+    ): Page<CollectionItemView> {
+        return service.findItemsByCursor(ctx, req)
     }
 }

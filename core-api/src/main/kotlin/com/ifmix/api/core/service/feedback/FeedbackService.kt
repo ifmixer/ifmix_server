@@ -6,6 +6,8 @@ import com.ifmix.api.core.entity.feedback.Feedback
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.http.mustGetAppId
+import com.ifmix.api.core.infra.http.mustGetInstallId
 import com.ifmix.api.core.repository.feedback.FeedbackRepository
 import com.ifmix.api.core.service.base.BaseAppCrudService
 import org.springframework.stereotype.Service
@@ -23,10 +25,8 @@ class FeedbackService(
     /** 提交反馈，返回新建记录的 ID。身份从 ctx 推导。 */
     @Transactional
     fun submit(ctx: OperationContext, req: SubmitFeedbackReq): SubmitFeedbackRes {
-        val appId = ctx.appId
-            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id must be a UUID")
-        val installId = ctx.installId
-            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-install-id must be a UUID")
+        val appId = ctx.mustGetAppId()
+        val installId = ctx.mustGetInstallId()
         val userId = ctx.userId
 
         val saved = feedbackRepo.create(

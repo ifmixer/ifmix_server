@@ -1,6 +1,7 @@
 package com.ifmix.api.core.repository.collection
 
 import com.ifmix.api.core.entity.collection.CollectionItem
+import com.ifmix.api.core.entity.collection.dto.CollectionItemView
 import com.ifmix.api.core.entity.collection.appId
 import com.ifmix.api.core.entity.collection.collectionId
 import com.ifmix.api.core.entity.collection.createdAt
@@ -65,16 +66,16 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
     }
 
     /**
-     * Paginated listing with cursor support, joined with scanRecord.
+     * Paginated listing with cursor support, fetching CollectionItemView (includes scanRecord).
      * @LogicalDeleted auto-filters deleted items.
      */
-    fun listWithScanRecords(
+    fun findItemsByCursor(
         ctx: OperationContext,
         appId: UUID,
         collectionId: UUID,
         limit: Int,
         cursor: UUID?,
-    ): Page<CollectionItem> {
+    ): Page<CollectionItemView> {
         val items = sql.createQuery(CollectionItem::class) {
             where(table.appId eq appId)
             where(table.collectionId eq collectionId)
@@ -82,16 +83,10 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
                 where(table.id lt cursor)
             }
             orderBy(table.id.desc())
-            select(table)
+            select(table.fetch(CollectionItemView::class))
         }.limit(limit + 1).execute()
 
-        val hasMore = items.size > limit
-        val pageItems = if (hasMore) items.take(limit) else items
-        val nextCursor = if (hasMore && pageItems.isNotEmpty()) {
-            pageItems.last().id.toString()
-        } else null
-
-        return Page(pageItems, nextCursor, hasMore)
+        return Page.of(items, limit) { it.id.toString() }
     }
 
     /** Check if a scan record exists in a collection (non-deleted, auto-filtered by @LogicalDeleted) */

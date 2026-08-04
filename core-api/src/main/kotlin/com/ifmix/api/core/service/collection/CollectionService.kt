@@ -5,7 +5,7 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
-import com.ifmix.api.core.entity.antique.ScanRecord
+import com.ifmix.api.core.entity.collection.dto.CollectionItemView
 import com.ifmix.api.core.entity.collection.Collection
 import com.ifmix.api.core.repository.collection.CollectionRepository
 import com.ifmix.api.core.repository.collection.CollectionItemRepository
@@ -96,25 +96,14 @@ open class CollectionService(
      * 返回包含扫描详情的 Page<ScanRecord>。
      */
     @Transactional
-    fun listItems(ctx: OperationContext, req: ListItemsReq?): Page<ScanRecord> {
+    fun findItemsByCursor(ctx: OperationContext, req: ListItemsReq?): Page<CollectionItemView> {
         val appId = ctx.mustGetAppId()
 
-        val collectionId = when {
-            req?.collectionId != null -> UUID.fromString(req.collectionId)
-            else -> getDefault(ctx).id
-        }
-
+        val collectionId = req?.collectionId ?: getDefault(ctx).id
         val limit = req?.limit ?: 20
         val cursor = req?.cursor?.let { try { UUID.fromString(it) } catch (e: Exception) { null } }
 
-        val collectionItems = itemRepo.listWithScanRecords(ctx, appId, collectionId, limit, cursor)
-        val scanRecords = collectionItems.items.mapNotNull { item -> item.scanRecord }
-
-        val nextCursor = if (collectionItems.hasMore && collectionItems.items.isNotEmpty()) {
-            collectionItems.items.lastOrNull()?.id?.toString()
-        } else null
-
-        return Page(scanRecords, nextCursor, collectionItems.hasMore)
+        return itemRepo.findItemsByCursor(ctx, appId, collectionId, limit, cursor)
     }
 }
 
@@ -125,6 +114,6 @@ data class AddItemRes(val id: UUID)  // id 对应 collection_item 表的 id
 data class RemoveItemsReq(val collectionId: UUID? = null, val scanRecordIds: List<UUID>)  // 必填非空列表
 data class RemoveItemsRes(val removed: Int)
 
-data class ListItemsReq(val collectionId: String? = null, val limit: Int? = null, val cursor: String? = null)
+data class ListItemsReq(val collectionId: UUID? = null, val limit: Int? = null, val cursor: String? = null)
 
 data class GetDefaultRes(val id: UUID, val isDefault: Boolean, val createdAt: Long?)  // 补回 createdAt

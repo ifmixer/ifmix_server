@@ -13,7 +13,7 @@ import com.ifmix.api.core.repository.auth.AppUserRepository
 import com.ifmix.api.core.repository.auth.AuthDeviceSecretRepository
 import com.ifmix.api.core.repository.auth.AuthIdentityRepository
 import com.ifmix.api.core.repository.auth.AuthProviderIdentityRepository
-import com.ifmix.api.core.service.appconfig.AppConfigRepo
+import com.ifmix.api.core.repository.appconfig.AppConfigRevisionRepository
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.transaction.annotation.Transactional
 import com.ifmix.api.core.infra.db.UuidV7
@@ -27,7 +27,7 @@ import java.util.UUID
  */
 @org.springframework.stereotype.Service
 open class AuthService(
-    private val appConfigRepo: AppConfigRepo,
+    private val appConfigRepo: AppConfigRevisionRepository,
     private val verifiers: Map<String, ProviderVerifier>,
     private val jwt: AuthJwtService,
     private val providerIdentityRepo: AuthProviderIdentityRepository,
@@ -46,7 +46,8 @@ open class AuthService(
     }
 
     private fun tenantId(ctx: OperationContext): String =
-        appConfigRepo.getByAppId(ctx).authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
+        appConfigRepo.mustFindCurrentRevision(ctx).authTenantId?.toString()
+            ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
     @Transactional
     fun loginWithIdToken(ctx: OperationContext, provider: String, req: ProviderLoginReq): LoginRes {
@@ -61,9 +62,9 @@ open class AuthService(
     @Transactional
     fun loginWithProvider(ctx: OperationContext, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
         // 1. Resolve app config & tenant
-        val config = appConfigRepo.getByAppId(ctx)
-        val tenantId = config.authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
-        val tenantUUID = UUID.fromString(tenantId)
+        val config = appConfigRepo.mustFindCurrentRevision(ctx)
+        val tenantUUID = config.authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
+        val tenantId = tenantUUID.toString()
 
         // 2. Get verifier
         val verifier = verifiers[provider] ?: throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unsupported provider: $provider")

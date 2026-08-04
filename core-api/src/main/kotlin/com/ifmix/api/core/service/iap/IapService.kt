@@ -8,7 +8,7 @@ import com.ifmix.api.core.repository.iap.StoreNotificationRepository
 import com.ifmix.api.core.entity.iap.Subscription
 import com.ifmix.api.core.entity.iap.SubscriptionDraft
 import com.ifmix.api.core.entity.iap.StoreNotification
-import com.ifmix.api.core.service.appconfig.AppConfigRepo
+import com.ifmix.api.core.repository.appconfig.AppConfigRevisionRepository
 import com.ifmix.api.core.service.iap.Platform
 import com.ifmix.api.core.service.iap.PurchaseVerifier
 import com.ifmix.api.core.service.iap.VerifyInput
@@ -35,7 +35,7 @@ open class IapService(
     private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
     private val storeNotificationRepo: StoreNotificationRepository,
-    private val appConfigRepo: AppConfigRepo,
+    private val appConfigRepo: AppConfigRevisionRepository,
 ) {
 
     // Map of platform name to verifier
@@ -66,8 +66,8 @@ open class IapService(
         val verifyResult = verifier.verify(input)
 
         // 3. Map productId to product tier from AppConfig
-        val config = appConfigRepo.getByAppId(ctx)
-        val productTierMap = config.productTierMap
+        val config = appConfigRepo.mustFindCurrentRevision(ctx)
+        val productTierMap = config.content.iap.productTierMap
         val tier = tierOf(req.productId, productTierMap) ?: com.ifmix.api.core.infra.ratelimit.Tier.FREE
 
         // 4. Determine subscription PxID - use originalTransactionId or generate one

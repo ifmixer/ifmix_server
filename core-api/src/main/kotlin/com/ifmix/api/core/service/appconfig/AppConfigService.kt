@@ -6,7 +6,7 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
-import com.ifmix.api.core.repository.appconfig.AppConfigRepository
+import com.ifmix.api.core.repository.appconfig.AppConfigRevisionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -17,7 +17,7 @@ import java.util.UUID
  */
 @Service
 class AppConfigService(
-    private val appConfigRepo: AppConfigRepository,
+    private val revisionRepo: AppConfigRevisionRepository,
 ) {
 
     /**
@@ -30,12 +30,12 @@ class AppConfigService(
 
         // 若新版本要生效，先 disable 当前版本
         if (req.enabled) {
-            appConfigRepo.disableCurrentRevisions(ctx, appId)
+            revisionRepo.disableCurrentRevisions(ctx, appId)
         }
 
-        val created = appConfigRepo.createNewRevision(ctx, req)
+        val created = revisionRepo.createNewRevision(ctx, req)
 
-        return appConfigRepo.findById(ctx, appId, created.id, AppConfigRevisionView::class)
+        return revisionRepo.findById(ctx, appId, created.id, AppConfigRevisionView::class)
             ?: throw ApiError(ErrorCode.INTERNAL, "failed to read newly created revision")
     }
 
@@ -49,18 +49,18 @@ class AppConfigService(
         val appId = ctx.mustGetAppId()
 
         // 确认目标 revision 存在且属于当前 app
-        val existing = appConfigRepo.findById(ctx, appId, revisionId)
-            ?: throw ApiError(ErrorCode.NOT_FOUND, "AppConfigRevision not found")
+        revisionRepo.findById(ctx, appId, revisionId)
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "revision not found")
 
         if (enabled) {
             // 先 disable 所有当前生效版本
-            appConfigRepo.disableCurrentRevisions(ctx, appId)
+            revisionRepo.disableCurrentRevisions(ctx, appId)
         }
 
         // 更新目标 revision 的 enabled 状态
-        appConfigRepo.updateEnabled(ctx, revisionId, enabled)
+        revisionRepo.updateEnabled(ctx, revisionId, enabled)
 
-        return appConfigRepo.findById(ctx, appId, revisionId, AppConfigRevisionView::class)
+        return revisionRepo.findById(ctx, appId, revisionId, AppConfigRevisionView::class)
             ?: throw ApiError(ErrorCode.INTERNAL, "failed to read revision after toggle")
     }
 }

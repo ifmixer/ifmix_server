@@ -1,12 +1,11 @@
 package com.ifmix.api.core.service.auth
 
+import com.ifmix.api.core.entity.appconfig.AppConfigRevision
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.service.appconfig.AppConfig
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtDecoder
-import org.springframework.security.oauth2.jwt.JwtException
 
 /**
  * 第三方 provider 的 id_token 验证器。
@@ -24,7 +23,7 @@ data class VerifiedProvider(
 
 interface ProviderVerifier {
     val provider: String
-    fun verify(config: AppConfig, platform: ClientPlatform?, idToken: String): VerifiedProvider
+    fun verify(config: AppConfigRevision, platform: ClientPlatform?, idToken: String): VerifiedProvider
 }
 
 private fun decodeOrFail(decoder: JwtDecoder, idToken: String): Jwt = try {
@@ -49,12 +48,13 @@ private fun requireAud(jwt: Jwt, expected: String?) {
 
 class GoogleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
     override val provider = "google"
-    override fun verify(config: AppConfig, platform: ClientPlatform?, idToken: String): VerifiedProvider {
+    override fun verify(config: AppConfigRevision, platform: ClientPlatform?, idToken: String): VerifiedProvider {
         val jwt = decodeOrFail(decoder, idToken)
+        val clientIds = config.content.google.clientIds
         val aud = when (platform) {
-            ClientPlatform.IOS -> config.googleClientIds.ios
-            ClientPlatform.ANDROID -> config.googleClientIds.android
-            ClientPlatform.WEB, null -> config.googleClientIds.web
+            ClientPlatform.IOS -> clientIds.ios
+            ClientPlatform.ANDROID -> clientIds.android
+            ClientPlatform.WEB, null -> clientIds.web
         }
         requireAud(jwt, aud)
         return jwt.toVerified()
@@ -63,9 +63,9 @@ class GoogleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
 
 class AppleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
     override val provider = "apple"
-    override fun verify(config: AppConfig, platform: ClientPlatform?, idToken: String): VerifiedProvider {
+    override fun verify(config: AppConfigRevision, platform: ClientPlatform?, idToken: String): VerifiedProvider {
         val jwt = decodeOrFail(decoder, idToken)
-        val aud = if (platform == ClientPlatform.WEB) config.appleServicesId else config.appleBundleId
+        val aud = if (platform == ClientPlatform.WEB) config.content.apple.servicesId else config.appleBundleId
         requireAud(jwt, aud)
         return jwt.toVerified()
     }
@@ -77,8 +77,7 @@ class AppleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
  */
 class AnonymousVerifier : ProviderVerifier {
     override val provider = "anonymous"
-    override fun verify(config: AppConfig, platform: ClientPlatform?, idToken: String): VerifiedProvider {
-        // idToken 实际上是 "anon_{installId}"
+    override fun verify(config: AppConfigRevision, platform: ClientPlatform?, idToken: String): VerifiedProvider {
         return VerifiedProvider(
             accountId = idToken,
             email = "$idToken@anonymous.local",

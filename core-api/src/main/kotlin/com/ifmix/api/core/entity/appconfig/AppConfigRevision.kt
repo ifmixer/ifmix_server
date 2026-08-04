@@ -33,7 +33,7 @@ interface AppConfigRevision : AppScopedProps, CreatedAtProps {
     val slug: String
 
     /** 版本备注，创建时必填 */
-    val comment: String
+    val note: String
 }
 
 /** 聚合 JSONB 值对象 */

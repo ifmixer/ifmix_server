@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.webhooks
 
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.service.appconfig.AppConfigRepo
+import com.ifmix.api.core.repository.appconfig.AppConfigRevisionRepository
 import com.ifmix.api.core.service.iap.IapService
 import com.ifmix.api.core.service.iap.NotificationDecoder
 import com.ifmix.api.core.service.iap.Platform
@@ -33,7 +33,7 @@ class WebhookController(
     private val iapService: IapService,
     @Qualifier("appleDecoder") private val appleDecoder: NotificationDecoder,
     @Qualifier("googleDecoder") private val googleDecoder: NotificationDecoder,
-    private val appConfigRepo: AppConfigRepo,
+    private val appConfigRepo: AppConfigRevisionRepository,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -72,9 +72,7 @@ class WebhookController(
             // 4. 通过 bundleId 反查 appId
             val systemCtx = OperationContext(appId = null, userId = SYSTEM_USER_ID)
             val appId = if (bundleId != null) {
-                appConfigRepo.getByAppleBundleId(systemCtx, bundleId)?.appId?.let {
-                    try { UUID.fromString(it) } catch (_: Exception) { null }
-                }
+                appConfigRepo.findByBundleId(systemCtx, bundleId)?.appId
             } else null
 
             if (appId == null) {
@@ -108,9 +106,7 @@ class WebhookController(
             // 2. 通过 packageName 反查 appId
             val systemCtx = OperationContext(appId = null, userId = SYSTEM_USER_ID)
             val appId = if (packageName != null) {
-                appConfigRepo.getByAndroidPackage(systemCtx, packageName)?.appId?.let {
-                    try { UUID.fromString(it) } catch (_: Exception) { null }
-                }
+                appConfigRepo.findByAndroidPackage(systemCtx, packageName)?.appId
             } else null
 
             if (appId == null) {

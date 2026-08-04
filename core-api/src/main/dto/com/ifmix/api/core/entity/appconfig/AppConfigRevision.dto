@@ -12,5 +12,5 @@ input AppConfigRevisionCreateInput {
     revisionNumber
     enabled
     slug
-    comment
+    note
 }
