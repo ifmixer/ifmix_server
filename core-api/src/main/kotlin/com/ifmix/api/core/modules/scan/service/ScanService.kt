@@ -10,11 +10,9 @@ import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.ratelimit.RateLimiter
 import com.ifmix.api.core.infra.storage.ObjectStorage
-import com.ifmix.api.core.modules.scan.ScanInput
-import com.ifmix.api.core.modules.scan.ScanMediaItem
-import com.ifmix.api.core.modules.scan.ScanResult
+import com.ifmix.api.core.modules.scan.dto.ScanInput
+import com.ifmix.api.core.modules.scan.dto.ScanMediaItem
 import com.ifmix.api.core.modules.scan.ScanRunner
-import com.ifmix.api.core.modules.scan.dto.NewScanImageInput
 import com.ifmix.api.core.modules.scan.dto.NewScanReq
 import com.ifmix.api.core.modules.scan.dto.NewScanRes
 import com.ifmix.api.core.modules.scan.dto.UpdateScanReq

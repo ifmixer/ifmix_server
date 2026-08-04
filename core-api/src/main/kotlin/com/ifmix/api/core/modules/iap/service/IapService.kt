@@ -16,13 +16,12 @@ import com.ifmix.api.core.modules.iap.dto.VerifyReq
 import com.ifmix.api.core.modules.iap.dto.VerifyRes
 import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.ifmix.api.core.modules.iap.NotificationType
-import com.ifmix.api.core.modules.iap.Platform
+import com.ifmix.api.core.modules.iap.dto.Platform
 import com.ifmix.api.core.modules.iap.PurchaseVerifier
-import com.ifmix.api.core.modules.iap.SubStatus
-import com.ifmix.api.core.modules.iap.SubscriptionState
+import com.ifmix.api.core.modules.iap.dto.SubStatus
 import com.ifmix.api.core.modules.iap.VerifyInput
-import com.ifmix.api.core.modules.iap.statusFromExpiry
-import com.ifmix.api.core.modules.iap.tierOf
+import com.ifmix.api.core.modules.iap.dto.statusFromExpiry
+import com.ifmix.api.core.modules.iap.dto.tierOf
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

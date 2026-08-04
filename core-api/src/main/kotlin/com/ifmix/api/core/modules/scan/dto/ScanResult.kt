@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.scan
+package com.ifmix.api.core.modules.scan.dto
 
 import com.ifmix.api.core.entity.enums.ScanStatus
 import io.swagger.v3.oas.annotations.media.Schema

@@ -1,7 +1,9 @@
-package com.ifmix.api.core.modules.iap
+package com.ifmix.api.core.modules.iap.dto
 
+import com.ifmix.api.core.infra.ratelimit.Tier
 import org.babyfish.jimmer.sql.EnumItem
 import org.babyfish.jimmer.sql.EnumType
+import java.time.Instant
 
 /**
  * IAP 购买平台。
@@ -50,7 +52,7 @@ enum class SubscriptionState {
  * 根据过期时间推断订阅状态。
  * [expiryDate] 为 null 时返回 ACTIVE（例如一次性购买或尚未设置过期时间的订阅）。
  */
-fun statusFromExpiry(expiryDate: java.time.Instant?, now: java.time.Instant = java.time.Instant.now()): SubscriptionState {
+fun statusFromExpiry(expiryDate: Instant?, now: Instant = Instant.now()): SubscriptionState {
     if (expiryDate == null) return SubscriptionState.ACTIVE
     return if (expiryDate.isAfter(now)) SubscriptionState.ACTIVE else SubscriptionState.EXPIRED
 }
@@ -59,10 +61,10 @@ fun statusFromExpiry(expiryDate: java.time.Instant?, now: java.time.Instant = ja
  * 将 product SKU 映射到 Tier 名称，再查 [Tier] 枚举。
  * 未匹配时返回 null。
  */
-fun tierOf(sku: String, productTierMap: Map<String, Any?>): com.ifmix.api.core.infra.ratelimit.Tier? {
+fun tierOf(sku: String, productTierMap: Map<String, Any?>): Tier? {
     val tierName = (productTierMap[sku] as? String) ?: return null
     return try {
-        com.ifmix.api.core.infra.ratelimit.Tier.valueOf(tierName.uppercase())
+        Tier.valueOf(tierName.uppercase())
     } catch (_: IllegalArgumentException) {
         null
     }

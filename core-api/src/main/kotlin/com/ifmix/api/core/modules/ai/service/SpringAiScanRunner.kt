@@ -3,8 +3,8 @@ package com.ifmix.api.core.modules.ai.service
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.scan.ScanResult
-import com.ifmix.api.core.modules.scan.ScanInput
+import com.ifmix.api.core.modules.scan.dto.ScanResult
+import com.ifmix.api.core.modules.scan.dto.ScanInput
 import com.ifmix.api.core.modules.scan.ScanRunner
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.messages.UserMessage

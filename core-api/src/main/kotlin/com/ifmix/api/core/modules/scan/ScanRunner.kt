@@ -1,25 +1,8 @@
 package com.ifmix.api.core.modules.scan
 
 import com.ifmix.api.core.infra.http.OperationContext
-
-/**
- * 扫描输入中的单个媒体项。
- * 后续可扩展：category、userHint 等。
- */
-data class ScanMediaItem(
-    /** 预签名下载 URL（供 AI 模型访问） */
-    val imageUrl: String,
-    /** MIME 类型（如 image/jpeg, image/png） */
-    val mediaType: String,
-)
-
-/**
- * ScanRunner 的输入 DTO。
- */
-data class ScanInput(
-    /** 一张或多张图片 */
-    val items: List<ScanMediaItem>,
-)
+import com.ifmix.api.core.modules.scan.dto.ScanInput
+import com.ifmix.api.core.modules.scan.dto.ScanResult
 
 /**
  * AI 扫描服务接口。

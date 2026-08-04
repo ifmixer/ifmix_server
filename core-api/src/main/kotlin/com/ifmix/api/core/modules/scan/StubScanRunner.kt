@@ -3,6 +3,8 @@ package com.ifmix.api.core.modules.scan
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.modules.scan.dto.ScanInput
+import com.ifmix.api.core.modules.scan.dto.ScanResult
 
 /**
  * 占位 ScanRunner：未接入真实 AI 时的回落实现。

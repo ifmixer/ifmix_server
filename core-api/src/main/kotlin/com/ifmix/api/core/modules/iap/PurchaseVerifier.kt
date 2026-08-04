@@ -1,6 +1,8 @@
 package com.ifmix.api.core.modules.iap
 
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.modules.iap.dto.Platform
+import com.ifmix.api.core.modules.iap.dto.SubStatus
 
 /**
  * 购买验证接缝：各商店（Apple / Google）的 verifyPurchase 实现不同，

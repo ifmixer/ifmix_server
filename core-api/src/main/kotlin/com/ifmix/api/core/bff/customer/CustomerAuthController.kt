@@ -1,7 +1,17 @@
 package com.ifmix.api.core.bff.customer
 
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.auth.*
+import com.ifmix.api.core.modules.auth.dto.DeleteAccountRes
+import com.ifmix.api.core.modules.auth.dto.ExchangeReq
+import com.ifmix.api.core.modules.auth.dto.ExchangeRes
+import com.ifmix.api.core.modules.auth.dto.LoginRes
+import com.ifmix.api.core.modules.auth.dto.LogoutReq
+import com.ifmix.api.core.modules.auth.dto.LogoutRes
+import com.ifmix.api.core.modules.auth.dto.MeRes
+import com.ifmix.api.core.modules.auth.dto.ProviderLoginReq
+import com.ifmix.api.core.modules.auth.dto.RefreshReq
+import com.ifmix.api.core.modules.auth.dto.RefreshRes
+import com.ifmix.api.core.modules.auth.dto.WechatLoginReq
 import com.ifmix.api.core.modules.auth.service.AuthService
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid

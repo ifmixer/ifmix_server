@@ -2,7 +2,7 @@ package com.ifmix.api.core.entity.iap
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps
-import com.ifmix.api.core.modules.iap.Platform
+import com.ifmix.api.core.modules.iap.dto.Platform
 import org.babyfish.jimmer.sql.*
 import java.time.Instant
 import java.util.UUID

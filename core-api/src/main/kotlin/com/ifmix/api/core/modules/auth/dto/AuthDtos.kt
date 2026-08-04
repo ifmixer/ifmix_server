@@ -1,7 +1,8 @@
-package com.ifmix.api.core.modules.auth
+package com.ifmix.api.core.modules.auth.dto
 
 import com.ifmix.api.core.infra.ratelimit.Tier
-import com.ifmix.api.core.modules.iap.SubscriptionState
+import com.ifmix.api.core.modules.iap.dto.SubscriptionState
+import io.swagger.v3.oas.annotations.media.Schema
 import java.time.Instant
 import java.util.UUID
 
@@ -54,19 +55,19 @@ data class MeRes(
     val tier: Tier = Tier.FREE,
     /** 订阅是否有效 */
     val active: Boolean = false,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "订阅状态，与 VerifyRes.state 相同。active 等价于 state==ACTIVE。")
+    @Schema(description = "订阅状态，与 VerifyRes.state 相同。active 等价于 state==ACTIVE。")
     val state: SubscriptionState = SubscriptionState.EXPIRED,
     /** 订阅过期时间（epoch millis），永久权益为 null */
     val expiresAt: Long? = null,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "是否为匿名用户。匿名用户 email 为 null、tier 为 FREE。")
+    @Schema(description = "是否为匿名用户。匿名用户 email 为 null、tier 为 FREE。")
     val isAnonymous: Boolean = false,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "账号删除请求的预计处理时间（epoch millis）。未请求删除时为 null。前端可展示「账号将于 X 日删除，登录可取消」。")
+    @Schema(description = "账号删除请求的预计处理时间（epoch millis）。未请求删除时为 null。前端可展示「账号将于 X 日删除，登录可取消」。")
     val deletionScheduledAt: Long? = null,
 )
 
 data class DeleteAccountRes(
-    @io.swagger.v3.oas.annotations.media.Schema(description = "删除请求已接受")
+    @Schema(description = "删除请求已接受")
     val accepted: Boolean = true,
-    @io.swagger.v3.oas.annotations.media.Schema(description = "预计处理时间（epoch millis）")
+    @Schema(description = "预计处理时间（epoch millis）")
     val scheduledAt: Long,
 )

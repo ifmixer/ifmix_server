@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.antique.ScanRecord
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.modules.scan.ScanResult
+import com.ifmix.api.core.modules.scan.dto.ScanResult
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.springframework.stereotype.Repository
