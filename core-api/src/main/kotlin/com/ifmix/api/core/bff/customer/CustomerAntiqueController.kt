@@ -6,10 +6,10 @@ import com.ifmix.api.core.entity.antique.dto.ScanRecordView
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.service.scan.AntiqueService
-import com.ifmix.api.core.service.scan.NewScanReq
-import com.ifmix.api.core.service.scan.NewScanRes
-import com.ifmix.api.core.service.scan.UpdateScanReq
+import com.ifmix.api.core.modules.scan.AntiqueService
+import com.ifmix.api.core.modules.scan.NewScanReq
+import com.ifmix.api.core.modules.scan.NewScanRes
+import com.ifmix.api.core.modules.scan.UpdateScanReq
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean

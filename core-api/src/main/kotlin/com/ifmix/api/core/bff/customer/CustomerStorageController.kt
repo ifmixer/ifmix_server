@@ -8,7 +8,7 @@ import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.http.mustGetInstallId
-import com.ifmix.api.core.service.scan.AntiqueService
+import com.ifmix.api.core.modules.scan.AntiqueService
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean

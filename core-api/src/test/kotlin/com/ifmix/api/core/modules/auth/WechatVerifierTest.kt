@@ -1,10 +1,10 @@
-package com.ifmix.api.core.service.auth
+package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.service.appconfig.AppConfig
-import com.ifmix.api.core.service.appconfig.GoogleClientIds
+import com.ifmix.api.core.modules.appconfig.AppConfig
+import com.ifmix.api.core.modules.appconfig.GoogleClientIds
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -13,7 +13,6 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.client.MockRestServiceServer
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
-import org.springframework.test.web.client.match.MockRestRequestMatchers.requestToUriTemplate
 import org.springframework.test.web.client.response.MockRestResponseCreators.withServerError
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.RestClient

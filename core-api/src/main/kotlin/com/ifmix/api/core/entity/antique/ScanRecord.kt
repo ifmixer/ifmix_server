@@ -3,7 +3,7 @@ package com.ifmix.api.core.entity.antique
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps
 import com.ifmix.api.core.entity.enums.ScanStatus
-import com.ifmix.api.core.service.scan.ScanResult
+import com.ifmix.api.core.modules.scan.ScanResult
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 

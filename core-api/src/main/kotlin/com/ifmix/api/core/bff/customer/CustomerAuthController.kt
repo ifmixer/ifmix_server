@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.customer
 
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.service.auth.*
+import com.ifmix.api.core.modules.auth.*
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*

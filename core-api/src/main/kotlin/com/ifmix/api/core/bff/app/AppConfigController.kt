@@ -5,13 +5,12 @@ import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionView
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.types.ToggleRevisionRequest
-import com.ifmix.api.core.service.appconfig.AppConfigService
+import com.ifmix.api.core.modules.appconfig.AppConfigService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import java.util.UUID
 
 /**
  * App 管理端 BFF — AppConfigRevision 配置管理。

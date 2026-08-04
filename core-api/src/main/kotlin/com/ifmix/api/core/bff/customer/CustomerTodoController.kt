@@ -13,7 +13,7 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.mustGetInstallId
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.service.todo.TodoService
+import com.ifmix.api.core.modules.todo.TodoService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping

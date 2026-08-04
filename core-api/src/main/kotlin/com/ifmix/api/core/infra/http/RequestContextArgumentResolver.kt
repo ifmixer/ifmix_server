@@ -1,7 +1,6 @@
 package com.ifmix.api.core.infra.http
 
 import com.ifmix.api.core.infra.auth.AuthInterceptor
-import jakarta.servlet.http.HttpServletRequest
 import org.springframework.web.context.request.RequestAttributes
 import org.springframework.core.MethodParameter
 import org.springframework.web.bind.support.WebDataBinderFactory

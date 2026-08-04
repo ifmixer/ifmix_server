@@ -220,13 +220,13 @@ git commit -m "feat(auth): add code field to LoginReq and credential dispatch lo
 创建文件 `core-api/src/main/kotlin/com/ifmix/api/core/service/auth/WechatVerifier.kt`：
 
 ```kotlin
-package com.ifmix.api.core.service.auth
+package com.ifmix.api.core.modules.auth
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.service.appconfig.AppConfig
+import com.ifmix.api.core.modules.appconfig.AppConfig
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 
@@ -416,12 +416,12 @@ git commit -m "feat(auth): register wechat RestClient bean and add /auth/wechat 
 创建文件 `core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/WechatVerifierTest.kt`：
 
 ```kotlin
-package com.ifmix.api.core.service.auth
+package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.service.appconfig.AppConfig
-import com.ifmix.api.core.service.appconfig.GoogleClientIds
+import com.ifmix.api.core.modules.appconfig.AppConfig
+import com.ifmix.api.core.modules.appconfig.GoogleClientIds
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -578,7 +578,7 @@ class WechatVerifierTest {
 
 - [ ] **步骤 2：运行测试验证通过**
 
-运行：`./gradlew :core-api:test --tests "com.ifmix.api.core.service.auth.WechatVerifierTest" -v`
+运行：`./gradlew :core-api:test --tests "com.ifmix.api.core.modules.auth.WechatVerifierTest" -v`
 预期：所有 7 个测试 PASS
 
 - [ ] **步骤 3：Commit**
@@ -607,7 +607,7 @@ git commit -m "test(auth): add WechatVerifier unit tests"
 
 - [ ] **步骤 2：运行现有测试验证不破坏**
 
-运行：`./gradlew :core-api:test --tests "com.ifmix.api.core.service.auth.ProviderVerifierTest" -v`
+运行：`./gradlew :core-api:test --tests "com.ifmix.api.core.modules.auth.ProviderVerifierTest" -v`
 预期：所有 5 个现有测试 PASS
 
 - [ ] **步骤 3：Commit**

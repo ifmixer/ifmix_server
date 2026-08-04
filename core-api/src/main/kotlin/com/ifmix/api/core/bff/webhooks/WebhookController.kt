@@ -1,10 +1,9 @@
 package com.ifmix.api.core.bff.webhooks
 
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.repository.appconfig.AppConfigRevisionRepository
-import com.ifmix.api.core.service.iap.IapService
-import com.ifmix.api.core.service.iap.NotificationDecoder
-import com.ifmix.api.core.service.iap.Platform
+import com.ifmix.api.core.modules.appconfig.repo.AppConfigRevisionRepository
+import com.ifmix.api.core.modules.iap.IapService
+import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.jwk.ECKey

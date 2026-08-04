@@ -156,14 +156,14 @@ mkdir -p core-api/src/main/kotlin/com/ifmix/api/core/infra/{jimmer,http,auth,ai,
 
 | 源路径 | 目标路径 | 新 package |
 |--------|----------|-----------|
-| `common/jimmer/base/BaseCrudService.kt` | `service/base/BaseCrudService.kt` | `com.ifmix.api.core.service.base` |
-| `modules/appconfig/*.kt` | `service/appconfig/*.kt` | `com.ifmix.api.core.service.appconfig` |
-| `modules/auth/*.kt` | `service/auth/*.kt` | `com.ifmix.api.core.service.auth` |
-| `modules/antique/*.kt` | `service/antique/*.kt` | `com.ifmix.api.core.service.scan` |
-| `modules/collection/*.kt` | `service/collection/*.kt` | `com.ifmix.api.core.service.collection` |
-| `modules/iap/*.kt` | `service/iap/*.kt` | `com.ifmix.api.core.service.iap` |
-| `modules/feedback/*.kt` | `service/feedback/*.kt` | `com.ifmix.api.core.service.feedback` |
-| `modules/todo/*.kt` | `service/todo/*.kt` | `com.ifmix.api.core.service.todo` |
+| `common/jimmer/base/BaseCrudService.kt` | `service/base/BaseCrudService.kt` | `com.ifmix.api.core.modules.base` |
+| `modules/appconfig/*.kt` | `service/appconfig/*.kt` | `com.ifmix.api.core.modules.appconfig` |
+| `modules/auth/*.kt` | `service/auth/*.kt` | `com.ifmix.api.core.modules.auth` |
+| `modules/antique/*.kt` | `service/antique/*.kt` | `com.ifmix.api.core.modules.scan` |
+| `modules/collection/*.kt` | `service/collection/*.kt` | `com.ifmix.api.core.modules.collection` |
+| `modules/iap/*.kt` | `service/iap/*.kt` | `com.ifmix.api.core.modules.iap` |
+| `modules/feedback/*.kt` | `service/feedback/*.kt` | `com.ifmix.api.core.modules.feedback` |
+| `modules/todo/*.kt` | `service/todo/*.kt` | `com.ifmix.api.core.modules.todo` |
 
 - [ ] **1.5：移动 Infra 文件（common/ → infra/）+ 更新 package 声明**
 
@@ -187,7 +187,7 @@ mkdir -p core-api/src/main/kotlin/com/ifmix/api/core/infra/{jimmer,http,auth,ai,
 ```
 com.ifmix.api.core.common.jimmer.entity  →  com.ifmix.api.core.entity
 com.ifmix.api.core.common.jimmer.repository  →  com.ifmix.api.core.repository
-com.ifmix.api.core.common.jimmer.base  →  com.ifmix.api.core.repository.base (for Repo) / com.ifmix.api.core.service.base (for Service)
+com.ifmix.api.core.common.jimmer.base  →  com.ifmix.api.core.repository.base (for Repo) / com.ifmix.api.core.modules.base (for Service)
 com.ifmix.api.core.common.jimmer.filter  →  com.ifmix.api.core.infra.jimmer
 com.ifmix.api.core.common.jimmer.cluster  →  com.ifmix.api.core.infra.jimmer
 com.ifmix.api.core.common.http  →  com.ifmix.api.core.infra.http
@@ -198,7 +198,7 @@ com.ifmix.api.core.common.db  →  com.ifmix.api.core.infra.db
 com.ifmix.api.core.common.ratelimit  →  com.ifmix.api.core.infra.ratelimit
 com.ifmix.api.core.common.redis  →  com.ifmix.api.core.infra.redis
 com.ifmix.api.core.common.storage  →  com.ifmix.api.core.infra.storage
-com.ifmix.api.core.modules.  →  com.ifmix.api.core.service.
+com.ifmix.api.core.modules.  →  com.ifmix.api.core.modules.
 ```
 
 也需要同步更新 `bff/` 下所有 Controller 的 import。
