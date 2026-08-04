@@ -66,7 +66,7 @@ open class IapService(
         val verifyResult = verifier.verify(input)
 
         // 3. Map productId to product tier from AppConfig
-        val config = appConfigRepo.getByAppId(ctx) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
+        val config = appConfigRepo.getByAppId(ctx)
         val productTierMap = config.productTierMap
         val tier = tierOf(req.productId, productTierMap) ?: com.ifmix.api.core.infra.ratelimit.Tier.FREE
 

@@ -1,9 +1,8 @@
 package com.ifmix.api.core.service.appconfig
 
-import com.ifmix.api.core.entity.appconfig.AppConfigVersion
+import com.ifmix.api.core.entity.appconfig.AppConfigRevision
 import com.ifmix.api.core.infra.http.OperationContext
 import org.springframework.stereotype.Service
-import java.util.UUID
 
 /**
  * app_config_version 读取：按 appId / appleBundleId / androidPackageName 查 enabled=true 的当前版本，
@@ -16,10 +15,9 @@ class AppConfigRepo(
     private val repo: com.ifmix.api.core.repository.appconfig.AppConfigRepository,
 ) {
 
-    fun getByAppId(ctx: OperationContext): AppConfig? {
-        val uuid = ctx.appId ?: return null
-        val current = repo.findCurrentByAppId(ctx, uuid)
-        return current?.let { toFlat(it) }
+    fun getByAppId(ctx: OperationContext): AppConfig {
+        val current = repo.mustFindCurrentRevision(ctx)
+        return toFlat(current)
     }
 
     fun getByAppleBundleId(ctx: OperationContext, bundleId: String): AppConfig? {
@@ -32,7 +30,7 @@ class AppConfigRepo(
         return config?.let { toFlat(it) }
     }
 
-    private fun toFlat(config: AppConfigVersion): AppConfig {
+    private fun toFlat(config: AppConfigRevision): AppConfig {
         val c = config.content
         val apple = c.apple
         val google = c.google
@@ -42,7 +40,7 @@ class AppConfigRepo(
             id = config.id.toString(),
             appId = config.appId.toString(),
             authTenantId = config.authTenantId?.toString(),
-            revision = config.revision,
+            revision = config.revisionNumber,
             appleBundleId = config.appleBundleId,
             androidPackageName = config.androidPackageName,
             appleAppAppleId = apple.appAppleId,

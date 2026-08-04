@@ -1,0 +1,15 @@
+export com.ifmix.api.core.entity.appconfig.AppConfigRevision
+AppConfigRevisionView {
+    #allScalars
+}
+
+input AppConfigRevisionCreateInput {
+    appId
+    authTenantId
+    appleBundleId
+    androidPackageName
+    content
+    revisionNumber
+    enabled
+    slug
+}

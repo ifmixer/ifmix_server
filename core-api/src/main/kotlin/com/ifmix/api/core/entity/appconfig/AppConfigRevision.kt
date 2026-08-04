@@ -9,8 +9,8 @@ import java.util.UUID
  * per-app 配置版本。追加式；enabled=true 的为当前生效版本。
  */
 @Entity
-@Table(name = "core_app_config_version")
-interface AppConfigVersion : AppScopedProps, CreatedAtProps {
+@Table(name = "core_app_config_revision")
+interface AppConfigRevision : AppScopedProps, CreatedAtProps {
     @Id
     val id: UUID
 
@@ -24,7 +24,7 @@ interface AppConfigVersion : AppScopedProps, CreatedAtProps {
     @Serialized
     val content: ConfigContent
 
-    val revision: Int
+    val revisionNumber: Int
 
     /** 是否为当前生效版本 */
     val enabled: Boolean

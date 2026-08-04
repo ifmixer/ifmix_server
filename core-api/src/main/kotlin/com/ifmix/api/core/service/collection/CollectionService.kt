@@ -4,7 +4,7 @@ import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.infra.http.appIdAsUUID
+import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.entity.antique.ScanRecord
 import com.ifmix.api.core.entity.collection.Collection
 import com.ifmix.api.core.repository.collection.CollectionRepository
@@ -30,7 +30,7 @@ open class CollectionService(
      */
     @Transactional
     fun getDefault(ctx: OperationContext): Collection {
-        val appId = ctx.appIdAsUUID()
+        val appId = ctx.mustGetAppId()
         val userId = ctx.userId
         val installId = ctx.installId
 
@@ -71,7 +71,7 @@ open class CollectionService(
     fun addItem(ctx: OperationContext, req: AddItemReq): AddItemRes {
         val collectionId = req.collectionId ?: getDefault(ctx).id
 
-        val itemId = itemRepo.insertIfAbsent(ctx, ctx.appIdAsUUID(), collectionId, req.scanRecordId)
+        val itemId = itemRepo.insertIfAbsent(ctx, ctx.mustGetAppId(), collectionId, req.scanRecordId)
         return AddItemRes(id = itemId)
     }
 
@@ -84,7 +84,7 @@ open class CollectionService(
             throw ApiError(ErrorCode.INVALID_REQUEST, "scanRecordIds cannot be empty")
         }
 
-        val appId = ctx.appIdAsUUID()
+        val appId = ctx.mustGetAppId()
         val collectionId = req.collectionId ?: getDefault(ctx).id
 
         val deletedCount = itemRepo.softDeleteByScanIds(ctx, appId, collectionId, req.scanRecordIds)
@@ -97,7 +97,7 @@ open class CollectionService(
      */
     @Transactional
     fun listItems(ctx: OperationContext, req: ListItemsReq?): Page<ScanRecord> {
-        val appId = ctx.appIdAsUUID()
+        val appId = ctx.mustGetAppId()
 
         val collectionId = when {
             req?.collectionId != null -> UUID.fromString(req.collectionId)

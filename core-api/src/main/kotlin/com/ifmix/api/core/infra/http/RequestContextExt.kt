@@ -14,5 +14,3 @@ fun OperationContext.mustGetInstallId(): UUID =
 fun OperationContext.mustGetUserId(): UUID =
     userId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
 
-@Deprecated("Use mustGetAppId()", ReplaceWith("mustGetAppId()"))
-fun OperationContext.appIdAsUUID(): UUID = mustGetAppId()
