@@ -2,7 +2,7 @@ package com.ifmix.api.core.infra.ratelimit
 
 import org.babyfish.jimmer.sql.EnumItem
 import org.babyfish.jimmer.sql.EnumType
-
+import com.ifmix.api.core.infra.http.OperationContext
 /**
  * 限额档位：按用户身份自动判定。
  *
@@ -26,18 +26,18 @@ enum class Tier(val code: Int) {
             ?: throw IllegalArgumentException("Unknown Tier code: $code")
 
         /** 默认返回 FREE。 */
-        fun from(ctx: com.ifmix.api.core.infra.http.OperationContext): Tier = FREE
+        fun from(ctx: OperationContext): Tier = FREE
     }
 }
 
 /** 将请求上下文映射为一个 Tier。默认实现一律返回 FREE。 */
 interface TierResolver {
-    fun resolve(ctx: com.ifmix.api.core.infra.http.OperationContext): Tier
+    fun resolve(ctx: OperationContext): Tier
 }
 
 /** 基础实现：所有用户走 FREE 档。后续可按付费等级/白名单等扩展。 */
 class FreeTierResolver : TierResolver {
-    override fun resolve(ctx: com.ifmix.api.core.infra.http.OperationContext): Tier = Tier.FREE
+    override fun resolve(ctx: OperationContext): Tier = Tier.FREE
 }
 
 /**
@@ -49,11 +49,11 @@ interface RateLimitSubjectResolver {
     /**
      * @param clientIp 客户端真实 IP（由调用方传入）
      */
-    fun resolve(ctx: com.ifmix.api.core.infra.http.OperationContext, clientIp: String): String
+    fun resolve(ctx: OperationContext, clientIp: String): String
 }
 
 /** 默认实现：userId ?: ip ?: "unknown"。 */
 class DefaultRateLimitSubjectResolver : RateLimitSubjectResolver {
-    override fun resolve(ctx: com.ifmix.api.core.infra.http.OperationContext, clientIp: String): String =
+    override fun resolve(ctx: OperationContext, clientIp: String): String =
         ctx.userId?.toString() ?: if (clientIp.isNotBlank()) clientIp else "unknown"
 }

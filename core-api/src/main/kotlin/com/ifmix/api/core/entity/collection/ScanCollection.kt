@@ -6,8 +6,8 @@ import com.ifmix.api.core.entity.SoftDeletableProps
 import java.util.UUID
 
 @Entity
-@Table(name = "core_collection")
-interface Collection : AppScopedProps, SoftDeletableProps {
+@Table(name = "core_scan_collection")
+interface ScanCollection : AppScopedProps, SoftDeletableProps {
 
     @Id
     val id: UUID
@@ -19,5 +19,5 @@ interface Collection : AppScopedProps, SoftDeletableProps {
     val isDefault: Boolean
 
     @OneToMany(mappedBy = "collection")
-    val items: List<CollectionItem>
+    val items: List<ScanCollectionItem>
 }

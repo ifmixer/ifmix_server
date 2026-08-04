@@ -1,32 +1,28 @@
 package com.ifmix.api.core.repository.collection
 
-import com.ifmix.api.core.entity.collection.CollectionItem
-import com.ifmix.api.core.entity.collection.dto.CollectionItemView
+import com.ifmix.api.core.entity.collection.ScanCollectionItem
+import com.ifmix.api.core.entity.collection.dto.ScanCollectionItemView
 import com.ifmix.api.core.entity.collection.appId
 import com.ifmix.api.core.entity.collection.collectionId
-import com.ifmix.api.core.entity.collection.createdAt
-import com.ifmix.api.core.entity.collection.id
 import com.ifmix.api.core.entity.collection.scanRecordId
 import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
-import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
-/** CollectionItem repository with custom business operations */
 @Repository
-class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<CollectionItem>(sql, CollectionItem::class) {
+class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanCollectionItem>(sql, ScanCollectionItem::class) {
 
     /**
      * Idempotent insert - returns existing or new item ID.
-     * @LogicalDeleted auto-filters deleted items.
      */
     fun insertIfAbsent(ctx: OperationContext, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
-        val existing = sql.createQuery(CollectionItem::class) {
+        val existing = sql.createQuery(ScanCollectionItem::class) {
             where(table.appId eq appId)
             where(table.collectionId eq collectionId)
             where(table.scanRecordId eq scanRecordId)
@@ -35,9 +31,8 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
 
         if (existing != null) return existing.id
 
-        // Insert new item using Jimmer draft syntax
         val now = Instant.now()
-        val item = CollectionItem {
+        val item = ScanCollectionItem {
             id = UuidV7.generate()
             this.appId = appId
             collection { id = collectionId }
@@ -51,11 +46,10 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
 
     /**
      * Batch soft delete for multiple scan records in a collection.
-     * @LogicalDeleted auto-filters already-deleted items.
      */
     fun softDeleteByScanIds(ctx: OperationContext, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Long {
         if (scanRecordIds.isEmpty()) return 0L
-        val items = sql.createQuery(CollectionItem::class) {
+        val items = sql.createQuery(ScanCollectionItem::class) {
             where(table.appId eq appId)
             where(table.collectionId eq collectionId)
             where(table.scanRecordId valueIn scanRecordIds)
@@ -66,8 +60,7 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
     }
 
     /**
-     * Paginated listing with cursor support, fetching CollectionItemView (includes scanRecord).
-     * @LogicalDeleted auto-filters deleted items.
+     * Paginated listing with cursor support, fetching ScanCollectionItemView (includes scanRecord).
      */
     fun findItemsByCursor(
         ctx: OperationContext,
@@ -75,27 +68,26 @@ class CollectionItemRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collect
         collectionId: UUID,
         limit: Int,
         cursor: UUID?,
-    ): Page<CollectionItemView> {
-        val items = sql.createQuery(CollectionItem::class) {
+    ): Page<ScanCollectionItemView> {
+        val items = sql.createQuery(ScanCollectionItem::class) {
             where(table.appId eq appId)
             where(table.collectionId eq collectionId)
             if (cursor != null) {
-                where(table.id lt cursor)
+                where(table.getId<UUID>() lt cursor)
             }
-            orderBy(table.id.desc())
-            select(table.fetch(CollectionItemView::class))
+            orderBy(table.getId<UUID>().desc())
+            select(table.fetch(ScanCollectionItemView::class))
         }.limit(limit + 1).execute()
 
         return Page.of(items, limit) { it.id.toString() }
     }
 
-    /** Check if a scan record exists in a collection (non-deleted, auto-filtered by @LogicalDeleted) */
+    /** Check if a scan record exists in a collection */
     fun existsByScanRecordId(ctx: OperationContext, collectionId: UUID, scanRecordId: UUID): Boolean {
-        val results = sql.createQuery(CollectionItem::class) {
+        return sql.createQuery(ScanCollectionItem::class) {
             where(table.collectionId eq collectionId)
             where(table.scanRecordId eq scanRecordId)
             select(table)
-        }.limit(1).execute()
-        return results.isNotEmpty()
+        }.limit(1).execute().isNotEmpty()
     }
 }

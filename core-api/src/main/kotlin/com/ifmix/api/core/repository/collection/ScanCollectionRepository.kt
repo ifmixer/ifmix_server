@@ -1,6 +1,6 @@
 package com.ifmix.api.core.repository.collection
 
-import com.ifmix.api.core.entity.collection.Collection
+import com.ifmix.api.core.entity.collection.ScanCollection
 import com.ifmix.api.core.entity.collection.appId
 import com.ifmix.api.core.entity.collection.installId
 import com.ifmix.api.core.entity.collection.isDefault
@@ -12,15 +12,13 @@ import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
-/** Collection repository with custom queries */
 @Repository
-class CollectionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collection>(sql, Collection::class) {
+class ScanCollectionRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanCollection>(sql, ScanCollection::class) {
 
     /** Find default collection for app by optional userId or installId */
-    fun findDefault(ctx: OperationContext, appId: UUID, installId: UUID?, userId: UUID?): Collection? {
-        // Try userId first
+    fun findDefault(ctx: OperationContext, appId: UUID, installId: UUID?, userId: UUID?): ScanCollection? {
         if (userId != null) {
-            val byUser = sql.createQuery(Collection::class) {
+            val byUser = sql.createQuery(ScanCollection::class) {
                 where(table.appId eq appId)
                 where(table.isDefault eq true)
                 where(table.userId eq userId)
@@ -28,9 +26,8 @@ class CollectionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Collection>
             }.fetchOneOrNull()
             if (byUser != null) return byUser
         }
-        // Fallback to installId
         if (installId != null) {
-            return sql.createQuery(Collection::class) {
+            return sql.createQuery(ScanCollection::class) {
                 where(table.appId eq appId)
                 where(table.isDefault eq true)
                 where(table.installId eq installId)

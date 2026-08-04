@@ -34,7 +34,7 @@ open class AntiqueService(
     @Transactional
     fun newScan(ctx: OperationContext, req: NewScanReq): NewScanRes {
         // 限流检查
-        val subject = ctx.appId.toString()
+        val subject = ctx.clientIp.toString()
         val limitResult = rateLimiter.check(ctx, subject)
         if (!limitResult.allowed) {
             throw ApiError(ErrorCode.RATE_LIMITED, "daily limit exceeded")

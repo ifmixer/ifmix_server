@@ -3,6 +3,8 @@ package com.ifmix.api.core.infra.ratelimit
 import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Instant
 import java.time.ZoneId
+import com.ifmix.api.core.infra.http.OperationContext
+import java.util.concurrent.TimeUnit.SECONDS
 
 /**
  * UTC 日固定窗口限流器。
@@ -20,7 +22,7 @@ class RateLimiter(
      * 检查是否超限。命中则抛 RATE_LIMITED；未命中则消耗一次配额并返回 true。
      * 同时返回当前已用次数供调试。
      */
-    fun check(ctx: com.ifmix.api.core.infra.http.OperationContext, subject: String): CheckResult {
+    fun check(ctx: OperationContext, subject: String): CheckResult {
         val tier = tierResolver.resolve(ctx)
         val limit = config.limitFor(tier)
         val dayKey = utcDayKey(subject)
@@ -29,7 +31,7 @@ class RateLimiter(
         if (count == 1L) {
             // 首日首次写入，设置 TTL 到当日结束
             val ttl = secondsUntilEndOfDay()
-            redis.expire(dayKey, ttl, java.util.concurrent.TimeUnit.SECONDS)
+            redis.expire(dayKey, ttl, SECONDS)
         }
 
         return if ((count ?: 0) >= limit) {

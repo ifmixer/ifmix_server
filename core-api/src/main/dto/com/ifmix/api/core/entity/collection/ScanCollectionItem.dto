@@ -1,0 +1,8 @@
+export com.ifmix.api.core.entity.collection.ScanCollectionItem
+
+ScanCollectionItemView {
+    #allScalars
+    scanRecord {
+        #allScalars
+    }
+}
