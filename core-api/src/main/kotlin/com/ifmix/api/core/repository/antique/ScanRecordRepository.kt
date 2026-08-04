@@ -2,16 +2,11 @@ package com.ifmix.api.core.repository.antique
 
 import com.ifmix.api.core.entity.antique.ImageRef
 import com.ifmix.api.core.entity.antique.ScanRecord
-import com.ifmix.api.core.entity.antique.appId
-import com.ifmix.api.core.entity.antique.id
 import com.ifmix.api.core.entity.enums.ScanStatus
-import com.ifmix.api.core.infra.db.CursorQueryInput
-import com.ifmix.api.core.infra.db.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.repository.base.BaseAppCrudRepository
-import com.ifmix.api.core.service.antique.ScanResult
+import com.ifmix.api.core.service.scan.ScanResult
 import org.babyfish.jimmer.sql.kt.KSqlClient
-import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
 import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant

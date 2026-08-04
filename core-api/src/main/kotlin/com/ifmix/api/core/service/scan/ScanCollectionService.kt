@@ -1,4 +1,4 @@
-package com.ifmix.api.core.service.collection
+package com.ifmix.api.core.service.scan
 
 import com.ifmix.api.core.entity.collection.ScanCollection
 import com.ifmix.api.core.entity.collection.dto.ScanCollectionItemView

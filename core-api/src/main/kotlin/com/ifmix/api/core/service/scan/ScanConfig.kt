@@ -1,4 +1,4 @@
-package com.ifmix.api.core.service.antique
+package com.ifmix.api.core.service.scan
 
 import com.ifmix.api.core.infra.ratelimit.RateLimitConfig
 import com.ifmix.api.core.infra.ratelimit.RateLimiter
@@ -18,7 +18,7 @@ import org.springframework.data.redis.core.StringRedisTemplate
  */
 @Configuration
 @EnableConfigurationProperties(RateLimitConfig::class)
-class AntiqueConfig {
+class ScanConfig {
 
     @Bean
     @ConditionalOnMissingBean(com.ifmix.api.core.infra.ratelimit.TierResolver::class)

@@ -3,15 +3,13 @@ package com.ifmix.api.core.infra.ai
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.service.antique.ScanResult
-import com.ifmix.api.core.service.antique.ScanInput
-import com.ifmix.api.core.service.antique.ScanRunner
+import com.ifmix.api.core.service.scan.ScanResult
+import com.ifmix.api.core.service.scan.ScanInput
+import com.ifmix.api.core.service.scan.ScanRunner
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.content.Media
-import org.springframework.util.MimeTypeUtils
-import java.net.URI
 
 /**
  * ScanRunner 基于 Spring AI OpenAI-compatible model.

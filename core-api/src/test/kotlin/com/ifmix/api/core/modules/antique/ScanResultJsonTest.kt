@@ -1,4 +1,4 @@
-package com.ifmix.api.core.service.antique
+package com.ifmix.api.core.service.scan
 
 import com.ifmix.api.core.entity.enums.ScanStatus
 import org.assertj.core.api.Assertions.assertThat

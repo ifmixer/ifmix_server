@@ -1,12 +1,10 @@
-package com.ifmix.api.core.service.antique
+package com.ifmix.api.core.service.scan
 
 import com.ifmix.api.core.entity.antique.ImageRef
 import com.ifmix.api.core.entity.antique.ScanRecord
 import com.ifmix.api.core.entity.antique.dto.ScanRecordView
-import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
-import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
