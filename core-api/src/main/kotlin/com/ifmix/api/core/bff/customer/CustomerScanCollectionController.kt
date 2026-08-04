@@ -1,14 +1,14 @@
 package com.ifmix.api.core.bff.customer
 
 import com.ifmix.api.core.entity.collection.dto.ScanCollectionItemView
-import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.scan.service.AddItemReq
-import com.ifmix.api.core.modules.scan.service.AddItemRes
-import com.ifmix.api.core.modules.scan.service.GetDefaultRes
-import com.ifmix.api.core.modules.scan.service.ListItemsReq
-import com.ifmix.api.core.modules.scan.service.RemoveItemsReq
-import com.ifmix.api.core.modules.scan.service.RemoveItemsRes
+import com.ifmix.api.core.modules.scan.dto.AddItemReq
+import com.ifmix.api.core.modules.scan.dto.AddItemRes
+import com.ifmix.api.core.modules.scan.dto.GetDefaultRes
+import com.ifmix.api.core.modules.scan.dto.ListItemsReq
+import com.ifmix.api.core.modules.scan.dto.RemoveItemsReq
+import com.ifmix.api.core.modules.scan.dto.RemoveItemsRes
 import com.ifmix.api.core.modules.scan.service.ScanCollectionService
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid

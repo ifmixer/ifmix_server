@@ -1,8 +1,10 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.infra.dto.ContentType
-import com.ifmix.api.core.infra.dto.UploadCategory
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.modules.scan.dto.PresignDownloadReq
+import com.ifmix.api.core.modules.scan.dto.PresignUploadReq
+import com.ifmix.api.core.modules.scan.dto.PresignedDownloadResponse
+import com.ifmix.api.core.modules.scan.dto.PresignedUploadResponse
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
@@ -95,21 +97,4 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
         }
     }
 
-    // ---- DTOs ----
-
-    data class PresignUploadReq(
-        val category: UploadCategory,
-        val contentType: ContentType,
-    )
-
-    data class PresignDownloadReq(
-        /** ScanRecord.imageKeys 中的 key，presignUpload 返回的 imageKey */
-        val imageKey: String,
-        /** 签名 URL 有效时长（秒），默认 3600，上限 86400 */
-        @io.swagger.v3.oas.annotations.media.Schema(defaultValue = "3600", maximum = "86400")
-        val durationSeconds: Long? = null,
-    )
-
-    data class PresignedUploadResponse(val uploadUrl: String, val imageKey: String)
-    data class PresignedDownloadResponse(val downloadUrl: String)
 }

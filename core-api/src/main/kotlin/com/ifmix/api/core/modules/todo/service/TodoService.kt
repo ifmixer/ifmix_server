@@ -4,8 +4,8 @@ import com.ifmix.api.core.entity.todo.Todo
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
 import com.ifmix.api.core.entity.todo.dto.TodoView
-import com.ifmix.api.core.infra.db.CursorQueryInput
-import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.dto.CursorQueryInput
+import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext

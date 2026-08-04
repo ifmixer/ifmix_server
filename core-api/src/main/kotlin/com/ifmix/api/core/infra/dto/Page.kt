@@ -1,4 +1,4 @@
-package com.ifmix.api.core.infra.db
+package com.ifmix.api.core.infra.dto
 
 import io.swagger.v3.oas.annotations.media.Schema
 

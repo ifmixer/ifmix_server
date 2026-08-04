@@ -2,8 +2,8 @@ package com.ifmix.api.core.infra.repo
 
 import com.ifmix.api.core.infra.dto.SortOrder
 import com.ifmix.api.core.entity.AppScopedProps
-import com.ifmix.api.core.infra.db.CursorQueryInput
-import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.dto.CursorQueryInput
+import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.db.RepoContext
 import org.babyfish.jimmer.View
 import org.babyfish.jimmer.sql.kt.KSqlClient

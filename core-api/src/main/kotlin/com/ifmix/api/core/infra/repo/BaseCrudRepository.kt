@@ -1,7 +1,7 @@
 package com.ifmix.api.core.infra.repo
 
-import com.ifmix.api.core.infra.db.CursorQueryInput
-import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.dto.CursorQueryInput
+import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.db.RepoContext
 import org.babyfish.jimmer.Input
 import org.babyfish.jimmer.View

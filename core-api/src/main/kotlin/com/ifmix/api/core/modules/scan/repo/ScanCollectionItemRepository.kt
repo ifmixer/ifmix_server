@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.collection.dto.ScanCollectionItemView
 import com.ifmix.api.core.entity.collection.appId
 import com.ifmix.api.core.entity.collection.collectionId
 import com.ifmix.api.core.entity.collection.scanRecordId
-import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository

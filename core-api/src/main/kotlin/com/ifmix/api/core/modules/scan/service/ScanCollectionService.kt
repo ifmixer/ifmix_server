@@ -2,12 +2,17 @@ package com.ifmix.api.core.modules.scan.service
 
 import com.ifmix.api.core.entity.collection.ScanCollection
 import com.ifmix.api.core.entity.collection.dto.ScanCollectionItemView
-import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
+import com.ifmix.api.core.modules.scan.dto.AddItemReq
+import com.ifmix.api.core.modules.scan.dto.AddItemRes
+import com.ifmix.api.core.modules.scan.dto.ListItemsReq
+import com.ifmix.api.core.modules.scan.dto.RemoveItemsReq
+import com.ifmix.api.core.modules.scan.dto.RemoveItemsRes
 import com.ifmix.api.core.modules.scan.repo.ScanCollectionRepository
 import com.ifmix.api.core.modules.scan.repo.ScanCollectionItemRepository
 import org.springframework.stereotype.Service
@@ -78,11 +83,3 @@ open class ScanCollectionService(
         return itemRepo.findItemsByCursor(ctx.repoCtx, appId, collectionId, limit, cursor)
     }
 }
-
-// Request/Response DTOs
-data class AddItemReq(val collectionId: UUID? = null, val scanRecordId: UUID)
-data class AddItemRes(val id: UUID)
-data class RemoveItemsReq(val collectionId: UUID? = null, val scanRecordIds: List<UUID>)
-data class RemoveItemsRes(val removed: Int)
-data class ListItemsReq(val collectionId: UUID? = null, val limit: Int? = null, val cursor: String? = null)
-data class GetDefaultRes(val id: UUID, val isDefault: Boolean, val createdAt: Long?)

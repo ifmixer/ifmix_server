@@ -3,8 +3,8 @@ package com.ifmix.api.core.modules.scan.service
 import com.ifmix.api.core.entity.antique.ImageRef
 import com.ifmix.api.core.entity.antique.ScanRecord
 import com.ifmix.api.core.entity.antique.dto.ScanRecordView
-import com.ifmix.api.core.infra.db.CursorQueryInput
-import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.dto.CursorQueryInput
+import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
@@ -14,8 +14,11 @@ import com.ifmix.api.core.modules.scan.ScanInput
 import com.ifmix.api.core.modules.scan.ScanMediaItem
 import com.ifmix.api.core.modules.scan.ScanResult
 import com.ifmix.api.core.modules.scan.ScanRunner
+import com.ifmix.api.core.modules.scan.dto.NewScanImageInput
+import com.ifmix.api.core.modules.scan.dto.NewScanReq
+import com.ifmix.api.core.modules.scan.dto.NewScanRes
+import com.ifmix.api.core.modules.scan.dto.UpdateScanReq
 import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
-import io.swagger.v3.oas.annotations.media.Schema
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
@@ -101,24 +104,3 @@ open class AntiqueService(
         return ScanRecordView(record)
     }
 }
-
-data class NewScanImageInput(
-    val imageKey: String,
-    val mediaType: String,
-)
-
-data class NewScanReq(val images: List<NewScanImageInput>)
-
-data class NewScanRes(
-    val id: UUID,
-    val result: ScanResult,
-)
-
-data class UpdateScanReq(
-    @Schema(description = "记录 ID（UUIDv7）")
-    val id: UUID,
-    @Schema(description = "新名称。不传=不修改；传 null=清空（回退到 result.name 快照）；传字符串=设为用户自定义名称。")
-    val name: String? = null,
-    @Schema(description = "用户备注。不传=不修改；传 null=清空；传字符串=设为用户备注。")
-    val userNotes: String? = null,
-)

@@ -1,7 +1,7 @@
 package com.ifmix.api.core.infra.service
 
-import com.ifmix.api.core.infra.db.CursorQueryInput
-import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.dto.CursorQueryInput
+import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext

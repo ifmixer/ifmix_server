@@ -1,5 +1,6 @@
 package com.ifmix.api.core.infra.db
 
+import com.ifmix.api.core.infra.dto.CursorQueryInput
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 

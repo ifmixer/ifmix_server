@@ -12,6 +12,8 @@ import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.ratelimit.Tier
+import com.ifmix.api.core.modules.iap.dto.VerifyReq
+import com.ifmix.api.core.modules.iap.dto.VerifyRes
 import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.ifmix.api.core.modules.iap.NotificationType
 import com.ifmix.api.core.modules.iap.Platform
@@ -236,17 +238,3 @@ open class IapService(
         return try { UUID.fromString(this) } catch (e: Exception) { null }
     }
 }
-
-data class VerifyReq(
-    val platform: Platform,
-    val signedTransaction: String? = null,
-    val purchaseToken: String? = null,
-    val productId: String,
-)
-
-data class VerifyRes(
-    val expiresAt: Long?,
-    val state: SubscriptionState,
-    val productId: String,
-    val tier: Tier,
-)
