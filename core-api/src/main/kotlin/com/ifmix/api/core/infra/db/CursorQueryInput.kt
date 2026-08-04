@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.db
 
-import com.ifmix.api.core.infra.types.SortOrder
+import com.ifmix.api.core.infra.dto.SortOrder
 import io.swagger.v3.oas.annotations.media.Schema
 
 /**

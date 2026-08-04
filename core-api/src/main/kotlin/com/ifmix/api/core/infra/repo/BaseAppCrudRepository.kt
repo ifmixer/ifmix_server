@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.repo
 
-import com.ifmix.api.core.infra.types.SortOrder
+import com.ifmix.api.core.infra.dto.SortOrder
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page

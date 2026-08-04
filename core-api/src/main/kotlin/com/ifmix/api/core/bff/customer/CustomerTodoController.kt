@@ -1,8 +1,8 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.infra.types.ByIdRequest
-import com.ifmix.api.core.infra.types.ByIdsRequest
-import com.ifmix.api.core.infra.types.OperationResult
+import com.ifmix.api.core.infra.dto.ByIdRequest
+import com.ifmix.api.core.infra.dto.ByIdsRequest
+import com.ifmix.api.core.infra.dto.OperationResult
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
 import com.ifmix.api.core.entity.todo.dto.TodoView

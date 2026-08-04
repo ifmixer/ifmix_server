@@ -1,4 +1,4 @@
-package com.ifmix.api.core.infra.types
+package com.ifmix.api.core.infra.dto
 
 import java.util.UUID
 
@@ -30,3 +30,5 @@ data class ToggleRevisionRequest(
     val id: UUID,
     val enabled: Boolean,
 )
+
+data class CreateOneRes(val id: UUID)

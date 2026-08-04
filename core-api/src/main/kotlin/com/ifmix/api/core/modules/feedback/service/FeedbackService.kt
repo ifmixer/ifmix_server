@@ -1,12 +1,12 @@
 package com.ifmix.api.core.modules.feedback.service
 
-import com.ifmix.api.core.bff.customer.SubmitFeedbackReq
-import com.ifmix.api.core.bff.customer.SubmitFeedbackRes
 import com.ifmix.api.core.entity.feedback.Feedback
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.http.mustGetInstallId
 import com.ifmix.api.core.infra.service.BaseAppCrudService
+import com.ifmix.api.core.infra.dto.CreateOneRes
+import com.ifmix.api.core.modules.feedback.dto.SubmitFeedbackReq
 import com.ifmix.api.core.modules.feedback.repo.FeedbackRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -17,7 +17,7 @@ class FeedbackService(
 ) : BaseAppCrudService<Feedback>(feedbackRepo) {
 
     @Transactional
-    fun submit(ctx: OperationContext, req: SubmitFeedbackReq): SubmitFeedbackRes {
+    fun submit(ctx: OperationContext, req: SubmitFeedbackReq): CreateOneRes {
         val appId = ctx.mustGetAppId()
         val installId = ctx.mustGetInstallId()
         val userId = ctx.userId
@@ -31,6 +31,6 @@ class FeedbackService(
             comment = req.comment,
             scanRecordId = req.scanRecordId,
         )
-        return SubmitFeedbackRes(id = saved.id)
+        return CreateOneRes(id = saved.id)
     }
 }

@@ -25,6 +25,6 @@ class CursorQueryInputTest {
     fun defaultsToIdDescending() {
         val input = CursorQueryInput()
         assertThat(input.effectiveSortBy()).isEqualTo("id")
-        assertThat(input.effectiveOrder()).isEqualTo(com.ifmix.api.core.infra.types.SortOrder.DESC)
+        assertThat(input.effectiveOrder()).isEqualTo(com.ifmix.api.core.infra.dto.SortOrder.DESC)
     }
 }

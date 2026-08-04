@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.customer
 
-import com.ifmix.api.core.infra.types.ContentType
-import com.ifmix.api.core.infra.types.UploadCategory
+import com.ifmix.api.core.infra.dto.ContentType
+import com.ifmix.api.core.infra.dto.UploadCategory
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
