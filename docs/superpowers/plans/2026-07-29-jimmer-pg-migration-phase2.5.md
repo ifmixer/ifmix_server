@@ -157,7 +157,7 @@ mkdir -p core-api/src/main/kotlin/com/ifmix/api/core/infra/{jimmer,http,auth,ai,
 | 源路径 | 目标路径 | 新 package |
 |--------|----------|-----------|
 | `common/jimmer/base/BaseCrudService.kt` | `service/base/BaseCrudService.kt` | `com.ifmix.api.core.modules.base` |
-| `modules/appconfig/*.kt` | `service/appconfig/*.kt` | `com.ifmix.api.core.modules.appconfig` |
+| `modules/appconfig/*.kt` | `service/appconfig/*.kt` | `com.ifmix.api.core.modules.app` |
 | `modules/auth/*.kt` | `service/auth/*.kt` | `com.ifmix.api.core.modules.auth` |
 | `modules/antique/*.kt` | `service/antique/*.kt` | `com.ifmix.api.core.modules.scan` |
 | `modules/collection/*.kt` | `service/collection/*.kt` | `com.ifmix.api.core.modules.collection` |

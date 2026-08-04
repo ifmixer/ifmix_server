@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.iap
+package com.ifmix.api.core.modules.iap.service
 
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -8,44 +8,49 @@ import com.ifmix.api.core.modules.iap.repo.StoreNotificationRepository
 import com.ifmix.api.core.entity.iap.Subscription
 import com.ifmix.api.core.entity.iap.SubscriptionDraft
 import com.ifmix.api.core.entity.iap.StoreNotification
-import com.ifmix.api.core.modules.appconfig.repo.AppConfigRevisionRepository
+import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.ratelimit.Tier
+import com.ifmix.api.core.modules.iap.NotificationDecoder
+import com.ifmix.api.core.modules.iap.NotificationType
+import com.ifmix.api.core.modules.iap.Platform
+import com.ifmix.api.core.modules.iap.PurchaseVerifier
+import com.ifmix.api.core.modules.iap.SubStatus
+import com.ifmix.api.core.modules.iap.SubscriptionState
+import com.ifmix.api.core.modules.iap.VerifyInput
+import com.ifmix.api.core.modules.iap.statusFromExpiry
+import com.ifmix.api.core.modules.iap.tierOf
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-/**
- * IAP 服务：购买验证、订阅状态管理、商店通知处理。
- */
-@org.springframework.stereotype.Service
+@Service
 open class IapService(
-    @org.springframework.beans.factory.annotation.Qualifier("appleVerifier")
+    @Qualifier("appleVerifier")
     private val appleVerifier: PurchaseVerifier,
-    @org.springframework.beans.factory.annotation.Qualifier("googleVerifier")
+    @Qualifier("googleVerifier")
     private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
     private val storeNotificationRepo: StoreNotificationRepository,
     private val appConfigRepo: AppConfigRevisionRepository,
 ) {
 
-    // Map of platform name to verifier
     private val verifierMap: Map<String, PurchaseVerifier> = hashMapOf(
         "APPLE" to appleVerifier,
         "GOOGLE" to googleVerifier
     )
 
-    /**
-     * 验证一笔购买并写入订阅记录。
-     */
     @Transactional
     fun verifyPurchase(ctx: OperationContext, req: VerifyReq): VerifyRes {
+        val rc = ctx.repoCtx
         val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
-        // 1. Select verifier based on platform (already an enum, no parsing needed)
         val verifier = verifierMap[req.platform.name] ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: ${req.platform}")
 
-        // 2. Verify purchase using the selected verifier
         val purchaseToken = req.purchaseToken ?: req.signedTransaction
             ?: throw ApiError(ErrorCode.INVALID_REQUEST, "purchaseToken or signedTransaction required")
         val input = VerifyInput(
@@ -56,18 +61,15 @@ open class IapService(
         )
         val verifyResult = verifier.verify(input)
 
-        // 3. Map productId to product tier from AppConfig
-        val config = appConfigRepo.mustFindCurrentRevision(ctx)
+        val config = appConfigRepo.mustFindCurrentRevision(rc, appId)
         val productTierMap = config.content.iap.productTierMap
-        val tier = tierOf(req.productId, productTierMap) ?: com.ifmix.api.core.infra.ratelimit.Tier.FREE
+        val tier = tierOf(req.productId, productTierMap) ?: Tier.FREE
 
-        // 4. Determine subscription PxID - use originalTransactionId or generate one
         val subscriptionPxid = verifyResult.originalTransactionId ?: run {
             "pxid-${req.platform.name}-${UuidV7.generate()}"
         }
 
-        // Check for existing active subscription with same pxid (idempotency)
-        val existingSub = subscriptionRepo.findActiveByPxid(ctx, appId, subscriptionPxid)
+        val existingSub = subscriptionRepo.findActiveByPxid(rc, appId, subscriptionPxid)
         if (existingSub != null) {
             return VerifyRes(
                 expiresAt = existingSub.expiryDate?.toEpochMilli(),
@@ -77,7 +79,6 @@ open class IapService(
             )
         }
 
-        // 5. Map subStatus from VerifyResult to internal storage format
         val subStatus = when (verifyResult.subStatus) {
             SubStatus.ACCEPTED -> "accepted"
             SubStatus.INCOMPLETE -> "incomplete"
@@ -92,7 +93,6 @@ open class IapService(
             else -> "active"
         }
 
-        // 6. Construct and upsert Subscription entity
         val now = Instant.now()
         val subscription = Subscription {
             id = UuidV7.generate()
@@ -116,9 +116,8 @@ open class IapService(
             updatedAt = now
         }
 
-        val savedSub = subscriptionRepo.upsertSubscription(ctx, subscription)
+        val savedSub = subscriptionRepo.upsertSubscription(rc, subscription)
 
-        // 7. Return result
         return VerifyRes(
             expiresAt = savedSub.expiryDate?.toEpochMilli(),
             state = statusFromExpiry(savedSub.expiryDate),
@@ -127,94 +126,68 @@ open class IapService(
         )
     }
 
-    /**
-     * Handle Apple Server Notifications.
-     */
     fun handleAppleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) {
         handleNotification(ctx, rawPayload, decoder, "APPLE")
     }
 
-    /**
-     * Handle Google Play notification.
-     */
     fun handleGoogleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) {
         handleNotification(ctx, rawPayload, decoder, "GOOGLE")
     }
 
-    /**
-     * Internal unified notification handling logic.
-     */
     @Transactional
     fun handleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder, platform: String) {
+        val rc = ctx.repoCtx
         val appId = ctx.appId ?: return
 
-        // Decode the notification
         val decodedPlatform = if (platform == "APPLE") Platform.APPLE else Platform.GOOGLE
         val decoderResult = decoder.decode(rawPayload, decodedPlatform)
 
-        // Skip if no subscriptionPxid found
         if (decoderResult.subscriptionPxid.isNullOrEmpty()) {
             return
         }
 
-        // Check idempotency using platform + subscriptionPxid as key
-        if (storeNotificationRepo.existsByPlatformAndToken(ctx, platform, decoderResult.subscriptionPxid)) {
-            // Already processed, skip
+        if (storeNotificationRepo.existsByPlatformAndToken(rc, platform, decoderResult.subscriptionPxid)) {
             return
         }
 
-        // Find the subscription by subscriptionPxid
-        var subscription = subscriptionRepo.findActiveByPxid(ctx, appId, decoderResult.subscriptionPxid)
+        var subscription = subscriptionRepo.findActiveByPxid(rc, appId, decoderResult.subscriptionPxid)
         if (subscription == null) {
-            // Try finding any (including inactive/deleted but not physically deleted) subscription
-            subscription = subscriptionRepo.findByPxid(ctx, appId, decoderResult.subscriptionPxid)
+            subscription = subscriptionRepo.findByPxid(rc, appId, decoderResult.subscriptionPxid)
         }
 
-        // If subscription doesn't exist at all, create a minimal record or just log
         if (subscription == null) {
-            // Log the notification without subscription reference
-            createStoreNotification(ctx, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+            createStoreNotification(rc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
             return
         }
 
-        // Update subscription based on notification type
         when (decoderResult.type) {
-            NotificationType.REFUNDED -> updateSubscription(ctx, subscription) {
+            NotificationType.REFUNDED -> updateSubscription(rc, subscription) {
                 active = false
                 subStatus = "refunded"
                 expiryDate = null
             }
-            NotificationType.CANCELLED -> updateSubscription(ctx, subscription) {
+            NotificationType.CANCELLED -> updateSubscription(rc, subscription) {
                 active = false
                 subStatus = "cancelled"
             }
-            NotificationType.RENEWED -> updateSubscription(ctx, subscription) {
+            NotificationType.RENEWED -> updateSubscription(rc, subscription) {
                 active = true
                 subStatus = "renewed"
-                // Use timestamp from decoded notification or add duration
                 expiryDate = decoderResult.timestamp.plus(Duration.ofDays(30))
             }
-            NotificationType.BILLING_RETRY -> updateSubscription(ctx, subscription) {
-                // Check billing retry outcome - keep state as-is but update timestamp
-            }
+            NotificationType.BILLING_RETRY -> updateSubscription(rc, subscription) {}
             NotificationType.GRACE_PERIOD_EXPIRED,
-            NotificationType.EXPIRED -> updateSubscription(ctx, subscription) {
+            NotificationType.EXPIRED -> updateSubscription(rc, subscription) {
                 active = false
                 subStatus = decoderResult.type.name.lowercase()
             }
-            else -> updateSubscription(ctx, subscription) {
-                // For other types like SUBSCRIBED, WARNING, OK, acknowledge but don't change state drastically
-            }
+            else -> updateSubscription(rc, subscription) {}
         }
 
-        // Create/store the notification record as processed
-        createStoreNotification(ctx, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+        createStoreNotification(rc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
     }
 
-    /**
-     * Helper to create an updated copy of a Subscription using Jimmer's immutable draft pattern.
-     */
-    private fun updateSubscription(ctx: OperationContext, sub: Subscription, block: SubscriptionDraft.() -> Unit): Subscription {
+    private fun updateSubscription(rc: RepoContext, sub: Subscription, block: SubscriptionDraft.() -> Unit): Subscription {
         val updated = Subscription {
             id = sub.id
             appId = sub.appId
@@ -231,14 +204,11 @@ open class IapService(
             updatedAt = Instant.now()
             block()
         }
-        return subscriptionRepo.upsertSubscription(ctx, updated)
+        return subscriptionRepo.upsertSubscription(rc, updated)
     }
 
-    /**
-     * Helper to create or update a StoreNotification record.
-     */
     private fun createStoreNotification(
-        ctx: OperationContext,
+        rc: RepoContext,
         platform: String,
         subscriptionPxid: String,
         rawPayload: String,
@@ -251,7 +221,7 @@ open class IapService(
             this.appId = appId
             this.platform = platform
             this.subscriptionPxid = subscriptionPxid
-            this.purchaseToken = subscriptionPxid // fallback: use subscriptionPxid as purchase token identifier
+            this.purchaseToken = subscriptionPxid
             this.notificationType = notificationType.name
             this.rawPayload = rawPayload
             this.processed = processed
@@ -259,27 +229,24 @@ open class IapService(
             this.createdAt = Instant.now()
             this.updatedAt = Instant.now()
         }
-        // Note: BaseCrudRepository has save() method that works for upsert
-        storeNotificationRepo.save(ctx, notif)
+        storeNotificationRepo.save(rc, notif)
     }
 
-    // Extension to convert string to UUID safely
     private fun String.toUUIDOrNull(): UUID? {
         return try { UUID.fromString(this) } catch (e: Exception) { null }
     }
 }
 
-// Request/Response DTOs
 data class VerifyReq(
-    val platform: Platform,                    // 必填枚举（不是可空 string）
-    val signedTransaction: String? = null,     // iOS StoreKit 2 JWS
-    val purchaseToken: String? = null,         // Google purchase token
-    val productId: String,                     // 必填
+    val platform: Platform,
+    val signedTransaction: String? = null,
+    val purchaseToken: String? = null,
+    val productId: String,
 )
 
 data class VerifyRes(
-    val expiresAt: Long?,                      // epoch millis（与前端约定）
+    val expiresAt: Long?,
     val state: SubscriptionState,
     val productId: String,
-    val tier: com.ifmix.api.core.infra.ratelimit.Tier,  // 必填枚举 FREE/PRO
+    val tier: Tier,
 )

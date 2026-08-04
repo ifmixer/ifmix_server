@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionView
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.types.ToggleRevisionRequest
-import com.ifmix.api.core.modules.appconfig.AppConfigService
+import com.ifmix.api.core.modules.app.service.AppConfigService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody

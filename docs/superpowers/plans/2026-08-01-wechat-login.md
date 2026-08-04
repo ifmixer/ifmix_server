@@ -226,7 +226,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.modules.appconfig.AppConfig
+import com.ifmix.api.core.modules.app.AppConfig
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 
@@ -420,8 +420,8 @@ package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.modules.appconfig.AppConfig
-import com.ifmix.api.core.modules.appconfig.GoogleClientIds
+import com.ifmix.api.core.modules.app.AppConfig
+import com.ifmix.api.core.modules.app.GoogleClientIds
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach

@@ -1,0 +1,49 @@
+package com.ifmix.api.core.modules.app.service
+
+import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionCreateInput
+import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionView
+import com.ifmix.api.core.infra.http.ApiError
+import com.ifmix.api.core.infra.http.ErrorCode
+import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.http.mustGetAppId
+import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
+
+@Service
+class AppConfigService(
+    private val revisionRepo: AppConfigRevisionRepository,
+) {
+
+    @Transactional
+    fun createOneRevision(ctx: OperationContext, req: AppConfigRevisionCreateInput): AppConfigRevisionView {
+        val appId = ctx.mustGetAppId()
+
+        if (req.enabled) {
+            revisionRepo.disableCurrentRevisions(ctx.repoCtx, appId)
+        }
+
+        val created = revisionRepo.createNewRevision(ctx.repoCtx, req)
+
+        return revisionRepo.findById(ctx.repoCtx, appId, created.id, AppConfigRevisionView::class)
+            ?: throw ApiError(ErrorCode.INTERNAL, "failed to read newly created revision")
+    }
+
+    @Transactional
+    fun toggleRevision(ctx: OperationContext, revisionId: UUID, enabled: Boolean): AppConfigRevisionView {
+        val appId = ctx.mustGetAppId()
+
+        revisionRepo.findById(ctx.repoCtx, appId, revisionId)
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "revision not found")
+
+        if (enabled) {
+            revisionRepo.disableCurrentRevisions(ctx.repoCtx, appId)
+        }
+
+        revisionRepo.updateEnabled(ctx.repoCtx, revisionId, enabled)
+
+        return revisionRepo.findById(ctx.repoCtx, appId, revisionId, AppConfigRevisionView::class)
+            ?: throw ApiError(ErrorCode.INTERNAL, "failed to read revision after toggle")
+    }
+}

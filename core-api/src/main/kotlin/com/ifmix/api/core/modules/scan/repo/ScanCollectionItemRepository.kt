@@ -6,8 +6,8 @@ import com.ifmix.api.core.entity.collection.appId
 import com.ifmix.api.core.entity.collection.collectionId
 import com.ifmix.api.core.entity.collection.scanRecordId
 import com.ifmix.api.core.infra.db.Page
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -18,10 +18,7 @@ import java.util.UUID
 @Repository
 class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanCollectionItem>(sql, ScanCollectionItem::class) {
 
-    /**
-     * Idempotent insert - returns existing or new item ID.
-     */
-    fun insertIfAbsent(ctx: OperationContext, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
+    fun insertIfAbsent(ctx: RepoContext, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
         val existing = sql.createQuery(ScanCollectionItem::class) {
             where(table.appId eq appId)
             where(table.collectionId eq collectionId)
@@ -44,10 +41,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
         return save(ctx, item).id
     }
 
-    /**
-     * Batch soft delete for multiple scan records in a collection.
-     */
-    fun softDeleteByScanIds(ctx: OperationContext, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Long {
+    fun softDeleteByScanIds(ctx: RepoContext, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Long {
         if (scanRecordIds.isEmpty()) return 0L
         val items = sql.createQuery(ScanCollectionItem::class) {
             where(table.appId eq appId)
@@ -59,11 +53,8 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
         return items.size.toLong()
     }
 
-    /**
-     * Paginated listing with cursor support, fetching ScanCollectionItemView (includes scanRecord).
-     */
     fun findItemsByCursor(
-        ctx: OperationContext,
+        ctx: RepoContext,
         appId: UUID,
         collectionId: UUID,
         limit: Int,
@@ -82,8 +73,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
         return Page.of(items, limit) { it.id.toString() }
     }
 
-    /** Check if a scan record exists in a collection */
-    fun existsByScanRecordId(ctx: OperationContext, collectionId: UUID, scanRecordId: UUID): Boolean {
+    fun existsByScanRecordId(ctx: RepoContext, collectionId: UUID, scanRecordId: UUID): Boolean {
         return sql.createQuery(ScanCollectionItem::class) {
             where(table.collectionId eq collectionId)
             where(table.scanRecordId eq scanRecordId)

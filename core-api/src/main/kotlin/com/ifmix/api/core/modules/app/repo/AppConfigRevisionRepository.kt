@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.appconfig.repo
+package com.ifmix.api.core.modules.app.repo
 
 import com.ifmix.api.core.entity.appconfig.AppConfigRevision
 import com.ifmix.api.core.entity.appconfig.appId
@@ -6,11 +6,10 @@ import com.ifmix.api.core.entity.appconfig.appleBundleId
 import com.ifmix.api.core.entity.appconfig.androidPackageName
 import com.ifmix.api.core.entity.appconfig.enabled
 import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionCreateInput
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -21,22 +20,20 @@ import java.util.UUID
 @Repository
 class AppConfigRevisionRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevision>(sql, AppConfigRevision::class) {
 
-    /** Find current enabled config by appId. Throws if not found. */
-    fun mustFindCurrentRevision(ctx: OperationContext): AppConfigRevision {
-        return findCurrentRevision(ctx)
+    fun mustFindCurrentRevision(ctx: RepoContext, appId: UUID): AppConfigRevision {
+        return findCurrentRevision(ctx, appId)
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING, "AppConfigRevision not found")
     }
 
-    fun findCurrentRevision(ctx: OperationContext): AppConfigRevision? {
+    fun findCurrentRevision(ctx: RepoContext, appId: UUID): AppConfigRevision? {
         return sql.createQuery(AppConfigRevision::class) {
-            where(table.appId eq ctx.mustGetAppId())
+            where(table.appId eq appId)
             where(table.enabled eq true)
             select(table)
         }.fetchOneOrNull()
     }
 
-    /** Find config by Apple bundle ID (enabled only) */
-    fun findByBundleId(ctx: OperationContext, bundleId: String): AppConfigRevision? {
+    fun findByBundleId(ctx: RepoContext, bundleId: String): AppConfigRevision? {
         return sql.createQuery(AppConfigRevision::class) {
             where(table.appleBundleId eq bundleId)
             where(table.enabled eq true)
@@ -44,8 +41,7 @@ class AppConfigRevisionRepository(sql: KSqlClient) : BaseAppCrudRepository<AppCo
         }.fetchOneOrNull()
     }
 
-    /** Find config by Android package name (enabled only) */
-    fun findByAndroidPackage(ctx: OperationContext, pkg: String): AppConfigRevision? {
+    fun findByAndroidPackage(ctx: RepoContext, pkg: String): AppConfigRevision? {
         return sql.createQuery(AppConfigRevision::class) {
             where(table.androidPackageName eq pkg)
             where(table.enabled eq true)
@@ -53,8 +49,7 @@ class AppConfigRevisionRepository(sql: KSqlClient) : BaseAppCrudRepository<AppCo
         }.fetchOneOrNull()
     }
 
-    /** Disable all current enabled revisions for a given appId. */
-    fun disableCurrentRevisions(ctx: OperationContext, appId: UUID): Int {
+    fun disableCurrentRevisions(ctx: RepoContext, appId: UUID): Int {
         return sql.createUpdate(AppConfigRevision::class) {
             where(table.appId eq appId)
             where(table.enabled eq true)
@@ -62,8 +57,7 @@ class AppConfigRevisionRepository(sql: KSqlClient) : BaseAppCrudRepository<AppCo
         }.execute()
     }
 
-    /** Insert a new revision row. */
-    fun createNewRevision(ctx: OperationContext, input: AppConfigRevisionCreateInput): AppConfigRevision {
+    fun createNewRevision(ctx: RepoContext, input: AppConfigRevisionCreateInput): AppConfigRevision {
         val entity = input.toEntity {
             id = UuidV7.generate()
         }
@@ -72,8 +66,7 @@ class AppConfigRevisionRepository(sql: KSqlClient) : BaseAppCrudRepository<AppCo
         }.modifiedEntity
     }
 
-    /** Update enabled status of a specific revision. */
-    fun updateEnabled(ctx: OperationContext, revisionId: UUID, enabled: Boolean): Int {
+    fun updateEnabled(ctx: RepoContext, revisionId: UUID, enabled: Boolean): Int {
         return sql.createUpdate(AppConfigRevision::class) {
             where(table.getId<UUID>() eq revisionId)
             set(table.enabled, enabled)

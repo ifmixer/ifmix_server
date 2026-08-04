@@ -1,8 +1,8 @@
 package com.ifmix.api.core.bff.webhooks
 
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.appconfig.repo.AppConfigRevisionRepository
-import com.ifmix.api.core.modules.iap.IapService
+import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
+import com.ifmix.api.core.modules.iap.service.IapService
 import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -69,9 +69,8 @@ class WebhookController(
             val bundleId = extractBundleId(payloadJson)
 
             // 4. 通过 bundleId 反查 appId
-            val systemCtx = OperationContext(appId = null, userId = SYSTEM_USER_ID)
             val appId = if (bundleId != null) {
-                appConfigRepo.findByBundleId(systemCtx, bundleId)?.appId
+                appConfigRepo.findByBundleId(com.ifmix.api.core.infra.db.RepoContext.DEFAULT, bundleId)?.appId
             } else null
 
             if (appId == null) {
@@ -103,9 +102,8 @@ class WebhookController(
             val packageName = extractGooglePackageName(rawPayload)
 
             // 2. 通过 packageName 反查 appId
-            val systemCtx = OperationContext(appId = null, userId = SYSTEM_USER_ID)
             val appId = if (packageName != null) {
-                appConfigRepo.findByAndroidPackage(systemCtx, packageName)?.appId
+                appConfigRepo.findByAndroidPackage(com.ifmix.api.core.infra.db.RepoContext.DEFAULT, packageName)?.appId
             } else null
 
             if (appId == null) {

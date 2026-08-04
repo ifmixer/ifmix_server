@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.base
+package com.ifmix.api.core.infra.service
 
 import com.ifmix.api.core.infra.db.CursorQueryInput
 import com.ifmix.api.core.infra.db.Page
@@ -23,42 +23,39 @@ open class BaseCrudService<E : Any>(
 ) {
     @Transactional(readOnly = true)
     open fun findById(ctx: OperationContext, id: UUID): E? =
-        repo.findById(ctx, id)
+        repo.findById(ctx.repoCtx, id)
 
     @Transactional(readOnly = true)
     open fun getById(ctx: OperationContext, id: UUID): E =
-        repo.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        repo.findById(ctx.repoCtx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     @Transactional(readOnly = true)
     open fun <V : View<E>> findById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V? =
-        repo.findById(ctx, id, viewType)
+        repo.findById(ctx.repoCtx, id, viewType)
 
     @Transactional(readOnly = true)
     open fun <V : View<E>> getById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V =
-        repo.findById(ctx, id, viewType) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        repo.findById(ctx.repoCtx, id, viewType) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
-    /**
-     * 游标分页：委托 repository 的 SQL 分页实现。
-     */
     @Transactional(readOnly = true)
     open fun findByCursor(ctx: OperationContext, input: CursorQueryInput = CursorQueryInput()): Page<E> =
-        repo.findByCursor(ctx, input)
+        repo.findByCursor(ctx.repoCtx, input)
 
     @Transactional
     open fun create(ctx: OperationContext, input: Input<E>): E =
-        repo.insert(ctx, input)
+        repo.insert(ctx.repoCtx, input)
 
     @Transactional
     open fun update(ctx: OperationContext, input: Input<E>): E =
-        repo.update(ctx, input)
+        repo.update(ctx.repoCtx, input)
 
     @Transactional
     open fun save(ctx: OperationContext, input: Input<E>): E =
-        repo.save(ctx, input)
+        repo.save(ctx.repoCtx, input)
 
     @Transactional
     open fun deleteById(ctx: OperationContext, id: UUID) =
-        repo.deleteById(ctx, id)
+        repo.deleteById(ctx.repoCtx, id)
 }
 
 /**

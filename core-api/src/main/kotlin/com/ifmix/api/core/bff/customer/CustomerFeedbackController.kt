@@ -2,7 +2,7 @@ package com.ifmix.api.core.bff.customer
 
 import com.ifmix.api.core.entity.enums.FeedbackCategory
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.feedback.FeedbackService
+import com.ifmix.api.core.modules.feedback.service.FeedbackService
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping

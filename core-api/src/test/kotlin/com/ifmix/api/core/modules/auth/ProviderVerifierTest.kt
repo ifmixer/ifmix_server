@@ -2,8 +2,8 @@ package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
-import com.ifmix.api.core.modules.appconfig.AppConfig
-import com.ifmix.api.core.modules.appconfig.GoogleClientIds
+import com.ifmix.api.core.modules.app.AppConfig
+import com.ifmix.api.core.modules.app.GoogleClientIds
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test

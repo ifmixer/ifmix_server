@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.ai.service
 
-import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.modules.ai.repo.AgnesKeyRepository
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -34,7 +34,7 @@ class AiConfig {
         return AgnesKeyStore(
             redis = redis,
             loadKeys = {
-                val ctx =  OperationContext()
+                val ctx = RepoContext.DEFAULT
                 agnesKeyRepo.findAllEnabled(ctx).map { key ->
                     AgnesKeyStore.AgnesKeyDoc(
                         id = key.id.toString(),

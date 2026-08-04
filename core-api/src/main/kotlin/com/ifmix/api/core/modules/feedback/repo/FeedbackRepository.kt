@@ -2,8 +2,8 @@ package com.ifmix.api.core.modules.feedback.repo
 
 import com.ifmix.api.core.entity.enums.FeedbackCategory
 import com.ifmix.api.core.entity.feedback.Feedback
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -14,12 +14,8 @@ import java.util.UUID
 @Repository
 class FeedbackRepository(sql: KSqlClient) : BaseAppCrudRepository<Feedback>(sql, Feedback::class) {
 
-    /**
-     * 追加式写入反馈。
-     * appId / installId / userId / id / createdAt 由服务端注入，不接受客户端传入。
-     */
     fun create(
-        ctx: OperationContext,
+        ctx: RepoContext,
         appId: UUID,
         installId: UUID,
         userId: UUID?,

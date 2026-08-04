@@ -24,7 +24,7 @@ class MergeOnLoginListener(
             // 记录 user-install 绑定
             if (e.installId != null) {
                 bindingRepo.recordBinding(
-                    ctx = e.ctx,
+                    ctx = e.ctx.repoCtx,
                     appId = e.appId,
                     userId = e.appUserId,
                     installId = e.installId,
@@ -34,7 +34,6 @@ class MergeOnLoginListener(
                 log.debug("Recorded user-install binding: user={}, install={}", e.appUserId, e.installId)
             }
         } catch (ex: Exception) {
-            // 异步执行，不影响登录主流程
             log.warn("Failed to record user-install binding: {}", ex.message)
         }
 

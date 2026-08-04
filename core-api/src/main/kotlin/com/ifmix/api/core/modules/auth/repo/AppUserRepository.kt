@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.auth.repo
 import com.ifmix.api.core.entity.auth.AppUser
 import com.ifmix.api.core.entity.auth.appId
 import com.ifmix.api.core.entity.auth.authIdentityId
-import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -17,7 +17,7 @@ import java.util.UUID
 class AppUserRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppUser>(sql, AppUser::class) {
 
     /** Find AppUser by appId and authIdentityId using Jimmer query DSL */
-    fun findByAppAndIdentity(ctx: OperationContext, appId: UUID, authIdentityId: UUID): AppUser? {
+    fun findByAppAndIdentity(ctx: RepoContext, appId: UUID, authIdentityId: UUID): AppUser? {
         return sql.createQuery(AppUser::class) {
             where(table.appId eq appId)
             where(table.authIdentityId eq authIdentityId)
@@ -28,7 +28,7 @@ class AppUserRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppUser>(sql, 
     /**
      * Ensure app_user exists for (appId, authIdentityId). Returns appUserId.
      */
-    fun ensure(ctx: OperationContext, appId: UUID, authIdentityId: UUID): UUID {
+    fun ensure(ctx: RepoContext, appId: UUID, authIdentityId: UUID): UUID {
         val existing = findByAppAndIdentity(ctx, appId, authIdentityId)
         if (existing != null) return existing.id
 
