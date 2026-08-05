@@ -36,7 +36,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             
             id 关系说明：
             - NewScanRes.id = ScanRecordView.id = 数据库主键（UUIDv7）
-            - 所有需要传 scanRecordId 的地方（收藏/反馈/getById）都用这个 id
+            - 所有需要传 scanRecordId 的地方（收藏/反馈/findById）都用这个 id
         """,
     )
     @PostMapping("/mutation/antique/newScan")
@@ -53,8 +53,8 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             图片通过 imageKeys 中的 objectKey 调 storage/presignDownload 获取临时 URL。
         """,
     )
-    @PutMapping("/query/antique/getById")
-    fun getById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): ScanRecordView {
+    @PutMapping("/query/antique/findById")
+    fun findById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): ScanRecordView {
         return antiqueService.getScanById(ctx, req.id)
     }
 
@@ -81,7 +81,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
         description = """
             软删除（标记 deletedAt），不可恢复。同时自动从所有收藏夹中移除。
             按当前用户过滤，他人的 id 返回 404。
-            已软删的记录不会出现在 findByCursor / listItems 列表中；getById 也返回 404。
+            已软删的记录不会出现在 findByCursor / listItems 列表中；findById 也返回 404。
             删除不退还扫描配额（日配额为消耗计数，删除记录不影响已用额度）。
         """,
     )

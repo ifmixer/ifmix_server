@@ -26,7 +26,7 @@ open class BaseCrudService<E : Any>(
         repo.findById(ctx.repoCtx, id)
 
     @Transactional(readOnly = true)
-    open fun getById(ctx: OperationContext, id: UUID): E =
+    open fun mustFindById(ctx: OperationContext, id: UUID): E =
         repo.findById(ctx.repoCtx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     @Transactional(readOnly = true)
@@ -34,7 +34,7 @@ open class BaseCrudService<E : Any>(
         repo.findById(ctx.repoCtx, id, viewType)
 
     @Transactional(readOnly = true)
-    open fun <V : View<E>> getById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V =
+    open fun <V : View<E>> mustFindById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V =
         repo.findById(ctx.repoCtx, id, viewType) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     @Transactional(readOnly = true)

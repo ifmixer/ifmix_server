@@ -14,8 +14,10 @@ import java.util.UUID
  * @return 当前用户是否拥有该行
  */
 fun ownsRow(ctx: OperationContext, userId: UUID?, installId: UUID?): Boolean =
-    if (ctx.userId != null) {
+    if (userId != null) {
         userId == ctx.userId
+    } else if (installId != null) {
+        installId == ctx.installId
     } else {
-        installId != null && installId == ctx.installId
+        true
     }

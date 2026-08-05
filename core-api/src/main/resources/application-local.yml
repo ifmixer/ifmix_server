@@ -11,7 +11,7 @@ server:
 
 app:
   expose-errors: true
-  show-sql: true
+  # show-sql: true
   # 本地不接对象存储：用 Noop 实现（返回假 URL），无需 MinIO/R2 即可启动。
   # 需要真实预签名上传时改为 s3 并填下面的凭证。
   storage:
@@ -27,17 +27,20 @@ app:
       jdbc-url: jdbc:postgresql://localhost:5432/ifmix_core_local
       username: postgres
       password: postgres
+      maximum-pool-size: 100
     reader:
       jdbc-url: jdbc:postgresql://localhost:5432/ifmix_core_local
       username: postgres
       password: postgres
+      maximum-pool-size: 100
 
 logging:
   level:
     # Jimmer SQL 日志
-    org.babyfish.jimmer.sql: DEBUG
+    #org.babyfish.jimmer.sql: DEBUG
+    org.babyfish.jimmer.sql: ERROR
     # 项目自身日志
-    com.ifmix.api.core: DEBUG
+    # com.ifmix.api.core: DEBUG
 
 management:
   endpoints:

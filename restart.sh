@@ -13,4 +13,4 @@ if [ -n "$PID" ]; then
 fi
 
 echo "Starting ifmix_server on port $PORT..."
-SPRING_PROFILES_ACTIVE=local ./gradlew :core-api:bootRun
+JAVA_TOOL_OPTIONS="-Xms2g -Xmx2g -XX:+HeapDumpOnOutOfMemoryError" SPRING_PROFILES_ACTIVE=local ./gradlew :core-api:bootRun

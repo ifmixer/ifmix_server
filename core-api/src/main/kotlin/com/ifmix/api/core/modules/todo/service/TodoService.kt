@@ -46,7 +46,7 @@ class TodoService(
         todoRepo.deleteTodo(ctx.repoCtx, ctx.mustGetAppId(), id)
 
     @Transactional(readOnly = true)
-    fun getByIds(ctx: OperationContext, ids: List<UUID>): List<TodoView> =
+    fun findByIds(ctx: OperationContext, ids: List<UUID>): List<TodoView> =
         todoRepo.findTodosByIds(ctx.repoCtx, ctx.mustGetAppId(), ids)
 
     @Transactional

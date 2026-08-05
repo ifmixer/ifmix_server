@@ -42,8 +42,8 @@ class CustomerTodoController(private val todoService: TodoService) {
         return todoService.findTodoByCursor(ctx, input ?: CursorQueryInput())
     }
 
-    @PutMapping("/query/todo/getById")
-    fun getById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): TodoView {
+    @PutMapping("/query/todo/findById")
+    fun findById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): TodoView {
         ctx.mustGetInstallId()
         val todo = todoService.getTodo(ctx, req.id)
         checkOwnership(ctx, todo)
@@ -82,10 +82,10 @@ class CustomerTodoController(private val todoService: TodoService) {
         return OperationResult(success = count == req.ids.size, modifiedCount = count)
     }
 
-    @PutMapping("/query/todo/getByIds")
-    fun getByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): List<TodoView> {
+    @PutMapping("/query/todo/findByIds")
+    fun findByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): List<TodoView> {
         ctx.mustGetInstallId()
-        val todos = todoService.getByIds(ctx, req.ids)
+        val todos = todoService.findByIds(ctx, req.ids)
         return todos.filter { ownsRow(ctx, it.userId, it.installId) }
     }
 
@@ -93,7 +93,7 @@ class CustomerTodoController(private val todoService: TodoService) {
     fun updateByIds(ctx: OperationContext, @Valid @RequestBody req: List<TodoUpdateInput>): OperationResult {
         ctx.mustGetInstallId()
         val ids = req.map { it.id }
-        val todos = todoService.getByIds(ctx, ids)
+        val todos = todoService.findByIds(ctx, ids)
         todos.forEach { checkOwnership(ctx, it) }
         val count = todoService.updateByIds(ctx, req)
         return OperationResult(success = count == req.size, modifiedCount = count)
@@ -102,7 +102,7 @@ class CustomerTodoController(private val todoService: TodoService) {
     @PostMapping("/mutation/todo/deleteByIds")
     fun deleteByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): OperationResult {
         ctx.mustGetInstallId()
-        val todos = todoService.getByIds(ctx, req.ids)
+        val todos = todoService.findByIds(ctx, req.ids)
         todos.forEach { checkOwnership(ctx, it) }
         val count = todoService.deleteByIds(ctx, req.ids)
         return OperationResult(success = count == req.ids.size, modifiedCount = count)
@@ -112,7 +112,7 @@ class CustomerTodoController(private val todoService: TodoService) {
 
     private fun checkOwnership(ctx: OperationContext, todo: TodoView) {
         if (!ownsRow(ctx, todo.userId, todo.installId)) {
-            throw ApiError(ErrorCode.NOT_FOUND)
+            throw ApiError(ErrorCode.FORBIDDEN)
         }
     }
 }
