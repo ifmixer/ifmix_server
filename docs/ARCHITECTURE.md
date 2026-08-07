@@ -27,7 +27,7 @@ ifmix 是一个面向移动端（iOS/Android）的后端 API 服务，核心功�
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                          BFF Layer (Controllers)                      │
-│  /customer/core/*   (业务 API, 需 appId header)                      │
+│  /customer/{query|mutation}/core/*  (业务 API, 需 appId header)       │
 │  /webhooks/iap/*    (商店回调, JWS 验签)                              │
 │  /.well-known/jwks  (公钥暴露)                                       │
 ├─────────────────────────────────────────────────────────────────────┤

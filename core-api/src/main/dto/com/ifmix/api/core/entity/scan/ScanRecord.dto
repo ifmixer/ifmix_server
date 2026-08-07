@@ -1,4 +1,4 @@
-export com.ifmix.api.core.entity.antique.ScanRecord
+export com.ifmix.api.core.entity.scan.ScanRecord
 
 ScanRecordView {
     #allScalars

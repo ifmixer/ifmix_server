@@ -103,7 +103,7 @@ class WechatAuthE2eTest : E2eTestBase() {
         stubWechatTokenSuccess()
         stubWechatUserInfo()
 
-        post("/customer/core/mutation/auth/wechat")
+        post("/customer/mutation/core/auth/wechat")
             .bodyValue(mapOf("code" to "valid_code"))
             .exchange()
             .expectStatus().isOk
@@ -121,7 +121,7 @@ class WechatAuthE2eTest : E2eTestBase() {
         stubWechatUserInfo()
 
         // First login
-        val firstResult = post("/customer/core/mutation/auth/wechat")
+        val firstResult = post("/customer/mutation/core/auth/wechat")
             .bodyValue(mapOf("code" to "code_1"))
             .exchange()
             .expectStatus().isOk
@@ -134,7 +134,7 @@ class WechatAuthE2eTest : E2eTestBase() {
         // Second login with same unionid (different code but same mock response)
         stubWechatTokenSuccess(code = "code_2")
 
-        val secondResult = post("/customer/core/mutation/auth/wechat")
+        val secondResult = post("/customer/mutation/core/auth/wechat")
             .bodyValue(mapOf("code" to "code_2"))
             .exchange()
             .expectStatus().isOk
@@ -157,7 +157,7 @@ class WechatAuthE2eTest : E2eTestBase() {
     @Test
     fun `missing code field returns 400`() {
         // Send idToken instead of code — wechat requires 'code'
-        post("/customer/core/mutation/auth/wechat")
+        post("/customer/mutation/core/auth/wechat")
             .bodyValue(mapOf("idToken" to "some_token"))
             .exchange()
             .expectStatus().isBadRequest
@@ -167,7 +167,7 @@ class WechatAuthE2eTest : E2eTestBase() {
     fun `invalid code returns AUTH_PROVIDER_FAILED`() {
         stubWechatTokenError(code = "invalid_code")
 
-        post("/customer/core/mutation/auth/wechat")
+        post("/customer/mutation/core/auth/wechat")
             .bodyValue(mapOf("code" to "invalid_code"))
             .exchange()
             .expectStatus().isUnauthorized

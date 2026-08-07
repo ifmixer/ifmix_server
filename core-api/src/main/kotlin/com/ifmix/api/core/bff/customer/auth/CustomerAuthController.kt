@@ -1,4 +1,4 @@
-package com.ifmix.api.core.bff.customer
+package com.ifmix.api.core.bff.customer.auth
 
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.auth.dto.DeleteAccountRes
@@ -15,7 +15,11 @@ import com.ifmix.api.core.modules.auth.dto.WechatLoginReq
 import com.ifmix.api.core.modules.auth.service.AuthService
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
 /**
  * customer BFF 的认证路由。
@@ -24,7 +28,7 @@ import org.springframework.web.bind.annotation.*
  * 受保护接口（需 JWT）：POST /auth/logout, /auth/deleteAccount, PUT /auth/me
  */
 @RestController
-@RequestMapping("/customer/core")
+@RequestMapping("/customer")
 class CustomerAuthController(private val authService: AuthService) {
 
     @Operation(
@@ -34,7 +38,7 @@ class CustomerAuthController(private val authService: AuthService) {
 仅迁移从未绑定过用户的匿名记录，不会抢走其他账号的数据。
 登出后调 auth/anonymous 回到匿名态，已绑定给 userId 的记录在匿名态下不可见。""",
     )
-    @PostMapping("/mutation/auth/google")
+    @PostMapping("/mutation/core/auth/google")
     fun google(ctx: OperationContext, @Valid @RequestBody req: ProviderLoginReq): LoginRes =
         authService.loginWithIdToken(ctx, "google", req)
 
@@ -45,7 +49,7 @@ class CustomerAuthController(private val authService: AuthService) {
 仅迁移从未绑定过用户的匿名记录，不会抢走其他账号的数据。
 登出后调 auth/anonymous 回到匿名态，已绑定给 userId 的记录在匿名态下不可见。""",
     )
-    @PostMapping("/mutation/auth/apple")
+    @PostMapping("/mutation/core/auth/apple")
     fun apple(ctx: OperationContext, @Valid @RequestBody req: ProviderLoginReq): LoginRes =
         authService.loginWithIdToken(ctx, "apple", req)
 
@@ -56,7 +60,7 @@ class CustomerAuthController(private val authService: AuthService) {
 仅迁移从未绑定过用户的匿名记录，不会抢走其他账号的数据。
 登出后调 auth/anonymous 回到匿名态，已绑定给 userId 的记录在匿名态下不可见。""",
     )
-    @PostMapping("/mutation/auth/wechat")
+    @PostMapping("/mutation/core/auth/wechat")
     fun wechat(ctx: OperationContext, @Valid @RequestBody req: WechatLoginReq): LoginRes =
         authService.loginWithCode(ctx, "wechat", req)
 
@@ -72,27 +76,27 @@ class CustomerAuthController(private val authService: AuthService) {
         匿名 deviceSecret 不可用于 auth/exchange（SSO 交换仅限已登录用户）。
     """,
     )
-    @PostMapping("/mutation/auth/anonymous")
+    @PostMapping("/mutation/core/auth/anonymous")
     fun anonymous(ctx: OperationContext): LoginRes =
         authService.anonymousLogin(ctx)
 
     @Operation(summary = "同系 App SSO 交换", description = "用 deviceSecret 在同一租户下的兄弟 App 之间免登录切换。免鉴权。")
-    @PostMapping("/mutation/auth/exchange")
+    @PostMapping("/mutation/core/auth/exchange")
     fun exchange(ctx: OperationContext, @Valid @RequestBody req: ExchangeReq): ExchangeRes =
         authService.exchange(ctx, req)
 
     @Operation(summary = "刷新 token", description = "用 refreshToken 换新的 accessToken + refreshToken。免鉴权。token 无效/过期返回 401003。")
-    @PostMapping("/mutation/auth/refresh")
+    @PostMapping("/mutation/core/auth/refresh")
     fun refresh(ctx: OperationContext, @Valid @RequestBody req: RefreshReq): RefreshRes =
         authService.refresh(ctx, req)
 
     @Operation(summary = "登出", description = "宣告当前 refreshToken 作废。需要 Bearer token。\n登出后客户端应调 auth/anonymous 重新获取匿名 token，否则后续接口将返回 401。")
-    @PostMapping("/mutation/auth/logout")
+    @PostMapping("/mutation/core/auth/logout")
     fun logout(ctx: OperationContext, @Valid @RequestBody req: LogoutReq): LogoutRes =
         authService.logout(ctx, req)
 
     @Operation(summary = "获取当前用户信息和权益", description = "返回用户身份 + 订阅状态（tier/active/expiresAt）。需要 Bearer token。")
-    @PutMapping("/query/auth/me")
+    @PutMapping("/query/core/auth/me")
     fun me(ctx: OperationContext): MeRes = authService.me(ctx)   // ctx.userId 为空时 service 抛 UNAUTHORIZED
 
     @Operation(
@@ -106,7 +110,7 @@ class CustomerAuthController(private val authService: AuthService) {
         提交删除请求后当前 token 继续有效直到过期。
     """,
     )
-    @PostMapping("/mutation/auth/deleteAccount")
+    @PostMapping("/mutation/core/auth/deleteAccount")
     fun deleteAccount(ctx: OperationContext): DeleteAccountRes =
         authService.requestAccountDeletion(ctx)
 }

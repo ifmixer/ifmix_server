@@ -31,8 +31,8 @@
 - **Service 是 `@Service`，不是 Config 里的 `@Bean`**
 
 ### API 风格
-- 查询端点: `PUT /customer/core/query/{module}/{method}`
-- 修改端点: `POST /customer/core/mutation/{module}/{method}`
+- 查询端点: `PUT /customer/query/core/{module}/{method}`
+- 修改端点: `POST /customer/mutation/core/{module}/{method}`
 - 所有响应包装为 `Envelope<T>` (`{code, msg, data}`)
 - 请求头必带 `x-app-id` (UUID)
 

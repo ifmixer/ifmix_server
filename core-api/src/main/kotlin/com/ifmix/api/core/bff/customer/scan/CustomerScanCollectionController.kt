@@ -1,6 +1,6 @@
-package com.ifmix.api.core.bff.customer
+package com.ifmix.api.core.bff.customer.scan
 
-import com.ifmix.api.core.entity.collection.dto.ScanCollectionItemView
+import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemView
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.scan.dto.AddItemReq
@@ -22,14 +22,14 @@ import org.springframework.web.bind.annotation.RestController
  * customer BFF 的扫描收藏路由。
  */
 @RestController
-@RequestMapping("/customer/core")
+@RequestMapping("/customer")
 class CustomerScanCollectionController(
     private val service: ScanCollectionService,
 ) {
 
     /** 获取（或创建）默认收藏夹。 */
     @Operation(summary = "获取默认扫描收藏夹", description = "不存在则自动创建。")
-    @PutMapping("/query/scanCollection/getDefault")
+    @PutMapping("/query/core/scan/getDefaultScanCollection")
     fun getDefault(ctx: OperationContext): GetDefaultRes {
         val collection = service.getDefault(ctx)
         return GetDefaultRes(
@@ -41,19 +41,19 @@ class CustomerScanCollectionController(
 
     /** 添加收藏条目（幂等）。 */
     @Operation(summary = "添加扫描记录到收藏（幂等）")
-    @PostMapping("/mutation/scanCollection/addItem")
+    @PostMapping("/mutation/core/scan/addScanCollectionItem")
     fun addItem(ctx: OperationContext, @Valid @RequestBody req: AddItemReq): AddItemRes =
         service.addItem(ctx, req)
 
     /** 批量移除收藏条目（软删）。 */
     @Operation(summary = "批量移除扫描收藏")
-    @PostMapping("/mutation/scanCollection/removeItems")
+    @PostMapping("/mutation/core/scan/removeScanCollectionItems")
     fun removeItems(ctx: OperationContext, @Valid @RequestBody req: RemoveItemsReq): RemoveItemsRes =
         service.removeItems(ctx, req)
 
     /** 列出收藏夹中的条目（游标分页）。 */
     @Operation(summary = "列出扫描收藏条目")
-    @PutMapping("/query/scanCollection/findItemsByCursor")
+    @PutMapping("/query/core/scan/findScanCollectionItemsByCursor")
     fun findItemsByCursor(
         ctx: OperationContext,
         @RequestBody(required = false) req: ListItemsReq?,

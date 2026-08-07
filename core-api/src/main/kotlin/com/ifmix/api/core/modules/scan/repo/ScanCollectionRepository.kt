@@ -1,10 +1,10 @@
 package com.ifmix.api.core.modules.scan.repo
 
-import com.ifmix.api.core.entity.collection.ScanCollection
-import com.ifmix.api.core.entity.collection.appId
-import com.ifmix.api.core.entity.collection.installId
-import com.ifmix.api.core.entity.collection.isDefault
-import com.ifmix.api.core.entity.collection.userId
+import com.ifmix.api.core.entity.scan.ScanCollection
+import com.ifmix.api.core.entity.scan.appId
+import com.ifmix.api.core.entity.scan.installId
+import com.ifmix.api.core.entity.scan.isDefault
+import com.ifmix.api.core.entity.scan.userId
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient

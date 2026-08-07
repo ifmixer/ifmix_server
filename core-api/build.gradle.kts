@@ -45,7 +45,7 @@ dependencies {
     implementation("com.google.crypto.tink:tink:1.15.0")
 
     // === Jimmer + PostgreSQL ===
-    val jimmerVersion: String by rootProject.extra
+    val jimmerVersion = rootProject.extra["jimmerVersion"] as String
     implementation("org.babyfish.jimmer:jimmer-spring-boot-starter:$jimmerVersion")
     implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
     ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")

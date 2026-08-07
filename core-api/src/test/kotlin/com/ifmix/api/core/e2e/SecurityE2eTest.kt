@@ -30,7 +30,7 @@ class SecurityE2eTest : E2eTestBase() {
         @Test
         fun `missing x-app-id returns 400`() {
             webClient.put()
-                .uri("/customer/core/query/auth/me")
+                .uri("/customer/query/core/auth/me")
                 .contentType(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isBadRequest
@@ -39,7 +39,7 @@ class SecurityE2eTest : E2eTestBase() {
         @Test
         fun `invalid x-app-id format returns 400`() {
             webClient.put()
-                .uri("/customer/core/query/auth/me")
+                .uri("/customer/query/core/auth/me")
                 .header("x-app-id", "not-a-uuid")
                 .contentType(MediaType.APPLICATION_JSON)
                 .exchange()
@@ -48,7 +48,7 @@ class SecurityE2eTest : E2eTestBase() {
 
         @Test
         fun `valid x-app-id without token returns 401`() {
-            put("/customer/core/query/auth/me")
+            put("/customer/query/core/auth/me")
                 .exchange()
                 .expectStatus().isUnauthorized
         }
@@ -60,7 +60,7 @@ class SecurityE2eTest : E2eTestBase() {
 
         @Test
         fun `path traversal in objectKey returns 400`() {
-            post("/customer/core/mutation/storage/presignDownload")
+            post("/customer/mutation/core/storage/presignDownload")
                 .bodyValue(mapOf("objectKey" to "app_${TEST_APP_ID}/../etc/passwd"))
                 .exchange()
                 .expectStatus().isBadRequest
@@ -69,7 +69,7 @@ class SecurityE2eTest : E2eTestBase() {
 
         @Test
         fun `invalid objectKey format returns 400`() {
-            post("/customer/core/mutation/storage/presignDownload")
+            post("/customer/mutation/core/storage/presignDownload")
                 .bodyValue(mapOf("objectKey" to "random/path/file.png"))
                 .exchange()
                 .expectStatus().isBadRequest
@@ -78,7 +78,7 @@ class SecurityE2eTest : E2eTestBase() {
         @Test
         fun `objectKey with mismatched appId returns 400`() {
             val otherAppId = "99999999-9999-9999-9999-999999999999"
-            post("/customer/core/mutation/storage/presignDownload")
+            post("/customer/mutation/core/storage/presignDownload")
                 .bodyValue(mapOf("objectKey" to "app_${otherAppId}/i_abc/file.png"))
                 .exchange()
                 .expectStatus().isBadRequest
@@ -87,7 +87,7 @@ class SecurityE2eTest : E2eTestBase() {
 
         @Test
         fun `valid objectKey with install prefix succeeds`() {
-            post("/customer/core/mutation/storage/presignUpload")
+            post("/customer/mutation/core/storage/presignUpload")
                 .bodyValue(mapOf("contentType" to "image/png"))
                 .exchange()
                 .expectStatus().isOk

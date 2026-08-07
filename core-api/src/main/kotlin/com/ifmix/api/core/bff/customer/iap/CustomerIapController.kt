@@ -1,20 +1,23 @@
-package com.ifmix.api.core.bff.customer
+package com.ifmix.api.core.bff.customer.iap
 
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.iap.service.IapService
 import com.ifmix.api.core.modules.iap.dto.VerifyReq
 import com.ifmix.api.core.modules.iap.dto.VerifyRes
+import com.ifmix.api.core.modules.iap.service.IapService
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
 /**
  * customer BFF 的 IAP 路由。
  * 仅在 IapService bean 存在时加载。
  */
 @RestController
-@RequestMapping("/customer/core")
+@RequestMapping("/customer")
 @ConditionalOnBean(IapService::class)
 class CustomerIapController(private val iapService: IapService) {
 
@@ -30,7 +33,7 @@ class CustomerIapController(private val iapService: IapService) {
             platform 枚举是商店维度（APPLE/GOOGLE），与 header x-client-platform（设备维度 ios/android/web）是不同概念。
         """,
     )
-    @PostMapping("/mutation/iap/verify")
+    @PostMapping("/mutation/core/iap/verifyPurchase")
     fun verify(
         ctx: OperationContext,
         @Valid @RequestBody req: VerifyReq,

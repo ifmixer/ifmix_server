@@ -28,7 +28,7 @@ class CollectionE2eTest : E2eTestBase() {
     @Test
     @Order(1)
     fun `get default collection creates one if not exists`() {
-        put("/customer/core/query/collection/getDefault")
+        put("/customer/query/core/collection/getDefaultCollection")
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -38,7 +38,7 @@ class CollectionE2eTest : E2eTestBase() {
     @Test
     @Order(2)
     fun `list items on empty collection returns empty`() {
-        put("/customer/core/query/collection/listItems")
+        put("/customer/query/core/collection/findCollectionItemsByCursor")
             .bodyValue(mapOf("limit" to 10))
             .exchange()
             .expectStatus().isOk

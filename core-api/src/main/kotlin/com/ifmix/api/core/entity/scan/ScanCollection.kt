@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.collection
+package com.ifmix.api.core.entity.scan
 
 import org.babyfish.jimmer.sql.*
 import com.ifmix.api.core.entity.AppScopedProps

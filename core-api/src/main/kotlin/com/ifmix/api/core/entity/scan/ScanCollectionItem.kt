@@ -1,9 +1,8 @@
-package com.ifmix.api.core.entity.collection
+package com.ifmix.api.core.entity.scan
 
 import org.babyfish.jimmer.sql.*
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps
-import com.ifmix.api.core.entity.antique.ScanRecord
 import java.util.UUID
 
 @Entity

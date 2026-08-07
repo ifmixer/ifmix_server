@@ -1,20 +1,23 @@
-package com.ifmix.api.core.bff.customer
+package com.ifmix.api.core.bff.customer.storage
 
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.modules.scan.dto.PresignDownloadReq
-import com.ifmix.api.core.modules.scan.dto.PresignUploadReq
-import com.ifmix.api.core.modules.scan.dto.PresignedDownloadResponse
-import com.ifmix.api.core.modules.scan.dto.PresignedUploadResponse
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.http.mustGetInstallId
+import com.ifmix.api.core.modules.scan.dto.PresignDownloadReq
+import com.ifmix.api.core.modules.scan.dto.PresignUploadReq
+import com.ifmix.api.core.modules.scan.dto.PresignedDownloadResponse
+import com.ifmix.api.core.modules.scan.dto.PresignedUploadResponse
 import com.ifmix.api.core.modules.scan.service.AntiqueService
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 import java.time.Duration
 
 /**
@@ -24,7 +27,7 @@ import java.time.Duration
  * user/{userId} 只在已登录时拼接。
  */
 @RestController
-@RequestMapping("/customer/core")
+@RequestMapping("/customer")
 @ConditionalOnBean(AntiqueService::class)
 class CustomerStorageController(private val antiqueService: AntiqueService) {
 
@@ -36,7 +39,7 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
             需要 Bearer token。
         """,
     )
-    @PostMapping("/mutation/storage/presignUpload")
+    @PostMapping("/mutation/core/storage/presignUpload")
     fun presignUpload(
         ctx: OperationContext,
         @Valid @RequestBody req: PresignUploadReq,
@@ -66,7 +69,7 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
             需要 Bearer token。
         """,
     )
-    @PostMapping("/mutation/storage/presignDownload")
+    @PostMapping("/mutation/core/storage/presignDownload")
     fun presignDownload(
         ctx: OperationContext,
         @Valid @RequestBody req: PresignDownloadReq,

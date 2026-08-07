@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.scan.service
 
-import com.ifmix.api.core.entity.collection.ScanCollection
-import com.ifmix.api.core.entity.collection.dto.ScanCollectionItemView
+import com.ifmix.api.core.entity.scan.ScanCollection
+import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemView
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError

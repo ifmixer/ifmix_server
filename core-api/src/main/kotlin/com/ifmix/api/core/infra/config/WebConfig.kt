@@ -27,10 +27,10 @@ class WebConfig(
             )
 
         // JWT 认证拦截器：仅对需要认证的端点生效
-        // /customer/auth/* 不需要（登录/刷新/交换是公开接口）
-        // /customer/core/* 需要（业务 API）
+        // /customer/mutation/core/auth/* 不需要（登录/刷新/交换是公开接口）
+        // /customer/*/core/* 需要（业务 API）
         registry.addInterceptor(authInterceptor)
-            .addPathPatterns("/customer/core/**")
+            .addPathPatterns("/customer/query/core/**", "/customer/mutation/core/**")
             .excludePathPatterns(
                 "/.well-known/**",
             )

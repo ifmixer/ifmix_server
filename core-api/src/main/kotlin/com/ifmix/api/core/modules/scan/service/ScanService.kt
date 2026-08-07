@@ -1,8 +1,8 @@
 package com.ifmix.api.core.modules.scan.service
 
-import com.ifmix.api.core.entity.antique.ImageRef
-import com.ifmix.api.core.entity.antique.ScanRecord
-import com.ifmix.api.core.entity.antique.dto.ScanRecordView
+import com.ifmix.api.core.entity.scan.ImageRef
+import com.ifmix.api.core.entity.scan.ScanRecord
+import com.ifmix.api.core.entity.scan.dto.ScanRecordView
 import com.ifmix.api.core.infra.dto.CursorQueryInput
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError

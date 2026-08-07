@@ -28,7 +28,7 @@ class OperationContextResolutionTest {
     @Test
     fun resolvesContextFromHeaders() {
         mvc.perform(
-            get("/customer/core/query/ctx/echo")
+            get("/customer/query/core/ctx/echo")
                 .header(RequestHeaders.APP_ID, validAppId)
                 .header(RequestHeaders.LANG, "en")
                 .header(RequestHeaders.CLIENT_PLATFORM, "ios")
@@ -41,7 +41,7 @@ class OperationContextResolutionTest {
 
     @Test
     fun missingAppIdReturns400() {
-        mvc.perform(get("/customer/core/query/ctx/echo"))
+        mvc.perform(get("/customer/query/core/ctx/echo"))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value("400000"))
             .andExpect(jsonPath("$.msg", containsString("x-app-id")))
@@ -50,7 +50,7 @@ class OperationContextResolutionTest {
     @Test
     fun invalidAppIdReturns400() {
         mvc.perform(
-            get("/customer/core/query/ctx/echo")
+            get("/customer/query/core/ctx/echo")
                 .header(RequestHeaders.APP_ID, "not-an-objectid")
         )
             .andExpect(status().isBadRequest)
@@ -60,7 +60,7 @@ class OperationContextResolutionTest {
     @Test
     fun invalidPlatformReturns400() {
         mvc.perform(
-            get("/customer/core/query/ctx/echo")
+            get("/customer/query/core/ctx/echo")
                 .header(RequestHeaders.APP_ID, validAppId)
                 .header(RequestHeaders.CLIENT_PLATFORM, "windows")
         )
@@ -70,7 +70,7 @@ class OperationContextResolutionTest {
 
     @RestController
     class CtxController {
-        @GetMapping("/customer/core/query/ctx/echo")
+        @GetMapping("/customer/query/core/ctx/echo")
         fun echo(ctx: OperationContext): Map<String, Any?> = mapOf(
             "appId" to ctx.appId,
             "lang" to ctx.lang,

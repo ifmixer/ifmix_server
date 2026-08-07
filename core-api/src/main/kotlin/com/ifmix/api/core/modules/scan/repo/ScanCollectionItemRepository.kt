@@ -1,10 +1,10 @@
 package com.ifmix.api.core.modules.scan.repo
 
-import com.ifmix.api.core.entity.collection.ScanCollectionItem
-import com.ifmix.api.core.entity.collection.dto.ScanCollectionItemView
-import com.ifmix.api.core.entity.collection.appId
-import com.ifmix.api.core.entity.collection.collectionId
-import com.ifmix.api.core.entity.collection.scanRecordId
+import com.ifmix.api.core.entity.scan.ScanCollectionItem
+import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemView
+import com.ifmix.api.core.entity.scan.appId
+import com.ifmix.api.core.entity.scan.collectionId
+import com.ifmix.api.core.entity.scan.scanRecordId
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7

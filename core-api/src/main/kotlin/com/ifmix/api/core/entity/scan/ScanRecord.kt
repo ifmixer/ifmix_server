@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.antique
+package com.ifmix.api.core.entity.scan
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps

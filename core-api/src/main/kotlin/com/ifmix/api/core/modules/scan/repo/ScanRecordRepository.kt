@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.scan.repo
 
-import com.ifmix.api.core.entity.antique.ImageRef
-import com.ifmix.api.core.entity.antique.ScanRecord
+import com.ifmix.api.core.entity.scan.ImageRef
+import com.ifmix.api.core.entity.scan.ScanRecord
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7

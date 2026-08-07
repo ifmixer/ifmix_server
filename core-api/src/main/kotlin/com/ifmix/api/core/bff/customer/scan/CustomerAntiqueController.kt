@@ -1,8 +1,8 @@
-package com.ifmix.api.core.bff.customer
+package com.ifmix.api.core.bff.customer.scan
 
 import com.ifmix.api.core.infra.dto.ByIdRequest
 import com.ifmix.api.core.infra.dto.OperationResult
-import com.ifmix.api.core.entity.antique.dto.ScanRecordView
+import com.ifmix.api.core.entity.scan.dto.ScanRecordView
 import com.ifmix.api.core.infra.dto.CursorQueryInput
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.OperationContext
@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController
  * customer BFF 的古物扫描路由。
  */
 @RestController
-@RequestMapping("/customer/core")
+@RequestMapping("/customer")
 @ConditionalOnBean(AntiqueService::class)
 class CustomerAntiqueController(private val antiqueService: AntiqueService) {
 
@@ -39,7 +39,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             - 所有需要传 scanRecordId 的地方（收藏/反馈/findById）都用这个 id
         """,
     )
-    @PostMapping("/mutation/antique/newScan")
+    @PostMapping("/mutation/core/scan/newScan")
     fun newScan(ctx: OperationContext, @Valid @RequestBody req: NewScanReq): NewScanRes {
         return antiqueService.newScan(ctx, req)
     }
@@ -53,7 +53,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             图片通过 imageKeys 中的 objectKey 调 storage/presignDownload 获取临时 URL。
         """,
     )
-    @PutMapping("/query/antique/findById")
+    @PutMapping("/query/core/scan/findScanById")
     fun findById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): ScanRecordView {
         return antiqueService.getScanById(ctx, req.id)
     }
@@ -66,7 +66,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             body 完全可选，不传等同默认参数。
         """,
     )
-    @PutMapping("/query/antique/findByCursor")
+    @PutMapping("/query/core/scan/findScansByCursor")
     fun findByCursor(
         ctx: OperationContext,
         @RequestBody(required = false) input: CursorQueryInput?,
@@ -85,7 +85,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             删除不退还扫描配额（日配额为消耗计数，删除记录不影响已用额度）。
         """,
     )
-    @PostMapping("/mutation/antique/deleteById")
+    @PostMapping("/mutation/core/scan/deleteScanById")
     fun deleteById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): OperationResult {
         antiqueService.deleteScan(ctx, req.id)
         return OperationResult()
@@ -100,7 +100,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             userNotes: 不传=不修改；传 null=清空；传字符串=设置用户备注。
         """,
     )
-    @PostMapping("/mutation/antique/updateOne")
+    @PostMapping("/mutation/core/scan/updateScan")
     fun updateOne(ctx: OperationContext, @Valid @RequestBody req: UpdateScanReq): ScanRecordView {
         return antiqueService.updateScan(ctx, req)
     }
