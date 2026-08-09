@@ -18,7 +18,7 @@ import java.time.Instant
 class AgnesKeyDocument : BaseDocument(), AppScoped, SoftDeletable {
 
     /** 所属应用 ID（分片键）。 */
-    override var appId: String? = null
+    override var appId: String = ""
 
     /** 删除时间（null = 启用，非 null = 已软删）。 */
     override var deletedAt: Instant? = null

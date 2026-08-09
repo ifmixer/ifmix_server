@@ -50,13 +50,13 @@ class CollectionService(
      * 解析 collectionId：null → 默认夹；指定 id → 验证归属。
      */
     private fun resolveCollectionId(ctx: RequestContext, collectionId: String?): String {
-        if (collectionId == null) return getDefault(ctx).id!!
+        if (collectionId == null) return getDefault(ctx).id
         val coll = collectionCrud.findById(ctx, collectionId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "collection not found")
         if (!ownsRow(ctx, coll.userId, coll.installId)) {
             throw ApiError(ErrorCode.NOT_FOUND, "collection not found")
         }
-        return coll.id!!
+        return coll.id
     }
 
     /**

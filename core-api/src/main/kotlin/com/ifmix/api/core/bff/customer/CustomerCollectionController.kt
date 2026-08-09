@@ -70,7 +70,7 @@ class CustomerCollectionController(
             page.items.map { scan ->
                 val dto = scanMapper.toDto(scan)
                 val imageUrl = scan.imageUrl?.let { storage.presignDownload(it, java.time.Duration.ofHours(1)) }
-                val collected = membership?.isCollected(ctx, scan.id!!) ?: true
+                val collected = membership?.isCollected(ctx, scan.id) ?: true
                 dto.copy(imageUrl = imageUrl, collected = collected)
             },
             page.nextCursor,

@@ -61,7 +61,7 @@ class IapService(
             verified = true,
             productId = result.productId,
             state = statusFromExpiry(result.expiryDate),
-            tier = tierOf(result.productId, config.productTierMap),
+            tier = tierOf(result.productId, config.iap.productTierMap),
         )
     }
 

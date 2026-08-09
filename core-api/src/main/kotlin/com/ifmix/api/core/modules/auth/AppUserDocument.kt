@@ -11,7 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document
 @Document(collection = "app_user")
 @CompoundIndex(name = "app_user_uq", def = "{'appId': 1, 'authIdentityId': 1}", unique = true)
 class AppUserDocument : BaseDocument(), AppScoped {
-    override var appId: String? = null
+    override var appId: String = ""
     var authIdentityId: String? = null
     var metadata: Map<String, Any?>? = null
 }

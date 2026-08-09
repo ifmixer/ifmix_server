@@ -3,10 +3,9 @@ package com.ifmix.api.core.modules.auth
 import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ClientPlatform
 import com.ifmix.api.core.common.http.ErrorCode
-import com.ifmix.api.core.modules.appconfig.AppConfig
+import com.ifmix.api.core.modules.appconfig.AppConfigView
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtDecoder
-import org.springframework.security.oauth2.jwt.JwtException
 
 /**
  * 第三方 provider 的 id_token 验证器。
@@ -24,7 +23,7 @@ data class VerifiedProvider(
 
 interface ProviderVerifier {
     val provider: String
-    fun verify(config: AppConfig, platform: ClientPlatform?, idToken: String): VerifiedProvider
+    fun verify(config: AppConfigView, platform: ClientPlatform?, idToken: String): VerifiedProvider
 }
 
 private fun decodeOrFail(decoder: JwtDecoder, idToken: String): Jwt = try {
@@ -49,12 +48,12 @@ private fun requireAud(jwt: Jwt, expected: String?) {
 
 class GoogleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
     override val provider = "google"
-    override fun verify(config: AppConfig, platform: ClientPlatform?, idToken: String): VerifiedProvider {
+    override fun verify(config: AppConfigView, platform: ClientPlatform?, idToken: String): VerifiedProvider {
         val jwt = decodeOrFail(decoder, idToken)
         val aud = when (platform) {
-            ClientPlatform.IOS -> config.googleClientIds.ios
-            ClientPlatform.ANDROID -> config.googleClientIds.android
-            ClientPlatform.WEB, null -> config.googleClientIds.web
+            ClientPlatform.IOS -> config.google.clientIds.ios
+            ClientPlatform.ANDROID -> config.google.clientIds.android
+            ClientPlatform.WEB, null -> config.google.clientIds.web
         }
         requireAud(jwt, aud)
         return jwt.toVerified()
@@ -63,9 +62,9 @@ class GoogleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
 
 class AppleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
     override val provider = "apple"
-    override fun verify(config: AppConfig, platform: ClientPlatform?, idToken: String): VerifiedProvider {
+    override fun verify(config: AppConfigView, platform: ClientPlatform?, idToken: String): VerifiedProvider {
         val jwt = decodeOrFail(decoder, idToken)
-        val aud = if (platform == ClientPlatform.WEB) config.appleServicesId else config.appleBundleId
+        val aud = if (platform == ClientPlatform.WEB) config.apple.servicesId else config.appleBundleId
         requireAud(jwt, aud)
         return jwt.toVerified()
     }

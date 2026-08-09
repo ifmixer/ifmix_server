@@ -25,7 +25,7 @@ class CRUDService<T : BaseDocument>(
         entity.updatedAt = now
         if (entity is SoftDeletable) entity.deletedAt = null
         repo.insertOne(ctx, entity)
-        return entity.id!!
+        return entity.id
     }
 
     fun findById(ctx: RequestContext, id: String): T? = repo.findById(ctx, id)

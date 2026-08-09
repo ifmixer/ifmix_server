@@ -24,7 +24,7 @@ class AppUserRepo(private val mongo: MongoTemplate) {
             this.appId = appId; this.authIdentityId = authIdentityId; createdAt = now; updatedAt = now
         }
         return try {
-            mongo.insert(doc); doc.id!!
+            mongo.insert(doc); doc.id
         } catch (e: DuplicateKeyException) {
             findId(appId, authIdentityId) ?: throw e
         }

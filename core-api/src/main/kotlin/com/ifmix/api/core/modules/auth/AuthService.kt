@@ -52,7 +52,7 @@ class AuthService(
             val appUserId = appUserRepo.ensure(ctx.appId, identityId)
             val existing = req.deviceSecret?.let { deviceSecretRepo.findValid(tid, it) }
             val (dsId, dsPlain) = if (existing != null && existing.authIdentityId == identityId) {
-                deviceSecretRepo.touch(existing.id!!); existing.id!! to req.deviceSecret!!
+                deviceSecretRepo.touch(existing.id); existing.id to req.deviceSecret!!
             } else {
                 deviceSecretRepo.issue(tid, identityId, ctx.installId)
             }
@@ -70,8 +70,8 @@ class AuthService(
         if (ds.authTenantId != tid) throw ApiError(ErrorCode.UNAUTHORIZED)
         return txRunner.withTx(ctx) {
             val appUserId = appUserRepo.ensure(ctx.appId, ds.authIdentityId!!)
-            deviceSecretRepo.touch(ds.id!!)
-            val refresh = refreshRepo.issue(ctx.appId, appUserId, ds.id!!, null)
+            deviceSecretRepo.touch(ds.id)
+            val refresh = refreshRepo.issue(ctx.appId, appUserId, ds.id, null)
             ExchangeRes(jwt.signAccess(appUserId, ctx.appId), refresh.token, refresh.expiresAt,
                 accessTtlSec, UserDto(appUserId, null))
         }

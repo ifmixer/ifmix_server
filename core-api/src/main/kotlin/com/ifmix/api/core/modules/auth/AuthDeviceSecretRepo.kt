@@ -26,7 +26,7 @@ class AuthDeviceSecretRepo(private val mongo: MongoTemplate) {
             expiresAt = now.plus(idleTtl); lastUsedAt = now; createdAt = now; updatedAt = now
         }
         mongo.insert(doc)
-        return doc.id!! to secret
+        return doc.id to secret
     }
 
     /** 按 (tenantId, hash) 定向查有效 device_secret（未撤销、未过期）。 */

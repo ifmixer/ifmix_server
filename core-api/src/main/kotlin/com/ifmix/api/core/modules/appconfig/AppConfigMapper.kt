@@ -1,24 +1,18 @@
 package com.ifmix.api.core.modules.appconfig
 
-/** AppConfigDocument（内嵌结构）→ AppConfig（扁平视图）。iapEnv 缺省 "production"。 */
+/** AppConfigDocument → AppConfig（保持嵌套结构不变）。 */
 object AppConfigMapper {
 
-    fun toFlat(doc: AppConfigDocument): AppConfig = AppConfig(
+    fun toView(doc: AppConfigDocument): AppConfigView = AppConfigView(
         id = doc.id,
         appId = doc.appId,
         authTenantId = doc.authTenantId,
         revision = doc.revision,
         appleBundleId = doc.appleBundleId,
         androidPackageName = doc.androidPackageName,
-        appleAppAppleId = doc.apple.appAppleId,
-        appleIssuerId = doc.apple.issuerId,
-        appleKeyId = doc.apple.keyId,
-        applePrivateKey = doc.apple.privateKey,
-        appleServicesId = doc.apple.servicesId,
-        googleServiceAccount = doc.google.serviceAccount,
-        googleClientIds = doc.google.clientIds,
-        productTierMap = doc.iap.productTierMap,
-        iapEnv = doc.iap.env ?: "production",
+        apple = doc.apple,
+        google = doc.google,
+        iap = doc.iap,
         createdAt = doc.createdAt,
         updatedAt = doc.updatedAt,
     )

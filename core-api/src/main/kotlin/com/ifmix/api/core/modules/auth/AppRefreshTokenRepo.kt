@@ -25,13 +25,13 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         val now = Instant.now()
         val exp = now.plus(ttl)
         val doc = AppRefreshTokenDocument().apply {
-            this.id = id
+            if (id != null) this.id = id
             this.appId = appId; this.appUserId = appUserId; this.deviceSecretId = deviceSecretId
             tokenHash = Hashing.sha256Base64Url(token); this.loginInstallId = loginInstallId
             expiresAt = exp; createdAt = now; updatedAt = now
         }
         mongo.insert(doc)
-        return RefreshIssued(doc.id!!, token, exp)
+        return RefreshIssued(doc.id, token, exp)
     }
 
     fun findByHash(appId: String, tokenPlain: String): AppRefreshTokenDocument? = mongo.findOne(

@@ -48,7 +48,7 @@ class CustomerTodoController(private val todoService: TodoService) {
     @PostMapping("/mutation/todo/updateOne")
     fun updateOne(ctx: RequestContext, @Valid @RequestBody req: UpdateOneTodoRequest): TodoDto {
         todoService.update(ctx, req.id!!, req.patch!!)
-        return mapper.toDto(todoService.getById(ctx, req.id))
+        return mapper.toDto(todoService.getById(ctx, req.id!!))
     }
 
     @PostMapping("/mutation/todo/deleteById")

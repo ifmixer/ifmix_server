@@ -32,7 +32,7 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
             ),
             CollectionItemDocument::class.java,
         )
-        if (existing?.id != null) return existing.id!!
+        if (existing != null) return existing.id
 
         val now = Instant.now()
         val doc = CollectionItemDocument().apply {
@@ -43,7 +43,7 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
             updatedAt = now
         }
         mongo.insert(doc)
-        return doc.id!!
+        return doc.id
     }
 
     /**

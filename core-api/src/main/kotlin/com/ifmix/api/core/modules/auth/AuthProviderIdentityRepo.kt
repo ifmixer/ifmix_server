@@ -79,6 +79,6 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
             createdAt = now; updatedAt = now
         }
         mongo.insert(pi)
-        return identity.id!!
+        return identity.id
     }
 }

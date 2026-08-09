@@ -18,7 +18,7 @@ import java.time.Instant
     CompoundIndex(name = "refresh_device_idx", def = "{'deviceSecretId': 1}"),
 )
 class AppRefreshTokenDocument : BaseDocument(), AppScoped {
-    override var appId: String? = null
+    override var appId: String = ""
     var appUserId: String? = null
     var deviceSecretId: String? = null
     var tokenHash: String? = null

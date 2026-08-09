@@ -42,7 +42,7 @@ class SubscriptionRepo(
                 .set("rawResponse", doc.rawResponse)
                 .set("updatedAt", now)
             mongo.updateFirst(query, update, SubscriptionDocument::class.java)
-            return existing.id!!
+            return existing.id
         }
 
         // 插入新文档
@@ -50,7 +50,7 @@ class SubscriptionRepo(
         doc.createdAt = now
         doc.updatedAt = now
         mongo.insert(doc)
-        return doc.id!!
+        return doc.id
     }
 
     /**

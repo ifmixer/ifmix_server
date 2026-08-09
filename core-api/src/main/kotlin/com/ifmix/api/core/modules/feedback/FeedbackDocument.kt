@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document
 @Document(collection = "feedback")
 @CompoundIndex(name = "feedback_app_id_id_idx", def = "{'appId': 1, '_id': 1}")
 class FeedbackDocument : BaseDocument(), AppScoped {
-    override var appId: String? = null
+    override var appId: String = ""
     var installId: String? = null
     var userId: String? = null
     var scanRecordId: String? = null

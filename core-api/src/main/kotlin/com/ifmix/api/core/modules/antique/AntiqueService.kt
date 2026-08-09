@@ -58,7 +58,7 @@ class AntiqueService(
         }
         mongo.insert(record)
 
-        return record.id!!
+        return record.id
     }
 
     /**
