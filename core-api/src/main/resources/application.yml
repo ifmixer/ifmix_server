@@ -64,7 +64,8 @@ app:
 
 logging:
   level:
-    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: INFO
     org.springframework.boot.autoconfigure.mongo: INFO
-    org.mongodb.driver.connection: DEBUG
+    org.mongodb.driver.connection: WARN
     org.mongodb.driver.cluster: INFO
+    org.mongodb.driver.protocol.command: INFO
