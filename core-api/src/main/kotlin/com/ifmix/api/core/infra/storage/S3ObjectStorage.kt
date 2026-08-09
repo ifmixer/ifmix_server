@@ -1,13 +1,13 @@
 package com.ifmix.api.core.infra.storage
 
-import com.ifmix.api.core.infra.storage.StorageConfig
+import software.amazon.awssdk.core.sync.RequestBody
+import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
 import java.time.Duration
-import java.time.Instant
 
 /**
  * 基于 AWS SDK v2 S3Presigner 的预签名 URL 实现。
@@ -15,6 +15,7 @@ import java.time.Instant
  */
 class S3ObjectStorage(
     private val presigner: S3Presigner,
+    private val s3Client: S3Client,
     private val config: StorageConfig,
 ) : ObjectStorage {
 
@@ -41,6 +42,11 @@ class S3ObjectStorage(
         objectKey: String,
         duration: Duration,
     ): String {
+        // 有自定义公开域名时直接返回公开 URL（R2 公开桶无需签名）
+        config.publicBaseUrl?.let { base ->
+            return "$base/$objectKey"
+        }
+
         val getRequest = GetObjectRequest.builder()
             .bucket(config.bucketName)
             .key(objectKey)
@@ -52,5 +58,15 @@ class S3ObjectStorage(
             .build()
 
         return presigner.presignGetObject(presignRequest).url().toString()
+    }
+
+    override fun upload(objectKey: String, data: ByteArray, contentType: String) {
+        val putRequest = PutObjectRequest.builder()
+            .bucket(config.bucketName)
+            .key(objectKey)
+            .contentType(contentType)
+            .build()
+
+        s3Client.putObject(putRequest, RequestBody.fromBytes(data))
     }
 }

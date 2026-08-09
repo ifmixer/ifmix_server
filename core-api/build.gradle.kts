@@ -38,6 +38,7 @@ dependencies {
     // 2.0.x 才兼容 Spring Boot 4.0/4.1（1.0.x 面向 Boot 3.x，引用了已被移除的 RestClient AutoConfiguration 旧包名）
     implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0"))
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
+    implementation("com.openai:openai-java-client-okhttp:4.39.1")
 
     // Auth — social login + JWT + refresh token
     implementation("org.springframework.security:spring-security-oauth2-jose")

@@ -1,26 +1,36 @@
 package com.ifmix.api.core.modules.auth
 
+import com.ifmix.api.core.entity.appconfig.AppConfigRevision
+import com.ifmix.api.core.entity.appconfig.ConfigContent
+import com.ifmix.api.core.entity.appconfig.GoogleConfigValue
+import com.ifmix.api.core.entity.appconfig.GoogleClientIdsValue
+import com.ifmix.api.core.entity.appconfig.AppleConfigValue
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
-import com.ifmix.api.core.modules.app.AppConfig
-import com.ifmix.api.core.modules.app.GoogleClientIds
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import java.time.Instant
+import java.util.UUID
 
-private fun cfg() = AppConfig(
-    id = "c", appId = "app1", authTenantId = "t1", revision = 1,
-    appleBundleId = "com.x.app", androidPackageName = null,
-    appleAppAppleId = null, appleIssuerId = null, appleKeyId = null, applePrivateKey = null,
-    appleServicesId = "com.x.svc",
-    googleServiceAccount = null, googleClientIds = GoogleClientIds(ios = "gid-ios", android = "gid-and", web = "gid-web"),
-    productTierMap = emptyMap(), iapEnv = "production",
-    wechatAppId = null, wechatAppSecret = null,
-    createdAt = null,
-)
+private fun cfg() = AppConfigRevision {
+    id = UUID.randomUUID()
+    appId = UUID.randomUUID()
+    authTenantId = UUID.randomUUID()
+    appleBundleId = "com.x.app"
+    androidPackageName = null
+    revisionNumber = 1
+    enabled = true
+    slug = "test"
+    note = "test"
+    createdAt = Instant.now()
+    content = ConfigContent(
+        apple = AppleConfigValue(servicesId = "com.x.svc"),
+        google = GoogleConfigValue(clientIds = GoogleClientIdsValue(ios = "gid-ios", android = "gid-and", web = "gid-web")),
+    )
+}
 
 private fun jwt(aud: String, sub: String = "sub123") = Jwt.withTokenValue("t")
     .header("alg", "RS256").subject(sub).audience(listOf(aud))

@@ -61,7 +61,7 @@ class SecurityE2eTest : E2eTestBase() {
         @Test
         fun `path traversal in objectKey returns 400`() {
             post("/customer/mutation/core/storage/presignDownload")
-                .bodyValue(mapOf("objectKey" to "app_${TEST_APP_ID}/../etc/passwd"))
+                .bodyValue(mapOf("imageKey" to "app_${TEST_APP_ID}/i_${TEST_INSTALL_ID}/../etc/passwd"))
                 .exchange()
                 .expectStatus().isBadRequest
                 .expectBody().jsonPath("$.msg").value<String> { assert(it.contains("path traversal")) }
@@ -70,7 +70,7 @@ class SecurityE2eTest : E2eTestBase() {
         @Test
         fun `invalid objectKey format returns 400`() {
             post("/customer/mutation/core/storage/presignDownload")
-                .bodyValue(mapOf("objectKey" to "random/path/file.png"))
+                .bodyValue(mapOf("imageKey" to "random/path/file.png"))
                 .exchange()
                 .expectStatus().isBadRequest
         }
@@ -79,7 +79,7 @@ class SecurityE2eTest : E2eTestBase() {
         fun `objectKey with mismatched appId returns 400`() {
             val otherAppId = "99999999-9999-9999-9999-999999999999"
             post("/customer/mutation/core/storage/presignDownload")
-                .bodyValue(mapOf("objectKey" to "app_${otherAppId}/i_abc/file.png"))
+                .bodyValue(mapOf("imageKey" to "app_${otherAppId}/i_${TEST_INSTALL_ID}/file.png"))
                 .exchange()
                 .expectStatus().isBadRequest
                 .expectBody().jsonPath("$.msg").value<String> { assert(it.contains("appId mismatch")) }
@@ -88,7 +88,7 @@ class SecurityE2eTest : E2eTestBase() {
         @Test
         fun `valid objectKey with install prefix succeeds`() {
             post("/customer/mutation/core/storage/presignUpload")
-                .bodyValue(mapOf("contentType" to "image/png"))
+                .bodyValue(mapOf("contentType" to "IMAGE_JPEG", "category" to "ANTIQUE_SCAN"))
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()

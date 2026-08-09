@@ -39,8 +39,12 @@ class ScanConfig {
     /** 配置了 S3/R2（app.storage.type=s3）时用真实预签名存储。 */
     @Bean
     @ConditionalOnProperty(name = ["app.storage.type"], havingValue = "s3")
-    fun objectStorage(presigner: software.amazon.awssdk.services.s3.presigner.S3Presigner, config: StorageConfig): ObjectStorage {
-        return com.ifmix.api.core.infra.storage.S3ObjectStorage(presigner, config)
+    fun objectStorage(
+        presigner: software.amazon.awssdk.services.s3.presigner.S3Presigner,
+        s3Client: software.amazon.awssdk.services.s3.S3Client,
+        config: StorageConfig,
+    ): ObjectStorage {
+        return com.ifmix.api.core.infra.storage.S3ObjectStorage(presigner, s3Client, config)
     }
 
     /** 未配置存储时的回落实现，保证本地/开发环境能启动（返回假 URL）。 */

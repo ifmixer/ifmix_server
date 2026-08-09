@@ -1,21 +1,22 @@
 package com.ifmix.api.core.modules.ai.service
 
 /**
- * Prompt template untuk AI antique scanning.
+ * Prompt template for AI antique scanning.
  *
- * System prompt menginstruksikan model agar selalu mengembalikan JSON
- * yang sesuai dengan schema ScanResult (snake_case).
+ * System prompt instructs the model to return JSON matching ScanResult schema (snake_case).
+ * Locale-aware: text fields are output in the user's language, prices in user's currency.
  */
 object ScanPrompt {
 
     /**
-     * System text — instruksi permanen untuk semua permintaan.
+     * System text — permanent instructions for all requests.
      *
-     * Model diinstruksikan:
-     * - Selalu respond dalam format JSON valid
-     * - Gunakan snake_case untuk semua key
-     * - Isi semua field yang bisa dideteksi, sisanya null
-     * - Tidak boleh menyertakan penjelasan di luar JSON
+     * Model instructions:
+     * - Always respond in valid JSON format
+     * - Use snake_case for all keys
+     * - Fill all detectable fields, null for unknown
+     * - No explanation outside JSON
+     * - Locale-aware output for text and price fields
      */
     val SYSTEM_TEXT = """
         You are a professional antique appraiser and visual analysis engine.
@@ -29,47 +30,102 @@ object ScanPrompt {
         5. For boolean fields, use true/false (not strings).
         6. For numeric fields, use numbers (not strings).
         7. For list fields, use empty arrays [] when no items match.
+        8. The following fields are FIXED ENGLISH TOKENS and must NOT be localized:
+           - status: "COMPLETED" | "FAILED"
+           - authenticity: "AUTHENTIC" | "SUSPICIOUS" | "FAKE" | "UNCERTAIN"
+           - condition: "PRISTINE" | "EXCELLENT" | "GOOD" | "FAIR" | "POOR" | "DAMAGED"
 
         OUTPUT SCHEMA:
         - scan_id: string (UUID or identifier)
         - status: "COMPLETED" | "FAILED"
         - is_antique: boolean
         - name: string or null
-        - category: string or null
-        - sub_category: string or null
+        - name_en: string or null (English name, always present regardless of locale)
+        - aliases: array of strings (alternative names)
+        - description: string or null (user-facing introduction text)
+        - primary_category: string or null
+        - secondary_category: string or null
+        - tertiary_category: string or null
         - dynasty: string or null
         - year_from: number or null
         - year_to: number or null
+        - dynasty_confidence: number or null (0-1)
         - material: string or null
+        - materials: array of strings
         - technique: string or null
+        - techniques: array of strings
         - shape: string or null
+        - texture: string or null
         - colors: array of strings
         - decorations: array of strings
         - has_inscription: boolean or null
         - inscription: string or null
         - height_cm: number or null
         - width_cm: number or null
+        - depth_cm: number or null
         - weight_g: number or null
-        - condition: string or null
+        - condition: "PRISTINE" | "EXCELLENT" | "GOOD" | "FAIR" | "POOR" | "DAMAGED" or null
         - flaws: array of strings
-        - authenticity: string or null
-        - authenticity_confidence: number or null
-        - price_range: string or null
+        - restoration_history: string or null
+        - authenticity: "AUTHENTIC" | "SUSPICIOUS" | "FAKE" | "UNCERTAIN" or null
+        - authenticity_confidence: number or null (0-1)
+        - authenticity_notes: string or null
+        - price_range: string or null (formatted with currency symbol, e.g. "¥5,000-10,000")
         - price_min: number or null
         - price_max: number or null
-        - score: number or null
-        - confidence: number or null
+        - price_currency: string or null (ISO 4217 code)
+        - value_confidence: number or null (0-1)
+        - score: number or null (0-100)
+        - confidence: number or null (0-1)
         - tags: array of strings
         - notes: string or null
         - error_message: string or null
     """.trimIndent()
 
     /**
-     * User text template — diisi oleh caller dengan URL gambar.
+     * Build locale instruction block based on user's locale settings.
      *
-     * @param imageUrl URL gambar yang akan dianalisis
-     * @return prompt lengkap untuk dikirim ke model
+     * @param lang language code (e.g. "zh-Hans", "en", "ja")
+     * @param country country code (e.g. "CN", "US", "JP")
+     * @param currency currency code (e.g. "CNY", "USD", "JPY")
+     * @return locale instruction text to prepend to user prompt
      */
-    fun userPrompt(imageUrl: String): String =
-        "Analyze this image for antique identification. Return the result as JSON.\n\nImage URL: $imageUrl"
+    fun localeInstruction(lang: String?, country: String?, currency: String?): String {
+        if (lang == null && country == null && currency == null) return ""
+
+        val parts = mutableListOf<String>()
+
+        parts += "LOCALIZATION:"
+
+        if (lang != null) {
+            parts += "- Output ALL text fields (name, description, dynasty, primary_category, secondary_category, tertiary_category, material, materials, technique, techniques, shape, texture, colors, decorations, inscription, flaws, restoration_history, authenticity_notes, aliases, tags, notes) in language: $lang"
+        }
+
+        if (country != null) {
+            parts += "- The user is located in: $country. Consider local market context for pricing and cultural relevance."
+        }
+
+        if (currency != null) {
+            parts += "- Use currency $currency for all price fields. Set price_currency to \"$currency\". Format price_range with the appropriate currency symbol (e.g. ¥ for CNY/JPY, \$ for USD, € for EUR, £ for GBP)."
+        } else {
+            parts += "- Default to USD for price fields if no currency specified."
+        }
+
+        return parts.joinToString("\n")
+    }
+
+    /**
+     * User text template — includes locale instructions and image reference.
+     *
+     * @param imageUrl URL of the image to analyze
+     * @param lang user language preference
+     * @param country user country
+     * @param currency user currency preference
+     * @return complete user prompt
+     */
+    fun userPrompt(imageUrl: String, lang: String? = null, country: String? = null, currency: String? = null): String {
+        val locale = localeInstruction(lang, country, currency)
+        val localeBlock = if (locale.isNotEmpty()) "$locale\n\n" else ""
+        return "${localeBlock}Analyze this image for antique identification. Return the result as JSON.\n\nImage URL: $imageUrl"
+    }
 }

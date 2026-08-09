@@ -28,4 +28,13 @@ interface ObjectStorage {
         objectKey: String,
         duration: Duration = Duration.ofHours(1),
     ): String
+
+    /**
+     * 直接上传字节到对象存储。
+     *
+     * @param objectKey 对象键
+     * @param data 文件字节
+     * @param contentType MIME 类型
+     */
+    fun upload(objectKey: String, data: ByteArray, contentType: String)
 }

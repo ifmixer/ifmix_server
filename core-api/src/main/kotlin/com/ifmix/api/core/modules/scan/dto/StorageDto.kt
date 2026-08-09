@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.scan.dto
 import com.ifmix.api.core.infra.dto.ContentType
 import com.ifmix.api.core.infra.dto.UploadCategory
 import io.swagger.v3.oas.annotations.media.Schema
+import java.util.UUID
 
 data class PresignUploadReq(
     val category: UploadCategory,
@@ -17,5 +18,5 @@ data class PresignDownloadReq(
     val durationSeconds: Long? = null,
 )
 
-data class PresignedUploadResponse(val uploadUrl: String, val imageKey: String)
+data class PresignedUploadResponse(val mediaId: UUID, val uploadUrl: String, val imageKey: String, val downloadUrl: String)
 data class PresignedDownloadResponse(val downloadUrl: String)

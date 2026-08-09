@@ -3,12 +3,12 @@ package com.ifmix.api.core.bff.customer.scan
 import com.ifmix.api.core.infra.dto.ByIdRequest
 import com.ifmix.api.core.infra.dto.OperationResult
 import com.ifmix.api.core.entity.scan.dto.ScanRecordView
-import com.ifmix.api.core.infra.dto.CursorQueryInput
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.scan.service.AntiqueService
 import com.ifmix.api.core.modules.scan.dto.NewScanReq
 import com.ifmix.api.core.modules.scan.dto.NewScanRes
+import com.ifmix.api.core.modules.scan.dto.ScanQueryInput
 import com.ifmix.api.core.modules.scan.dto.UpdateScanReq
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
@@ -69,9 +69,9 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
     @PutMapping("/query/core/scan/findScansByCursor")
     fun findByCursor(
         ctx: OperationContext,
-        @RequestBody(required = false) input: CursorQueryInput?,
+        @RequestBody(required = false) input: ScanQueryInput?,
     ): Page<ScanRecordView> {
-        val page = antiqueService.findByCursor(ctx, input ?: CursorQueryInput())
+        val page = antiqueService.findByCursor(ctx, input ?: ScanQueryInput())
         val views = page.items.map { ScanRecordView(it) }
         return Page(views, page.nextCursor, page.hasMore)
     }

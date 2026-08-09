@@ -11,6 +11,7 @@ import com.ifmix.api.core.modules.scan.dto.PresignUploadReq
 import com.ifmix.api.core.modules.scan.dto.PresignedDownloadResponse
 import com.ifmix.api.core.modules.scan.dto.PresignedUploadResponse
 import com.ifmix.api.core.modules.scan.service.AntiqueService
+import com.ifmix.api.core.modules.storage.repo.UploadRecordRepository
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
@@ -23,20 +24,22 @@ import java.time.Duration
 /**
  * customer BFF 的对象存储路由。
  *
- * objectKey 格式: app/{appId}/install/{installId}[/user/{userId}]/{category}/{uuid}.{ext}
- * user/{userId} 只在已登录时拼接。
+ * objectKey 格式: app_{appId}/{category}/i_{installId}/{uuid}.{ext}
  */
 @RestController
 @RequestMapping("/customer")
 @ConditionalOnBean(AntiqueService::class)
-class CustomerStorageController(private val antiqueService: AntiqueService) {
+class CustomerStorageController(
+    private val antiqueService: AntiqueService,
+    private val uploadRecordRepo: UploadRecordRepository,
+) {
 
     @Operation(
         summary = "获取预签名上传 URL",
         description = """
             服务端生成 objectKey 并返回预签名上传 URL + imageKey。
             客户端上传完成后用 imageKey 调 antique/newScan。
-            需要 Bearer token。
+            不要求登录；user 未登录时 objectKey 中 user 段为 "none"。
         """,
     )
     @PostMapping("/mutation/core/storage/presignUpload")
@@ -46,19 +49,28 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
     ): PresignedUploadResponse {
         val appId = ctx.mustGetAppId()
         val installId = ctx.mustGetInstallId()
+        val mediaId = UuidV7.generate()
 
-        // 构建 objectKey: app/{appId}/install/{installId}[/user/{userId}]/{category}/{uuid}.{ext}
-        val pathParts = buildList {
-            add("app/$appId")
-            add("install/$installId")
-            if (ctx.userId != null) add("user/${ctx.userId}")
-            add(req.category.path)
-            add("${UuidV7.generate()}.${req.contentType.extension}")
-        }
-        val objectKey = pathParts.joinToString("/")
+        // objectKey: app_{appId}/{category}/i_{installId}//{id}.{ext}
+        val objectKey = "app_$appId/${req.category.path}/i_$installId/$mediaId.${req.contentType.extension}"
 
         val url = antiqueService.presignedUploadUrl(ctx, objectKey, req.contentType.mimeType, Duration.ofSeconds(300))
-        return PresignedUploadResponse(uploadUrl = url, imageKey = objectKey)
+        val downloadUrl = antiqueService.presignedDownloadUrl(ctx, objectKey, Duration.ZERO)
+
+        // 记录上传信息到 DB（id 与文件名一致）
+        uploadRecordRepo.create(
+            ctx = ctx.repoCtx,
+            id = mediaId,
+            appId = appId,
+            installId = installId,
+            userId = ctx.userId,
+            objectKey = objectKey,
+            contentType = req.contentType.mimeType,
+            category = req.category.name,
+            clientIp = ctx.clientIp,
+        )
+
+        return PresignedUploadResponse(mediaId=mediaId,uploadUrl = url, imageKey = objectKey, downloadUrl = downloadUrl)
     }
 
     @Operation(
@@ -82,20 +94,20 @@ class CustomerStorageController(private val antiqueService: AntiqueService) {
     /**
      * 校验 objectKey 格式和归属：
      * 1. 不能包含路径遍历（..）
-     * 2. 必须以 app/{appId}/ 开头且 appId 匹配
-     * 3. 必须包含 install/{installId} 且匹配当前用户
+     * 2. 必须以 app_{appId}/ 开头且 appId 匹配
+     * 3. 必须包含 i_{installId} 且匹配当前用户
      */
     private fun validateObjectKey(ctx: OperationContext, objectKey: String) {
         if (objectKey.contains("..")) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: path traversal not allowed")
         }
         val appId = ctx.mustGetAppId()
-        if (!objectKey.startsWith("app/$appId/")) {
+        if (!objectKey.startsWith("app_$appId/")) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: appId mismatch")
         }
         // 校验 installId 归属
         val installId = ctx.installId
-        if (installId != null && !objectKey.contains("install/$installId")) {
+        if (installId != null && !objectKey.contains("i_$installId/")) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: installId mismatch")
         }
     }

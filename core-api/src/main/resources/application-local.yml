@@ -5,22 +5,30 @@ spring:
   data:
     redis:
       url: redis://localhost:6379
-
+  ai:
+    openai:
+      base-url: https://apihub.agnes-ai.com/v1
+      chat:
+        options:
+          model: agnes-2.5-flash
 server:
   port: 3001
 
 app:
   expose-errors: true
   # show-sql: true
-  # 本地不接对象存储：用 Noop 实现（返回假 URL），无需 MinIO/R2 即可启动。
-  # 需要真实预签名上传时改为 s3 并填下面的凭证。
+  # Cloudflare R2（S3 兼容）
   storage:
-    type: none
-    region: us-east-1
-    endpoint: http://localhost:9000
-    bucket: ifmix
-    access-key: minioadmin
-    secret-key: minioadmin
+    type: s3
+    region: auto
+    endpoint: https://8e70811e74bfc55e99a28b4d9932b452.r2.cloudflarestorage.com
+    bucket: ugcdev
+    access-key: 15b38e0cc3ff413c25b4a32cb0fedf47
+    secret-key: 0a0ee6be54ab757264efd12069fe1df6533962a975547aa719f3f6f6c627233a
+    public-url: https://u1dev.ifmix.com
+  agnes:
+    ai:
+      modelFallbackOrder: ""
 
   datasource:
     writer:
@@ -41,6 +49,8 @@ logging:
     org.babyfish.jimmer.sql: ERROR
     # 项目自身日志
     # com.ifmix.api.core: DEBUG
+    # 请求/响应日志：DEBUG 打全量，WARN 级别只打错误（默认即可）
+    com.ifmix.api.core.infra.http.RequestLoggingFilter: DEBUG
 
 management:
   endpoints:

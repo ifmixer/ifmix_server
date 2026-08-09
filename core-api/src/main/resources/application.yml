@@ -43,6 +43,7 @@ app:
     bucket: ${STORAGE_BUCKET:ifmix}
     access-key: ${STORAGE_ACCESS_KEY:minioadmin}
     secret-key: ${STORAGE_SECRET_KEY:minioadmin}
+    public-url: ${STORAGE_PUBLIC_URL:}
   agnes:
     # API key 轮换配置：预扣配额（每次扫描尝试预扣 1 次，成功消耗、失败/429 归还）
     ai:

@@ -36,4 +36,7 @@ interface ScanRecord : AppScopedProps, SoftDeletableProps {
 
     /** 用户备注（通过 updateOne 设置） */
     val userNotes: String?
+
+    /** 是否已收藏 */
+    val collected: Boolean
 }

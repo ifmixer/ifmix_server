@@ -13,4 +13,8 @@ class NoopObjectStorage : ObjectStorage {
 
     override fun presignDownload(objectKey: String, duration: Duration): String =
         "http://noop-storage.local/download/$objectKey"
+
+    override fun upload(objectKey: String, data: ByteArray, contentType: String) {
+        // noop
+    }
 }

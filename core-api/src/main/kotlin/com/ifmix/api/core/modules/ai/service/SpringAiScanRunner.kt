@@ -2,6 +2,8 @@ package com.ifmix.api.core.modules.ai.service
 
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.http.ApiError
+import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.scan.dto.ScanResult
 import com.ifmix.api.core.modules.scan.dto.ScanInput
@@ -39,15 +41,26 @@ open class SpringAiScanRunner(
     override fun run(ctx: OperationContext, input: ScanInput): ScanResult {
         val states = keyStore.init()
 
+        if (states.isEmpty()) {
+            log.error("No Agnes API keys found in database — cannot run AI scan")
+            throw ApiError(ErrorCode.AI_UNAVAILABLE, "No AI API keys configured")
+        }
+        log.debug("Loaded {} Agnes key(s) for scan", states.size)
+
         // 模型列表：主模型 + fallback
         val allModels = listOf(chatClientFactory.defaultModel) + fallbackModels
 
         // 构建多图 media 列表
         val mediaItems = input.items.map { item ->
             val mimeType = MimeTypeUtils.parseMimeType(item.mediaType)
-            Media(mimeType, URI.create(item.imageUrl))
+            if (item.imageData != null) {
+                // base64 解码后的字节，直接内联发给模型
+                Media.builder().mimeType(mimeType).data(org.springframework.core.io.ByteArrayResource(item.imageData)).build()
+            } else {
+                Media(mimeType, URI.create(item.imageUrl!!))
+            }
         }
-        val primaryImageUrl = input.items.first().imageUrl
+        val primaryImageUrl = input.items.first().imageUrl ?: "inline-base64"
 
         for (model in allModels) {
             // 内层循环：对当前 model 尝试所有可用 key
@@ -71,7 +84,7 @@ open class SpringAiScanRunner(
 
                     // 构造多模态 prompt（支持多图）
                     val userMsg = UserMessage.builder()
-                        .text(ScanPrompt.userPrompt(primaryImageUrl))
+                        .text(ScanPrompt.userPrompt(primaryImageUrl, input.lang, input.country, input.currency))
                         .media(*mediaItems.toTypedArray())
                         .build()
 
@@ -92,15 +105,12 @@ open class SpringAiScanRunner(
                     val isTimeout = isTimeoutException(e)
 
                     if (isRateLimit) {
-                        log.warn("Rate limited on key $pickedKeyId for model $model: ${e.message}")
+                        log.warn("Rate limited on key {} for model {}: {}", pickedKeyId, model, e.message)
                         keyStore.markUnavailable(states, pickedKeyId, 300L) // 5 min 冷却
-                        // 继续尝试下一个 key
                     } else if (isTimeout) {
-                        log.warn("Timeout on key $pickedKeyId for model $model: ${e.message}")
-                        // 继续尝试下一个 key
+                        log.warn("Timeout on key {} for model {}: {}", pickedKeyId, model, e.message)
                     } else {
-                        log.error("Error scanning with key $pickedKeyId, model $model: ${e.message}")
-                        // 未知错误也继续尝试下一个 key
+                        log.error("Error scanning with key {} for model {}", pickedKeyId, model, e)
                     }
                 }
             }
@@ -110,11 +120,7 @@ open class SpringAiScanRunner(
 
         // 所有 model + key 都失败
         log.error("All models exhausted — AI_UNAVAILABLE")
-        return ScanResult(
-            scanId = UuidV7.generate().toString(),
-            status = ScanStatus.FAILED,
-            errorMessage = "All AI models exhausted. No API keys available or all rate-limited.",
-        )
+        throw ApiError(ErrorCode.AI_UNAVAILABLE, "All AI models exhausted")
     }
 
     /**

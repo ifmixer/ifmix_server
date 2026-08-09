@@ -1,10 +1,11 @@
 package com.ifmix.api.core.modules.auth
 
+import com.ifmix.api.core.entity.appconfig.AppConfigRevision
+import com.ifmix.api.core.entity.appconfig.ConfigContent
+import com.ifmix.api.core.entity.appconfig.WechatConfigValue
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.modules.app.AppConfig
-import com.ifmix.api.core.modules.app.GoogleClientIds
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -17,17 +18,24 @@ import org.springframework.test.web.client.response.MockRestResponseCreators.wit
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestTemplate
+import java.time.Instant
+import java.util.UUID
 
-private fun wechatCfg(appId: String? = "wx_test_id", appSecret: String? = "wx_test_secret") = AppConfig(
-    id = "c", appId = "app1", authTenantId = "t1", revision = 1,
-    appleBundleId = null, androidPackageName = null,
-    appleAppAppleId = null, appleIssuerId = null, appleKeyId = null, applePrivateKey = null,
-    appleServicesId = null,
-    googleServiceAccount = null, googleClientIds = GoogleClientIds(),
-    productTierMap = emptyMap(), iapEnv = "production",
-    wechatAppId = appId, wechatAppSecret = appSecret,
-    createdAt = null,
-)
+private fun wechatCfg(appId: String? = "wx_test_id", appSecret: String? = "wx_test_secret") = AppConfigRevision {
+    id = UUID.randomUUID()
+    this.appId = UUID.randomUUID()
+    authTenantId = UUID.randomUUID()
+    appleBundleId = null
+    androidPackageName = null
+    revisionNumber = 1
+    enabled = true
+    slug = "test"
+    note = "test"
+    createdAt = Instant.now()
+    content = ConfigContent(
+        wechat = WechatConfigValue(appId = appId, appSecret = appSecret),
+    )
+}
 
 class WechatVerifierTest {
 

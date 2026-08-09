@@ -1,35 +1,39 @@
 package com.ifmix.api.core.modules.ai.service
 
-import com.openai.client.OpenAIClientImpl
-import com.openai.core.ClientOptions
+import com.openai.client.OpenAIClient
+import com.openai.client.OpenAIClientAsync
+import com.openai.client.okhttp.OpenAIOkHttpClient
+import com.openai.client.okhttp.OpenAIOkHttpClientAsync
+import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.ai.openai.OpenAiChatOptions
-import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient
 
 /**
  * 按 API key + model 动态创建 ChatClient（每次 forKey 产生新实例，无状态，供多 key 轮换）。
- *
- * Spring AI 2.0：OpenAI 集成改用官方 openai-java SDK 的 [com.openai.client.OpenAIClient]。
- * 手动构造 per-key client：SpringAiOpenAiHttpClient（Spring AI 的 okhttp 传输）+ ClientOptions
- * （注入 baseUrl/apiKey）→ OpenAIClientImpl → OpenAiChatModel。
  */
 open class AgnesChatClientFactory(
     val baseUrl: String,
     val defaultModel: String,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     open fun forKey(apiKey: String, model: String = defaultModel): ChatClient {
-        val httpClient = SpringAiOpenAiHttpClient.builder().build()
-        val clientOptions = ClientOptions.builder()
-            .httpClient(httpClient)
+        log.debug("Creating ChatClient: baseUrl={}, model={}, apiKey={}...", baseUrl, model, apiKey.take(8))
+
+        val syncClient: OpenAIClient = OpenAIOkHttpClient.builder()
             .baseUrl(baseUrl)
             .apiKey(apiKey)
             .build()
-        val openAiClient = OpenAIClientImpl(clientOptions)
+
+        val asyncClient: OpenAIClientAsync = OpenAIOkHttpClientAsync.builder()
+            .baseUrl(baseUrl)
+            .apiKey(apiKey)
+            .build()
 
         val chatModel = OpenAiChatModel.builder()
-            .openAiClient(openAiClient)
+            .openAiClient(syncClient)
+            .openAiClientAsync(asyncClient)
             .options(OpenAiChatOptions.builder().model(model).build())
             .build()
 
