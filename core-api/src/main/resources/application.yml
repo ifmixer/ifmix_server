@@ -2,10 +2,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/ifmix_core}
+    auto-index-creation: true
   data:
-    mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/ifmix_core}
-      auto-index-creation: true
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
   ai:
@@ -18,6 +18,15 @@ spring:
 
 server:
   port: ${PORT:3001}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
 
 springdoc:
   swagger-ui:
@@ -52,3 +61,10 @@ app:
       jwks-uri: ${AUTH_GOOGLE_JWKS_URI:https://accounts.google.com/.well-known/openid-configuration}
     apple:
       jwks-uri: ${AUTH_APPLE_JWKS_URI:https://appleid.apple.com/.well-known/jwks.json}
+
+logging:
+  level:
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.boot.autoconfigure.mongo: INFO
+    org.mongodb.driver.connection: DEBUG
+    org.mongodb.driver.cluster: INFO
