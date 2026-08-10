@@ -15,10 +15,10 @@ class TodoService(private val crud: CRUDService<TodoDocument>) {
     /** 创建 todo（内嵌 items 单文档原子写），返回新 id。 */
     fun create(ctx: RequestContext, req: CreateTodoRequest): String {
         val doc = TodoDocument().apply {
-            title = req.title
+            title = req.title!!
             done = false
             items = (req.items ?: emptyList()).map {
-                TodoItem(id = ObjectId().toHexString(), content = it.content, done = false)
+                TodoItem(id = ObjectId().toHexString(), content = it.content!!, done = false)
             }.toMutableList()
         }
         return crud.createOne(ctx, doc)

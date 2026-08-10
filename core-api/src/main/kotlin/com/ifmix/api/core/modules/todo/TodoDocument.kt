@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document
 @Document(collection = "todos")
 @CompoundIndex(name = "todos_app_id_id_idx", def = "{'appId': 1, '_id': 1}")
 class TodoDocument : BaseAppDocument() {
-    var title: String? = null
+    lateinit var title: String
     var done: Boolean = false
     var items: MutableList<TodoItem> = mutableListOf()
 }
