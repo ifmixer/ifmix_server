@@ -31,6 +31,15 @@ data class ByIdRequest(
     @field:NotBlank val id: String? = null,
 )
 
+data class ByIdsRequest(val ids: List<String> = emptyList())
+
+data class OperationResult(val success: Boolean = true, val modifiedCount: Int? = null)
+
+data class UpdateTodoWithIdRequest(
+    @field:NotBlank val id: String? = null,
+    @field:Valid val patch: UpdateTodoRequest? = null,
+)
+
 data class TodoItemDto(val id: String?, val content: String?, val done: Boolean)
 
 data class TodoDto(

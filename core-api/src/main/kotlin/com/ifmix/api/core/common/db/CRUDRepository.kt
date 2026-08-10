@@ -91,6 +91,40 @@ open class CRUDRepository<T : BaseDocument>(
         }
     }
 
+    /** 批量按 id 查询：命中则返回，未命中跳过。 */
+    fun findByIds(ctx: RequestContext, ids: List<String>): List<T> {
+        if (ids.isEmpty()) return emptyList()
+        val query = Query()
+        tenantCriteria(ctx)?.let { query.addCriteria(it) }
+        extraCriteria(ctx)?.let { query.addCriteria(it) }
+        if (softDeletable) query.addCriteria(Criteria.where("deletedAt").`is`(null))
+        query.addCriteria(Criteria.where("_id").`in`(ids.mapNotNull { id -> if (invalidId(id)) null else ObjectId(id) }))
+        applyReadPreference(query, ctx)
+        return mongo.find(query, type)
+    }
+
+    /**
+     * 批量部分更新：遍历 ids 逐个执行 updateById，返回实际修改条数。
+     */
+    fun updateByIds(ctx: RequestContext, patches: Map<String, Any>): Int {
+        var count = 0
+        patches.forEach { (id, patch) ->
+            if (updateById(ctx, id, patch)) count++
+        }
+        return count
+    }
+
+    /**
+     * 批量删除：遍历 ids 逐个执行 deleteById，返回实际删除条数。
+     */
+    fun deleteByIds(ctx: RequestContext, ids: List<String>): Int {
+        var count = 0
+        ids.forEach { id ->
+            if (deleteById(ctx, id)) count++
+        }
+        return count
+    }
+
     /**
      * 游标分页。自建查询：注入租户 appId（若 AppScoped）+ extraCriteria + 软删过滤（若 SoftDeletable），
      * 接管排序、游标 keyset、limit 上限与读偏好。支持按任意 [CursorQueryInput.sortBy] 排序（默认 _id）。

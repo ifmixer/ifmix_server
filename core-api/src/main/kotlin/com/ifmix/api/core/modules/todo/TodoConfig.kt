@@ -5,6 +5,7 @@ import com.ifmix.api.core.common.db.MongoClusterResolver
 import com.ifmix.api.core.common.service.CRUDService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.data.mongodb.core.MongoTemplate
 
 /** todo 模块 bean 装配。todos 集合开启软删（由 BaseAppDocument 能力接口声明，CRUDRepository 反射探测）。 */
 @Configuration
@@ -19,6 +20,6 @@ class TodoConfig {
         CRUDService(todoRepository)
 
     @Bean
-    fun todoService(todoCrudService: CRUDService<TodoDocument>): TodoService =
-        TodoService(todoCrudService)
+    fun todoService(todoCrudService: CRUDService<TodoDocument>, mongo: MongoTemplate): TodoService =
+        TodoService(todoCrudService, mongo)
 }

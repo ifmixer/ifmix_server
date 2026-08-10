@@ -38,4 +38,31 @@ class CRUDService<T : BaseDocument>(
 
     fun findByCursor(ctx: RequestContext, input: CursorQueryInput = CursorQueryInput()): Page<T> =
         repo.findByCursor(ctx, input)
+
+    /** 批量按 id 查询：命中则返回，未命中跳过，返回命中文档列表。 */
+    fun findByIds(ctx: RequestContext, ids: List<String>): List<T> =
+        ids.mapNotNull { repo.findById(ctx, it) }
+
+    /**
+     * 批量部分更新：patches 为 id -> patch 映射，返回实际修改条数。
+     * 非 app 文档或 patch 无效时该条不计入。
+     */
+    fun updateByIds(ctx: RequestContext, patches: Map<String, Any>): Int {
+        var count = 0
+        patches.forEach { (id, patch) ->
+            if (repo.updateById(ctx, id, patch)) count++
+        }
+        return count
+    }
+
+    /**
+     * 批量删除：返回实际删除条数（已删除或不存在均计为成功）。
+     */
+    fun deleteByIds(ctx: RequestContext, ids: List<String>): Int {
+        var count = 0
+        ids.forEach { id ->
+            if (repo.deleteById(ctx, id)) count++
+        }
+        return count
+    }
 }

@@ -22,10 +22,11 @@ data class ScanDto(
     val tier: String?,
     val clientIp: String?,
     val relatedId: String?,
+    val userId: String?,
+    val installId: String?,
+    val collected: Boolean?,
     val createdAt: Instant?,
     val updatedAt: Instant?,
-    /** 是否已在默认收藏夹中（由 CollectionMembership 填充）。 */
-    val collected: Boolean? = null,
 )
 
 /** 扫描记录列表项 DTO（游标分页用，精简版）。 */

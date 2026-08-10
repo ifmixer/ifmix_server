@@ -62,4 +62,11 @@ class AuthConfig {
         appConfigRepo, providerVerifiers, authJwtService, providerIdentityRepo, appUserRepo,
         deviceSecretRepo, refreshRepo, txRunner, events, accessTtlSec,
     )
+
+    @Bean
+    fun mergeOnLoginListener(
+        mongo: org.springframework.data.mongodb.core.MongoTemplate,
+        txRunner: TxRunner,
+        bindingRepo: UserInstallBindingRepo,
+    ) = MergeOnLoginListener(mongo, txRunner, bindingRepo)
 }

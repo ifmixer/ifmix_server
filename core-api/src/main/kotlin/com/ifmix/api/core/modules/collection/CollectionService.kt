@@ -9,6 +9,11 @@ import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.service.CRUDService
 import com.ifmix.api.core.modules.antique.ScanRecordDocument
 import org.springframework.dao.DuplicateKeyException
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.query.Criteria
+import org.springframework.data.mongodb.core.query.Query
+import org.springframework.data.mongodb.core.query.Update
+import java.time.Instant
 
 /**
  * 收藏业务编排。
@@ -20,6 +25,7 @@ class CollectionService(
     private val collectionCrud: CRUDService<CollectionDocument>,
     private val itemRepo: CollectionItemRepository,
     private val collectionRepo: CollectionRepository,
+    private val mongo: MongoTemplate,
 ) {
 
     /**
@@ -61,10 +67,24 @@ class CollectionService(
 
     /**
      * 添加收藏条目。幂等：已存在则返回已有 id。
+     * 成功后同步将对应 ScanRecordDocument 的 collected 标记为 true。
      */
     fun addItem(ctx: RequestContext, req: AddItemReq): String {
         val cid = resolveCollectionId(ctx, req.collectionId)
-        return itemRepo.insertIfAbsent(ctx, cid, req.scanRecordId!!)
+        val itemId = itemRepo.insertIfAbsent(ctx, cid, req.scanRecordId!!)
+        // 标记 scan_record 为已收藏
+        try {
+            val update = Update().set("collected", true).set("updatedAt", Instant.now())
+            mongo.updateFirst(
+                Query(Criteria.where("_id").`is`(org.bson.types.ObjectId(req.scanRecordId))
+                    .and("appId").`is`(ctx.appId)),
+                update,
+                ScanRecordDocument::class.java,
+            )
+        } catch (_: Exception) {
+            // best-effort，不影响主流程
+        }
+        return itemId
     }
 
     /**

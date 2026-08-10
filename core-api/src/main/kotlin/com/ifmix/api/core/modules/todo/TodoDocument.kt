@@ -11,4 +11,8 @@ class TodoDocument : BaseAppDocument() {
     lateinit var title: String
     var done: Boolean = false
     var items: MutableList<TodoItem> = mutableListOf()
+    /** 拥有者 userId（登录用户），可为 null（匿名用户时不填）。 */
+    var userId: String? = null
+    /** 拥有者 installId（匿名或登录均填）。 */
+    var installId: String? = null
 }

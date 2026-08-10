@@ -50,6 +50,9 @@ class OpenApiConfig {
             )
             .addSecurityItem(SecurityRequirement().addList(APP_ID_SCHEME))
 
+    @Bean
+    fun envelopeSchemaCustomizer() = EnvelopeSchemaCustomizer()
+
     companion object {
         private const val APP_ID_SCHEME = "appId"
     }

@@ -2,12 +2,16 @@ package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.auth.AuthJwtService
 import com.ifmix.api.core.common.http.ApiError
+import com.ifmix.api.core.common.http.ClientIpResolver
 import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
 import com.ifmix.api.core.modules.appconfig.AppConfigRepo
+import jakarta.servlet.http.HttpServletRequest
 import org.bson.types.ObjectId
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.web.context.request.RequestContextHolder
+import org.springframework.web.context.request.ServletRequestAttributes
 import java.time.Instant
 
 /**
@@ -36,6 +40,17 @@ class AuthService(
     private fun tenantId(ctx: RequestContext): String =
         appConfigRepo.getByAppId(ctx.appId)?.authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
+    /**
+     * 从当前请求上下文中提取客户端 IP。
+     * 安全回落：无请求上下文时返回 null（异步场景）。
+     */
+    private fun resolveClientIp(): String? = try {
+        val attrs = RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes
+        attrs?.request?.let { ClientIpResolver.resolve(it) }
+    } catch (_: Exception) {
+        null
+    }
+
     fun loginWithProvider(ctx: RequestContext, provider: String, req: LoginReq): LoginRes {
         val cfg = appConfigRepo.getByAppId(ctx.appId) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val tid = cfg.authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
@@ -59,7 +74,19 @@ class AuthService(
             val refresh = refreshRepo.issue(ctx.appId, appUserId, dsId, ctx.installId)
             Issued(identityId, appUserId, dsPlain, refresh, jwt.signAccess(appUserId, ctx.appId))
         }
-        events.publishEvent(AuthLoggedInEvent(ctx.appId, issued.identityId, issued.appUserId, ctx.installId))
+
+        // 捕获当前请求的客户端 IP 和平台，随事件传递
+        val clientIp = resolveClientIp()
+        val clientPlatform = ctx.clientPlatform?.name
+        events.publishEvent(AuthLoggedInEvent(
+            appId = ctx.appId,
+            authIdentityId = issued.identityId,
+            appUserId = issued.appUserId,
+            installId = ctx.installId,
+            clientIp = clientIp,
+            clientPlatform = clientPlatform,
+            ctx = ctx,
+        ))
         return LoginRes(issued.access, issued.refresh.token, issued.refresh.expiresAt, issued.deviceSecret,
             accessTtlSec, UserDto(issued.appUserId, v.email))
     }

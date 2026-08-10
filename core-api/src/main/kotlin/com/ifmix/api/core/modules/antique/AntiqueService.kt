@@ -83,6 +83,9 @@ class AntiqueService(
             tier = record.tier,
             clientIp = record.clientIp,
             relatedId = record.relatedId,
+            userId = record.userId,
+            installId = record.installId,
+            collected = record.collected,
             createdAt = record.createdAt,
             updatedAt = record.updatedAt,
         )

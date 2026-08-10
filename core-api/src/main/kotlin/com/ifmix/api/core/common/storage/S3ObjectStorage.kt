@@ -41,6 +41,11 @@ class S3ObjectStorage(
         objectKey: String,
         duration: Duration,
     ): String {
+        // 若配置了公开 URL，直接返回公开访问地址，无需签名
+        config.publicBaseUrl?.let { publicBaseUrl ->
+            return "$publicBaseUrl/$objectKey"
+        }
+
         val getRequest = GetObjectRequest.builder()
             .bucket(config.bucketName)
             .key(objectKey)
