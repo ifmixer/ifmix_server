@@ -4,11 +4,13 @@ import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.common.service.CRUDService
 import com.ifmix.api.core.common.http.RequestContext
+import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import java.time.Instant
 
 /**
  * todo 业务逻辑：**组合**持有通用 CRUDAppService（不继承），委托通用 CRUD，只实现定制逻辑
@@ -37,34 +39,60 @@ class TodoService(
     /**
      * 部分更新 todo。
      * - title / done：非空时 $set
-     * - items：merge 语义 —— 有 id 更新、无 id 新增、未提及保留。
+     * - items：局部更新语义（同 Jimmer AssociatedSaveMode.MERGE）——
+     *   有 id → 只 $set 该 item 传入的字段（arrayFilters）；
+     *   无 id → $push 追加新 item；
+     *   未提及的 item 不动。
      */
     fun update(ctx: RequestContext, id: String, patch: UpdateTodoRequest): Boolean {
         if (patch.items == null) return crud.updateById(ctx, id, patch)
 
-        val doc = crud.getById(ctx, id)
-        val itemsById = doc.items.associateBy { it.id }.toMutableMap()
+        val baseQuery = Query(Criteria.where("_id").`is`(id).and("appId").`is`(ctx.appId))
+        val now = Instant.now()
 
-        for (req in patch.items) {
-            val existing = req.id?.let { itemsById[it] }
-            if (existing != null) {
-                // 原地 merge 非空字段
-                req.content?.let { existing.content = it }
-                req.done?.let { existing.done = it }
-            } else {
-                // 新增
-                val item = TodoItem(id = ObjectId().toHexString(), content = req.content ?: "", done = req.done ?: false)
-                itemsById[item.id] = item
+        // --- 1) $set todo 本身的字段 + 已有 items 用 arrayFilters 局部改 ---
+        val toUpdate = patch.items.filter { it.id != null }
+        val toInsert = patch.items.filter { it.id == null }
+
+        if (toUpdate.isNotEmpty() || patch.title != null || patch.done != null) {
+            val setDoc = Document()
+            patch.title?.let { setDoc["title"] = it }
+            patch.done?.let { setDoc["done"] = it }
+            setDoc["updatedAt"] = now
+
+            val arrayFilters = mutableListOf<Document>()
+            for ((i, req) in toUpdate.withIndex()) {
+                val f = "f$i"
+                arrayFilters.add(Document("$f.id", req.id))
+                req.content?.let { setDoc["items.\$[$f].content"] = it }
+                req.done?.let { setDoc["items.\$[$f].done"] = it }
             }
+
+            val command = Document().apply {
+                put("update", "todos")
+                put("updates", listOf(
+                    Document().apply {
+                        put("q", baseQuery.queryObject)
+                        put("u", Document("\$set", setDoc))
+                        if (arrayFilters.isNotEmpty()) put("arrayFilters", arrayFilters)
+                    }
+                ))
+            }
+            mongo.db.runCommand(command)
         }
 
-        val query = Query(Criteria.where("_id").`is`(id).and("appId").`is`(ctx.appId))
-        val update = Update().set("items", itemsById.values.toList())
-        patch.title?.let { update.set("title", it) }
-        patch.done?.let { update.set("done", it) }
-        update.set("updatedAt", java.time.Instant.now())
+        // --- 2) $push 追加新 items ---
+        if (toInsert.isNotEmpty()) {
+            val newItems = toInsert.map {
+                TodoItem(id = ObjectId().toHexString(), content = it.content ?: "", done = it.done ?: false)
+            }
+            val pushUpdate = Update()
+                .push("items").each(*newItems.toTypedArray())
+                .set("updatedAt", now)
+            mongo.updateFirst(baseQuery, pushUpdate, TodoDocument::class.java)
+        }
 
-        return mongo.updateFirst(query, update, TodoDocument::class.java).modifiedCount > 0
+        return true
     }
 
     fun getById(ctx: RequestContext, id: String): TodoDocument = crud.getById(ctx, id)
@@ -80,7 +108,7 @@ class TodoService(
     fun findByIds(ctx: RequestContext, ids: List<String>): List<TodoDocument> =
         crud.findByIds(ctx, ids)
 
-    /** 批量部分更新，返回修改条数。支持 items merge 语义。 */
+    /** 批量部分更新，返回修改条数。支持 items 局部更新语义。 */
     fun updateByIds(ctx: RequestContext, patches: List<Pair<String, UpdateTodoRequest>>): Int {
         var count = 0
         for ((id, patch) in patches) {
@@ -95,17 +123,12 @@ class TodoService(
 
     /**
      * 批量删除 items：按 item id 在匹配文档中移除对应子项。
-     * 使用 $pull with $in 原子操作，返回修改的文档数（每个匹配文档计为1次修改）。
+     * 使用 $pull with $in 原子操作，返回修改的文档数。
      */
     fun deleteItemsByIds(ctx: RequestContext, itemIds: List<String>): Int {
         if (itemIds.isEmpty()) return 0
-        // 按 appId 过滤（app-scoped 文档）
         val query = Query(Criteria.where("appId").`is`(ctx.appId))
-        // 从 items 数组中移除所有匹配 _id 的子项
-        val update = Update().pull(
-            "items",
-            Criteria.where("_id").`in`(itemIds.map { ObjectId(it) })
-        )
+        val update = Update().pull("items", Query(Criteria.where("id").`in`(itemIds)))
         return mongo.updateMulti(query, update, TodoDocument::class.java).modifiedCount.toInt()
     }
 }
