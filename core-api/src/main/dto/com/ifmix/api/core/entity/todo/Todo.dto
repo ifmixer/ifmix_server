@@ -15,11 +15,11 @@ input TodoCreateInput {
 }
 input TodoUpdateInput {
     id!
-    title
-    done
-    items {
-        id
-        content
-        done
+    title?
+    done?
+    items? {
+        id?
+        content?
+        done?
     }
 }

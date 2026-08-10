@@ -49,7 +49,7 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         if (!existsForApp(appId, input.id)) return null
         val entity = input.toEntity {
             this.appId = appId
-            items().forEach {
+            items()?.forEach {
                 if (it.id == null) it.id = UuidV7.generate()
                 it.appId = appId
             }
@@ -64,7 +64,7 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         val entities = inputs.map { input ->
             input.toEntity {
                 this.appId = appId
-                items().forEach {
+                items()?.forEach {
                     if (it.id == null) it.id = UuidV7.generate()
                     it.appId = appId
                 }
