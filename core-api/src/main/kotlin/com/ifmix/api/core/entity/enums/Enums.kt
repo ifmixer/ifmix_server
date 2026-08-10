@@ -1,92 +1,113 @@
 package com.ifmix.api.core.entity.enums
 
-import org.babyfish.jimmer.sql.EnumItem
-import org.babyfish.jimmer.sql.EnumType
+import com.ifmix.api.core.infra.http.OperationContext
+
+/**
+ * 带数字编码的枚举公共接口。
+ *
+ * 所有存 DB 的枚举实现此接口，约定：
+ * - code=0 为 UNKNOWN 兜底值
+ * - 正常业务编码从 100 起步，同组连续，不同组间隔 100
+ */
+interface CodedEnum {
+    val code: Int
+}
 
 /**
  * 扫描状态。
- *
- * 编码规则：0 保留不用；同组连续；不同组间隔 10。
  */
-@EnumType(EnumType.Strategy.ORDINAL)
-enum class ScanStatus(val code: Int) {
-    @EnumItem(ordinal = 100)
+enum class ScanStatus(override val code: Int) : CodedEnum {
+    UNKNOWN(0),
     PENDING(100),
-
-    @EnumItem(ordinal = 110)
     PROCESSING(110),
-
-    @EnumItem(ordinal = 200)
     COMPLETED(200),
-
-    @EnumItem(ordinal = 300)
     FAILED(300);
 
     companion object {
         private val byCode = entries.associateBy { it.code }
-        fun fromCode(code: Int): ScanStatus = byCode[code]
-            ?: throw IllegalArgumentException("Unknown ScanStatus code: $code")
+        fun fromCode(code: Int): ScanStatus = byCode[code] ?: UNKNOWN
     }
 }
 
 /**
  * Agnes Key 类型。
- *
- * 编码规则：10=个人, 20=企业。
  */
-@EnumType(EnumType.Strategy.ORDINAL)
-enum class AgnesKeyType(val code: Int) {
-    @EnumItem(ordinal = 100)
+enum class AgnesKeyType(override val code: Int) : CodedEnum {
+    UNKNOWN(0),
     PERSONAL(100),
-
-    @EnumItem(ordinal = 200)
     ENTERPRISE(200);
 
     companion object {
         private val byCode = entries.associateBy { it.code }
-        fun fromCode(code: Int): AgnesKeyType = byCode[code]
-            ?: throw IllegalArgumentException("Unknown AgnesKeyType code: $code")
+        fun fromCode(code: Int): AgnesKeyType = byCode[code] ?: UNKNOWN
     }
 }
 
 /**
  * 反馈分类。
- *
- * 编码规则：10=LIKED, 20-22=价格相关, 30=鉴定, 40-41=功能请求。
  */
-@EnumType(EnumType.Strategy.ORDINAL)
-enum class FeedbackCategory(val code: Int) {
+enum class FeedbackCategory(override val code: Int) : CodedEnum {
+    UNKNOWN(0),
+
     /** 喜欢这件藏品 */
-    @EnumItem(ordinal = 100)
     LIKED(100),
 
     /** 价格太高 */
-    @EnumItem(ordinal = 200)
     PRICE_TOO_HIGH(200),
 
     /** 价格太低 */
-    @EnumItem(ordinal = 210)
     PRICE_TOO_LOW(210),
 
     /** 价格缺失 */
-    @EnumItem(ordinal = 220)
     PRICE_MISSING(220),
 
     /** 鉴定有误 */
-    @EnumItem(ordinal = 300)
     WRONG_IDENTIFICATION(300),
 
     /** 功能建议 */
-    @EnumItem(ordinal = 400)
     FEATURE_REQUEST(400),
 
     /** 更多推荐 */
-    @EnumItem(ordinal = 410)
     MORE_RECOMMENDATIONS(410);
 
     companion object {
         private val byCode = entries.associateBy { it.code }
-        fun fromCode(code: Int): FeedbackCategory = byCode[code]
-            ?: throw IllegalArgumentException("Unknown FeedbackCategory code: $code")
+        fun fromCode(code: Int): FeedbackCategory = byCode[code] ?: UNKNOWN
+    }
+}
+
+/**
+ * 限额档位：按用户身份自动判定。
+ *
+ * 编码：0=UNKNOWN, 100=FREE, 200=PRO, 300=ENTERPRISE。
+ */
+enum class Tier(override val code: Int) : CodedEnum {
+    UNKNOWN(0),
+    FREE(100),
+    PRO(200),
+    ENTERPRISE(300);
+
+    companion object {
+        private val byCode = entries.associateBy { it.code }
+        fun fromCode(code: Int): Tier = byCode[code] ?: UNKNOWN
+
+        /** 默认返回 FREE。 */
+        fun from(ctx: OperationContext): Tier = FREE
+    }
+}
+
+/**
+ * IAP 购买平台。
+ *
+ * 编码：0=UNKNOWN, 100=APPLE, 200=GOOGLE。
+ */
+enum class Platform(override val code: Int) : CodedEnum {
+    UNKNOWN(0),
+    APPLE(100),
+    GOOGLE(200);
+
+    companion object {
+        private val byCode = entries.associateBy { it.code }
+        fun fromCode(code: Int): Platform = byCode[code] ?: UNKNOWN
     }
 }

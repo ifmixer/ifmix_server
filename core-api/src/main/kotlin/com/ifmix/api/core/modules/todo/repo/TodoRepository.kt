@@ -29,7 +29,7 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         }.limit(1).execute().firstOrNull()
     }
 
-    fun create(ctx: RepoContext, appId: UUID, installId: UUID?, userId: UUID?, input: TodoCreateInput): Todo {
+    fun create(ctx: RepoContext, appId: UUID, installId: UUID?, userId: UUID?, input: TodoCreateInput): UUID {
         val entity = input.toEntity {
             id = UuidV7.generate()
             this.appId = appId
@@ -42,11 +42,11 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         }
         return sql.entities.save(entity) {
             setMode(SaveMode.INSERT_ONLY)
-        }.modifiedEntity
+        }.modifiedEntity.id
     }
 
-    fun update(ctx: RepoContext, appId: UUID, input: TodoUpdateInput): Todo? {
-        if (!existsForApp(appId, input.id)) return null
+    fun update(ctx: RepoContext, appId: UUID, input: TodoUpdateInput): Boolean {
+        if (!existsForApp(appId, input.id)) return false
         val entity = input.toEntity {
             this.appId = appId
             items()?.forEach {
@@ -54,13 +54,14 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
                 it.appId = appId
             }
         }
-        return sql.entities.save(entity) {
+        sql.entities.save(entity) {
             setAssociatedMode(Todo::items, AssociatedSaveMode.MERGE)
-        }.modifiedEntity
+        }
+        return true
     }
 
-    fun batchUpdate(ctx: RepoContext, appId: UUID, inputs: List<TodoUpdateInput>): List<Todo> {
-        if (inputs.isEmpty()) return emptyList()
+    fun batchUpdate(ctx: RepoContext, appId: UUID, inputs: List<TodoUpdateInput>): Int {
+        if (inputs.isEmpty()) return 0
         val entities = inputs.map { input ->
             input.toEntity {
                 this.appId = appId
@@ -72,7 +73,7 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         }
         return sql.entities.saveEntities(entities) {
             setAssociatedMode(Todo::items, AssociatedSaveMode.MERGE)
-        }.items.map { it.modifiedEntity }
+        }.totalAffectedRowCount
     }
 
     fun deleteTodo(ctx: RepoContext, appId: UUID, id: UUID): Boolean {

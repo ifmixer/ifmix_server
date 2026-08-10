@@ -3,10 +3,9 @@ package com.ifmix.api.core.modules.scan.repo
 import com.ifmix.api.core.entity.scan.ImageRef
 import com.ifmix.api.core.entity.scan.ScanRecord
 import com.ifmix.api.core.entity.scan.collected
+import com.ifmix.api.core.entity.scan.updatedAt
 import com.ifmix.api.core.entity.scan.userDisplayName
 import com.ifmix.api.core.entity.scan.userNotes
-import com.ifmix.api.core.entity.scan.updatedAt
-import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.dto.Page
@@ -27,10 +26,10 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
         ctx: RepoContext,
         appId: UUID,
         imageKeys: List<ImageRef>,
-        status: ScanStatus,
+        status: Int,
         clientIp: String?,
         result: ScanResult? = null,
-    ): ScanRecord {
+    ): UUID {
         val now = Instant.now()
         val entity = ScanRecord {
             id = UuidV7.generate()
@@ -42,7 +41,7 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
             this.createdAt = now
             this.updatedAt = now
         }
-        return save(ctx, entity)
+        return save(ctx, entity).id
     }
 
     fun update(ctx: RepoContext, req: UpdateScanReq) {

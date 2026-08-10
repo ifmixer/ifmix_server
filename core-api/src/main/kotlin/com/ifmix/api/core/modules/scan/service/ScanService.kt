@@ -89,11 +89,11 @@ open class AntiqueService(
 
         val scanResult = scanRunner.run(ctx, scanInput)
 
-        val record = scanRepo.create(
+        val recordId = scanRepo.create(
             ctx = ctx.repoCtx,
             appId = ctx.appId!!,
             imageKeys = resolved.map { ImageRef(key = it.imageKey) },
-            status = scanResult.status,
+            status = scanResult.status.code,
             clientIp = ctx.clientIp,
             result = scanResult,
         )
@@ -111,7 +111,7 @@ open class AntiqueService(
         }
 
         return NewScanRes(
-            id = record.id,
+            id = recordId,
             result = scanResult,
         )
     }
@@ -161,12 +161,9 @@ open class AntiqueService(
     }
 
     @Transactional
-    fun updateScan(ctx: OperationContext, req: UpdateScanReq): ScanRecordView {
-        val record = scanRepo.findById(ctx.repoCtx, req.id)
+    fun updateScan(ctx: OperationContext, req: UpdateScanReq) {
+        scanRepo.findById(ctx.repoCtx, req.id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
-
         scanRepo.update(ctx.repoCtx, req)
-        // 重新查询返回最新数据
-        return ScanRecordView(scanRepo.findById(ctx.repoCtx, req.id)!!)
     }
 }

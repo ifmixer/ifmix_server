@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.iap
 
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.infra.ratelimit.Tier
+import com.ifmix.api.core.entity.enums.Tier
 import com.ifmix.api.core.infra.ratelimit.TierResolver
 
 /**

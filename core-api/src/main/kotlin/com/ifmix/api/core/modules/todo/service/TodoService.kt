@@ -30,15 +30,14 @@ class TodoService(
         todoRepo.findTodoById(ctx.repoCtx, ctx.mustGetAppId(), id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     @Transactional
-    fun createOne(ctx: OperationContext, input: TodoCreateInput): TodoView {
+    fun createOne(ctx: OperationContext, input: TodoCreateInput): UUID {
         val appId = ctx.mustGetAppId()
-        val saved = todoRepo.create(ctx.repoCtx, appId, ctx.installId, ctx.userId, input)
-        return todoRepo.findTodoById(ctx.repoCtx, appId, saved.id) ?: throw ApiError(ErrorCode.INTERNAL)
+        return todoRepo.create(ctx.repoCtx, appId, ctx.installId, ctx.userId, input)
     }
 
     @Transactional
     fun updateOne(ctx: OperationContext, input: TodoUpdateInput): Boolean {
-        return todoRepo.update(ctx.repoCtx, ctx.mustGetAppId(), input) != null
+        return todoRepo.update(ctx.repoCtx, ctx.mustGetAppId(), input)
     }
 
     @Transactional
@@ -52,7 +51,7 @@ class TodoService(
     @Transactional
     fun updateByIds(ctx: OperationContext, inputs: List<TodoUpdateInput>): Int {
         if (inputs.isEmpty()) return 0
-        return todoRepo.batchUpdate(ctx.repoCtx, ctx.mustGetAppId(), inputs).size
+        return todoRepo.batchUpdate(ctx.repoCtx, ctx.mustGetAppId(), inputs)
     }
 
     @Transactional

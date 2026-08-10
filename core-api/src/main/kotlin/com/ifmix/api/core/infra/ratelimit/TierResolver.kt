@@ -1,34 +1,7 @@
 package com.ifmix.api.core.infra.ratelimit
 
-import org.babyfish.jimmer.sql.EnumItem
-import org.babyfish.jimmer.sql.EnumType
+import com.ifmix.api.core.entity.enums.Tier
 import com.ifmix.api.core.infra.http.OperationContext
-/**
- * 限额档位：按用户身份自动判定。
- *
- * 同时作为 Jimmer entity 属性类型（SMALLINT 存储）。
- * 编码：FREE=10, PRO=20, ENTERPRISE=30。
- */
-@EnumType(EnumType.Strategy.ORDINAL)
-enum class Tier(val code: Int) {
-    @EnumItem(ordinal = 100)
-    FREE(100),
-
-    @EnumItem(ordinal = 200)
-    PRO(200),
-
-    @EnumItem(ordinal = 300)
-    ENTERPRISE(300);
-
-    companion object {
-        private val byCode = entries.associateBy { it.code }
-        fun fromCode(code: Int): Tier = byCode[code]
-            ?: throw IllegalArgumentException("Unknown Tier code: $code")
-
-        /** 默认返回 FREE。 */
-        fun from(ctx: OperationContext): Tier = FREE
-    }
-}
 
 /** 将请求上下文映射为一个 Tier。默认实现一律返回 FREE。 */
 interface TierResolver {

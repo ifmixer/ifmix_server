@@ -1,6 +1,5 @@
 package com.ifmix.api.core.modules.feedback.repo
 
-import com.ifmix.api.core.entity.enums.FeedbackCategory
 import com.ifmix.api.core.entity.feedback.Feedback
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
@@ -19,10 +18,10 @@ class FeedbackRepository(sql: KSqlClient) : BaseAppCrudRepository<Feedback>(sql,
         appId: UUID,
         installId: UUID,
         userId: UUID?,
-        category: FeedbackCategory,
+        category: Int,
         comment: String?,
         scanRecordId: UUID?,
-    ): Feedback {
+    ): UUID {
         val entity = Feedback {
             id = UuidV7.generate()
             this.appId = appId
@@ -33,6 +32,6 @@ class FeedbackRepository(sql: KSqlClient) : BaseAppCrudRepository<Feedback>(sql,
             this.comment = comment
             createdAt = Instant.now()
         }
-        return sql.entities.save(entity) { setMode(SaveMode.INSERT_ONLY) }.modifiedEntity
+        return sql.entities.save(entity) { setMode(SaveMode.INSERT_ONLY) }.modifiedEntity.id
     }
 }

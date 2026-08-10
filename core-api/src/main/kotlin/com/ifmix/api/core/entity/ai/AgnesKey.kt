@@ -3,7 +3,6 @@ package com.ifmix.api.core.entity.ai
 import org.babyfish.jimmer.sql.*
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps
-import com.ifmix.api.core.entity.enums.AgnesKeyType
 import java.time.Instant
 import java.util.UUID
 
@@ -21,8 +20,8 @@ interface AgnesKey : AppScopedProps, SoftDeletableProps {
 
     val email: String?
 
-    /** Key 类型：PERSONAL / ENTERPRISE */
-    val type: AgnesKeyType
+    /** Key 类型编码。0=UNKNOWN, 100=PERSONAL, 200=ENTERPRISE */
+    val type: Int
 
     val rateLimit: Long
     val windowSec: Long

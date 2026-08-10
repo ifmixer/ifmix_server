@@ -1,30 +1,7 @@
 package com.ifmix.api.core.modules.iap.dto
 
-import com.ifmix.api.core.infra.ratelimit.Tier
-import org.babyfish.jimmer.sql.EnumItem
-import org.babyfish.jimmer.sql.EnumType
+import com.ifmix.api.core.entity.enums.Tier
 import java.time.Instant
-
-/**
- * IAP 购买平台。
- *
- * 同时作为 Jimmer entity 属性类型（SMALLINT 存储）。
- * 编码：APPLE=10, GOOGLE=20。
- */
-@EnumType(EnumType.Strategy.ORDINAL)
-enum class Platform(val code: Int) {
-    @EnumItem(ordinal = 100)
-    APPLE(100),
-
-    @EnumItem(ordinal = 200)
-    GOOGLE(200);
-
-    companion object {
-        private val byCode = entries.associateBy { it.code }
-        fun fromCode(code: Int): Platform = byCode[code]
-            ?: throw IllegalArgumentException("Unknown Platform code: $code")
-    }
-}
 
 /** App Store / Google Play 返回的原始订阅状态。 */
 enum class SubStatus {

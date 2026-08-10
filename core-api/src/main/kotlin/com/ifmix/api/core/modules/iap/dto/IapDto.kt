@@ -1,9 +1,9 @@
 package com.ifmix.api.core.modules.iap.dto
 
-import com.ifmix.api.core.infra.ratelimit.Tier
+import com.ifmix.api.core.entity.enums.Tier
 
 data class VerifyReq(
-    val platform: Platform,
+    val platform: Int,
     val signedTransaction: String? = null,
     val purchaseToken: String? = null,
     val productId: String,

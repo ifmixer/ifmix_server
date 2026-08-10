@@ -2,7 +2,6 @@ package com.ifmix.api.core.entity.scan
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps
-import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.modules.scan.dto.ScanResult
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
@@ -27,7 +26,8 @@ interface ScanRecord : AppScopedProps, SoftDeletableProps {
     @Column(name = "result_json")
     val result: ScanResult?
 
-    val status: ScanStatus
+    /** 扫描状态编码。0=UNKNOWN, 100=PENDING, 110=PROCESSING, 200=COMPLETED, 300=FAILED */
+    val status: Int
 
     val clientIp: String?
 

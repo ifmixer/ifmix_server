@@ -22,7 +22,7 @@ class FeedbackService(
         val installId = ctx.mustGetInstallId()
         val userId = ctx.userId
 
-        val saved = feedbackRepo.create(
+        val id = feedbackRepo.create(
             ctx = ctx.repoCtx,
             appId = appId,
             installId = installId,
@@ -31,6 +31,6 @@ class FeedbackService(
             comment = req.comment,
             scanRecordId = req.scanRecordId,
         )
-        return CreateOneRes(id = saved.id)
+        return CreateOneRes(id = id)
     }
 }

@@ -1,5 +1,6 @@
 package com.ifmix.api.core.modules.ai.service
 
+import com.ifmix.api.core.entity.enums.AgnesKeyType
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.modules.ai.repo.AgnesKeyRepository
 import org.springframework.beans.factory.annotation.Qualifier
@@ -39,7 +40,7 @@ class AiConfig {
                     AgnesKeyStore.AgnesKeyDoc(
                         id = key.id.toString(),
                         key = key.key ?: "",
-                        type = key.type.name,
+                        type = AgnesKeyType.fromCode(key.type).name,
                         rateLimit = key.rateLimit,
                         windowSec = key.windowSec,
                         models = key.models,

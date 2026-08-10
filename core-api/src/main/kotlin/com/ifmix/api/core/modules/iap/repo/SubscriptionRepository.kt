@@ -15,8 +15,8 @@ import java.util.UUID
 @Repository
 class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscription>(sql, Subscription::class) {
 
-    fun upsertSubscription(ctx: RepoContext, entity: Subscription): Subscription {
-        return save(ctx, entity)
+    fun upsertSubscription(ctx: RepoContext, entity: Subscription): UUID {
+        return save(ctx, entity).id
     }
 
     fun findActiveByPxid(ctx: RepoContext, appId: UUID, pxid: String): Subscription? {
@@ -36,13 +36,14 @@ class SubscriptionRepository(sql: KSqlClient,) : BaseAppCrudRepository<Subscript
         }.fetchOneOrNull()
     }
 
-    fun updateByOriginalTxn(ctx: RepoContext, appId: UUID, originalTxnId: String, updater: (Subscription) -> Subscription): Subscription? {
+    fun updateByOriginalTxn(ctx: RepoContext, appId: UUID, originalTxnId: String, updater: (Subscription) -> Subscription): Boolean {
         val existing = sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.originalTransactionId eq originalTxnId)
             select(table)
-        }.fetchOneOrNull() ?: return null
+        }.fetchOneOrNull() ?: return false
         val updated = updater(existing)
-        return save(ctx, updated)
+        save(ctx, updated)
+        return true
     }
 }

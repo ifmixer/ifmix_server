@@ -11,15 +11,15 @@ import com.ifmix.api.core.entity.iap.StoreNotification
 import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.ratelimit.Tier
-import com.ifmix.api.core.modules.iap.dto.VerifyReq
-import com.ifmix.api.core.modules.iap.dto.VerifyRes
+import com.ifmix.api.core.entity.enums.Platform
+import com.ifmix.api.core.entity.enums.Tier
 import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.ifmix.api.core.modules.iap.NotificationType
-import com.ifmix.api.core.modules.iap.dto.Platform
 import com.ifmix.api.core.modules.iap.PurchaseVerifier
-import com.ifmix.api.core.modules.iap.dto.SubStatus
 import com.ifmix.api.core.modules.iap.VerifyInput
+import com.ifmix.api.core.modules.iap.dto.SubStatus
+import com.ifmix.api.core.modules.iap.dto.VerifyReq
+import com.ifmix.api.core.modules.iap.dto.VerifyRes
 import com.ifmix.api.core.modules.iap.dto.statusFromExpiry
 import com.ifmix.api.core.modules.iap.dto.tierOf
 import org.springframework.beans.factory.annotation.Qualifier
@@ -50,12 +50,13 @@ open class IapService(
         val rc = ctx.repoCtx
         val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
-        val verifier = verifierMap[req.platform.name] ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: ${req.platform}")
+        val platformEnum = Platform.fromCode(req.platform)
+        val verifier = verifierMap[platformEnum.name] ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: ${req.platform}")
 
         val purchaseToken = req.purchaseToken ?: req.signedTransaction
             ?: throw ApiError(ErrorCode.INVALID_REQUEST, "purchaseToken or signedTransaction required")
         val input = VerifyInput(
-            platform = req.platform,
+            platform = platformEnum,
             purchaseToken = purchaseToken,
             productId = req.productId,
             appId = appId.toString()
@@ -67,7 +68,7 @@ open class IapService(
         val tier = tierOf(req.productId, productTierMap) ?: Tier.FREE
 
         val subscriptionPxid = verifyResult.originalTransactionId ?: run {
-            "pxid-${req.platform.name}-${UuidV7.generate()}"
+            "pxid-${platformEnum.name}-${UuidV7.generate()}"
         }
 
         val existingSub = subscriptionRepo.findActiveByPxid(rc, appId, subscriptionPxid)
@@ -111,18 +112,18 @@ open class IapService(
                 "product_id" to req.productId,
                 "expiry_date" to verifyResult.expiryDate?.toString(),
                 "sub_status" to verifyResult.subStatus.name,
-                "platform" to req.platform.name
+                "platform" to req.platform
             )
             createdAt = now
             updatedAt = now
         }
 
-        val savedSub = subscriptionRepo.upsertSubscription(rc, subscription)
+        subscriptionRepo.upsertSubscription(rc, subscription)
 
         return VerifyRes(
-            expiresAt = savedSub.expiryDate?.toEpochMilli(),
-            state = statusFromExpiry(savedSub.expiryDate),
-            productId = savedSub.productId ?: req.productId,
+            expiresAt = verifyResult.expiryDate?.toEpochMilli(),
+            state = statusFromExpiry(verifyResult.expiryDate),
+            productId = req.productId,
             tier = tier
         )
     }
@@ -188,7 +189,7 @@ open class IapService(
         createStoreNotification(rc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
     }
 
-    private fun updateSubscription(rc: RepoContext, sub: Subscription, block: SubscriptionDraft.() -> Unit): Subscription {
+    private fun updateSubscription(rc: RepoContext, sub: Subscription, block: SubscriptionDraft.() -> Unit) {
         val updated = Subscription {
             id = sub.id
             appId = sub.appId
@@ -205,7 +206,7 @@ open class IapService(
             updatedAt = Instant.now()
             block()
         }
-        return subscriptionRepo.upsertSubscription(rc, updated)
+        subscriptionRepo.upsertSubscription(rc, updated)
     }
 
     private fun createStoreNotification(

@@ -101,7 +101,8 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
         """,
     )
     @PostMapping("/mutation/core/scan/updateScan")
-    fun updateOne(ctx: OperationContext, @Valid @RequestBody req: UpdateScanReq): ScanRecordView {
-        return antiqueService.updateScan(ctx, req)
+    fun updateOne(ctx: OperationContext, @Valid @RequestBody req: UpdateScanReq): OperationResult {
+        antiqueService.updateScan(ctx, req)
+        return OperationResult(success = true, modifiedCount = 1)
     }
 }

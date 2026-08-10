@@ -6,6 +6,7 @@ import com.ifmix.api.core.entity.todo.dto.TodoView
 import com.ifmix.api.core.infra.db.ownsRow
 import com.ifmix.api.core.infra.dto.ByIdRequest
 import com.ifmix.api.core.infra.dto.ByIdsRequest
+import com.ifmix.api.core.infra.dto.CreateOneRes
 import com.ifmix.api.core.infra.dto.CursorQueryInput
 import com.ifmix.api.core.infra.dto.OperationResult
 import com.ifmix.api.core.infra.dto.Page
@@ -51,9 +52,10 @@ class CustomerTodoController(private val todoService: TodoService) {
     }
 
     @PostMapping("/mutation/core/todo/createTodo")
-    fun createOne(ctx: OperationContext, @Valid @RequestBody req: TodoCreateInput): TodoView {
+    fun createOne(ctx: OperationContext, @Valid @RequestBody req: TodoCreateInput): CreateOneRes {
         ctx.mustGetInstallId()
-        return todoService.createOne(ctx, req)
+        val id = todoService.createOne(ctx, req)
+        return CreateOneRes(id = id)
     }
 
     @PostMapping("/mutation/core/todo/updateTodo")

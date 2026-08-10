@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth.dto
 
-import com.ifmix.api.core.infra.ratelimit.Tier
+import com.ifmix.api.core.entity.enums.Tier
 import com.ifmix.api.core.modules.iap.dto.SubscriptionState
 import io.swagger.v3.oas.annotations.media.Schema
 import java.time.Instant

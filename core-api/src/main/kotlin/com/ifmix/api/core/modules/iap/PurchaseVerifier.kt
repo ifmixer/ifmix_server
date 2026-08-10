@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.iap
 
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.modules.iap.dto.Platform
+import com.ifmix.api.core.entity.enums.Platform
 import com.ifmix.api.core.modules.iap.dto.SubStatus
 
 /**
