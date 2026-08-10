@@ -17,9 +17,18 @@ data class CreateTodoRequest(
     @field:Valid val items: List<CreateTodoItem>? = null,
 )
 
+/** 更新 item 时：有 id 则更新已有 item，无 id 则新增。不在列表中的 item 保持不变（不删除）。 */
+data class UpdateTodoItemRequest(
+    val id: String? = null,
+    @field:Size(max = 1000) val content: String? = null,
+    val done: Boolean? = null,
+)
+
 data class UpdateTodoRequest(
     @field:Size(max = 255) val title: String? = null,
     val done: Boolean? = null,
+    /** 传入时按 merge 语义处理：有 id 更新、无 id 新增、未提及的 item 保留。传 null 表示不修改 items。 */
+    @field:Valid val items: List<UpdateTodoItemRequest>? = null,
 )
 
 data class UpdateOneTodoRequest(

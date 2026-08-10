@@ -34,9 +34,38 @@ class TodoService(
         return crud.createOne(ctx, doc)
     }
 
-    /** 部分更新：直接把 patch 交给通用层自动生成 Mongo $set（非空字段），无需手写字段。 */
-    fun update(ctx: RequestContext, id: String, patch: UpdateTodoRequest): Boolean =
-        crud.updateById(ctx, id, patch)
+    /**
+     * 部分更新 todo。
+     * - title / done：非空时 $set
+     * - items：merge 语义 —— 有 id 更新、无 id 新增、未提及保留。
+     */
+    fun update(ctx: RequestContext, id: String, patch: UpdateTodoRequest): Boolean {
+        if (patch.items == null) return crud.updateById(ctx, id, patch)
+
+        val doc = crud.getById(ctx, id)
+        val itemsById = doc.items.associateBy { it.id }.toMutableMap()
+
+        for (req in patch.items) {
+            val existing = req.id?.let { itemsById[it] }
+            if (existing != null) {
+                // 原地 merge 非空字段
+                req.content?.let { existing.content = it }
+                req.done?.let { existing.done = it }
+            } else {
+                // 新增
+                val item = TodoItem(id = ObjectId().toHexString(), content = req.content ?: "", done = req.done ?: false)
+                itemsById[item.id] = item
+            }
+        }
+
+        val query = Query(Criteria.where("_id").`is`(id).and("appId").`is`(ctx.appId))
+        val update = Update().set("items", itemsById.values.toList())
+        patch.title?.let { update.set("title", it) }
+        patch.done?.let { update.set("done", it) }
+        update.set("updatedAt", java.time.Instant.now())
+
+        return mongo.updateFirst(query, update, TodoDocument::class.java).modifiedCount > 0
+    }
 
     fun getById(ctx: RequestContext, id: String): TodoDocument = crud.getById(ctx, id)
 
@@ -51,9 +80,14 @@ class TodoService(
     fun findByIds(ctx: RequestContext, ids: List<String>): List<TodoDocument> =
         crud.findByIds(ctx, ids)
 
-    /** 批量部分更新，返回修改条数。 */
-    fun updateByIds(ctx: RequestContext, patches: List<Pair<String, UpdateTodoRequest>>): Int =
-        crud.updateByIds(ctx, patches.associate { it.first to it.second })
+    /** 批量部分更新，返回修改条数。支持 items merge 语义。 */
+    fun updateByIds(ctx: RequestContext, patches: List<Pair<String, UpdateTodoRequest>>): Int {
+        var count = 0
+        for ((id, patch) in patches) {
+            if (update(ctx, id, patch)) count++
+        }
+        return count
+    }
 
     /** 批量删除，返回删除条数。 */
     fun deleteByIds(ctx: RequestContext, ids: List<String>): Int =
