@@ -42,7 +42,7 @@ class TodoService(
         todoRepo.deleteTodo(ctx.repoCtx, ctx.mustGetAppId(), id)
 
     fun findByIds(ctx: OperationContext, ids: List<UUID>): List<TodoListDto> =
-        todoRepo.findTodosByIds(ctx.repoCtx, ctx.mustGetAppId(), ids)
+        todoRepo.findTodoByIds(ctx.repoCtx, ctx.mustGetAppId(), ids)
 
     @Transactional
     fun updateByIds(ctx: OperationContext, inputs: List<TodoUpdateInput>): Int {

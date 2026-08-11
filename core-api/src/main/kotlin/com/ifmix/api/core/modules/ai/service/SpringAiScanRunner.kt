@@ -9,9 +9,14 @@ import com.ifmix.api.core.modules.scan.dto.ScanResult
 import com.ifmix.api.core.modules.scan.dto.ScanInput
 import com.ifmix.api.core.modules.scan.ScanRunner
 import org.slf4j.LoggerFactory
+import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.content.Media
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Primary
+import org.springframework.stereotype.Service
 import org.springframework.util.MimeTypeUtils
 import tools.jackson.databind.ObjectMapper
 import java.net.SocketTimeoutException
@@ -29,12 +34,19 @@ import java.util.concurrent.TimeoutException
  * - Pre-deduct quota / 失败归还
  * - 模型 fallback 链（外层循环）
  */
+@Service
+@Primary
 open class SpringAiScanRunner(
     private val chatClientFactory: AgnesChatClientFactory,
     private val keyStore: AgnesKeyStore,
-    private val fallbackModels: List<String>,
-    private val snakeCaseMapper: ObjectMapper,
+    @Value("\${app.agnes.ai.modelFallbackOrder:}") fallbackOrderStr: String,
+    @Qualifier("snakeCaseMapper") private val snakeCaseMapper: ObjectMapper,
 ) : ScanRunner {
+
+    private val fallbackModels: List<String> = fallbackOrderStr
+        .split(",")
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
 
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -53,14 +65,8 @@ open class SpringAiScanRunner(
         // 构建多图 media 列表
         val mediaItems = input.items.map { item ->
             val mimeType = MimeTypeUtils.parseMimeType(item.mediaType)
-            if (item.imageData != null) {
-                // base64 解码后的字节，直接内联发给模型
-                Media.builder().mimeType(mimeType).data(org.springframework.core.io.ByteArrayResource(item.imageData)).build()
-            } else {
-                Media(mimeType, URI.create(item.imageUrl!!))
-            }
+            Media(mimeType, URI.create(item.imageUrl))
         }
-        val primaryImageUrl = input.items.first().imageUrl ?: "inline-base64"
 
         for (model in allModels) {
             // 内层循环：对当前 model 尝试所有可用 key
@@ -82,13 +88,17 @@ open class SpringAiScanRunner(
                     val apiKey = doc?.key ?: continue
                     val client = chatClientFactory.forKey(apiKey, model)
 
-                    // 构造多模态 prompt（支持多图）
+                    // 构造多模态 prompt：System + User（多图作为 media 附件）
+                    val systemMsg = SystemMessage(ScanPrompt.SYSTEM_TEXT)
+                    val userText = ScanPrompt.userPrompt(input.items.size, input.lang, input.country, input.currency)
                     val userMsg = UserMessage.builder()
-                        .text(ScanPrompt.userPrompt(primaryImageUrl, input.lang, input.country, input.currency))
+                        .text(userText)
                         .media(*mediaItems.toTypedArray())
                         .build()
 
-                    val prompt = Prompt(userMsg)
+                    val prompt = Prompt(listOf(systemMsg, userMsg))
+                    log.debug("Scan prompt [model={}, key={}]: system={}, user={}", model, pickedKeyId, userMsg, userText)
+
                     val response = client.prompt(prompt).call()
                     val content = response.content() ?: ""
 
@@ -189,14 +199,14 @@ open class SpringAiScanRunner(
             snakeCaseMapper.readValue(jsonOnly, ScanResult::class.java)
                 ?: ScanResult(
                     scanId = UuidV7.generate().toString(),
-                    status = ScanStatus.COMPLETED,
+                    status = ScanStatus.FAILED,
                     errorMessage = "Could not parse JSON fields",
                 )
         } catch (e: Exception) {
             log.error("Failed to parse AI response [${jsonText.take(200)}]: ${e.message}")
             ScanResult(
                 scanId = UuidV7.generate().toString(),
-                status = ScanStatus.COMPLETED,
+                status = ScanStatus.FAILED,
                 name = jsonText.take(100),
                 notes = "raw_response: $jsonText",
                 errorMessage = "JSON parsing fallback: ${e.message}",

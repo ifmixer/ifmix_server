@@ -37,8 +37,14 @@ dependencies {
     // Spring AI — OpenAI-compatible model provider (Agnes AI backend)
     // 2.0.x 才兼容 Spring Boot 4.0/4.1（1.0.x 面向 Boot 3.x，引用了已被移除的 RestClient AutoConfiguration 旧包名）
     implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0"))
-    implementation("org.springframework.ai:spring-ai-starter-model-openai")
-    implementation("com.openai:openai-java-client-okhttp:4.39.1")
+    implementation("org.springframework.ai:spring-ai-starter-model-openai") {
+        exclude(group = "io.swagger.core.v3", module = "swagger-annotations")
+    }
+    implementation("com.openai:openai-java-client-okhttp:4.39.1") {
+        exclude(group = "io.swagger.core.v3", module = "swagger-annotations")
+    }
+    // Netty macOS DNS resolver — 防止 R2/S3 endpoint DNS 解析卡住
+    implementation("io.netty:netty-resolver-dns-native-macos::osx-aarch_64")
 
     // Auth — social login + JWT + refresh token
     implementation("org.springframework.security:spring-security-oauth2-jose")

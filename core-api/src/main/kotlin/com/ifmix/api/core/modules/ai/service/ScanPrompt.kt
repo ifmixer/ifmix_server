@@ -115,17 +115,23 @@ object ScanPrompt {
     }
 
     /**
-     * User text template — includes locale instructions and image reference.
+     * User text template — includes locale instructions and image count reference.
+     * Images are sent as media attachments, not URLs in the text.
      *
-     * @param imageUrl URL of the image to analyze
+     * @param imageCount number of images attached
      * @param lang user language preference
      * @param country user country
      * @param currency user currency preference
      * @return complete user prompt
      */
-    fun userPrompt(imageUrl: String, lang: String? = null, country: String? = null, currency: String? = null): String {
+    fun userPrompt(imageCount: Int, lang: String? = null, country: String? = null, currency: String? = null): String {
         val locale = localeInstruction(lang, country, currency)
         val localeBlock = if (locale.isNotEmpty()) "$locale\n\n" else ""
-        return "${localeBlock}Analyze this image for antique identification. Return the result as JSON.\n\nImage URL: $imageUrl"
+        val imageRef = if (imageCount == 1) {
+            "Analyze the attached image for antique identification."
+        } else {
+            "Analyze the $imageCount attached images for antique identification. They show the same object from different angles."
+        }
+        return "${localeBlock}${imageRef} Return the result as JSON."
     }
 }

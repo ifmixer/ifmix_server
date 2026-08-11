@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/customer")
 class CustomerTodoController(private val todoService: TodoService) {
 
-    @PutMapping("/query/core/todo/findTodosByCursor")
+    @PutMapping("/query/core/todo/findTodoByCursor")
     fun findByCursor(
         ctx: OperationContext,
         @RequestBody(required = false) input: CursorQueryInput?,
@@ -85,7 +85,7 @@ class CustomerTodoController(private val todoService: TodoService) {
         return OperationResult(success = count == req.ids.size, modifiedCount = count)
     }
 
-    @PutMapping("/query/core/todo/findTodosByIds")
+    @PutMapping("/query/core/todo/findTodoByIds")
     fun findByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): List<TodoListDto> {
         ctx.mustGetInstallId()
         val todos = todoService.findByIds(ctx, req.ids)

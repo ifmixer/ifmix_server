@@ -5,13 +5,10 @@ import java.util.UUID
 
 /**
  * 扫描输入中的单个媒体项。
- * 支持 URL（已上传到 R2）或原始字节（base64 解码后）两种模式。
  */
 data class ScanMediaItem(
     /** 预签名下载 URL（供 AI 模型通过 URL 访问） */
-    val imageUrl: String? = null,
-    /** 原始图片字节（base64 解码后，直接内联发给 AI） */
-    val imageData: ByteArray? = null,
+    val imageUrl: String,
     /** MIME 类型（如 image/jpeg, image/png） */
     val mediaType: String,
 )
@@ -31,12 +28,9 @@ data class ScanInput(
 )
 
 data class NewScanImageInput(
-    /** 已上传的对象键（与 base64 二选一） */
-    @Schema(description = "已上传文件的 objectKey。与 base64 二选一。")
-    val imageKey: String? = null,
-    /** Base64 编码的图片数据（与 imageKey 二选一）。不含 data: 前缀。 */
-    @Schema(description = "Base64 编码的图片数据（纯 base64，不含 data:...;base64, 前缀）。与 imageKey 二选一。")
-    val base64: String? = null,
+    /** 已上传的对象键（必填） */
+    @Schema(description = "已上传文件的 objectKey。")
+    val imageKey: String,
     val mediaType: String,
 )
 

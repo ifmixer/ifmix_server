@@ -7,29 +7,22 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.S3Configuration
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 /**
  * S3/R2 存储配置。
- * 仅在 app.storage.type=s3 时生效（默认不加载，避免测试环境缺 AWS 凭据）。
  *
  * endpoint + region + accessKey/secretKey 从 application.yml 读取（app.storage.*）。
  * 非 amazonaws.com 端点自动走 path-style access（兼容 R2 / MinIO / localstack）。
  */
 @Configuration
-@ConditionalOnProperty(
-    name = ["app.storage.type"],
-    havingValue = "s3",
-    matchIfMissing = false,
-)
 class StorageConfig(
     @Value("\${app.storage.region:us-east-1}") private val region: String,
     @Value("\${app.storage.endpoint:http://localhost:9000}") private val endpoint: String,
     @Value("\${app.storage.access-key:minioadmin}") private val accessKey: String,
     @Value("\${app.storage.secret-key:minioAdmin}") private val secretKey: String,
-    @Value("\${app.storage.bucket:ifmix}") private val bucket: String,
+    @Value("\${app.storage.bucket:ugcdev}") private val bucket: String,
     /** R2 自定义域名（如 https://u1dev.ifmix.com）。配置后 presignDownload 返回公开 URL，不带签名参数。 */
     @Value("\${app.storage.public-url:}") private val publicUrl: String,
 ) {

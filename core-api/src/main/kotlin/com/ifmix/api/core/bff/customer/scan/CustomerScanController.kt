@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/customer")
 @ConditionalOnBean(AntiqueService::class)
-class CustomerAntiqueController(private val antiqueService: AntiqueService) {
+class CustomerScanController(private val antiqueService: AntiqueService) {
 
     @Operation(
         summary = "扫描古物（同步）",

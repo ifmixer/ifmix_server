@@ -93,7 +93,7 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         }.execute()
     }
 
-    fun findTodosByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): List<TodoListDto> {
+    fun findTodoByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): List<TodoListDto> {
         if (ids.isEmpty()) return emptyList()
         return sql.createQuery(Todo::class) {
             where(table.appId eq appId)
