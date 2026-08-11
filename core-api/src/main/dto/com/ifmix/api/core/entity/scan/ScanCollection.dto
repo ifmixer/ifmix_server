@@ -1,4 +1,4 @@
 export com.ifmix.api.core.entity.scan.ScanCollection
-ScanCollectionView {
+ScanCollectionDto {
     #allScalars
 }

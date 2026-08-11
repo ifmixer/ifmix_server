@@ -1,5 +1,5 @@
 export com.ifmix.api.core.entity.todo.Todo
-TodoView {
+TodoDto {
     #allScalars
     items {
         #allScalars

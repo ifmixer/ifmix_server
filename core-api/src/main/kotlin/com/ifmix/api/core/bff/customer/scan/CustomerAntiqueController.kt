@@ -2,7 +2,7 @@ package com.ifmix.api.core.bff.customer.scan
 
 import com.ifmix.api.core.infra.dto.ByIdRequest
 import com.ifmix.api.core.infra.dto.OperationResult
-import com.ifmix.api.core.entity.scan.dto.ScanRecordView
+import com.ifmix.api.core.entity.scan.dto.ScanRecordDto
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.scan.service.AntiqueService
@@ -35,7 +35,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
             失败场景走 ErrorEnvelope（503000 AI_UNAVAILABLE 或 429000 RATE_LIMITED）。
             
             id 关系说明：
-            - NewScanRes.id = ScanRecordView.id = 数据库主键（UUIDv7）
+            - NewScanRes.id = ScanRecordDto.id = 数据库主键（UUIDv7）
             - 所有需要传 scanRecordId 的地方（收藏/反馈/findById）都用这个 id
         """,
     )
@@ -54,7 +54,7 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
         """,
     )
     @PutMapping("/query/core/scan/findScanById")
-    fun findById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): ScanRecordView {
+    fun findById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): ScanRecordDto {
         return antiqueService.getScanById(ctx, req.id)
     }
 
@@ -70,9 +70,9 @@ class CustomerAntiqueController(private val antiqueService: AntiqueService) {
     fun findByCursor(
         ctx: OperationContext,
         @RequestBody(required = false) input: ScanQueryInput?,
-    ): Page<ScanRecordView> {
+    ): Page<ScanRecordDto> {
         val page = antiqueService.findByCursor(ctx, input ?: ScanQueryInput())
-        val views = page.items.map { ScanRecordView(it) }
+        val views = page.items.map { ScanRecordDto(it) }
         return Page(views, page.nextCursor, page.hasMore)
     }
 

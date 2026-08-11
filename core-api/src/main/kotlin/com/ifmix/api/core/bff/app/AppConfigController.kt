@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.app
 
 import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionCreateInput
-import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionView
+import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionDto
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.dto.ToggleRevisionRequest
@@ -27,7 +27,7 @@ class AppConfigController(private val appConfigService: AppConfigService) {
     fun createOneAppConfigRevision(
         ctx: OperationContext,
         @Valid @RequestBody req: AppConfigRevisionCreateInput,
-    ): AppConfigRevisionView {
+    ): AppConfigRevisionDto {
         ctx.mustGetAppId()
         return appConfigService.createOneRevision(ctx, req)
     }
@@ -40,7 +40,7 @@ class AppConfigController(private val appConfigService: AppConfigService) {
     fun toggleRevision(
         ctx: OperationContext,
         @Valid @RequestBody req: ToggleRevisionRequest,
-    ): AppConfigRevisionView {
+    ): AppConfigRevisionDto {
         ctx.mustGetAppId()
         return appConfigService.toggleRevision(ctx, req.id, req.enabled)
     }

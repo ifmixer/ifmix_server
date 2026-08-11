@@ -1,5 +1,5 @@
 export com.ifmix.api.core.entity.ai.AgnesKey
-AgnesKeyView {
+AgnesKeyDto {
     id
     key
     email

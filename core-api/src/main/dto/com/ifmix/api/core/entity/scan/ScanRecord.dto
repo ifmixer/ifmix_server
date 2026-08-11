@@ -1,6 +1,6 @@
 export com.ifmix.api.core.entity.scan.ScanRecord
 
-ScanRecordView {
+ScanRecordDto {
     #allScalars
 }
 

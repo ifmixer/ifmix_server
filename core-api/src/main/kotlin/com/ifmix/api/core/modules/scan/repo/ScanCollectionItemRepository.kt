@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.scan.repo
 
 import com.ifmix.api.core.entity.scan.ScanCollectionItem
-import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemView
+import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemDto
 import com.ifmix.api.core.entity.scan.appId
 import com.ifmix.api.core.entity.scan.collectionId
 import com.ifmix.api.core.entity.scan.scanRecordId
@@ -59,7 +59,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
         collectionId: UUID,
         limit: Int,
         cursor: UUID?,
-    ): Page<ScanCollectionItemView> {
+    ): Page<ScanCollectionItemDto> {
         val items = sql.createQuery(ScanCollectionItem::class) {
             where(table.appId eq appId)
             where(table.collectionId eq collectionId)
@@ -67,7 +67,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
                 where(table.getId<UUID>() lt cursor)
             }
             orderBy(table.getId<UUID>().desc())
-            select(table.fetch(ScanCollectionItemView::class))
+            select(table.fetch(ScanCollectionItemDto::class))
         }.limit(limit + 1).execute()
 
         return Page.of(items, limit) { it.id.toString() }

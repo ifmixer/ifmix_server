@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.scan.service
 
 import com.ifmix.api.core.entity.scan.ScanCollection
-import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemView
+import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemDto
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
@@ -74,8 +74,7 @@ open class ScanCollectionService(
         return RemoveItemsRes(removed = deletedCount.toInt())
     }
 
-    @Transactional(readOnly = true)
-    fun findItemsByCursor(ctx: OperationContext, req: ListItemsReq?): Page<ScanCollectionItemView> {
+    fun findItemsByCursor(ctx: OperationContext, req: ListItemsReq?): Page<ScanCollectionItemDto> {
         val appId = ctx.mustGetAppId()
         val collectionId = req?.collectionId ?: getDefault(ctx).id
         val limit = req?.limit ?: 20

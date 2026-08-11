@@ -21,23 +21,18 @@ import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 open class BaseCrudService<E : Any>(
     protected val repo: BaseCrudRepository<E>,
 ) {
-    @Transactional(readOnly = true)
     open fun findById(ctx: OperationContext, id: UUID): E? =
         repo.findById(ctx.repoCtx, id)
 
-    @Transactional(readOnly = true)
     open fun mustFindById(ctx: OperationContext, id: UUID): E =
         repo.findById(ctx.repoCtx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
-    @Transactional(readOnly = true)
     open fun <V : View<E>> findById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V? =
         repo.findById(ctx.repoCtx, id, viewType)
 
-    @Transactional(readOnly = true)
     open fun <V : View<E>> mustFindById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V =
         repo.findById(ctx.repoCtx, id, viewType) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
-    @Transactional(readOnly = true)
     open fun findByCursor(ctx: OperationContext, input: CursorQueryInput = CursorQueryInput()): Page<E> =
         repo.findByCursor(ctx.repoCtx, input)
 

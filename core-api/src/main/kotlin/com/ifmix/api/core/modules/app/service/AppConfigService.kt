@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.app.service
 
 import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionCreateInput
-import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionView
+import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionDto
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
@@ -17,7 +17,7 @@ class AppConfigService(
 ) {
 
     @Transactional
-    fun createOneRevision(ctx: OperationContext, req: AppConfigRevisionCreateInput): AppConfigRevisionView {
+    fun createOneRevision(ctx: OperationContext, req: AppConfigRevisionCreateInput): AppConfigRevisionDto {
         val appId = ctx.mustGetAppId()
 
         if (req.enabled) {
@@ -26,12 +26,12 @@ class AppConfigService(
 
         val created = revisionRepo.createNewRevision(ctx.repoCtx, req)
 
-        return revisionRepo.findById(ctx.repoCtx, appId, created.id, AppConfigRevisionView::class)
+        return revisionRepo.findById(ctx.repoCtx, appId, created.id, AppConfigRevisionDto::class)
             ?: throw ApiError(ErrorCode.INTERNAL, "failed to read newly created revision")
     }
 
     @Transactional
-    fun toggleRevision(ctx: OperationContext, revisionId: UUID, enabled: Boolean): AppConfigRevisionView {
+    fun toggleRevision(ctx: OperationContext, revisionId: UUID, enabled: Boolean): AppConfigRevisionDto {
         val appId = ctx.mustGetAppId()
 
         revisionRepo.findById(ctx.repoCtx, appId, revisionId)
@@ -43,7 +43,7 @@ class AppConfigService(
 
         revisionRepo.updateEnabled(ctx.repoCtx, revisionId, enabled)
 
-        return revisionRepo.findById(ctx.repoCtx, appId, revisionId, AppConfigRevisionView::class)
+        return revisionRepo.findById(ctx.repoCtx, appId, revisionId, AppConfigRevisionDto::class)
             ?: throw ApiError(ErrorCode.INTERNAL, "failed to read revision after toggle")
     }
 }

@@ -6,7 +6,6 @@ import javax.sql.DataSource
 
 /**
  * 读写分离路由：
- * - @Transactional(readOnly = true) → reader
  * - 其他 → writer
  */
 class ReadWriteRoutingDataSource(

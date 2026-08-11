@@ -1,16 +1,14 @@
 package com.ifmix.api.core.modules.todo.service
 
-import com.ifmix.api.core.entity.todo.Todo
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
-import com.ifmix.api.core.entity.todo.dto.TodoView
+import com.ifmix.api.core.entity.todo.dto.TodoDto
 import com.ifmix.api.core.infra.dto.CursorQueryInput
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
-import com.ifmix.api.core.infra.service.BaseAppCrudService
 import com.ifmix.api.core.modules.todo.repo.TodoRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -19,14 +17,12 @@ import java.util.UUID
 @Service
 class TodoService(
     private val todoRepo: TodoRepository,
-) : BaseAppCrudService<Todo>(todoRepo) {
+) {
 
-    @Transactional(readOnly = true)
-    fun findTodoByCursor(ctx: OperationContext, input: CursorQueryInput): Page<TodoView> =
-        todoRepo.findViewByCursor(ctx.repoCtx, ctx.mustGetAppId(), TodoView::class, input)
+    fun findTodoByCursor(ctx: OperationContext, input: CursorQueryInput): Page<TodoDto> =
+        todoRepo.findViewByCursor(ctx.repoCtx, ctx.mustGetAppId(), TodoDto::class, input)
 
-    @Transactional(readOnly = true)
-    fun getTodo(ctx: OperationContext, id: UUID): TodoView =
+    fun getTodo(ctx: OperationContext, id: UUID): TodoDto =
         todoRepo.findTodoById(ctx.repoCtx, ctx.mustGetAppId(), id) ?: throw ApiError(ErrorCode.NOT_FOUND)
 
     @Transactional
@@ -44,8 +40,7 @@ class TodoService(
     fun deleteOne(ctx: OperationContext, id: UUID): Boolean =
         todoRepo.deleteTodo(ctx.repoCtx, ctx.mustGetAppId(), id)
 
-    @Transactional(readOnly = true)
-    fun findByIds(ctx: OperationContext, ids: List<UUID>): List<TodoView> =
+    fun findByIds(ctx: OperationContext, ids: List<UUID>): List<TodoDto> =
         todoRepo.findTodosByIds(ctx.repoCtx, ctx.mustGetAppId(), ids)
 
     @Transactional

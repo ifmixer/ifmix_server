@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.scan.service
 
 import com.ifmix.api.core.entity.scan.ImageRef
 import com.ifmix.api.core.entity.scan.ScanRecord
-import com.ifmix.api.core.entity.scan.dto.ScanRecordView
+import com.ifmix.api.core.entity.scan.dto.ScanRecordDto
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError
@@ -133,10 +133,10 @@ open class AntiqueService(
         else -> "jpg"
     }
 
-    fun getScanById(ctx: OperationContext, id: UUID): ScanRecordView {
+    fun getScanById(ctx: OperationContext, id: UUID): ScanRecordDto {
         val record = scanRepo.findById(ctx.repoCtx, id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
-        return ScanRecordView(record)
+        return ScanRecordDto(record)
     }
 
     fun findByCursor(

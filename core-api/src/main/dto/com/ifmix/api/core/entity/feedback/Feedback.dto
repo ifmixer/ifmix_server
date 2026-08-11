@@ -1,5 +1,5 @@
 export com.ifmix.api.core.entity.feedback.Feedback
-FeedbackView {
+FeedbackDto {
     #allScalars
 }
 input FeedbackCreateInput {

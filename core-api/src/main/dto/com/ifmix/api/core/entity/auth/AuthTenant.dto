@@ -1,4 +1,4 @@
 export com.ifmix.api.core.entity.auth.AuthTenant
-AuthTenantView {
+AuthTenantDto {
     #allScalars
 }

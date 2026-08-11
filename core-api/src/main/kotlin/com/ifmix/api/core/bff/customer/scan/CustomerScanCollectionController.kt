@@ -1,6 +1,6 @@
 package com.ifmix.api.core.bff.customer.scan
 
-import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemView
+import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemDto
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.scan.dto.AddItemReq
@@ -57,7 +57,7 @@ class CustomerScanCollectionController(
     fun findItemsByCursor(
         ctx: OperationContext,
         @RequestBody(required = false) req: ListItemsReq?,
-    ): Page<ScanCollectionItemView> {
+    ): Page<ScanCollectionItemDto> {
         return service.findItemsByCursor(ctx, req)
     }
 }
