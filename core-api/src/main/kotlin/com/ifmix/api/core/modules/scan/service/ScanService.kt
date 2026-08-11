@@ -1,8 +1,10 @@
 package com.ifmix.api.core.modules.scan.service
 
+import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.entity.scan.ImageRef
 import com.ifmix.api.core.entity.scan.ScanRecord
 import com.ifmix.api.core.entity.scan.dto.ScanRecordDto
+import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -13,7 +15,6 @@ import com.ifmix.api.core.modules.scan.dto.ScanInput
 import com.ifmix.api.core.modules.scan.dto.ScanMediaItem
 import com.ifmix.api.core.modules.scan.ScanRunner
 import com.ifmix.api.core.modules.scan.dto.NewScanReq
-import com.ifmix.api.core.modules.scan.dto.NewScanRes
 import com.ifmix.api.core.modules.scan.dto.ScanQueryInput
 import com.ifmix.api.core.modules.scan.dto.UpdateScanReq
 import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
@@ -21,6 +22,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 @Service
@@ -33,7 +35,7 @@ open class AntiqueService(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional
-    fun newScan(ctx: OperationContext, req: NewScanReq): NewScanRes {
+    fun newScan(ctx: OperationContext, req: NewScanReq): ScanRecord {
         val subject = ctx.clientIp.toString()
         val limitResult = rateLimiter.check(ctx, subject)
         if (!limitResult.allowed) {
@@ -51,6 +53,7 @@ open class AntiqueService(
             )
         }
 
+        val scanId = UuidV7.generate()
         val scanInput = ScanInput(
             items = resolved,
             lang = ctx.lang,
@@ -58,21 +61,28 @@ open class AntiqueService(
             currency = ctx.currency,
         )
 
-        val scanResult = scanRunner.run(ctx, scanInput)
+        val data = scanRunner.run(ctx, scanInput)
 
-        val recordId = scanRepo.create(
-            ctx = ctx.repoCtx,
-            appId = ctx.appId!!,
-            imageKeys = req.images.map { ImageRef(key = it.imageKey) },
-            status = scanResult.status.code,
-            clientIp = ctx.clientIp,
-            result = scanResult,
-        )
+        val now = Instant.now()
+        val appId = ctx.appId!!
+        val entity = ScanRecord {
+            id = scanId
+            this.appId = appId
+            this.imageKeys = req.images.map { ImageRef(key = it.imageKey) }
+            this.result = data
+            this.status = ScanStatus.COMPLETED.code
+            this.clientIp = ctx.clientIp
+            this.userDisplayName = null
+            this.userNotes = null
+            this.collected = false
+            this.createdAt = now
+            this.updatedAt = now
+        }
 
-        return NewScanRes(
-            id = recordId,
-            result = scanResult,
-        )
+        scanRepo.save(ctx.repoCtx, entity)
+
+        // 重新查询获取完整 entity，避免 DTO 转换时 unloaded
+        return scanRepo.findById(ctx.repoCtx, appId, scanId)!!
     }
 
     fun getScanById(ctx: OperationContext, id: UUID): ScanRecordDto {
@@ -101,7 +111,7 @@ open class AntiqueService(
     fun deleteScan(ctx: OperationContext, id: UUID) {
         val appId = ctx.appId!!
         val success = scanRepo.deleteById(ctx.repoCtx, appId, id)
-        if(!success){
+        if (!success) {
             throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
         }
     }

@@ -48,7 +48,7 @@ logging:
     #org.babyfish.jimmer.sql: DEBUG
     org.babyfish.jimmer.sql: ERROR
     # 项目自身日志
-    # com.ifmix.api.core: DEBUG
+    com.ifmix.api.core: DEBUG
     # 请求/响应日志：DEBUG 打全量，WARN 级别只打错误（默认即可）
     com.ifmix.api.core.infra.http.RequestLoggingFilter: DEBUG
 

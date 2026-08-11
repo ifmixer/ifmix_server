@@ -2,7 +2,6 @@ package com.ifmix.api.core.entity.scan
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps
-import com.ifmix.api.core.modules.scan.dto.ScanResult
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
@@ -21,10 +20,10 @@ interface ScanRecord : AppScopedProps, SoftDeletableProps {
     @Serialized
     val imageKeys: List<ImageRef>
 
-    /** AI 识别结果（JSONB，@Serialized 自动序列化/反序列化） */
+    /** AI 识别结果（JSONB） */
     @Serialized
     @Column(name = "result_json")
-    val result: ScanResult?
+    val result: Map<String, Any?>?
 
     /** 扫描状态编码。0=UNKNOWN, 100=PENDING, 110=PROCESSING, 200=COMPLETED, 300=FAILED */
     val status: Int

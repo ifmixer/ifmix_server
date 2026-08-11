@@ -36,11 +36,6 @@ data class NewScanImageInput(
 
 data class NewScanReq(val images: List<NewScanImageInput>)
 
-data class NewScanRes(
-    val id: UUID,
-    val result: ScanResult,
-)
-
 data class UpdateScanReq(
     @Schema(description = "记录 ID（UUIDv7）")
     val id: UUID,

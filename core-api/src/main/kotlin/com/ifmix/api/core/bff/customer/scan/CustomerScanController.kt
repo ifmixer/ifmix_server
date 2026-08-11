@@ -7,7 +7,6 @@ import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.scan.service.AntiqueService
 import com.ifmix.api.core.modules.scan.dto.NewScanReq
-import com.ifmix.api.core.modules.scan.dto.NewScanRes
 import com.ifmix.api.core.modules.scan.dto.ScanQueryInput
 import com.ifmix.api.core.modules.scan.dto.UpdateScanReq
 import io.swagger.v3.oas.annotations.Operation
@@ -40,8 +39,9 @@ class CustomerScanController(private val antiqueService: AntiqueService) {
         """,
     )
     @PostMapping("/mutation/core/scan/newScan")
-    fun newScan(ctx: OperationContext, @Valid @RequestBody req: NewScanReq): NewScanRes {
-        return antiqueService.newScan(ctx, req)
+    fun newScan(ctx: OperationContext, @Valid @RequestBody req: NewScanReq): ScanRecordDto {
+        val record = antiqueService.newScan(ctx, req)
+        return ScanRecordDto(record)
     }
 
     @Operation(

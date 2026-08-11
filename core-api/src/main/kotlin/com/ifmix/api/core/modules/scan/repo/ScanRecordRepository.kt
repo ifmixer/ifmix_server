@@ -9,7 +9,6 @@ import com.ifmix.api.core.entity.scan.userNotes
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.dto.Page
-import com.ifmix.api.core.modules.scan.dto.ScanResult
 import com.ifmix.api.core.modules.scan.dto.ScanQueryInput
 import com.ifmix.api.core.modules.scan.dto.UpdateScanReq
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
@@ -22,27 +21,6 @@ import java.util.UUID
 @Repository
 class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(sql, ScanRecord::class) {
 
-    fun create(
-        ctx: RepoContext,
-        appId: UUID,
-        imageKeys: List<ImageRef>,
-        status: Int,
-        clientIp: String?,
-        result: ScanResult? = null,
-    ): UUID {
-        val now = Instant.now()
-        val entity = ScanRecord {
-            id = UuidV7.generate()
-            this.appId = appId
-            this.imageKeys = imageKeys
-            this.result = result
-            this.status = status
-            this.clientIp = clientIp
-            this.createdAt = now
-            this.updatedAt = now
-        }
-        return save(ctx, entity).id
-    }
 
     fun update(ctx: RepoContext, req: UpdateScanReq) {
         sql.createUpdate(ScanRecord::class) {

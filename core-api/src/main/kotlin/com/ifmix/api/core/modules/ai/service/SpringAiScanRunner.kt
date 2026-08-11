@@ -1,11 +1,8 @@
 package com.ifmix.api.core.modules.ai.service
 
-import com.ifmix.api.core.entity.enums.ScanStatus
-import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.scan.dto.ScanResult
 import com.ifmix.api.core.modules.scan.dto.ScanInput
 import com.ifmix.api.core.modules.scan.ScanRunner
 import org.slf4j.LoggerFactory
@@ -26,13 +23,7 @@ import java.util.concurrent.TimeoutException
 /**
  * ScanRunner 基于 Spring AI OpenAI-compatible model.
  *
- * 向多模态模型发送图片，提取 JSON 结果，映射为 ScanResult。
- *
- * 功能：
- * - 每个模型尝试所有可用 key（内层循环），不止一个
- * - 检测真实 HTTP 异常（状态码 429、超时等），映射为内部异常
- * - Pre-deduct quota / 失败归还
- * - 模型 fallback 链（外层循环）
+ * 成功返回 AI 解析的 JSON Map；失败抛 ApiError。
  */
 @Service
 @Primary
@@ -50,7 +41,7 @@ open class SpringAiScanRunner(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun run(ctx: OperationContext, input: ScanInput): ScanResult {
+    override fun run(ctx: OperationContext, input: ScanInput): Map<String, Any?> {
         val states = keyStore.init()
 
         if (states.isEmpty()) {
@@ -59,17 +50,14 @@ open class SpringAiScanRunner(
         }
         log.debug("Loaded {} Agnes key(s) for scan", states.size)
 
-        // 模型列表：主模型 + fallback
         val allModels = listOf(chatClientFactory.defaultModel) + fallbackModels
 
-        // 构建多图 media 列表
         val mediaItems = input.items.map { item ->
             val mimeType = MimeTypeUtils.parseMimeType(item.mediaType)
             Media(mimeType, URI.create(item.imageUrl))
         }
 
         for (model in allModels) {
-            // 内层循环：对当前 model 尝试所有可用 key
             var attemptCount = 0
             val maxAttempts = states.size.coerceAtLeast(1)
 
@@ -78,17 +66,14 @@ open class SpringAiScanRunner(
                 attemptCount++
 
                 try {
-                    // Pre-deduct quota
                     if (!keyStore.preDeduct(states, pickedKeyId)) {
                         continue
                     }
 
-                    // 创建 ChatClient
                     val doc = states[pickedKeyId]?.doc
                     val apiKey = doc?.key ?: continue
                     val client = chatClientFactory.forKey(apiKey, model)
 
-                    // 构造多模态 prompt：System + User（多图作为 media 附件）
                     val systemMsg = SystemMessage(ScanPrompt.SYSTEM_TEXT)
                     val userText = ScanPrompt.userPrompt(input.items.size, input.lang, input.country, input.currency)
                     val userMsg = UserMessage.builder()
@@ -97,120 +82,71 @@ open class SpringAiScanRunner(
                         .build()
 
                     val prompt = Prompt(listOf(systemMsg, userMsg))
-                    log.debug("Scan prompt [model={}, key={}]: system={}, user={}", model, pickedKeyId, userMsg, userText)
+                    log.debug("Scan prompt [model={}, key={}]: user={}", model, pickedKeyId, userText)
 
                     val response = client.prompt(prompt).call()
                     val content = response.content() ?: ""
 
-                    // 解析 JSON → ScanResult
-                    val result = parseJsonToScanResult(content, model, pickedKeyId)
+                    val data = parseJsonToMap(content)
 
-                    // 成功：确认消费
                     keyStore.release(states, pickedKeyId)
-                    return result
+                    return data
 
                 } catch (e: Exception) {
-                    // 检测真实 HTTP 异常类型
-                    val isRateLimit = isRateLimitException(e)
-                    val isTimeout = isTimeoutException(e)
-
-                    if (isRateLimit) {
+                    if (isRateLimitException(e)) {
                         log.warn("Rate limited on key {} for model {}: {}", pickedKeyId, model, e.message)
-                        keyStore.markUnavailable(states, pickedKeyId, 300L) // 5 min 冷却
-                    } else if (isTimeout) {
+                        keyStore.markUnavailable(states, pickedKeyId, 300L)
+                    } else if (isTimeoutException(e)) {
                         log.warn("Timeout on key {} for model {}: {}", pickedKeyId, model, e.message)
                     } else {
                         log.error("Error scanning with key {} for model {}", pickedKeyId, model, e)
                     }
                 }
             }
-            // 当前 model 所有 key 都失败，尝试下一个 model
             log.warn("All keys exhausted for model $model, trying next model")
         }
 
-        // 所有 model + key 都失败
         log.error("All models exhausted — AI_UNAVAILABLE")
         throw ApiError(ErrorCode.AI_UNAVAILABLE, "All AI models exhausted")
     }
 
-    /**
-     * 检测是否为 429 Rate Limit 异常。
-     * 匹配 Spring AI / OkHttp / openai-java SDK 可能抛出的异常。
-     */
+    @Suppress("UNCHECKED_CAST")
+    private fun parseJsonToMap(jsonText: String): Map<String, Any?> {
+        val cleaned = jsonText
+            .trim()
+            .removePrefix("```json")
+            .removeSuffix("```")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+
+        val startIdx = cleaned.indexOf('{')
+        val endIdx = cleaned.lastIndexOf('}')
+        val jsonOnly = if (startIdx >= 0 && endIdx > startIdx) {
+            cleaned.substring(startIdx, endIdx + 1)
+        } else {
+            cleaned
+        }
+
+        val map = snakeCaseMapper.readValue(jsonOnly, Map::class.java) as? Map<String, Any?>
+            ?: throw ApiError(ErrorCode.AI_UNAVAILABLE, "AI returned non-JSON response")
+        return map
+    }
+
     private fun isRateLimitException(e: Exception): Boolean {
         val msg = e.message?.lowercase() ?: ""
-        // Spring AI / openai-java SDK 会在 message 中包含 HTTP 状态码
-        if (msg.contains("429") || msg.contains("rate limit") || msg.contains("too many requests")) {
-            return true
-        }
-        // 检查嵌套 cause
-        val cause = e.cause
-        if (cause != null) {
-            val causeMsg = cause.message?.lowercase() ?: ""
-            if (causeMsg.contains("429") || causeMsg.contains("rate limit")) {
-                return true
-            }
-        }
+        if (msg.contains("429") || msg.contains("rate limit") || msg.contains("too many requests")) return true
+        val causeMsg = e.cause?.message?.lowercase() ?: ""
+        if (causeMsg.contains("429") || causeMsg.contains("rate limit")) return true
         return false
     }
 
-    /**
-     * 检测是否为超时异常。
-     */
     private fun isTimeoutException(e: Exception): Boolean {
         val msg = e.message?.lowercase() ?: ""
-        if (msg.contains("timeout") || msg.contains("timed out")) {
-            return true
-        }
-        // 常见超时异常类型
-        if (e is SocketTimeoutException ||
-            e is TimeoutException) {
-            return true
-        }
+        if (msg.contains("timeout") || msg.contains("timed out")) return true
+        if (e is SocketTimeoutException || e is TimeoutException) return true
         val cause = e.cause
-        if (cause is SocketTimeoutException ||
-            cause is TimeoutException) {
-            return true
-        }
+        if (cause is SocketTimeoutException || cause is TimeoutException) return true
         return false
-    }
-
-    /**
-     * 解析 AI 模型返回的 JSON 文本为 ScanResult。
-     */
-    private fun parseJsonToScanResult(jsonText: String, modelName: String, keyId: String): ScanResult {
-        return try {
-            val cleaned = jsonText
-                .trim()
-                .removePrefix("```json")
-                .removeSuffix("```")
-                .removePrefix("```")
-                .removeSuffix("```")
-                .trim()
-
-            val startIdx = cleaned.indexOf('{')
-            val endIdx = cleaned.lastIndexOf('}')
-            val jsonOnly = if (startIdx >= 0 && endIdx > startIdx) {
-                cleaned.substring(startIdx, endIdx + 1)
-            } else {
-                cleaned
-            }
-
-            snakeCaseMapper.readValue(jsonOnly, ScanResult::class.java)
-                ?: ScanResult(
-                    scanId = UuidV7.generate().toString(),
-                    status = ScanStatus.FAILED,
-                    errorMessage = "Could not parse JSON fields",
-                )
-        } catch (e: Exception) {
-            log.error("Failed to parse AI response [${jsonText.take(200)}]: ${e.message}")
-            ScanResult(
-                scanId = UuidV7.generate().toString(),
-                status = ScanStatus.FAILED,
-                name = jsonText.take(100),
-                notes = "raw_response: $jsonText",
-                errorMessage = "JSON parsing fallback: ${e.message}",
-            )
-        }
     }
 }
