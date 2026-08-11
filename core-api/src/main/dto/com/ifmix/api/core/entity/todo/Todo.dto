@@ -1,11 +1,11 @@
 export com.ifmix.api.core.entity.todo.Todo
-TodoDto {
+TodoDetailDto {
     #allScalars
     items {
         #allScalars
     }
 }
-SimpleTodoDto {
+TodoListDto {
     #allScalars
 }
 input TodoCreateInput {

@@ -5,8 +5,8 @@ import com.ifmix.api.core.entity.todo.TodoItem
 import com.ifmix.api.core.entity.todo.appId
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
-import com.ifmix.api.core.entity.todo.dto.TodoDto
-import com.ifmix.api.core.entity.todo.dto.SimpleTodoDto
+import com.ifmix.api.core.entity.todo.dto.TodoDetailDto
+import com.ifmix.api.core.entity.todo.dto.TodoListDto
 import com.ifmix.api.core.entity.todo.id
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
@@ -22,11 +22,11 @@ import java.util.UUID
 @Repository
 class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::class) {
 
-    fun findTodoById(ctx: RepoContext, appId: UUID, id: UUID): TodoDto? {
+    fun findTodoById(ctx: RepoContext, appId: UUID, id: UUID): TodoDetailDto? {
         return sql.createQuery(Todo::class) {
             where(table.appId eq appId)
             where(table.id eq id)
-            select(table.fetch(TodoDto::class))
+            select(table.fetch(TodoDetailDto::class))
         }.limit(1).execute().firstOrNull()
     }
 
@@ -93,12 +93,12 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         }.execute()
     }
 
-    fun findTodosByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): List<SimpleTodoDto> {
+    fun findTodosByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): List<TodoListDto> {
         if (ids.isEmpty()) return emptyList()
         return sql.createQuery(Todo::class) {
             where(table.appId eq appId)
             where(table.id valueIn ids)
-            select(table.fetch(SimpleTodoDto::class))
+            select(table.fetch(TodoListDto::class))
         }.execute()
     }
 
