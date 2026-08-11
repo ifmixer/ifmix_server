@@ -49,7 +49,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
             where(table.scanRecordId valueIn scanRecordIds)
             select(table)
         }.execute()
-        items.forEach { deleteById(ctx, it.id) }
+        items.forEach { deleteById(ctx, appId, it.id) }
         return items.size.toLong()
     }
 

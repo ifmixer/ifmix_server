@@ -134,7 +134,8 @@ open class AntiqueService(
     }
 
     fun getScanById(ctx: OperationContext, id: UUID): ScanRecordDto {
-        val record = scanRepo.findById(ctx.repoCtx, id)
+        val appId = ctx.appId!!
+        val record = scanRepo.findById(ctx.repoCtx, appId, id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
         return ScanRecordDto(record)
     }
@@ -156,13 +157,17 @@ open class AntiqueService(
 
     @Transactional
     fun deleteScan(ctx: OperationContext, id: UUID) {
-        scanRepo.findById(ctx.repoCtx, id) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
-        scanRepo.deleteById(ctx.repoCtx, id)
+        val appId = ctx.appId!!
+        val success = scanRepo.deleteById(ctx.repoCtx, appId, id)
+        if(!success){
+            throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
+        }
     }
 
     @Transactional
     fun updateScan(ctx: OperationContext, req: UpdateScanReq) {
-        scanRepo.findById(ctx.repoCtx, req.id)
+        val appId = ctx.appId!!
+        scanRepo.findById(ctx.repoCtx, appId, req.id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
         scanRepo.update(ctx.repoCtx, req)
     }

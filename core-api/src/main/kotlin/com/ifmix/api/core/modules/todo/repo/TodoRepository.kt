@@ -6,6 +6,7 @@ import com.ifmix.api.core.entity.todo.appId
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
 import com.ifmix.api.core.entity.todo.dto.TodoDto
+import com.ifmix.api.core.entity.todo.dto.SimpleTodoDto
 import com.ifmix.api.core.entity.todo.id
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
@@ -46,7 +47,7 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
     }
 
     fun update(ctx: RepoContext, appId: UUID, input: TodoUpdateInput): Boolean {
-        if (!existsForApp(appId, input.id)) return false
+        if (!exists(appId, input.id)) return false
         val entity = input.toEntity {
             this.appId = appId
             items()?.forEach {
@@ -92,12 +93,12 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         }.execute()
     }
 
-    fun findTodosByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): List<TodoDto> {
+    fun findTodosByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): List<SimpleTodoDto> {
         if (ids.isEmpty()) return emptyList()
         return sql.createQuery(Todo::class) {
             where(table.appId eq appId)
             where(table.id valueIn ids)
-            select(table.fetch(TodoDto::class))
+            select(table.fetch(SimpleTodoDto::class))
         }.execute()
     }
 

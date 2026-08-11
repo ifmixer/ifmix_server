@@ -57,5 +57,5 @@ open class BaseCrudService<E : Any>(
  * 面向多租户实体的 Service 基类。
  */
 open class BaseAppCrudService<E : AppScopedProps>(
-    repo: BaseAppCrudRepository<E>,
-) : BaseCrudService<E>(repo)
+    protected val repo: BaseAppCrudRepository<E>,
+)

@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.todo.service
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
 import com.ifmix.api.core.entity.todo.dto.TodoDto
+import com.ifmix.api.core.entity.todo.dto.SimpleTodoDto
 import com.ifmix.api.core.infra.dto.CursorQueryInput
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError
@@ -19,8 +20,8 @@ class TodoService(
     private val todoRepo: TodoRepository,
 ) {
 
-    fun findTodoByCursor(ctx: OperationContext, input: CursorQueryInput): Page<TodoDto> =
-        todoRepo.findViewByCursor(ctx.repoCtx, ctx.mustGetAppId(), TodoDto::class, input)
+    fun findTodoByCursor(ctx: OperationContext, input: CursorQueryInput): Page<SimpleTodoDto> =
+        todoRepo.findViewByCursor(ctx.repoCtx, ctx.mustGetAppId(), SimpleTodoDto::class, input)
 
     fun getTodo(ctx: OperationContext, id: UUID): TodoDto =
         todoRepo.findTodoById(ctx.repoCtx, ctx.mustGetAppId(), id) ?: throw ApiError(ErrorCode.NOT_FOUND)
@@ -40,7 +41,7 @@ class TodoService(
     fun deleteOne(ctx: OperationContext, id: UUID): Boolean =
         todoRepo.deleteTodo(ctx.repoCtx, ctx.mustGetAppId(), id)
 
-    fun findByIds(ctx: OperationContext, ids: List<UUID>): List<TodoDto> =
+    fun findByIds(ctx: OperationContext, ids: List<UUID>): List<SimpleTodoDto> =
         todoRepo.findTodosByIds(ctx.repoCtx, ctx.mustGetAppId(), ids)
 
     @Transactional

@@ -1,10 +1,10 @@
 package com.ifmix.api.core.infra.repo
 
-import com.ifmix.api.core.infra.dto.SortOrder
 import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.dto.CursorQueryInput
 import com.ifmix.api.core.infra.dto.Page
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.dto.SortOrder
 import org.babyfish.jimmer.View
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -15,14 +15,22 @@ import kotlin.reflect.KClass
 /**
  * 面向多租户实体的 Repository。
  * 类型约束要求 E 实现 AppScopedProps。
- * 所有查询/写入自动按 appId 隔离。
+ * 所有方法强制带 appId 参数，确保租户隔离。
  */
 abstract class BaseAppCrudRepository<E : AppScopedProps>(
-    sql: KSqlClient,
-    entityType: KClass<E>,
-) : BaseCrudRepository<E>(sql, entityType) {
+    protected val sql: KSqlClient,
+    protected val entityType: KClass<E>,
+) {
 
-    // ==================== 带 appId 的查询 ====================
+    // ==================== 写入 ====================
+
+    /**
+     * 保存实体。appId 从 entity 自身提取用于一致性校验。
+     */
+    open fun save(ctx: RepoContext, entity: E): E =
+        sql.entities.save(entity).modifiedEntity
+
+    // ==================== 查询 ====================
 
     open fun findById(ctx: RepoContext, appId: UUID, id: UUID): E? =
         sql.createQuery(entityType) {
@@ -56,9 +64,9 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         }.execute()
     }
 
-    // ==================== 带 appId 的删除 ====================
+    // ==================== 删除 ====================
 
-    open fun deleteForApp(ctx: RepoContext, appId: UUID, id: UUID): Boolean {
+    open fun deleteById(ctx: RepoContext, appId: UUID, id: UUID): Boolean {
         val count = sql.createDelete(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
@@ -66,32 +74,12 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         return count > 0
     }
 
-    open fun deleteForApp(ctx: RepoContext, appId: UUID, ids: List<UUID>): Int {
+    open fun deleteByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): Int {
         if (ids.isEmpty()) return 0
         return sql.createDelete(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() valueIn ids)
         }.execute()
-    }
-
-    // ==================== 游标分页（带 appId） ====================
-
-    open fun findByCursor(ctx: RepoContext, appId: UUID, input: CursorQueryInput = CursorQueryInput()): Page<E> {
-        val limit = input.effectiveLimit()
-        val cursor = input.cursor?.let {
-            try { UUID.fromString(it) } catch (_: Exception) { null }
-        }
-
-        val items = sql.createQuery(entityType) {
-            where(table.get<UUID>("appId") eq appId)
-            if (cursor != null) {
-                where(table.getId<UUID>() lt cursor)
-            }
-            orderBy(table.getId<UUID>().desc())
-            select(table)
-        }.limit(limit + 1).execute()
-
-        return Page.of(items, limit) { getEntityId(it)?.toString() }
     }
 
     /**
@@ -111,7 +99,6 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         val items = sql.createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
 
-            // 游标过滤
             if (input.cursor != null) {
                 when (sortBy) {
                     "createdAt", "updatedAt" -> {
@@ -132,7 +119,6 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
                 }
             }
 
-            // 排序
             when (sortBy) {
                 "createdAt", "updatedAt" -> {
                     val col = table.get<Instant>(sortBy)
@@ -152,12 +138,18 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
 
     // ==================== 辅助 ====================
 
-    protected fun existsForApp(appId: UUID, id: UUID): Boolean =
+    protected fun exists(appId: UUID, id: UUID): Boolean =
         sql.createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
             select(table)
         }.limit(1).execute().isNotEmpty()
+
+    protected fun getEntityId(entity: Any): UUID? {
+        return try {
+            entity.javaClass.getMethod("getId").invoke(entity) as? UUID
+        } catch (_: Exception) { null }
+    }
 
     private fun extractCursor(view: Any, sortBy: String): String? {
         return try {

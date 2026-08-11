@@ -3,6 +3,7 @@ package com.ifmix.api.core.bff.customer.todo
 import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
 import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
 import com.ifmix.api.core.entity.todo.dto.TodoDto
+import com.ifmix.api.core.entity.todo.dto.SimpleTodoDto
 import com.ifmix.api.core.infra.db.ownsRow
 import com.ifmix.api.core.infra.dto.ByIdRequest
 import com.ifmix.api.core.infra.dto.ByIdsRequest
@@ -38,7 +39,7 @@ class CustomerTodoController(private val todoService: TodoService) {
     fun findByCursor(
         ctx: OperationContext,
         @RequestBody(required = false) input: CursorQueryInput?,
-    ): Page<TodoDto> {
+    ): Page<SimpleTodoDto> {
         ctx.mustGetInstallId()
         return todoService.findTodoByCursor(ctx, input ?: CursorQueryInput())
     }
@@ -85,7 +86,7 @@ class CustomerTodoController(private val todoService: TodoService) {
     }
 
     @PutMapping("/query/core/todo/findTodosByIds")
-    fun findByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): List<TodoDto> {
+    fun findByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): List<SimpleTodoDto> {
         ctx.mustGetInstallId()
         val todos = todoService.findByIds(ctx, req.ids)
         return todos.filter { ownsRow(ctx, it.userId, it.installId) }
@@ -113,6 +114,12 @@ class CustomerTodoController(private val todoService: TodoService) {
     // ==================== 内部 ====================
 
     private fun checkOwnership(ctx: OperationContext, todo: TodoDto) {
+        if (!ownsRow(ctx, todo.userId, todo.installId)) {
+            throw ApiError(ErrorCode.FORBIDDEN)
+        }
+    }
+
+    private fun checkOwnership(ctx: OperationContext, todo: SimpleTodoDto) {
         if (!ownsRow(ctx, todo.userId, todo.installId)) {
             throw ApiError(ErrorCode.FORBIDDEN)
         }

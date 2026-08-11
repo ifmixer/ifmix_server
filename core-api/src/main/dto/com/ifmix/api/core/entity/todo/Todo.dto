@@ -5,6 +5,9 @@ TodoDto {
         #allScalars
     }
 }
+SimpleTodoDto {
+    #allScalars
+}
 input TodoCreateInput {
     title
     done

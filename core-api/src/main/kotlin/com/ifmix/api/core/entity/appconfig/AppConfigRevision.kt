@@ -20,7 +20,7 @@ interface AppConfigRevision : AppScopedProps, CreatedAtProps {
     val appleBundleId: String?
     val androidPackageName: String?
 
-    /** JSONB — 所有平台配置聚合 */
+    /** JSONB, 整个字段替换 — 所有平台配置聚合 */
     @Serialized
     val content: ConfigContent
 
