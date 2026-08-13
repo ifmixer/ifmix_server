@@ -22,3 +22,7 @@ app:
     default-cluster: default
     global-cluster: default
   show-sql: ${APP_SHOW_SQL:false}
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration

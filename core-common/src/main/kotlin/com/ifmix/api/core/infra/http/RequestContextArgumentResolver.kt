@@ -1,6 +1,8 @@
 package com.ifmix.api.core.infra.http
 
 import com.ifmix.api.core.infra.auth.AuthInterceptor
+import com.ifmix.api.core.infra.jimmer.ClusterRouter
+import org.springframework.stereotype.Component
 import org.springframework.web.context.request.RequestAttributes
 import org.springframework.core.MethodParameter
 import org.springframework.web.bind.support.WebDataBinderFactory
@@ -10,7 +12,10 @@ import org.springframework.web.method.support.ModelAndViewContainer
 import java.util.UUID
 
 /** 把校验后的请求头组装成 OperationContext，注入到控制器方法参数。 */
-class OperationContextArgumentResolver : HandlerMethodArgumentResolver {
+@Component
+class OperationContextArgumentResolver(
+    private val clusterRouter: ClusterRouter,
+) : HandlerMethodArgumentResolver {
 
     override fun supportsParameter(parameter: MethodParameter): Boolean =
         parameter.parameterType == OperationContext::class.java
@@ -23,11 +28,12 @@ class OperationContextArgumentResolver : HandlerMethodArgumentResolver {
     ): Any {
         // 从 AuthInterceptor 读取已验证的 userId（如果拦截器已执行）
         val userId = (webRequest.getAttribute(AuthInterceptor.ATTR_USER_ID, RequestAttributes.SCOPE_REQUEST) as? String)
+        val appId = header(webRequest, RequestHeaders.APP_ID)?.let {
+            try { UUID.fromString(it) } catch (_: Exception) { null }
+        }
 
         return OperationContext(
-            appId = header(webRequest, RequestHeaders.APP_ID)?.let {
-                try { UUID.fromString(it) } catch (_: Exception) { null }
-            },
+            appId = appId,
             installId = header(webRequest, RequestHeaders.INSTALL_ID)?.let {
                 try { UUID.fromString(it) } catch (_: Exception) { null }
             },
@@ -38,6 +44,8 @@ class OperationContextArgumentResolver : HandlerMethodArgumentResolver {
             userId = userId?.let {
                 try { UUID.fromString(it) } catch (_: Exception) { null }
             },
+            clusterId = clusterRouter.resolveCluster(appId),
+            globalClusterId = clusterRouter.resolveGlobalCluster(),
         )
     }
 

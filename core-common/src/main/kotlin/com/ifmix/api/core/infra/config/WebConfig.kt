@@ -3,6 +3,7 @@ package com.ifmix.api.core.infra.config
 import com.ifmix.api.core.infra.auth.AuthInterceptor
 import com.ifmix.api.core.infra.http.HeaderValidationInterceptor
 import com.ifmix.api.core.infra.http.OperationContextArgumentResolver
+import com.ifmix.api.core.infra.jimmer.ClusterRouter
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
@@ -13,6 +14,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 class WebConfig(
     private val headerValidationInterceptor: HeaderValidationInterceptor,
     private val authInterceptor: AuthInterceptor,
+    private val clusterRouter: ClusterRouter,
 ) : WebMvcConfigurer {
 
     override fun addInterceptors(registry: InterceptorRegistry) {
@@ -37,6 +39,6 @@ class WebConfig(
     }
 
     override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
-        resolvers.add(OperationContextArgumentResolver())
+        resolvers.add(OperationContextArgumentResolver(clusterRouter))
     }
 }

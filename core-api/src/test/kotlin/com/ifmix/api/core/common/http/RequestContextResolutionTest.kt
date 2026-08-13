@@ -18,8 +18,9 @@ class OperationContextResolutionTest {
 
     @BeforeEach
     fun setUp() {
+        val clusterRouter = ClusterRouter(AppDataSourceProperties())
         mvc = MockMvcBuilders.standaloneSetup(CtxController())
-            .setCustomArgumentResolvers(OperationContextArgumentResolver())
+            .setCustomArgumentResolvers(OperationContextArgumentResolver(clusterRouter))
             .addInterceptors(HeaderValidationInterceptor())
             .setControllerAdvice(GlobalExceptionHandler(true), EnvelopeResponseAdvice())
             .build()

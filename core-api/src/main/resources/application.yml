@@ -71,3 +71,7 @@ app:
       jwks-uri: ${AUTH_GOOGLE_JWKS_URI:https://accounts.google.com/.well-known/openid-configuration}
     apple:
       jwks-uri: ${AUTH_APPLE_JWKS_URI:https://appleid.apple.com/.well-known/jwks.json}
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
