@@ -56,7 +56,7 @@ open class AuthService(
     }
 
     private fun tenantId(ctx: OperationContext): String =
-        appConfigRepo.mustFindCurrentRevision(ctx.repoCtx, ctx.appId!!).authTenantId?.toString()
+        appConfigRepo.mustFindCurrentRevision(ctx.globalRepoCtx, ctx.appId!!).authTenantId?.toString()
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
     @Transactional
@@ -71,7 +71,7 @@ open class AuthService(
 
     @Transactional
     fun loginWithProvider(ctx: OperationContext, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
-        val rc = ctx.repoCtx
+        val rc = ctx.globalRepoCtx
 
         // 1. Resolve app config & tenant
         val config = appConfigRepo.mustFindCurrentRevision(rc, ctx.appId!!)
@@ -220,7 +220,7 @@ open class AuthService(
 
     @Transactional
     fun exchange(ctx: OperationContext, req: ExchangeReq): ExchangeRes {
-        val rc = ctx.repoCtx
+        val rc = ctx.globalRepoCtx
         val appId = ctx.appId!!
 
         val secretHash = Hashing.sha256Base64Url(req.deviceSecret!!)
@@ -265,7 +265,7 @@ open class AuthService(
 
     @Transactional
     fun refresh(ctx: OperationContext, req: RefreshReq): RefreshRes {
-        val rc = ctx.repoCtx
+        val rc = ctx.globalRepoCtx
         val appId = ctx.appId!!
 
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
@@ -308,7 +308,7 @@ open class AuthService(
 
     @Transactional
     fun logout(ctx: OperationContext, req: LogoutReq): LogoutRes {
-        val rc = ctx.repoCtx
+        val rc = ctx.globalRepoCtx
         val appId = ctx.appId!!
 
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
