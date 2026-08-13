@@ -1,4 +1,4 @@
-package com.ifmix.api.core.bff.app
+package com.ifmix.api.admin.bff.app
 
 import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionCreateInput
 import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionDto
@@ -45,5 +45,3 @@ class AppConfigController(private val appConfigService: AppConfigService) {
         return appConfigService.toggleRevision(ctx, req.id, req.enabled)
     }
 }
-
-

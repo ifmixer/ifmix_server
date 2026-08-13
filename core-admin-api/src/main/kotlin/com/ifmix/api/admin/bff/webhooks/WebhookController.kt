@@ -1,4 +1,4 @@
-package com.ifmix.api.core.bff.webhooks
+package com.ifmix.api.admin.bff.webhooks
 
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository

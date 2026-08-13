@@ -17,14 +17,9 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webflux")
     testImplementation("com.willowtreeapps.assertk:assertk-jvm:0.28.1")
-    testImplementation("org.mockito:mockito-core:5.14.2")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.testcontainers:postgresql:1.20.6")
     testImplementation("org.testcontainers:junit-jupiter:1.20.6")
     testImplementation("com.redis:testcontainers-redis:2.2.4")
-    testImplementation("org.wiremock:wiremock-standalone:3.12.1")
-    testImplementation("com.h2database:h2")
 }
 
 kotlin {

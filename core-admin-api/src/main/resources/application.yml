@@ -1,0 +1,24 @@
+server:
+  port: 3002
+
+spring:
+  flyway:
+    enabled: false
+
+app:
+  clusters:
+    default:
+      writer:
+        jdbc-url: ${PG_WRITER_URL:jdbc:postgresql://localhost:5432/ifmix_core_local}
+        username: ${PG_USERNAME:postgres}
+        password: ${PG_PASSWORD:postgres}
+        maximum-pool-size: 5
+      reader:
+        jdbc-url: ${PG_READER_URL:jdbc:postgresql://localhost:5432/ifmix_core_local}
+        username: ${PG_USERNAME:postgres}
+        password: ${PG_PASSWORD:postgres}
+        maximum-pool-size: 10
+  routing:
+    default-cluster: default
+    global-cluster: default
+  show-sql: ${APP_SHOW_SQL:false}
