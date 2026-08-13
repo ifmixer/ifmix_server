@@ -14,16 +14,14 @@ import kotlin.reflect.KClass
 
 /**
  * 通用 CRUD Repository。
- * 通过 ClusterRegistry 按 RepoContext 路由到对应集群的读写节点。
+ * 通过 ClusterRegistry 按 RepoContext 路由到对应集群，读操作优先走 Reader。
  */
 abstract class BaseCrudRepository<E : Any>(
     protected val clusterRegistry: ClusterRegistry,
     protected val entityType: KClass<E>,
 ) {
-    /** 读操作：根据 RepoContext 选择集群和读写节点 */
     protected fun sql(ctx: RepoContext): KSqlClient = clusterRegistry.sql(ctx)
 
-    /** 写操作：强制使用目标集群的 writer */
     protected fun writerSql(ctx: RepoContext): KSqlClient =
         clusterRegistry.getCluster(ctx.clusterId).sql(preferReader = false)
 

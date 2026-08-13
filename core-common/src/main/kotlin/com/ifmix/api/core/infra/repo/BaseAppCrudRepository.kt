@@ -23,10 +23,8 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
     protected val entityType: KClass<E>,
 ) {
 
-    /** 读操作：根据 RepoContext 选择集群和读写节点 */
     protected fun sql(ctx: RepoContext): KSqlClient = clusterRegistry.sql(ctx)
 
-    /** 写操作：强制使用目标集群的 writer */
     protected fun writerSql(ctx: RepoContext): KSqlClient =
         clusterRegistry.getCluster(ctx.clusterId).sql(preferReader = false)
 
