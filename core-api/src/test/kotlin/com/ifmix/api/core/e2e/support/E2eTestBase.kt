@@ -59,12 +59,12 @@ abstract class E2eTestBase {
         @DynamicPropertySource
         @JvmStatic
         fun configureProperties(registry: DynamicPropertyRegistry) {
-            registry.add("app.datasource.writer.jdbc-url") { postgres.jdbcUrl }
-            registry.add("app.datasource.writer.username") { postgres.username }
-            registry.add("app.datasource.writer.password") { postgres.password }
-            registry.add("app.datasource.reader.jdbc-url") { postgres.jdbcUrl }
-            registry.add("app.datasource.reader.username") { postgres.username }
-            registry.add("app.datasource.reader.password") { postgres.password }
+            registry.add("app.clusters.default.writer.jdbc-url") { postgres.jdbcUrl }
+            registry.add("app.clusters.default.writer.username") { postgres.username }
+            registry.add("app.clusters.default.writer.password") { postgres.password }
+            registry.add("app.clusters.default.reader.jdbc-url") { postgres.jdbcUrl }
+            registry.add("app.clusters.default.reader.username") { postgres.username }
+            registry.add("app.clusters.default.reader.password") { postgres.password }
             registry.add("spring.data.redis.url") {
                 "redis://${redis.host}:${redis.getMappedPort(6379)}"
             }

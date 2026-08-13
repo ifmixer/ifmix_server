@@ -15,7 +15,7 @@ class ClusterInitializer(
 
     override fun run(args: ApplicationArguments) {
         Flyway.configure()
-            .dataSource(clusterRegistry.writerDataSource)
+            .dataSource(clusterRegistry.flywayDataSource)
             .locations("classpath:db/migration")
             .baselineOnMigrate(true)
             .load()

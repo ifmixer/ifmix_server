@@ -7,18 +7,19 @@ import org.junit.jupiter.api.Test
 
 class ClusterRegistryTest {
 
-    private fun buildProps(): ClusterProperties {
-        val ds = ClusterProperties.DataSourceProps(
+    private fun buildProps(): AppDataSourceProperties {
+        val ds = AppDataSourceProperties.DataSourceProps(
             jdbcUrl = "jdbc:postgresql://localhost:5432/ifmix_core_local",
             username = "postgres",
             password = "postgres",
         )
-        return ClusterProperties(writer = ds, reader = ds)
+        val clusterProps = AppDataSourceProperties.ClusterProps(writer = ds, reader = ds)
+        return AppDataSourceProperties(clusters = mapOf("default" to clusterProps))
     }
 
     @Test
     fun `sqlClient is singleton`() {
-        val registry = ClusterRegistry(buildProps(), emptyList(), false)
+        val registry = ClusterRegistry(buildProps(), emptyList())
         try {
             val c1 = registry.sqlClient
             val c2 = registry.sqlClient
@@ -29,10 +30,10 @@ class ClusterRegistryTest {
     }
 
     @Test
-    fun `routingDataSource is created`() {
-        val registry = ClusterRegistry(buildProps(), emptyList(), false)
+    fun `flywayDataSource is created`() {
+        val registry = ClusterRegistry(buildProps(), emptyList())
         try {
-            assertThat(registry.routingDataSource).isNotNull()
+            assertThat(registry.flywayDataSource).isNotNull()
         } finally {
             registry.destroy()
         }

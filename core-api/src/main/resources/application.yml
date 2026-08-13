@@ -27,15 +27,20 @@ springdoc:
   use-fqn: true
 
 app:
-  datasource:
-    writer:
-      jdbc-url: ${PG_WRITER_URL:jdbc:postgresql://localhost:5432/ifmix_core_local}
-      username: ${PG_USERNAME:postgres}
-      password: ${PG_PASSWORD:postgres}
-    reader:
-      jdbc-url: ${PG_READER_URL:jdbc:postgresql://localhost:5432/ifmix_core_local}
-      username: ${PG_USERNAME:postgres}
-      password: ${PG_PASSWORD:postgres}
+  clusters:
+    default:
+      writer:
+        jdbc-url: ${PG_WRITER_URL:jdbc:postgresql://localhost:5432/ifmix_core_local}
+        username: ${PG_USERNAME:postgres}
+        password: ${PG_PASSWORD:postgres}
+      reader:
+        jdbc-url: ${PG_READER_URL:jdbc:postgresql://localhost:5432/ifmix_core_local}
+        username: ${PG_USERNAME:postgres}
+        password: ${PG_PASSWORD:postgres}
+  routing:
+    default-cluster: "default"
+    global-cluster: "default"
+  show-sql: false
 
   expose-errors: ${APP_EXPOSE_ERRORS:true}
   storage:
