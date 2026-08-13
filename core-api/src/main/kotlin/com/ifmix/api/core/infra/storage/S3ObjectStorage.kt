@@ -19,14 +19,19 @@ class S3ObjectStorage(
     private val config: StorageConfig,
 ) : ObjectStorage {
 
+    /** imageKey 以 / 开头是外部约定，S3 key 去掉前导 / */
+    private fun s3Key(objectKey: String): String = objectKey.removePrefix("/")
+
     override fun presignUpload(
+        bucketId: String,
         objectKey: String,
         contentType: String,
         duration: Duration,
     ): String {
+        val cfg = config.getBucketConfig(bucketId)
         val putRequest = PutObjectRequest.builder()
-            .bucket(config.bucketName)
-            .key(objectKey)
+            .bucket(cfg.bucketName)
+            .key(s3Key(objectKey))
             .contentType(contentType)
             .build()
 
@@ -39,17 +44,14 @@ class S3ObjectStorage(
     }
 
     override fun presignDownload(
+        bucketId: String,
         objectKey: String,
         duration: Duration,
     ): String {
-        // 有自定义公开域名时直接返回公开 URL（R2 公开桶无需签名）
-        config.publicBaseUrl?.let { base ->
-            return "$base/$objectKey"
-        }
-
+        val cfg = config.getBucketConfig(bucketId)
         val getRequest = GetObjectRequest.builder()
-            .bucket(config.bucketName)
-            .key(objectKey)
+            .bucket(cfg.bucketName)
+            .key(s3Key(objectKey))
             .build()
 
         val presignRequest = GetObjectPresignRequest.builder()
@@ -60,10 +62,18 @@ class S3ObjectStorage(
         return presigner.presignGetObject(presignRequest).url().toString()
     }
 
-    override fun upload(objectKey: String, data: ByteArray, contentType: String) {
+    override fun getPublicUrl(bucketId: String, objectKey: String): String {
+        val cfg = config.getBucketConfig(bucketId)
+        val base = cfg.publicBaseUrl
+            ?: throw IllegalStateException("Bucket '$bucketId' has no public-url configured")
+        return "$base/${s3Key(objectKey)}"
+    }
+
+    override fun upload(bucketId: String, objectKey: String, data: ByteArray, contentType: String) {
+        val cfg = config.getBucketConfig(bucketId)
         val putRequest = PutObjectRequest.builder()
-            .bucket(config.bucketName)
-            .key(objectKey)
+            .bucket(cfg.bucketName)
+            .key(s3Key(objectKey))
             .contentType(contentType)
             .build()
 

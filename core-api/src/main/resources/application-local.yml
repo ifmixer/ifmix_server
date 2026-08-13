@@ -22,10 +22,15 @@ app:
     type: s3
     region: auto
     endpoint: https://8e70811e74bfc55e99a28b4d9932b452.r2.cloudflarestorage.com
-    bucket: ugcdev
     access-key: 15b38e0cc3ff413c25b4a32cb0fedf47
     secret-key: 0a0ee6be54ab757264efd12069fe1df6533962a975547aa719f3f6f6c627233a
-    public-url: https://u1dev.ifmix.com
+    buckets:
+      ugc:
+        bucket-name: ugcdev
+        public-url: https://u1dev.ifmix.com
+      static:
+        bucket-name: staticdev
+        public-url: https://s1dev.ifmix.com
   agnes:
     ai:
       modelFallbackOrder: ""

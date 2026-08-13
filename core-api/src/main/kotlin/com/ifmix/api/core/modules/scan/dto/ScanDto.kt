@@ -28,11 +28,29 @@ data class ScanInput(
 )
 
 data class NewScanImageInput(
-    /** 已上传的对象键（必填） */
-    @Schema(description = "已上传文件的 objectKey。")
+    /** 已上传的对象键（必填，以 / 开头） */
+    @Schema(description = "已上传文件的 objectKey，以 / 开头。")
     val imageKey: String,
-    val mediaType: String,
-)
+    /** MIME 类型（可选，不传时根据 imageKey 后缀自动推断） */
+    @Schema(description = "MIME 类型，如 image/jpeg。不传时自动推断。")
+    val mediaType: String? = null,
+) {
+    fun resolvedMediaType(): String = mediaType ?: guessMediaType(imageKey)
+
+    companion object {
+        private fun guessMediaType(key: String): String {
+            val ext = key.substringAfterLast('.', "").lowercase()
+            return when (ext) {
+                "jpg", "jpeg" -> "image/jpeg"
+                "png" -> "image/png"
+                "webp" -> "image/webp"
+                "gif" -> "image/gif"
+                "heic" -> "image/heic"
+                else -> "application/octet-stream"
+            }
+        }
+    }
+}
 
 data class NewScanReq(val images: List<NewScanImageInput>)
 

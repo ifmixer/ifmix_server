@@ -51,11 +51,11 @@ class CustomerStorageController(
         val installId = ctx.mustGetInstallId()
         val mediaId = UuidV7.generate()
 
-        // objectKey: app_{appId}/{category}/i_{installId}//{id}.{ext}
-        val objectKey = "app_$appId/${req.category.path}/i_$installId/$mediaId.${req.contentType.extension}"
+        // objectKey: app/{appId}/{category}/install/{installId}/{id}.{ext}
+        val objectKey = "app/$appId/${req.category.path}/install/$installId/$mediaId.${req.contentType.extension}"
 
         val url = antiqueService.presignedUploadUrl(ctx, objectKey, req.contentType.mimeType, Duration.ofSeconds(300))
-        val downloadUrl = antiqueService.presignedDownloadUrl(ctx, objectKey, Duration.ZERO)
+        val downloadUrl = antiqueService.getPublicUrl(ctx, objectKey)
 
         // 记录上传信息到 DB（id 与文件名一致）
         uploadRecordRepo.create(
@@ -94,20 +94,21 @@ class CustomerStorageController(
     /**
      * 校验 objectKey 格式和归属：
      * 1. 不能包含路径遍历（..）
-     * 2. 必须以 app_{appId}/ 开头且 appId 匹配
-     * 3. 必须包含 i_{installId} 且匹配当前用户
+     * 2. 必须以 app/{appId}/ 开头且 appId 匹配
+     * 3. 必须包含 /install/{installId}/ 且匹配当前用户
      */
     private fun validateObjectKey(ctx: OperationContext, objectKey: String) {
         if (objectKey.contains("..")) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: path traversal not allowed")
         }
         val appId = ctx.mustGetAppId()
-        if (!objectKey.startsWith("app_$appId/")) {
+        val normalized = objectKey.removePrefix("/")
+        if (!normalized.startsWith("app/$appId/")) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: appId mismatch")
         }
         // 校验 installId 归属
         val installId = ctx.installId
-        if (installId != null && !objectKey.contains("i_$installId/")) {
+        if (installId != null && !normalized.contains("/install/$installId/")) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: installId mismatch")
         }
     }

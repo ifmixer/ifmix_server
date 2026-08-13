@@ -6,41 +6,83 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.S3Configuration
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
-import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 /**
- * S3/R2 存储配置。
+ * 单个 bucket 配置。
+ */
+data class BucketConfig(
+    /** S3 bucket 名称（如 "ugcdev"、"staticdev"） */
+    var bucketName: String = "",
+    /** 公开 CDN 域名前缀（如 https://u1dev.ifmix.com）。为空表示该 bucket 不支持公开访问。 */
+    var publicUrl: String = "",
+) {
+    val publicBaseUrl: String? get() = publicUrl.trimEnd('/').ifEmpty { null }
+}
+
+/**
+ * S3/R2 存储配置属性，支持多 bucket。
  *
- * endpoint + region + accessKey/secretKey 从 application.yml 读取（app.storage.*）。
- * 非 amazonaws.com 端点自动走 path-style access（兼容 R2 / MinIO / localstack）。
+ * 所有 bucket 共享同一 endpoint/credentials（同一个 R2 账号或 S3 账号），
+ * 仅 bucket name 和 public-url 不同。
+ *
+ * YAML 示例:
+ * ```
+ * app.storage:
+ *   type: s3
+ *   region: auto
+ *   endpoint: https://xxx.r2.cloudflarestorage.com
+ *   access-key: xxx
+ *   secret-key: xxx
+ *   buckets:
+ *     ugc:
+ *       bucket-name: ugcdev
+ *       public-url: https://u1dev.ifmix.com
+ *     static:
+ *       bucket-name: staticdev
+ *       public-url: https://s1dev.ifmix.com
+ * ```
+ */
+@ConfigurationProperties(prefix = "app.storage")
+class StorageConfig {
+    var type: String = "none"
+    var region: String = "us-east-1"
+    var endpoint: String = "http://localhost:9000"
+    var accessKey: String = "minioadmin"
+    var secretKey: String = "minioadmin"
+    /** 多 bucket 配置 */
+    var buckets: MutableMap<String, BucketConfig> = mutableMapOf()
+
+    fun getBucketConfig(id: String): BucketConfig {
+        return buckets[id]
+            ?: throw IllegalArgumentException("Storage bucket '$id' not configured. Available: ${buckets.keys}")
+    }
+}
+
+/**
+ * S3 客户端 bean 配置。
  */
 @Configuration
-class StorageConfig(
-    @Value("\${app.storage.region:us-east-1}") private val region: String,
-    @Value("\${app.storage.endpoint:http://localhost:9000}") private val endpoint: String,
-    @Value("\${app.storage.access-key:minioadmin}") private val accessKey: String,
-    @Value("\${app.storage.secret-key:minioAdmin}") private val secretKey: String,
-    @Value("\${app.storage.bucket:ugcdev}") private val bucket: String,
-    /** R2 自定义域名（如 https://u1dev.ifmix.com）。配置后 presignDownload 返回公开 URL，不带签名参数。 */
-    @Value("\${app.storage.public-url:}") private val publicUrl: String,
-) {
+@EnableConfigurationProperties(StorageConfig::class)
+class StorageBeanConfig(private val storageConfig: StorageConfig) {
 
     private fun credentials() = StaticCredentialsProvider.create(
-        AwsBasicCredentials.create(accessKey, secretKey),
+        AwsBasicCredentials.create(storageConfig.accessKey, storageConfig.secretKey),
     )
 
-    private fun isCustomEndpoint() = !endpoint.contains("amazonaws.com")
+    private fun isCustomEndpoint() = !storageConfig.endpoint.contains("amazonaws.com")
 
     @Bean
     fun s3Presigner(): S3Presigner {
         val builder = S3Presigner.builder()
-            .region(Region.of(region))
+            .region(Region.of(storageConfig.region))
             .credentialsProvider(credentials())
 
         if (isCustomEndpoint()) {
-            builder.endpointOverride(java.net.URI.create(endpoint))
+            builder.endpointOverride(java.net.URI.create(storageConfig.endpoint))
             builder.serviceConfiguration(
                 S3Configuration.builder().pathStyleAccessEnabled(true).build()
             )
@@ -52,19 +94,14 @@ class StorageConfig(
     @Bean
     fun s3Client(): S3Client {
         val builder = S3Client.builder()
-            .region(Region.of(region))
+            .region(Region.of(storageConfig.region))
             .credentialsProvider(credentials())
 
         if (isCustomEndpoint()) {
-            builder.endpointOverride(java.net.URI.create(endpoint))
+            builder.endpointOverride(java.net.URI.create(storageConfig.endpoint))
             builder.forcePathStyle(true)
         }
 
         return builder.build()
     }
-
-    val bucketName: String get() = bucket
-
-    /** 公开访问 URL 前缀（不带尾部 /）。为空表示不使用自定义域名。 */
-    val publicBaseUrl: String? get() = publicUrl.trimEnd('/').ifEmpty { null }
 }

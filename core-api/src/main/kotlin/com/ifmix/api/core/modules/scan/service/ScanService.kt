@@ -4,6 +4,7 @@ import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.entity.scan.ImageRef
 import com.ifmix.api.core.entity.scan.ScanRecord
 import com.ifmix.api.core.entity.scan.dto.ScanRecordDto
+import com.ifmix.api.core.entity.enums.StorageBucketId
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError
@@ -48,8 +49,8 @@ open class AntiqueService(
 
         val resolved = req.images.map { img ->
             ScanMediaItem(
-                imageUrl = objectStorage.presignDownload(img.imageKey, Duration.ofMinutes(30)),
-                mediaType = img.mediaType,
+                imageUrl = objectStorage.getPublicUrl(StorageBucketId.UGC, img.imageKey),
+                mediaType = img.resolvedMediaType(),
             )
         }
 
@@ -100,11 +101,15 @@ open class AntiqueService(
     }
 
     fun presignedUploadUrl(ctx: OperationContext, objectKey: String, contentType: String, duration: Duration): String {
-        return objectStorage.presignUpload(objectKey, contentType, duration)
+        return objectStorage.presignUpload(StorageBucketId.UGC, objectKey, contentType, duration)
     }
 
     fun presignedDownloadUrl(ctx: OperationContext, objectKey: String, duration: Duration): String {
-        return objectStorage.presignDownload(objectKey, duration)
+        return objectStorage.presignDownload(StorageBucketId.UGC, objectKey, duration)
+    }
+
+    fun getPublicUrl(ctx: OperationContext, objectKey: String): String {
+        return objectStorage.getPublicUrl(StorageBucketId.UGC, objectKey)
     }
 
     @Transactional

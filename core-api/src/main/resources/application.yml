@@ -42,10 +42,9 @@ app:
     type: ${STORAGE_TYPE:none}
     region: ${STORAGE_REGION:us-east-1}
     endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
-    bucket: ${STORAGE_BUCKET:ifmix}
     access-key: ${STORAGE_ACCESS_KEY:minioadmin}
     secret-key: ${STORAGE_SECRET_KEY:minioadmin}
-    public-url: ${STORAGE_PUBLIC_URL:}
+    buckets: {}
   agnes:
     # API key 轮换配置：预扣配额（每次扫描尝试预扣 1 次，成功消耗、失败/429 归还）
     ai:

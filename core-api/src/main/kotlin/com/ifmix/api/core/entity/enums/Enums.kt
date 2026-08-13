@@ -14,6 +14,14 @@ interface CodedEnum {
 }
 
 /**
+ * 对象存储 bucket 标识。对应 app.storage.buckets.{id} 配置键。
+ */
+object StorageBucketId {
+    const val UGC = "ugc"
+    const val STATIC = "static"
+}
+
+/**
  * 扫描状态。
  */
 enum class ScanStatus(override val code: Int) : CodedEnum {
