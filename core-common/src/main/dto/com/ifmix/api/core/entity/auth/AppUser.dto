@@ -1,0 +1,7 @@
+export com.ifmix.api.core.entity.auth.AppUser
+AppUserDto {
+    #allScalars
+    authIdentity {
+        #allScalars
+    }
+}

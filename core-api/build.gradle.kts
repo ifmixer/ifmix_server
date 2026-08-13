@@ -8,6 +8,7 @@ plugins {
 
 dependencies {
     implementation(project(":core-common"))
+    testImplementation(project(":core-common"))
 
     val jimmerVersion = rootProject.extra["jimmerVersion"] as String
     ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")

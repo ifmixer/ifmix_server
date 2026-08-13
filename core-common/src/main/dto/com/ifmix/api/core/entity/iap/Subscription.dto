@@ -1,0 +1,16 @@
+export com.ifmix.api.core.entity.iap.Subscription
+SubscriptionDto {
+    id
+    appId
+    subscriptionPxid
+    originalTransactionId
+    productId
+    platform
+    active
+    subStatus
+    expiryDate
+    purchaseToken
+    rawResponse
+    createdAt
+    updatedAt
+}

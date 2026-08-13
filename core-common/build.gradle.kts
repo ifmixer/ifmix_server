@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     kotlin("plugin.spring")
+    id("org.springframework.boot")
     id("io.spring.dependency-management")
     id("com.google.devtools.ksp")
 }
@@ -39,6 +40,8 @@ dependencies {
 
     api("io.netty:netty-resolver-dns-native-macos::osx-aarch_64")
     api("com.fasterxml.uuid:java-uuid-generator:5.1.0")
+
+    api("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("com.willowtreeapps.assertk:assertk-jvm:0.28.1")

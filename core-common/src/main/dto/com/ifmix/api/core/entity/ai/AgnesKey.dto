@@ -1,0 +1,9 @@
+export com.ifmix.api.core.entity.ai.AgnesKey
+AgnesKeyDto {
+    id
+    key
+    email
+    type
+    rateLimit
+    windowSec
+}

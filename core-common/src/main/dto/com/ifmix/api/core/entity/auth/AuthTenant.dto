@@ -1,0 +1,4 @@
+export com.ifmix.api.core.entity.auth.AuthTenant
+AuthTenantDto {
+    #allScalars
+}

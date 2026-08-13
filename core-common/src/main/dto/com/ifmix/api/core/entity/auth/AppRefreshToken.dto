@@ -1,0 +1,10 @@
+export com.ifmix.api.core.entity.auth.AppRefreshToken
+AppRefreshTokenDto {
+    #allScalars
+    appUser {
+        #allScalars
+    }
+    deviceSecret {
+        #allScalars
+    }
+}
