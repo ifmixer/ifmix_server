@@ -56,7 +56,7 @@ open class AuthService(
     }
 
     private fun tenantId(ctx: OperationContext): String =
-        appConfigRepo.mustFindCurrentRevision(ctx.globalRepoCtx, ctx.appId!!).authTenantId?.toString()
+        appConfigRepo.mustFindCurrentRevision(ctx.repoCtx, ctx.appId!!).authTenantId?.toString()
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
     @Transactional
@@ -73,8 +73,8 @@ open class AuthService(
     fun loginWithProvider(ctx: OperationContext, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
         val rc = ctx.globalRepoCtx
 
-        // 1. Resolve app config & tenant
-        val config = appConfigRepo.mustFindCurrentRevision(rc, ctx.appId!!)
+        // 1. Resolve app config & tenant (app_config_revision is a tenant table)
+        val config = appConfigRepo.mustFindCurrentRevision(ctx.repoCtx, ctx.appId!!)
         val tenantUUID = config.authTenantId ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val tenantId = tenantUUID.toString()
 

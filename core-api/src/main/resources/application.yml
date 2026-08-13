@@ -14,6 +14,9 @@ spring:
         options:
           model: ${SPRING_AI_OPENAI_MODEL:gpt-4o}
       base-url: ${SPRING_AI_OPENAI_BASE_URL:https://api.openai.com}
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
 
 server:
   port: ${PORT:3001}
@@ -71,7 +74,4 @@ app:
       jwks-uri: ${AUTH_GOOGLE_JWKS_URI:https://accounts.google.com/.well-known/openid-configuration}
     apple:
       jwks-uri: ${AUTH_APPLE_JWKS_URI:https://appleid.apple.com/.well-known/jwks.json}
-spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+

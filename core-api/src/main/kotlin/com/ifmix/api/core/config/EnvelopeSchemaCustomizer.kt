@@ -1,4 +1,4 @@
-package com.ifmix.api.core.infra.config
+package com.ifmix.api.core.config
 
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI

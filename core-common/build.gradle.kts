@@ -6,6 +6,10 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// core-common 是纯 library，不需要打 fat jar
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") { enabled = false }
+tasks.named<Jar>("jar") { enabled = true }
+
 dependencies {
     api("org.springframework.boot:spring-boot-starter-web")
     api("org.springframework.boot:spring-boot-starter-data-redis")
@@ -40,8 +44,6 @@ dependencies {
 
     api("io.netty:netty-resolver-dns-native-macos::osx-aarch_64")
     api("com.fasterxml.uuid:java-uuid-generator:5.1.0")
-
-    api("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("com.willowtreeapps.assertk:assertk-jvm:0.28.1")

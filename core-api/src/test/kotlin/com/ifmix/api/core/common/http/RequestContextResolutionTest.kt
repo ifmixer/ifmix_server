@@ -1,5 +1,7 @@
 package com.ifmix.api.core.infra.http
 
+import com.ifmix.api.core.infra.jimmer.AppDataSourceProperties
+import com.ifmix.api.core.infra.jimmer.ClusterRouter
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
