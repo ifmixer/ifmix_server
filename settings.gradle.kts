@@ -1,3 +1,3 @@
 rootProject.name = "ifmix-server"
 
-include("core-api")
+include("core-common", "core-api", "core-admin-api")
