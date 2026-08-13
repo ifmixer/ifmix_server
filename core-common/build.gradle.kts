@@ -69,4 +69,6 @@ tasks.withType<Test> {
 
 ksp {
     arg("jimmer.language", "kotlin")
+    arg("jimmer.dto.dirs", "src/main/dto")
+    arg("jimmer.dto.defaultNullableInputModifier", "fuzzy")
 }

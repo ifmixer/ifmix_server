@@ -1,0 +1,61 @@
+package com.ifmix.api.core.common.infra.service
+
+import com.ifmix.api.core.common.infra.dto.CursorQueryInput
+import com.ifmix.api.core.common.infra.dto.Page
+import com.ifmix.api.core.common.infra.http.ApiError
+import com.ifmix.api.core.common.infra.http.ErrorCode
+import com.ifmix.api.core.common.infra.http.OperationContext
+import com.ifmix.api.core.common.entity.AppScopedProps
+import org.babyfish.jimmer.Input
+import org.babyfish.jimmer.View
+import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
+import kotlin.reflect.KClass
+import com.ifmix.api.core.common.infra.repo.BaseCrudRepository
+import com.ifmix.api.core.common.infra.repo.BaseAppCrudRepository
+
+/**
+ * 通用 Service 层。委托 BaseCrudRepository，标注事务。
+ * 各模块 Service 继承后只需添加领域特有方法。
+ */
+open class BaseCrudService<E : Any>(
+    protected val repo: BaseCrudRepository<E>,
+) {
+    open fun findById(ctx: OperationContext, id: UUID): E? =
+        repo.findById(ctx.repoCtx, id)
+
+    open fun mustFindById(ctx: OperationContext, id: UUID): E =
+        repo.findById(ctx.repoCtx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+
+    open fun <V : View<E>> findById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V? =
+        repo.findById(ctx.repoCtx, id, viewType)
+
+    open fun <V : View<E>> mustFindById(ctx: OperationContext, id: UUID, viewType: KClass<V>): V =
+        repo.findById(ctx.repoCtx, id, viewType) ?: throw ApiError(ErrorCode.NOT_FOUND)
+
+    open fun findByCursor(ctx: OperationContext, input: CursorQueryInput = CursorQueryInput()): Page<E> =
+        repo.findByCursor(ctx.repoCtx, input)
+
+    @Transactional
+    open fun create(ctx: OperationContext, input: Input<E>): E =
+        repo.insert(ctx.repoCtx, input)
+
+    @Transactional
+    open fun update(ctx: OperationContext, input: Input<E>): E =
+        repo.update(ctx.repoCtx, input)
+
+    @Transactional
+    open fun save(ctx: OperationContext, input: Input<E>): E =
+        repo.save(ctx.repoCtx, input)
+
+    @Transactional
+    open fun deleteById(ctx: OperationContext, id: UUID) =
+        repo.deleteById(ctx.repoCtx, id)
+}
+
+/**
+ * 面向多租户实体的 Service 基类。
+ */
+open class BaseAppCrudService<E : AppScopedProps>(
+    protected val repo: BaseAppCrudRepository<E>,
+)
