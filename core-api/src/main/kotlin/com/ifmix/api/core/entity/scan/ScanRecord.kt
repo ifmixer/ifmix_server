@@ -18,7 +18,7 @@ interface ScanRecord : AppScopedProps, SoftDeletableProps {
 
     /** 图片列表（JSONB 对象数组） */
     @Serialized
-    val imageKeys: List<ImageRef>
+    val images: List<ImageRef>
 
     /** AI 识别结果（JSONB） */
     @Serialized

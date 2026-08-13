@@ -7,7 +7,7 @@ ScanRecordDto {
 ScanRecordListItem {
     id
     status
-    imageKeys
+    images
     result
     userDisplayName
     userNotes
@@ -16,7 +16,7 @@ ScanRecordListItem {
 }
 
 input ScanRecordCreateInput {
-    imageKeys
+    images
     status
     clientIp
 }

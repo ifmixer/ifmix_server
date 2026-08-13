@@ -50,7 +50,7 @@ class CustomerScanController(private val antiqueService: AntiqueService) {
             id 为 UUIDv7 格式的扫描记录主键（即 NewScanRes.id）。
             按当前用户过滤，他人的 id 返回 404。已软删的记录也返回 404。
             result 可能为 null（仅当记录通过内部 createOne 创建但未触发 AI 时）。
-            图片通过 imageKeys 中的 objectKey 调 storage/presignDownload 获取临时 URL。
+            图片通过 images 中的 objectKey 调 storage/presignDownload 获取临时 URL。
         """,
     )
     @PutMapping("/query/core/scan/findScanById")

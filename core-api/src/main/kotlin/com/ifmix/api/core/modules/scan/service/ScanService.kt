@@ -69,7 +69,7 @@ open class AntiqueService(
         val entity = ScanRecord {
             id = scanId
             this.appId = appId
-            this.imageKeys = req.images.map { ImageRef(key = it.imageKey) }
+            this.images = req.images.map { ImageRef(key = it.imageKey) }
             this.result = data
             this.status = ScanStatus.COMPLETED.code
             this.clientIp = ctx.clientIp
