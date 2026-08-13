@@ -103,4 +103,6 @@ ksp {
     arg("jimmer.dto.dirs", "src/main/dto")
     // 生成 Kotlin 代码
     arg("jimmer.language", "kotlin")
+    // input DTO 中 nullable 属性默认使用 dynamic 修饰（不传=不修改）
+    arg("jimmer.dto.defaultNullableInputModifier", "fuzzy")
 }
