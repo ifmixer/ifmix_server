@@ -19,12 +19,18 @@ data class OperationContext(
     val clientPlatform: ClientPlatform? = null,
     val userId: UUID? = null,
     val clientIp: String? = null,
-    /** true = 允许读从库（仅影响 ReadWriteRoutingDataSource）。事务内自动走主库。 */
+    /** 业务数据目标集群 ID（请求入口由 ClusterRouter 解析） */
+    val clusterId: String = "default",
+    /** 全局集群 ID（auth 等共享数据，初期 = clusterId） */
+    val globalClusterId: String = "default",
+    /** true = 读操作走 reader 节点 */
     val readFromReplica: Boolean = false,
 ) {
-    /**
-     * Repository 层专用上下文。
-     * 当前实现为单例 DEFAULT；将来多集群路由时可根据 appId 等信息动态构造。
-     */
-    val repoCtx: RepoContext get() = RepoContext.DEFAULT
+    /** 业务数据 RepoContext */
+    val repoCtx: RepoContext
+        get() = RepoContext(clusterId = clusterId, preferReader = readFromReplica)
+
+    /** Auth / 全局数据 RepoContext */
+    val globalRepoCtx: RepoContext
+        get() = RepoContext(clusterId = globalClusterId, preferReader = readFromReplica)
 }
