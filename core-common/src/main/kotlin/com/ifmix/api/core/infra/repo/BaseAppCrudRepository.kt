@@ -5,6 +5,7 @@ import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.dto.CursorQueryInput
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.dto.SortOrder
+import com.ifmix.api.core.infra.jimmer.ClusterRegistry
 import org.babyfish.jimmer.View
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -18,9 +19,16 @@ import kotlin.reflect.KClass
  * 所有方法强制带 appId 参数，确保租户隔离。
  */
 abstract class BaseAppCrudRepository<E : AppScopedProps>(
-    protected val sql: KSqlClient,
+    protected val clusterRegistry: ClusterRegistry,
     protected val entityType: KClass<E>,
 ) {
+
+    /** 读操作：根据 RepoContext 选择集群和读写节点 */
+    protected fun sql(ctx: RepoContext): KSqlClient = clusterRegistry.sql(ctx)
+
+    /** 写操作：强制使用目标集群的 writer */
+    protected fun writerSql(ctx: RepoContext): KSqlClient =
+        clusterRegistry.getCluster(ctx.clusterId).sql(preferReader = false)
 
     // ==================== 写入 ====================
 
@@ -28,19 +36,19 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
      * 保存实体。appId 从 entity 自身提取用于一致性校验。
      */
     open fun save(ctx: RepoContext, entity: E): E =
-        sql.entities.save(entity).modifiedEntity
+        writerSql(ctx).entities.save(entity).modifiedEntity
 
     // ==================== 查询 ====================
 
     open fun findById(ctx: RepoContext, appId: UUID, id: UUID): E? =
-        sql.createQuery(entityType) {
+        sql(ctx).createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
             select(table)
         }.limit(1).execute().firstOrNull()
 
     open fun <V : View<E>> findById(ctx: RepoContext, appId: UUID, id: UUID, viewType: KClass<V>): V? =
-        sql.createQuery(entityType) {
+        sql(ctx).createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
             select(table.fetch(viewType))
@@ -48,7 +56,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
 
     open fun findByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): List<E> {
         if (ids.isEmpty()) return emptyList()
-        return sql.createQuery(entityType) {
+        return sql(ctx).createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() valueIn ids)
             select(table)
@@ -57,7 +65,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
 
     open fun <V : View<E>> findByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>, viewType: KClass<V>): List<V> {
         if (ids.isEmpty()) return emptyList()
-        return sql.createQuery(entityType) {
+        return sql(ctx).createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() valueIn ids)
             select(table.fetch(viewType))
@@ -67,7 +75,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
     // ==================== 删除 ====================
 
     open fun deleteById(ctx: RepoContext, appId: UUID, id: UUID): Boolean {
-        val count = sql.createDelete(entityType) {
+        val count = writerSql(ctx).createDelete(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
         }.execute()
@@ -76,7 +84,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
 
     open fun deleteByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): Int {
         if (ids.isEmpty()) return 0
-        return sql.createDelete(entityType) {
+        return writerSql(ctx).createDelete(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() valueIn ids)
         }.execute()
@@ -96,7 +104,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         val sortBy = input.effectiveSortBy()
         val isDesc = input.effectiveOrder() == SortOrder.DESC
 
-        val items = sql.createQuery(entityType) {
+        val items = sql(ctx).createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
 
             if (input.cursor != null) {
@@ -138,8 +146,8 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
 
     // ==================== 辅助 ====================
 
-    protected fun exists(appId: UUID, id: UUID): Boolean =
-        sql.createQuery(entityType) {
+    protected fun exists(ctx: RepoContext, appId: UUID, id: UUID): Boolean =
+        sql(ctx).createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
             select(table)

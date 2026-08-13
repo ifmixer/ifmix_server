@@ -11,8 +11,8 @@ import com.ifmix.api.core.entity.auth.updatedAt
 import com.ifmix.api.core.entity.auth.userId
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.jimmer.ClusterRegistry
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
-import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
 import java.time.Instant
@@ -23,8 +23,8 @@ import java.util.UUID
  */
 @Repository
 class UserInstallBindingRepository(
-    sql: KSqlClient,
-) : BaseAppCrudRepository<UserInstallBinding>(sql, UserInstallBinding::class) {
+    clusterRegistry: ClusterRegistry,
+) : BaseAppCrudRepository<UserInstallBinding>(clusterRegistry, UserInstallBinding::class) {
 
     /**
      * 记录一次登录绑定（幂等 upsert）：
@@ -40,7 +40,7 @@ class UserInstallBindingRepository(
         clientPlatform: String?,
     ) {
         val now = Instant.now()
-        val existing = sql.createQuery(UserInstallBinding::class) {
+        val existing = sql(ctx).createQuery(UserInstallBinding::class) {
             where(table.appId eq appId)
             where(table.userId eq userId)
             where(table.installId eq installId)
@@ -63,7 +63,7 @@ class UserInstallBindingRepository(
             }
             save(ctx, entity)
         } else {
-            sql.createUpdate(UserInstallBinding::class) {
+            writerSql(ctx).createUpdate(UserInstallBinding::class) {
                 set(table.lastSeenAt, now)
                 set(table.loginCount, table.loginCount + 1)
                 set(table.updatedAt, now)

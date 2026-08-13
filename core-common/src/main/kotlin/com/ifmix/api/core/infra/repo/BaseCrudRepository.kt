@@ -1,8 +1,9 @@
 package com.ifmix.api.core.infra.repo
 
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.dto.CursorQueryInput
 import com.ifmix.api.core.infra.dto.Page
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.jimmer.ClusterRegistry
 import org.babyfish.jimmer.Input
 import org.babyfish.jimmer.View
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
@@ -13,67 +14,74 @@ import kotlin.reflect.KClass
 
 /**
  * 通用 CRUD Repository。
- * 注入全局唯一的 KSqlClient，事务由 Spring @Transactional 管理。
+ * 通过 ClusterRegistry 按 RepoContext 路由到对应集群的读写节点。
  */
 abstract class BaseCrudRepository<E : Any>(
-    protected val sql: KSqlClient,
+    protected val clusterRegistry: ClusterRegistry,
     protected val entityType: KClass<E>,
 ) {
+    /** 读操作：根据 RepoContext 选择集群和读写节点 */
+    protected fun sql(ctx: RepoContext): KSqlClient = clusterRegistry.sql(ctx)
+
+    /** 写操作：强制使用目标集群的 writer */
+    protected fun writerSql(ctx: RepoContext): KSqlClient =
+        clusterRegistry.getCluster(ctx.clusterId).sql(preferReader = false)
+
     open fun findById(ctx: RepoContext, id: UUID): E? =
-        sql.entities.findById(entityType, id)
+        sql(ctx).entities.findById(entityType, id)
 
     open fun <V : View<E>> findById(ctx: RepoContext, id: UUID, viewType: KClass<V>): V? =
-        sql.entities.findById(viewType, id)
+        sql(ctx).entities.findById(viewType, id)
 
     open fun findByIds(ctx: RepoContext, ids: List<UUID>): List<E> =
-        if (ids.isEmpty()) emptyList() else sql.entities.findByIds(entityType, ids)
+        if (ids.isEmpty()) emptyList() else sql(ctx).entities.findByIds(entityType, ids)
 
     open fun <V : View<E>> findByIds(ctx: RepoContext, ids: List<UUID>, viewType: KClass<V>): List<V> =
-        if (ids.isEmpty()) emptyList() else sql.entities.findByIds(viewType, ids)
+        if (ids.isEmpty()) emptyList() else sql(ctx).entities.findByIds(viewType, ids)
 
     open fun insert(ctx: RepoContext, input: Input<E>): E =
-        sql.entities.save(input) {
+        writerSql(ctx).entities.save(input) {
             setMode(SaveMode.INSERT_ONLY)
         }.modifiedEntity
 
     open fun insertAll(ctx: RepoContext, inputs: List<Input<E>>): List<E> =
         if (inputs.isEmpty()) emptyList()
-        else sql.entities.saveInputs(inputs) {
+        else writerSql(ctx).entities.saveInputs(inputs) {
             setMode(SaveMode.INSERT_ONLY)
         }.items.map { it.modifiedEntity }
 
     open fun update(ctx: RepoContext, input: Input<E>): E =
-        sql.entities.save(input) {
+        writerSql(ctx).entities.save(input) {
             setMode(SaveMode.UPDATE_ONLY)
         }.modifiedEntity
 
     open fun updateAll(ctx: RepoContext, inputs: List<Input<E>>): List<E> =
         if (inputs.isEmpty()) emptyList()
-        else sql.entities.saveInputs(inputs) {
+        else writerSql(ctx).entities.saveInputs(inputs) {
             setMode(SaveMode.UPDATE_ONLY)
         }.items.map { it.modifiedEntity }
 
     open fun save(ctx: RepoContext, input: Input<E>): E =
-        sql.entities.save(input).modifiedEntity
+        writerSql(ctx).entities.save(input).modifiedEntity
 
     open fun save(ctx: RepoContext, entity: E): E =
-        sql.entities.save(entity).modifiedEntity
+        writerSql(ctx).entities.save(entity).modifiedEntity
 
     open fun saveAll(ctx: RepoContext, entities: List<E>): List<E> =
         if (entities.isEmpty()) emptyList()
-        else sql.entities.saveEntities(entities).items.map { it.modifiedEntity }
+        else writerSql(ctx).entities.saveEntities(entities).items.map { it.modifiedEntity }
 
     open fun deleteById(ctx: RepoContext, id: UUID) {
-        sql.entities.delete(entityType, id)
+        writerSql(ctx).entities.delete(entityType, id)
     }
 
     open fun deleteByIds(ctx: RepoContext, ids: List<UUID>) {
         if (ids.isEmpty()) return
-        sql.entities.deleteAll(entityType, ids)
+        writerSql(ctx).entities.deleteAll(entityType, ids)
     }
 
     open fun findAll(ctx: RepoContext): List<E> =
-        sql.entities.findAll(entityType)
+        sql(ctx).entities.findAll(entityType)
 
     /**
      * 通用游标分页：按 id DESC 排序，cursor 为上一页最后一条的 id。
@@ -87,7 +95,7 @@ abstract class BaseCrudRepository<E : Any>(
             try { UUID.fromString(it) } catch (_: Exception) { null }
         }
 
-        val items = sql.createQuery(entityType) {
+        val items = sql(ctx).createQuery(entityType) {
             if (cursor != null) {
                 where(table.getId<UUID>() lt cursor)
             }

@@ -3,15 +3,17 @@ package com.ifmix.api.core.modules.feedback.repo
 import com.ifmix.api.core.entity.feedback.Feedback
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.jimmer.ClusterRegistry
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
-import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
 @Repository
-class FeedbackRepository(sql: KSqlClient) : BaseAppCrudRepository<Feedback>(sql, Feedback::class) {
+class FeedbackRepository(
+    clusterRegistry: ClusterRegistry,
+) : BaseAppCrudRepository<Feedback>(clusterRegistry, Feedback::class) {
 
     fun create(
         ctx: RepoContext,
@@ -32,6 +34,6 @@ class FeedbackRepository(sql: KSqlClient) : BaseAppCrudRepository<Feedback>(sql,
             this.comment = comment
             createdAt = Instant.now()
         }
-        return sql.entities.save(entity) { setMode(SaveMode.INSERT_ONLY) }.modifiedEntity.id
+        return writerSql(ctx).entities.save(entity) { setMode(SaveMode.INSERT_ONLY) }.modifiedEntity.id
     }
 }

@@ -4,21 +4,23 @@ import com.ifmix.api.core.entity.auth.AppUser
 import com.ifmix.api.core.entity.auth.appId
 import com.ifmix.api.core.entity.auth.authIdentityId
 import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.jimmer.ClusterRegistry
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
-import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
-import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
 /** AppUser repository with custom ensure() method */
 @Repository
-class AppUserRepository(sql: KSqlClient,) : BaseAppCrudRepository<AppUser>(sql, AppUser::class) {
+class AppUserRepository(
+    clusterRegistry: ClusterRegistry,
+) : BaseAppCrudRepository<AppUser>(clusterRegistry, AppUser::class) {
 
     /** Find AppUser by appId and authIdentityId using Jimmer query DSL */
     fun findByAppAndIdentity(ctx: RepoContext, appId: UUID, authIdentityId: UUID): AppUser? {
-        return sql.createQuery(AppUser::class) {
+        return sql(ctx).createQuery(AppUser::class) {
             where(table.appId eq appId)
             where(table.authIdentityId eq authIdentityId)
             select(table)

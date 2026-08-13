@@ -5,16 +5,18 @@ import com.ifmix.api.core.entity.iap.platform
 import com.ifmix.api.core.entity.iap.processed
 import com.ifmix.api.core.entity.iap.purchaseToken
 import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.jimmer.ClusterRegistry
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
-import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
 
 @Repository
-class StoreNotificationRepository(sql: KSqlClient,) : BaseAppCrudRepository<StoreNotification>(sql, StoreNotification::class) {
+class StoreNotificationRepository(
+    clusterRegistry: ClusterRegistry,
+) : BaseAppCrudRepository<StoreNotification>(clusterRegistry, StoreNotification::class) {
 
     fun existsByPlatformAndToken(ctx: RepoContext, platform: String, purchaseToken: String): Boolean {
-        val results = sql.createQuery(StoreNotification::class) {
+        val results = sql(ctx).createQuery(StoreNotification::class) {
             where(table.platform eq platform)
             where(table.purchaseToken eq purchaseToken)
             where(table.processed eq true)

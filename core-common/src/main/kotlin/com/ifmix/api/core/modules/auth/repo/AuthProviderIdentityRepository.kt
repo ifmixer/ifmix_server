@@ -5,22 +5,24 @@ import com.ifmix.api.core.entity.auth.authTenantId
 import com.ifmix.api.core.entity.auth.provider
 import com.ifmix.api.core.entity.auth.providerAccountId
 import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.jimmer.ClusterRegistry
 import com.ifmix.api.core.infra.repo.BaseCrudRepository
-import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
-import com.ifmix.api.core.infra.db.UuidV7
 import java.time.Instant
 import java.util.UUID
 
 /** Provider identity repository with custom queries */
 @Repository
-class AuthProviderIdentityRepository(sql: KSqlClient,) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {
+class AuthProviderIdentityRepository(
+    clusterRegistry: ClusterRegistry,
+) : BaseCrudRepository<AuthProviderIdentity>(clusterRegistry, AuthProviderIdentity::class) {
 
     /** Find by tenantId + provider + providerAccountId using Jimmer query DSL */
     fun findByProviderAndAccountId(ctx: RepoContext, tenantId: String, provider: String, providerAccountId: String): AuthProviderIdentity? {
         val tenantUUID = UUID.fromString(tenantId)
-        return sql.createQuery(AuthProviderIdentity::class) {
+        return sql(ctx).createQuery(AuthProviderIdentity::class) {
             where(table.authTenantId eq tenantUUID)
             where(table.provider eq provider)
             where(table.providerAccountId eq providerAccountId)

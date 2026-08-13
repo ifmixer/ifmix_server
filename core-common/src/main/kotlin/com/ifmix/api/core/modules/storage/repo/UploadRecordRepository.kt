@@ -3,15 +3,17 @@ package com.ifmix.api.core.modules.storage.repo
 import com.ifmix.api.core.entity.storage.UploadRecord
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.jimmer.ClusterRegistry
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
-import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
 @Repository
-class UploadRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<UploadRecord>(sql, UploadRecord::class) {
+class UploadRecordRepository(
+    clusterRegistry: ClusterRegistry,
+) : BaseAppCrudRepository<UploadRecord>(clusterRegistry, UploadRecord::class) {
 
     fun create(
         ctx: RepoContext,
@@ -35,6 +37,6 @@ class UploadRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<UploadReco
             this.clientIp = clientIp
             createdAt = Instant.now()
         }
-        return sql.entities.save(entity) { setMode(SaveMode.INSERT_ONLY) }.modifiedEntity
+        return writerSql(ctx).entities.save(entity) { setMode(SaveMode.INSERT_ONLY) }.modifiedEntity
     }
 }
