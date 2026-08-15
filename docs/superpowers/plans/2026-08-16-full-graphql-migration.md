@@ -686,3 +686,1219 @@ git commit -m "feat(todo): complete todo + todoItem GraphQL migration, verified 
 6. 创建 DGS Fetcher（含 DataLoader 聚合）
 7. 删除旧 REST Controller
 8. 端到端验证
+
+---
+
+## 子计划 2：scan (antique) + storage
+
+**目标：** 实现扫描记录（ScanRecord）和文件上传（UploadRecord），GraphQL 暴露扫描 CRUD + presign URL。
+
+**前置：** 子计划 1 完成，GraphQL 基础设施可用。
+
+---
+
+### 任务 2.1：创建 ScanRecordDocument
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/scan/document/ScanRecordDocument.kt`
+
+- [ ] **步骤 1：创建 Document**
+
+```kotlin
+package com.ifmix.api.core.modules.scan.document
+
+import com.ifmix.api.core.common.db.BaseAppDocument
+import org.springframework.data.mongodb.core.index.CompoundIndex
+import org.springframework.data.mongodb.core.mapping.Document
+
+data class ImageRef(val key: String)
+
+@Document(collection = "scan_records")
+@CompoundIndex(name = "scan_records_app_idx", def = "{'appId': 1, '_id': -1}")
+class ScanRecordDocument : BaseAppDocument() {
+    var images: List<ImageRef> = emptyList()
+    var result: Map<String, Any?>? = null
+    /** 0=UNKNOWN, 100=PENDING, 110=PROCESSING, 200=COMPLETED, 300=FAILED */
+    var status: Int = 0
+    var clientIp: String? = null
+    var lang: String? = null
+    var country: String? = null
+    var currency: String? = null
+    var userDisplayName: String? = null
+    var userNotes: String? = null
+    var collected: Boolean = false
+}
+```
+
+- [ ] **步骤 2：Commit**
+
+```bash
+git add -A && git commit -m "feat(scan): add ScanRecordDocument"
+```
+
+---
+
+### 任务 2.2：创建 UploadRecordDocument
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/storage/document/UploadRecordDocument.kt`
+
+- [ ] **步骤 1：创建 Document（追加式，无软删）**
+
+```kotlin
+package com.ifmix.api.core.modules.storage.document
+
+import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.AppScoped
+import org.springframework.data.mongodb.core.mapping.Document
+
+@Document(collection = "upload_records")
+class UploadRecordDocument : BaseDocument(), AppScoped {
+    override var appId: String = ""
+    var installId: String? = null
+    var userId: String? = null
+    var objectKey: String = ""
+    var contentType: String = ""
+    var category: String = ""
+    var clientIp: String? = null
+}
+```
+
+- [ ] **步骤 2：Commit**
+
+```bash
+git add -A && git commit -m "feat(storage): add UploadRecordDocument"
+```
+
+---
+
+### 任务 2.3：创建 ScanRecordRepository + ScanService
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/scan/repo/ScanRecordRepository.kt`
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/scan/service/ScanService.kt`
+
+- [ ] **步骤 1：创建 ScanRecordRepository**
+
+```kotlin
+package com.ifmix.api.core.modules.scan.repo
+
+import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.modules.scan.document.ScanRecordDocument
+import org.springframework.data.domain.Sort
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.query.Criteria
+import org.springframework.data.mongodb.core.query.Query
+import org.springframework.data.mongodb.core.query.Update
+import java.time.Instant
+
+class ScanRecordRepository(private val mongo: MongoTemplate) {
+
+    fun insert(ctx: RequestContext, doc: ScanRecordDocument): String {
+        doc.appId = ctx.appId
+        mongo.insert(doc)
+        return doc.id
+    }
+
+    fun findById(ctx: RequestContext, id: String): ScanRecordDocument? {
+        val query = Query(Criteria.where("_id").`is`(id).and("appId").`is`(ctx.appId).and("deletedAt").`is`(null))
+        return mongo.findOne(query, ScanRecordDocument::class.java)
+    }
+
+    fun findByCursor(ctx: RequestContext, cursor: String?, limit: Int, collected: Boolean?): Pair<List<ScanRecordDocument>, Boolean> {
+        val criteria = Criteria.where("appId").`is`(ctx.appId).and("deletedAt").`is`(null)
+        collected?.let { criteria.and("collected").`is`(it) }
+        cursor?.let { criteria.and("_id").lt(it) }
+        val query = Query(criteria).with(Sort.by(Sort.Direction.DESC, "_id")).limit(limit + 1)
+        val results = mongo.find(query, ScanRecordDocument::class.java)
+        val hasMore = results.size > limit
+        return (if (hasMore) results.dropLast(1) else results) to hasMore
+    }
+
+    fun softDelete(ctx: RequestContext, id: String): Boolean {
+        val query = Query(Criteria.where("_id").`is`(id).and("appId").`is`(ctx.appId).and("deletedAt").`is`(null))
+        val update = Update().set("deletedAt", Instant.now())
+        return mongo.updateFirst(query, update, ScanRecordDocument::class.java).modifiedCount > 0
+    }
+
+    fun update(ctx: RequestContext, id: String, update: Update): Boolean {
+        val query = Query(Criteria.where("_id").`is`(id).and("appId").`is`(ctx.appId).and("deletedAt").`is`(null))
+        update.set("updatedAt", Instant.now())
+        return mongo.updateFirst(query, update, ScanRecordDocument::class.java).modifiedCount > 0
+    }
+}
+```
+
+- [ ] **步骤 2：创建 ScanService**
+
+```kotlin
+package com.ifmix.api.core.modules.scan.service
+
+import com.ifmix.api.core.common.http.ApiError
+import com.ifmix.api.core.common.http.ErrorCode
+import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.modules.scan.document.ImageRef
+import com.ifmix.api.core.modules.scan.document.ScanRecordDocument
+import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
+import org.springframework.data.mongodb.core.query.Update
+import java.time.Instant
+
+class ScanService(private val repo: ScanRecordRepository) {
+
+    fun create(ctx: RequestContext, images: List<ImageRef>, status: Int, result: Map<String, Any?>? = null): String {
+        val doc = ScanRecordDocument().apply {
+            this.images = images
+            this.status = status
+            this.result = result
+            this.clientIp = null // 由 controller 层设置
+            this.lang = ctx.lang
+            this.country = ctx.country
+            this.currency = ctx.currency
+            this.collected = false
+            this.createdAt = Instant.now()
+            this.updatedAt = Instant.now()
+        }
+        return repo.insert(ctx, doc)
+    }
+
+    fun getById(ctx: RequestContext, id: String): ScanRecordDocument =
+        repo.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
+
+    fun findById(ctx: RequestContext, id: String): ScanRecordDocument? = repo.findById(ctx, id)
+
+    fun findByCursor(ctx: RequestContext, cursor: String?, limit: Int, collected: Boolean?): Pair<List<ScanRecordDocument>, Boolean> =
+        repo.findByCursor(ctx, cursor, limit, collected)
+
+    fun delete(ctx: RequestContext, id: String): Boolean = repo.softDelete(ctx, id)
+
+    fun updateDisplayName(ctx: RequestContext, id: String, name: String?): Boolean {
+        val update = Update()
+        if (name == null) update.unset("userDisplayName") else update.set("userDisplayName", name)
+        return repo.update(ctx, id, update)
+    }
+
+    fun updateUserNotes(ctx: RequestContext, id: String, notes: String?): Boolean {
+        val update = Update()
+        if (notes == null) update.unset("userNotes") else update.set("userNotes", notes)
+        return repo.update(ctx, id, update)
+    }
+
+    fun updateCollected(ctx: RequestContext, id: String, collected: Boolean): Boolean {
+        val update = Update().set("collected", collected)
+        return repo.update(ctx, id, update)
+    }
+
+    fun updateResult(ctx: RequestContext, id: String, result: Map<String, Any?>, status: Int): Boolean {
+        val update = Update().set("result", result).set("status", status)
+        return repo.update(ctx, id, update)
+    }
+}
+```
+
+- [ ] **步骤 3：创建 StorageService（presign 逻辑，复用现有 ObjectStorage）**
+
+```kotlin
+package com.ifmix.api.core.modules.storage.service
+
+import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.common.storage.ObjectStorage
+import com.ifmix.api.core.modules.storage.document.UploadRecordDocument
+import org.springframework.data.mongodb.core.MongoTemplate
+import java.time.Duration
+import java.time.Instant
+
+class StorageService(
+    private val objectStorage: ObjectStorage,
+    private val mongo: MongoTemplate,
+) {
+
+    fun presignUpload(ctx: RequestContext, objectKey: String, contentType: String, duration: Duration): String =
+        objectStorage.presignUpload(objectKey, contentType, duration)
+
+    fun presignDownload(ctx: RequestContext, objectKey: String, duration: Duration): String =
+        objectStorage.presignDownload(objectKey, duration)
+
+    fun getPublicUrl(objectKey: String): String = objectStorage.getPublicUrl(objectKey)
+
+    fun recordUpload(ctx: RequestContext, objectKey: String, contentType: String, category: String) {
+        val doc = UploadRecordDocument().apply {
+            this.appId = ctx.appId
+            this.installId = ctx.installId
+            this.userId = ctx.userId
+            this.objectKey = objectKey
+            this.contentType = contentType
+            this.category = category
+            this.createdAt = Instant.now()
+            this.updatedAt = Instant.now()
+        }
+        mongo.insert(doc)
+    }
+}
+```
+
+- [ ] **步骤 4：创建 ScanConfig（注册 bean）**
+
+```kotlin
+package com.ifmix.api.core.modules.scan
+
+import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
+import com.ifmix.api.core.modules.scan.service.ScanService
+import com.ifmix.api.core.modules.storage.service.StorageService
+import com.ifmix.api.core.common.storage.ObjectStorage
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.data.mongodb.core.MongoTemplate
+
+@Configuration
+class ScanConfig {
+    @Bean
+    fun scanRecordRepository(mongo: MongoTemplate) = ScanRecordRepository(mongo)
+
+    @Bean
+    fun scanService(repo: ScanRecordRepository) = ScanService(repo)
+
+    @Bean
+    fun storageService(objectStorage: ObjectStorage, mongo: MongoTemplate) = StorageService(objectStorage, mongo)
+}
+```
+
+- [ ] **步骤 5：验证编译通过**
+
+运行：`./gradlew :core-api:compileKotlin`
+
+- [ ] **步骤 6：Commit**
+
+```bash
+git add -A && git commit -m "feat(scan): add ScanService, StorageService with repositories"
+```
+
+---
+
+### 任务 2.4：GraphQL schema + type + fetcher（scan + storage）
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/graphql/common/type/ScanTypes.kt`
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/scan/mapper/ScanMapper.kt`
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/graphql/customer/CustomerScanFetcher.kt`
+- 修改：`core-api/src/main/resources/schema/schema.graphqls`
+
+- [ ] **步骤 1：创建 ScanTypes**
+
+```kotlin
+package com.ifmix.api.core.graphql.common.type
+
+import java.time.Instant
+
+data class ScanRecordType(
+    val id: String,
+    val images: List<ImageRefType>,
+    val result: Map<String, Any?>?,
+    val status: Int,
+    val userDisplayName: String?,
+    val userNotes: String?,
+    val collected: Boolean,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+)
+
+data class ImageRefType(val key: String)
+
+data class ScanConnection(
+    val items: List<ScanRecordType>,
+    val nextCursor: String?,
+    val hasMore: Boolean,
+)
+
+data class PresignUploadResult(
+    val mediaId: String,
+    val uploadUrl: String,
+    val imageKey: String,
+    val downloadUrl: String,
+)
+
+data class PresignDownloadResult(val downloadUrl: String)
+```
+
+- [ ] **步骤 2：创建 ScanMapper**
+
+```kotlin
+package com.ifmix.api.core.modules.scan.mapper
+
+import com.ifmix.api.core.graphql.common.type.ImageRefType
+import com.ifmix.api.core.graphql.common.type.ScanRecordType
+import com.ifmix.api.core.modules.scan.document.ScanRecordDocument
+
+fun ScanRecordDocument.toScanRecordType() = ScanRecordType(
+    id = id,
+    images = images.map { ImageRefType(key = it.key) },
+    result = result,
+    status = status,
+    userDisplayName = userDisplayName,
+    userNotes = userNotes,
+    collected = collected,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+```
+
+- [ ] **步骤 3：更新 schema.graphqls，追加 scan + storage 类型和操作**
+
+在 schema.graphqls 中追加：
+
+```graphql
+# === Scan ===
+type ScanRecord {
+    id: ID!
+    images: [ImageRef!]!
+    result: JSON
+    status: Int!
+    userDisplayName: String
+    userNotes: String
+    collected: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+type ImageRef { key: String! }
+
+type ScanConnection {
+    items: [ScanRecord!]!
+    nextCursor: String
+    hasMore: Boolean!
+}
+
+type PresignUploadResult {
+    mediaId: ID!
+    uploadUrl: String!
+    imageKey: String!
+    downloadUrl: String!
+}
+
+type PresignDownloadResult { downloadUrl: String! }
+
+input NewScanImageInput { imageKey: String!, mediaType: String }
+input UpdateScanInput { id: ID!, name: String, userNotes: String, collected: Boolean }
+input PresignUploadInput { category: String!, contentType: String! }
+input PresignDownloadInput { imageKey: String!, durationSeconds: Int }
+```
+
+在 Query 中追加：
+
+```graphql
+    scanRecord(id: ID!): ScanRecord
+    scanRecords(cursor: String, limit: Int, collected: Boolean): ScanConnection!
+```
+
+在 Mutation 中追加：
+
+```graphql
+    newScan(images: [NewScanImageInput!]!): ScanRecord! @requirePermission(permission: "scan:write")
+    updateScan(input: UpdateScanInput!): Boolean! @requirePermission(permission: "scan:write")
+    deleteScan(id: ID!): Boolean! @requirePermission(permission: "scan:write")
+    presignUpload(input: PresignUploadInput!): PresignUploadResult! @requirePermission(permission: "storage:write")
+    presignDownload(input: PresignDownloadInput!): PresignDownloadResult! @requirePermission(permission: "storage:read")
+```
+
+更新 ROLE_PERMISSIONS：
+
+```kotlin
+val ROLE_PERMISSIONS = mapOf(
+    "customer" to setOf("todo:read", "todo:write", "scan:read", "scan:write", "storage:read", "storage:write", "collection:read", "collection:write", "feedback:write", "iap:write"),
+    "admin" to setOf("todo:read", "todo:write", "todo:batch", "todo:admin", "scan:read", "scan:write", "storage:read", "storage:write", "collection:read", "collection:write", "feedback:write", "iap:write", "appconfig:write"),
+)
+```
+
+- [ ] **步骤 4：创建 CustomerScanFetcher**
+
+```kotlin
+package com.ifmix.api.core.graphql.customer
+
+import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
+import com.ifmix.api.core.graphql.common.type.*
+import com.ifmix.api.core.modules.scan.document.ImageRef
+import com.ifmix.api.core.modules.scan.mapper.toScanRecordType
+import com.ifmix.api.core.modules.scan.service.ScanService
+import com.ifmix.api.core.modules.storage.service.StorageService
+import com.netflix.graphql.dgs.*
+import com.netflix.graphql.dgs.context.DgsContext
+import org.bson.types.ObjectId
+import java.time.Duration
+
+@DgsComponent
+class CustomerScanFetcher(
+    private val scanService: ScanService,
+    private val storageService: StorageService,
+) {
+
+    @DgsQuery
+    fun scanRecord(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): ScanRecordType? {
+        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        return scanService.findById(ctx.requestContext, id)?.toScanRecordType()
+    }
+
+    @DgsQuery
+    fun scanRecords(
+        @InputArgument cursor: String?,
+        @InputArgument limit: Int?,
+        @InputArgument collected: Boolean?,
+        dfe: DgsDataFetchingEnvironment,
+    ): ScanConnection {
+        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
+        val (items, hasMore) = scanService.findByCursor(ctx.requestContext, cursor, effectiveLimit, collected)
+        return ScanConnection(
+            items = items.map { it.toScanRecordType() },
+            nextCursor = if (items.isNotEmpty()) items.last().id else null,
+            hasMore = hasMore,
+        )
+    }
+
+    @DgsMutation
+    fun newScan(@InputArgument images: List<Map<String, Any>>, dfe: DgsDataFetchingEnvironment): ScanRecordType {
+        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val imageRefs = images.map { ImageRef(key = it["imageKey"] as String) }
+        // ponytail: AI scan runner 逻辑沿用现有 AntiqueService 的 scanRunner 调用
+        // 此处简化为直接创建 PENDING 状态记录，实际实现时接入 ScanRunner
+        val id = scanService.create(ctx.requestContext, imageRefs, 100) // PENDING
+        return scanService.getById(ctx.requestContext, id).toScanRecordType()
+    }
+
+    @DgsMutation
+    fun updateScan(@InputArgument input: Map<String, Any?>, dfe: DgsDataFetchingEnvironment): Boolean {
+        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val id = input["id"] as String
+        var updated = false
+        if (input.containsKey("name")) {
+            updated = scanService.updateDisplayName(ctx.requestContext, id, input["name"] as? String) || updated
+        }
+        if (input.containsKey("userNotes")) {
+            updated = scanService.updateUserNotes(ctx.requestContext, id, input["userNotes"] as? String) || updated
+        }
+        if (input.containsKey("collected")) {
+            updated = scanService.updateCollected(ctx.requestContext, id, input["collected"] as Boolean) || updated
+        }
+        return updated
+    }
+
+    @DgsMutation
+    fun deleteScan(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): Boolean {
+        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        return scanService.delete(ctx.requestContext, id)
+    }
+
+    @DgsMutation
+    fun presignUpload(@InputArgument input: Map<String, String>, dfe: DgsDataFetchingEnvironment): PresignUploadResult {
+        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val category = input["category"]!!
+        val contentType = input["contentType"]!!
+        val ext = contentType.substringAfter("/")
+        val mediaId = ObjectId().toHexString()
+        val objectKey = "app/${ctx.requestContext.appId}/$category/install/${ctx.requestContext.installId}/$mediaId.$ext"
+
+        val uploadUrl = storageService.presignUpload(ctx.requestContext, objectKey, contentType, Duration.ofSeconds(300))
+        val downloadUrl = storageService.getPublicUrl(objectKey)
+        storageService.recordUpload(ctx.requestContext, objectKey, contentType, category)
+
+        return PresignUploadResult(mediaId = mediaId, uploadUrl = uploadUrl, imageKey = objectKey, downloadUrl = downloadUrl)
+    }
+
+    @DgsMutation
+    fun presignDownload(@InputArgument input: Map<String, Any?>, dfe: DgsDataFetchingEnvironment): PresignDownloadResult {
+        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val imageKey = input["imageKey"] as String
+        val duration = (input["durationSeconds"] as? Int)?.toLong() ?: 3600L
+        val url = storageService.presignDownload(ctx.requestContext, imageKey, Duration.ofSeconds(duration))
+        return PresignDownloadResult(downloadUrl = url)
+    }
+}
+```
+
+- [ ] **步骤 5：删除旧 REST controllers**
+
+删除：
+- `core-api/src/main/kotlin/com/ifmix/api/core/bff/customer/CustomerAntiqueController.kt`
+- `core-api/src/main/kotlin/com/ifmix/api/core/bff/customer/CustomerStorageController.kt`
+
+- [ ] **步骤 6：验证编译 + Commit**
+
+```bash
+./gradlew :core-api:compileKotlin
+git add -A && git commit -m "feat(scan): add scan + storage GraphQL fetcher, remove REST controllers"
+```
+
+---
+
+## 子计划 3：collection（收藏夹）
+
+**目标：** 实现 ScanCollection + ScanCollectionItem，GraphQL 暴露收藏操作，DataLoader 聚合 collection → items → scanRecord。
+
+**前置：** 子计划 2 完成（依赖 ScanRecordDocument）。
+
+---
+
+### 任务 3.1：创建 Collection Documents
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/collection/document/ScanCollectionDocument.kt`
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/collection/document/ScanCollectionItemDocument.kt`
+
+- [ ] **步骤 1：ScanCollectionDocument**
+
+```kotlin
+package com.ifmix.api.core.modules.collection.document
+
+import com.ifmix.api.core.common.db.BaseAppDocument
+import org.springframework.data.mongodb.core.mapping.Document
+
+@Document(collection = "scan_collections")
+class ScanCollectionDocument : BaseAppDocument() {
+    var installId: String? = null
+    var userId: String? = null
+    var isDefault: Boolean = false
+}
+```
+
+- [ ] **步骤 2：ScanCollectionItemDocument**
+
+```kotlin
+package com.ifmix.api.core.modules.collection.document
+
+import com.ifmix.api.core.common.db.BaseAppDocument
+import org.springframework.data.mongodb.core.index.CompoundIndex
+import org.springframework.data.mongodb.core.mapping.Document
+
+@Document(collection = "scan_collection_items")
+@CompoundIndex(name = "collection_items_idx", def = "{'appId': 1, 'collectionId': 1, 'scanRecordId': 1}", unique = true)
+class ScanCollectionItemDocument : BaseAppDocument() {
+    lateinit var collectionId: String
+    lateinit var scanRecordId: String
+}
+```
+
+- [ ] **步骤 3：Commit**
+
+```bash
+git add -A && git commit -m "feat(collection): add ScanCollection and ScanCollectionItem documents"
+```
+
+---
+
+### 任务 3.2：创建 CollectionService
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/collection/repo/CollectionRepository.kt`
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/collection/service/CollectionService.kt`
+
+- [ ] **步骤 1：CollectionRepository（含 findDefault、insertIfAbsent、softDeleteByScanIds）**
+
+```kotlin
+package com.ifmix.api.core.modules.collection.repo
+
+import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.modules.collection.document.ScanCollectionDocument
+import com.ifmix.api.core.modules.collection.document.ScanCollectionItemDocument
+import org.springframework.data.domain.Sort
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.query.Criteria
+import org.springframework.data.mongodb.core.query.Query
+import org.springframework.data.mongodb.core.query.Update
+import java.time.Instant
+
+class CollectionRepository(private val mongo: MongoTemplate) {
+
+    fun findDefault(ctx: RequestContext): ScanCollectionDocument? {
+        val criteria = Criteria.where("appId").`is`(ctx.appId)
+            .and("isDefault").`is`(true)
+            .and("deletedAt").`is`(null)
+        // 按 installId 或 userId 过滤归属
+        val ownerCriteria = mutableListOf<Criteria>()
+        ctx.installId?.let { ownerCriteria.add(Criteria.where("installId").`is`(it)) }
+        ctx.userId?.let { ownerCriteria.add(Criteria.where("userId").`is`(it)) }
+        if (ownerCriteria.isNotEmpty()) criteria.orOperator(*ownerCriteria.toTypedArray())
+        return mongo.findOne(Query(criteria), ScanCollectionDocument::class.java)
+    }
+
+    fun createCollection(ctx: RequestContext, isDefault: Boolean): ScanCollectionDocument {
+        val doc = ScanCollectionDocument().apply {
+            appId = ctx.appId
+            installId = ctx.installId
+            userId = ctx.userId
+            this.isDefault = isDefault
+            createdAt = Instant.now()
+            updatedAt = Instant.now()
+        }
+        mongo.insert(doc)
+        return doc
+    }
+
+    fun insertItemIfAbsent(ctx: RequestContext, collectionId: String, scanRecordId: String): String {
+        val existing = mongo.findOne(
+            Query(Criteria.where("appId").`is`(ctx.appId)
+                .and("collectionId").`is`(collectionId)
+                .and("scanRecordId").`is`(scanRecordId)
+                .and("deletedAt").`is`(null)),
+            ScanCollectionItemDocument::class.java
+        )
+        if (existing != null) return existing.id
+
+        val doc = ScanCollectionItemDocument().apply {
+            appId = ctx.appId
+            this.collectionId = collectionId
+            this.scanRecordId = scanRecordId
+            createdAt = Instant.now()
+            updatedAt = Instant.now()
+        }
+        mongo.insert(doc)
+        return doc.id
+    }
+
+    fun softDeleteItemsByScanIds(ctx: RequestContext, collectionId: String, scanRecordIds: List<String>): Int {
+        val query = Query(Criteria.where("appId").`is`(ctx.appId)
+            .and("collectionId").`is`(collectionId)
+            .and("scanRecordId").`in`(scanRecordIds)
+            .and("deletedAt").`is`(null))
+        val update = Update().set("deletedAt", Instant.now())
+        return mongo.updateMulti(query, update, ScanCollectionItemDocument::class.java).modifiedCount.toInt()
+    }
+
+    fun findItemsByCursor(ctx: RequestContext, collectionId: String, cursor: String?, limit: Int): Pair<List<ScanCollectionItemDocument>, Boolean> {
+        val criteria = Criteria.where("appId").`is`(ctx.appId)
+            .and("collectionId").`is`(collectionId)
+            .and("deletedAt").`is`(null)
+        cursor?.let { criteria.and("_id").lt(it) }
+        val query = Query(criteria).with(Sort.by(Sort.Direction.DESC, "_id")).limit(limit + 1)
+        val results = mongo.find(query, ScanCollectionItemDocument::class.java)
+        val hasMore = results.size > limit
+        return (if (hasMore) results.dropLast(1) else results) to hasMore
+    }
+}
+```
+
+- [ ] **步骤 2：CollectionService**
+
+```kotlin
+package com.ifmix.api.core.modules.collection.service
+
+import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.modules.collection.document.ScanCollectionDocument
+import com.ifmix.api.core.modules.collection.document.ScanCollectionItemDocument
+import com.ifmix.api.core.modules.collection.repo.CollectionRepository
+
+class CollectionService(private val repo: CollectionRepository) {
+
+    fun getOrCreateDefault(ctx: RequestContext): ScanCollectionDocument =
+        repo.findDefault(ctx) ?: repo.createCollection(ctx, isDefault = true)
+
+    fun addItem(ctx: RequestContext, collectionId: String?, scanRecordId: String): String {
+        val cid = collectionId ?: getOrCreateDefault(ctx).id
+        return repo.insertItemIfAbsent(ctx, cid, scanRecordId)
+    }
+
+    fun removeItems(ctx: RequestContext, collectionId: String?, scanRecordIds: List<String>): Int {
+        val cid = collectionId ?: getOrCreateDefault(ctx).id
+        return repo.softDeleteItemsByScanIds(ctx, cid, scanRecordIds)
+    }
+
+    fun findItemsByCursor(ctx: RequestContext, collectionId: String?, cursor: String?, limit: Int): Pair<List<ScanCollectionItemDocument>, Boolean> {
+        val cid = collectionId ?: getOrCreateDefault(ctx).id
+        return repo.findItemsByCursor(ctx, cid, cursor, limit)
+    }
+}
+```
+
+- [ ] **步骤 3：CollectionConfig + GraphQL schema + fetcher**
+
+同模式创建 Config bean 注册、GraphQL type、schema 定义、DGS fetcher。
+
+Schema 追加：
+
+```graphql
+type ScanCollection { id: ID!, isDefault: Boolean!, createdAt: DateTime! }
+type ScanCollectionItemType { id: ID!, collectionId: ID!, scanRecordId: ID!, scanRecord: ScanRecord, createdAt: DateTime! }
+type CollectionItemConnection { items: [ScanCollectionItemType!]!, nextCursor: String, hasMore: Boolean! }
+
+# Query
+    defaultCollection: ScanCollection!
+    collectionItems(collectionId: ID, cursor: String, limit: Int): CollectionItemConnection!
+
+# Mutation
+    addCollectionItem(collectionId: ID, scanRecordId: ID!): ID! @requirePermission(permission: "collection:write")
+    removeCollectionItems(collectionId: ID, scanRecordIds: [ID!]!): Int! @requirePermission(permission: "collection:write")
+```
+
+DataLoader：`ScanCollectionItem.scanRecord` 通过 DataLoader 批量加载 ScanRecordDocument。
+
+- [ ] **步骤 4：删除旧 REST controller**
+
+删除：`core-api/src/main/kotlin/com/ifmix/api/core/bff/customer/CustomerCollectionController.kt`
+
+- [ ] **步骤 5：验证编译 + Commit**
+
+```bash
+./gradlew :core-api:compileKotlin
+git add -A && git commit -m "feat(collection): add collection GraphQL API with DataLoader"
+```
+
+---
+
+## 子计划 4：feedback
+
+**目标：** 实现 Feedback 追加式写入。简单 mutation，无复杂聚合。
+
+**前置：** 子计划 2 完成（可选关联 scanRecordId）。
+
+---
+
+### 任务 4.1：创建 FeedbackDocument + Service + GraphQL
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/feedback/document/FeedbackDocument.kt`
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/feedback/service/FeedbackService.kt`（重写）
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/graphql/customer/CustomerFeedbackFetcher.kt`
+
+- [ ] **步骤 1：FeedbackDocument（追加式，无软删）**
+
+```kotlin
+package com.ifmix.api.core.modules.feedback.document
+
+import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.AppScoped
+import org.springframework.data.mongodb.core.mapping.Document
+
+@Document(collection = "feedbacks")
+class FeedbackDocument : BaseDocument(), AppScoped {
+    override var appId: String = ""
+    lateinit var installId: String
+    var userId: String? = null
+    var scanRecordId: String? = null
+    /** 0=UNKNOWN, 100=LIKED, 200=PRICE_TOO_HIGH, 210=PRICE_TOO_LOW, 220=PRICE_MISSING, 300=WRONG_IDENTIFICATION, 400=FEATURE_REQUEST, 410=MORE_RECOMMENDATIONS */
+    var category: Int = 0
+    var comment: String? = null
+}
+```
+
+- [ ] **步骤 2：FeedbackService**
+
+```kotlin
+package com.ifmix.api.core.modules.feedback.service
+
+import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.modules.feedback.document.FeedbackDocument
+import org.springframework.data.mongodb.core.MongoTemplate
+import java.time.Instant
+
+class FeedbackService(private val mongo: MongoTemplate) {
+
+    fun submit(ctx: RequestContext, category: Int, comment: String?, scanRecordId: String?): String {
+        val doc = FeedbackDocument().apply {
+            this.appId = ctx.appId
+            this.installId = ctx.installId ?: ""
+            this.userId = ctx.userId
+            this.scanRecordId = scanRecordId
+            this.category = category
+            this.comment = comment
+            this.createdAt = Instant.now()
+            this.updatedAt = Instant.now()
+        }
+        mongo.insert(doc)
+        return doc.id
+    }
+}
+```
+
+- [ ] **步骤 3：GraphQL schema + fetcher**
+
+Schema 追加：
+
+```graphql
+input SubmitFeedbackInput { category: Int!, comment: String, scanRecordId: ID }
+
+# Mutation
+    submitFeedback(input: SubmitFeedbackInput!): ID! @requirePermission(permission: "feedback:write")
+```
+
+Fetcher：
+
+```kotlin
+@DgsComponent
+class CustomerFeedbackFetcher(private val feedbackService: FeedbackService) {
+    @DgsMutation
+    fun submitFeedback(@InputArgument input: Map<String, Any?>, dfe: DgsDataFetchingEnvironment): String {
+        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        return feedbackService.submit(
+            ctx.requestContext,
+            category = (input["category"] as Number).toInt(),
+            comment = input["comment"] as? String,
+            scanRecordId = input["scanRecordId"] as? String,
+        )
+    }
+}
+```
+
+- [ ] **步骤 4：删除旧 REST controller + 旧 service/document 文件**
+
+删除：`core-api/src/main/kotlin/com/ifmix/api/core/bff/customer/CustomerFeedbackController.kt`
+
+- [ ] **步骤 5：验证编译 + Commit**
+
+```bash
+./gradlew :core-api:compileKotlin
+git add -A && git commit -m "feat(feedback): add feedback GraphQL mutation"
+```
+
+---
+
+## 子计划 5：iap
+
+**目标：** 实现 IAP 购买验证（verifyPurchase mutation）。Subscription + StoreNotification 两个集合。
+
+**前置：** 无（独立模块）。
+
+---
+
+### 任务 5.1：创建 IAP Documents
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/iap/document/SubscriptionDocument.kt`
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/iap/document/StoreNotificationDocument.kt`
+
+- [ ] **步骤 1：SubscriptionDocument**
+
+```kotlin
+package com.ifmix.api.core.modules.iap.document
+
+import com.ifmix.api.core.common.db.BaseAppDocument
+import org.springframework.data.mongodb.core.index.CompoundIndex
+import org.springframework.data.mongodb.core.mapping.Document
+import java.time.Instant
+
+@Document(collection = "subscriptions")
+@CompoundIndex(name = "sub_pxid_idx", def = "{'appId': 1, 'subscriptionPxid': 1}", unique = true)
+class SubscriptionDocument : BaseAppDocument() {
+    lateinit var subscriptionPxid: String
+    var originalTransactionId: String? = null
+    var productId: String? = null
+    /** 0=UNKNOWN, 100=APPLE, 200=GOOGLE */
+    var platform: Int = 0
+    var active: Boolean = false
+    var subStatus: String? = null
+    var expiryDate: Instant? = null
+    var purchaseToken: String? = null
+    var rawResponse: Map<String, Any?>? = null
+}
+```
+
+- [ ] **步骤 2：StoreNotificationDocument**
+
+```kotlin
+package com.ifmix.api.core.modules.iap.document
+
+import com.ifmix.api.core.common.db.BaseAppDocument
+import org.springframework.data.mongodb.core.mapping.Document
+import java.time.Instant
+
+@Document(collection = "store_notifications")
+class StoreNotificationDocument : BaseAppDocument() {
+    var platform: String? = null
+    var subscriptionPxid: String? = null
+    var purchaseToken: String? = null
+    var notificationType: String? = null
+    var rawPayload: String? = null
+    var processed: Boolean = false
+    var processedAt: Instant? = null
+}
+```
+
+- [ ] **步骤 3：Commit**
+
+```bash
+git add -A && git commit -m "feat(iap): add Subscription and StoreNotification documents"
+```
+
+---
+
+### 任务 5.2：创建 IapService + GraphQL
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/iap/repo/SubscriptionRepository.kt`
+- 重写：`core-api/src/main/kotlin/com/ifmix/api/core/modules/iap/service/IapService.kt`（MongoDB 版）
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/graphql/customer/CustomerIapFetcher.kt`
+
+- [ ] **步骤 1：SubscriptionRepository**
+
+```kotlin
+package com.ifmix.api.core.modules.iap.repo
+
+import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.modules.iap.document.SubscriptionDocument
+import com.ifmix.api.core.modules.iap.document.StoreNotificationDocument
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.query.Criteria
+import org.springframework.data.mongodb.core.query.Query
+
+class SubscriptionRepository(private val mongo: MongoTemplate) {
+
+    fun findActiveByPxid(ctx: RequestContext, pxid: String): SubscriptionDocument? {
+        val query = Query(Criteria.where("appId").`is`(ctx.appId)
+            .and("subscriptionPxid").`is`(pxid)
+            .and("active").`is`(true)
+            .and("deletedAt").`is`(null))
+        return mongo.findOne(query, SubscriptionDocument::class.java)
+    }
+
+    fun findByPxid(ctx: RequestContext, pxid: String): SubscriptionDocument? {
+        val query = Query(Criteria.where("appId").`is`(ctx.appId)
+            .and("subscriptionPxid").`is`(pxid)
+            .and("deletedAt").`is`(null))
+        return mongo.findOne(query, SubscriptionDocument::class.java)
+    }
+
+    fun upsert(ctx: RequestContext, doc: SubscriptionDocument) {
+        doc.appId = ctx.appId
+        mongo.save(doc)
+    }
+
+    fun existsNotificationByPlatformAndToken(platform: String, token: String): Boolean {
+        val query = Query(Criteria.where("platform").`is`(platform).and("subscriptionPxid").`is`(token))
+        return mongo.exists(query, StoreNotificationDocument::class.java)
+    }
+
+    fun saveNotification(ctx: RequestContext, doc: StoreNotificationDocument) {
+        doc.appId = ctx.appId
+        mongo.insert(doc)
+    }
+}
+```
+
+- [ ] **步骤 2：重写 IapService（逻辑不变，改用 MongoDB repo）**
+
+沿用 main 分支的 `verifyPurchase` 和 `handleNotification` 逻辑，但调用 MongoDB repository 替代 Jimmer。UUID → ObjectId。核心流程：
+1. 验证购买凭证（调用 PurchaseVerifier）
+2. 查/创建 SubscriptionDocument
+3. 返回 VerifyRes
+
+- [ ] **步骤 3：GraphQL schema + fetcher**
+
+Schema 追加：
+
+```graphql
+type VerifyPurchaseResult {
+    expiresAt: Long
+    state: String!
+    productId: String!
+    tier: String!
+}
+
+input VerifyPurchaseInput { platform: Int!, signedTransaction: String, purchaseToken: String, productId: String! }
+
+# Mutation
+    verifyPurchase(input: VerifyPurchaseInput!): VerifyPurchaseResult! @requirePermission(permission: "iap:write")
+```
+
+- [ ] **步骤 4：删除旧 REST controller**
+
+删除：`core-api/src/main/kotlin/com/ifmix/api/core/bff/customer/CustomerIapController.kt`
+
+- [ ] **步骤 5：验证编译 + Commit**
+
+```bash
+./gradlew :core-api:compileKotlin
+git add -A && git commit -m "feat(iap): add IAP GraphQL mutation with MongoDB"
+```
+
+---
+
+## 子计划 6：appconfig
+
+**目标：** 实现 AppConfigRevision 的版本管理（admin 操作）。
+
+**前置：** 无（独立模块）。
+
+---
+
+### 任务 6.1：创建 AppConfig Documents
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/appconfig/document/AppConfigRevisionDocument.kt`
+
+- [ ] **步骤 1：AppConfigRevisionDocument**
+
+```kotlin
+package com.ifmix.api.core.modules.appconfig.document
+
+import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.AppScoped
+import org.springframework.data.mongodb.core.index.CompoundIndex
+import org.springframework.data.mongodb.core.mapping.Document
+
+@Document(collection = "app_config_revisions")
+@CompoundIndex(name = "config_app_rev_idx", def = "{'appId': 1, 'revisionNumber': -1}")
+class AppConfigRevisionDocument : BaseDocument(), AppScoped {
+    override var appId: String = ""
+    var authTenantId: String? = null
+    var appleBundleId: String? = null
+    var androidPackageName: String? = null
+    var content: Map<String, Any?> = emptyMap()
+    var revisionNumber: Int = 0
+    var enabled: Boolean = false
+    var slug: String = ""
+    var note: String = ""
+}
+```
+
+- [ ] **步骤 2：Commit**
+
+```bash
+git add -A && git commit -m "feat(appconfig): add AppConfigRevisionDocument"
+```
+
+---
+
+### 任务 6.2：创建 AppConfigService + GraphQL
+
+**文件：**
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/appconfig/repo/AppConfigRepository.kt`
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/modules/appconfig/service/AppConfigService.kt`（重写）
+- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/graphql/admin/AdminAppConfigFetcher.kt`
+
+- [ ] **步骤 1：AppConfigRepository**
+
+```kotlin
+package com.ifmix.api.core.modules.appconfig.repo
+
+import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.modules.appconfig.document.AppConfigRevisionDocument
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.query.Criteria
+import org.springframework.data.mongodb.core.query.Query
+import org.springframework.data.mongodb.core.query.Update
+
+class AppConfigRepository(private val mongo: MongoTemplate) {
+
+    fun findCurrentRevision(ctx: RequestContext): AppConfigRevisionDocument? {
+        val query = Query(Criteria.where("appId").`is`(ctx.appId).and("enabled").`is`(true))
+        return mongo.findOne(query, AppConfigRevisionDocument::class.java)
+    }
+
+    fun disableAllEnabled(ctx: RequestContext) {
+        val query = Query(Criteria.where("appId").`is`(ctx.appId).and("enabled").`is`(true))
+        val update = Update().set("enabled", false)
+        mongo.updateMulti(query, update, AppConfigRevisionDocument::class.java)
+    }
+
+    fun insert(ctx: RequestContext, doc: AppConfigRevisionDocument): String {
+        doc.appId = ctx.appId
+        mongo.insert(doc)
+        return doc.id
+    }
+
+    fun findById(ctx: RequestContext, id: String): AppConfigRevisionDocument? {
+        val query = Query(Criteria.where("_id").`is`(id).and("appId").`is`(ctx.appId))
+        return mongo.findOne(query, AppConfigRevisionDocument::class.java)
+    }
+
+    fun updateEnabled(ctx: RequestContext, id: String, enabled: Boolean) {
+        val query = Query(Criteria.where("_id").`is`(id).and("appId").`is`(ctx.appId))
+        val update = Update().set("enabled", enabled)
+        mongo.updateFirst(query, update, AppConfigRevisionDocument::class.java)
+    }
+}
+```
+
+- [ ] **步骤 2：AppConfigService**
+
+```kotlin
+package com.ifmix.api.core.modules.appconfig.service
+
+import com.ifmix.api.core.common.http.ApiError
+import com.ifmix.api.core.common.http.ErrorCode
+import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.modules.appconfig.document.AppConfigRevisionDocument
+import com.ifmix.api.core.modules.appconfig.repo.AppConfigRepository
+import java.time.Instant
+
+class AppConfigService(private val repo: AppConfigRepository) {
+
+    fun createRevision(ctx: RequestContext, content: Map<String, Any?>, revisionNumber: Int,
+                       enabled: Boolean, slug: String, note: String,
+                       authTenantId: String?, appleBundleId: String?, androidPackageName: String?): AppConfigRevisionDocument {
+        if (enabled) repo.disableAllEnabled(ctx)
+
+        val doc = AppConfigRevisionDocument().apply {
+            this.content = content
+            this.revisionNumber = revisionNumber
+            this.enabled = enabled
+            this.slug = slug
+            this.note = note
+            this.authTenantId = authTenantId
+            this.appleBundleId = appleBundleId
+            this.androidPackageName = androidPackageName
+            this.createdAt = Instant.now()
+            this.updatedAt = Instant.now()
+        }
+        repo.insert(ctx, doc)
+        return doc
+    }
+
+    fun toggleRevision(ctx: RequestContext, id: String, enabled: Boolean): AppConfigRevisionDocument {
+        repo.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND, "revision not found")
+        if (enabled) repo.disableAllEnabled(ctx)
+        repo.updateEnabled(ctx, id, enabled)
+        return repo.findById(ctx, id)!!
+    }
+
+    fun getCurrentRevision(ctx: RequestContext): AppConfigRevisionDocument? = repo.findCurrentRevision(ctx)
+}
+```
+
+- [ ] **步骤 3：GraphQL schema + admin fetcher**
+
+Schema 追加：
+
+```graphql
+type AppConfigRevision {
+    id: ID!
+    appId: ID!
+    content: JSON
+    revisionNumber: Int!
+    enabled: Boolean!
+    slug: String!
+    note: String!
+    createdAt: DateTime!
+}
+
+input CreateAppConfigRevisionInput {
+    content: JSON!
+    revisionNumber: Int!
+    enabled: Boolean!
+    slug: String!
+    note: String!
+    authTenantId: ID
+    appleBundleId: String
+    androidPackageName: String
+}
+
+# Query (admin)
+    currentAppConfig: AppConfigRevision
+
+# Mutation (admin)
+    createAppConfigRevision(input: CreateAppConfigRevisionInput!): AppConfigRevision! @requirePermission(permission: "appconfig:write")
+    toggleAppConfigRevision(id: ID!, enabled: Boolean!): AppConfigRevision! @requirePermission(permission: "appconfig:write")
+```
+
+- [ ] **步骤 4：验证编译 + Commit**
+
+```bash
+./gradlew :core-api:compileKotlin
+git add -A && git commit -m "feat(appconfig): add appconfig GraphQL admin API"
+```
+
+---
+
+## 最终验证
+
+- [ ] 所有模块编译通过：`./gradlew :core-api:compileKotlin`
+- [ ] 应用可启动：`./gradlew :core-api:bootRun`
+- [ ] GraphiQL 可用：`http://localhost:3001/graphiql`
+- [ ] Schema 包含所有模块的 type/query/mutation
+- [ ] 旧 REST controller 全部删除（保留 webhook + wellknown + auth）
