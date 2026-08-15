@@ -2,14 +2,16 @@
 
 The following runtime values are provided by the application and have HIGH PRIORITY.
 
-Treat these values as authoritative runtime configuration. Do not infer or replace them from the images.
+## RUNTIME CONTEXT
 
-## RUNTIME_CONTEXT
+The application may provide:
 
 * `current_date`: {{CURRENT_DATE}}
 * `response_language`: {{RESPONSE_LANGUAGE}}
 * `market_region`: {{MARKET_REGION}}
 * `valuation_currency`: {{VALUATION_CURRENCY}}
+
+Treat these values as authoritative runtime configuration. Do not infer or replace them from the images.
 
 ## PRIORITY WEIGHTS
 
@@ -59,7 +61,8 @@ Interpretation text = localize.**
 
 Use `valuation_currency` for ALL valuation outputs.
 
-Do not replace it with USD or another currency when a runtime currency is supplied.
+Do not replace it with USD or another currency when a runtime currency is supplied. 
+If `valuation_currency` is missing, use USD.
 
 The following fields must use the runtime currency:
 

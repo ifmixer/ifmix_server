@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.ai.service
 
 import com.ifmix.api.core.modules.scan.dto.ScanInput
+import org.slf4j.LoggerFactory
 
 /**
  * V5 Production Prompt for AI antique scanning.
@@ -14,7 +15,7 @@ import com.ifmix.api.core.modules.scan.dto.ScanInput
  * - [userPrompt]: Minimal task instruction. Log this for debugging.
  */
 object ScanPrompt {
-
+    private val log = LoggerFactory.getLogger(javaClass)
     private val part1Template: String = loadResource("prompts/scan-part1-context.md")
     private val part2Body: String = loadResource("prompts/scan-part2-behavior.md")
 
@@ -35,13 +36,13 @@ object ScanPrompt {
         val resolvedCurrency = input.currency?.takeIf { it.isNotBlank() } ?: "USD"
         val resolvedRegion = input.country?.takeIf { it.isNotBlank() } ?: "Not specified"
 
-        val part1 = part1Template
+        val part1 = part2Body
             .replace("{{CURRENT_DATE}}", input.date.toString())
             .replace("{{RESPONSE_LANGUAGE}}", resolvedLang)
             .replace("{{MARKET_REGION}}", resolvedRegion)
             .replace("{{VALUATION_CURRENCY}}", resolvedCurrency)
-
-        return "$part1\n\n$part2Body"
+        log.debug("systemPrompt part1: {}", part1)
+        return "$part1"
     }
 
     /**
