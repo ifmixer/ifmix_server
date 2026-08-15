@@ -1,0 +1,14 @@
+{
+  "a1b2c3d4e5f6": {
+    "name": "GetTodo",
+    "query": "query GetTodo($id: ID!) { todo(id: $id) { id title done items { id content done } createdAt updatedAt } }"
+  },
+  "f6e5d4c3b2a1": {
+    "name": "GetTodos",
+    "query": "query GetTodos($cursor: String, $limit: Int) { todos(cursor: $cursor, limit: $limit) { items { id title done items { id content done } createdAt updatedAt } nextCursor hasMore } }"
+  },
+  "1a2b3c4d5e6f": {
+    "name": "CreateTodo",
+    "query": "mutation CreateTodo($input: CreateTodoInput!) { createTodo(input: $input) { id title done createdAt } }"
+  }
+}

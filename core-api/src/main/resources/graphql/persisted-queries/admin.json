@@ -1,0 +1,10 @@
+{
+  "ad1234567890": {
+    "name": "AdminGetTodos",
+    "query": "query AdminGetTodos($cursor: String, $limit: Int, $userId: String) { todos(cursor: $cursor, limit: $limit, userId: $userId) { items { id title done createdAt updatedAt } nextCursor hasMore } }"
+  },
+  "ad0987654321": {
+    "name": "BatchDeleteTodos",
+    "query": "mutation BatchDeleteTodos($ids: [ID!]!) { batchDeleteTodos(ids: $ids) { success modifiedCount } }"
+  }
+}

@@ -80,6 +80,11 @@ dgs:
     preparsed-document-provider:
       enabled: true
 
+graphql:
+  trusted-documents:
+    enabled: false
+    allowlist-path: classpath:graphql/persisted-queries/
+
 management:
   metrics:
     dgs-graphql:
