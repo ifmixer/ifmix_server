@@ -27,10 +27,9 @@ interface PersistedQueryStore {
  *
  * 格式：{ "sha256hash": { "name": "...", "query": "..." } }
  */
-@Suppress("SpringBootApplication")
 @Component
 class ClasspathPersistedQueryStore(
-    @get:Value("\${graphql.trusted-documents.allowlist-path:classpath:graphql/persisted-queries/}")
+    @Value("\${graphql.trusted-documents.allowlist-path:classpath:graphql/persisted-queries/}")
     private val allowlistPath: String,
 ) : PersistedQueryStore {
 

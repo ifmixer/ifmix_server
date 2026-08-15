@@ -51,6 +51,8 @@ dependencies {
     implementation("com.netflix.graphql.dgs:graphql-dgs-spring-graphql-starter")
     implementation("com.netflix.graphql.dgs:graphql-dgs-extended-scalars")
     implementation("com.netflix.graphql.dgs:graphql-dgs-spring-boot-micrometer")
+    // json-path 3.x — DGS 12 需要 Jackson3JsonProvider
+    implementation("com.jayway.jsonpath:json-path:3.0.0")
 }
 
 kotlin {

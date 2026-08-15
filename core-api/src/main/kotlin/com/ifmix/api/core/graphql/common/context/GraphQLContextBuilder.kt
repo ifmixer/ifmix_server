@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component
  * 从 HTTP headers 构造 RequestContext + permissions，存入 DGS custom context。
  */
 @Component
-class GraphQLContextBuilder(
+class DgsCustomContextBuilderImpl(
     private val request: HttpServletRequest,
 ) : DgsCustomContextBuilder<GraphQLRequestContext> {
 

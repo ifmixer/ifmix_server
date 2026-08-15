@@ -70,7 +70,9 @@ class RequestLoggingFilter : OncePerRequestFilter() {
     private fun shouldSkip(path: String): Boolean {
         return path.startsWith("/actuator") ||
             path.startsWith("/v3/api-docs") ||
-            path.startsWith("/swagger-ui")
+            path.startsWith("/swagger-ui") ||
+            path.endsWith("/graphql") ||
+            path.startsWith("/graphiql")
     }
 
     /**

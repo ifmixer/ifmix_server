@@ -37,7 +37,7 @@ class TrustedDocumentFilter(
         filterChain: FilterChain,
     ) {
         val uri = request.requestURI
-        if (!uri.endsWith("/graphql")) {
+        if (!uri.startsWith("/customer/graphql") && !uri.startsWith("/admin/graphql")) {
             filterChain.doFilter(request, response)
             return
         }
@@ -101,4 +101,8 @@ class CachedBodyRequest(
     }
 
     override fun getReader() = BufferedReader(InputStreamReader(inputStream, Charsets.UTF_8))
+
+    override fun getContentLength() = cachedBody.size
+
+    override fun getContentLengthLong() = cachedBody.size.toLong()
 }
