@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.scan.dto
 
 import io.swagger.v3.oas.annotations.media.Schema
+import java.time.LocalDate
 import java.util.UUID
 
 /**
@@ -19,12 +20,14 @@ data class ScanMediaItem(
 data class ScanInput(
     /** 一张或多张图片 */
     val items: List<ScanMediaItem>,
-    /** 用户语言偏好（如 zh-Hans, en, ja），来自 x-lang 请求头 */
+    /** 用户语言偏好（BCP-47，如 zh-CN, en-US, ja-JP） */
     val lang: String? = null,
-    /** 用户所在国家/地区（如 CN, US, JP），来自 x-country 请求头 */
+    /** 用户所在国家/地区（ISO 3166-1 alpha-2，如 CN, US, JP） */
     val country: String? = null,
-    /** 用户货币偏好（如 CNY, USD, JPY），来自 x-currency 请求头 */
+    /** 用户货币偏好（ISO 4217，如 CNY, USD, JPY） */
     val currency: String? = null,
+    /** 当前日期，用于年代分类阈值计算 */
+    val date: LocalDate = LocalDate.now(),
 )
 
 data class NewScanImageInput(

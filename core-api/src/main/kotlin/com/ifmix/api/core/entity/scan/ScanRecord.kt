@@ -18,6 +18,7 @@ interface ScanRecord : AppScopedProps, SoftDeletableProps {
 
     /** 图片列表（JSONB 对象数组） */
     @Serialized
+    @Column(name = "image_keys")
     val images: List<ImageRef>
 
     /** AI 识别结果（JSONB） */
@@ -29,6 +30,15 @@ interface ScanRecord : AppScopedProps, SoftDeletableProps {
     val status: Int
 
     val clientIp: String?
+
+    /** 语言代码，如 zh-CN, en-US */
+    val lang: String?
+
+    /** 国家/地区代码，如 CN, US */
+    val country: String?
+
+    /** 货币代码，如 CNY, USD */
+    val currency: String?
 
     /** 用户自定义名称（通过 updateOne 设置） */
     val userDisplayName: String?

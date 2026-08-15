@@ -74,18 +74,22 @@ open class SpringAiScanRunner(
                     val apiKey = doc?.key ?: continue
                     val client = chatClientFactory.forKey(apiKey, model)
 
-                    val systemMsg = SystemMessage(ScanPrompt.SYSTEM_TEXT)
-                    val userText = ScanPrompt.userPrompt(input.items.size, input.lang, input.country, input.currency)
+                    val systemMsg = SystemMessage(ScanPrompt.systemPrompt(input))
+                    val userText = ScanPrompt.userPrompt(input)
                     val userMsg = UserMessage.builder()
                         .text(userText)
                         .media(*mediaItems.toTypedArray())
                         .build()
 
                     val prompt = Prompt(listOf(systemMsg, userMsg))
-                    log.debug("Scan prompt [model={}, key={}]: user={}", model, pickedKeyId, userText)
+                    log.debug("Scan run start. model={}, key={}, userText={}", model, pickedKeyId, userText)
 
+                    val startMs = System.currentTimeMillis()
                     val response = client.prompt(prompt).call()
+                    val elapsedMs = System.currentTimeMillis() - startMs
+
                     val content = response.content() ?: ""
+                    log.debug("Scan run completed. model={}, key={}, elapsed={}ms, content={}", model, pickedKeyId, elapsedMs, content)
 
                     val data = parseJsonToMap(content)
 
