@@ -754,69 +754,75 @@ Confidence measures evidence strength, not writing certainty.
 
 # REQUIRED OUTPUT STRUCTURE
 
+Each string field is annotated with the language it MUST use:
+- `// {{RESPONSE_LANGUAGE}}` means write in that exact language (e.g. zh-CN → write Chinese, ja-JP → write Japanese, en-US → write English)
+- `// ENGLISH` means always English no matter what response_language is
+- `// VERBATIM` means copy exactly as seen in image, do not translate
+- `// ENUM` means use only the predefined English tokens
+
 Return exactly:
 
 ```json
 {
   "scan_status": {
-    "status": null,
-    "input_media_type": null,
-    "depicted_subject_type": null,
-    "image_quality": null,
-    "subject_clear": null
+    "status": null,                          // ENUM: SUCCESS|PARTIAL|INSUFFICIENT_IMAGE|NON_PHYSICAL_SUBJECT
+    "input_media_type": null,                // ENUM
+    "depicted_subject_type": null,           // ENUM
+    "image_quality": null,                   // ENUM
+    "subject_clear": null                    // boolean
   },
   "object_overview": {
-    "name": null,
-    "name_en": null,
-    "short_name": null,
-    "likely_identification": null,
-    "primary_category": null,
-    "object_type": null,
-    "age_classification": null,
-    "is_collectible": null,
-    "description": null,
+    "name": null,                            // {{RESPONSE_LANGUAGE}}
+    "name_en": null,                         // ENGLISH
+    "short_name": null,                      // {{RESPONSE_LANGUAGE}}
+    "likely_identification": null,           // {{RESPONSE_LANGUAGE}}
+    "primary_category": null,                // {{RESPONSE_LANGUAGE}}
+    "object_type": null,                     // {{RESPONSE_LANGUAGE}}
+    "age_classification": null,              // ENUM
+    "is_collectible": null,                  // boolean
+    "description": null,                     // {{RESPONSE_LANGUAGE}}
     "confidence": null
   },
   "visual_evidence": {
-    "observed_features": [],
-    "visible_text": [],
-    "marks": [],
-    "colors": [],
-    "shape": null,
-    "missing_evidence": [],
+    "observed_features": [],                 // {{RESPONSE_LANGUAGE}} array of strings
+    "visible_text": [],                      // array of {text: VERBATIM, location: {{RESPONSE_LANGUAGE}}, clarity: number}
+    "marks": [],                             // array of {type: ENUM, text: VERBATIM, location: {{RESPONSE_LANGUAGE}}, interpretation: {{RESPONSE_LANGUAGE}}, confidence: number}
+    "colors": [],                            // {{RESPONSE_LANGUAGE}} array of strings
+    "shape": null,                           // {{RESPONSE_LANGUAGE}}
+    "missing_evidence": [],                  // {{RESPONSE_LANGUAGE}} array of strings
     "confidence": null
   },
   "identification": {
-    "maker_or_artist": null,
-    "brand_or_manufacturer": null,
-    "model_or_pattern": null,
-    "series_or_edition": null,
-    "style_or_movement": null,
-    "identification_basis": [],
-    "alternative_identifications": [],
+    "maker_or_artist": null,                 // {{RESPONSE_LANGUAGE}}
+    "brand_or_manufacturer": null,           // {{RESPONSE_LANGUAGE}}
+    "model_or_pattern": null,                // {{RESPONSE_LANGUAGE}}
+    "series_or_edition": null,               // {{RESPONSE_LANGUAGE}}
+    "style_or_movement": null,               // {{RESPONSE_LANGUAGE}}
+    "identification_basis": [],              // {{RESPONSE_LANGUAGE}} array of strings
+    "alternative_identifications": [],       // array of {identification: {{RESPONSE_LANGUAGE}}, reason: {{RESPONSE_LANGUAGE}}, confidence: number}
     "confidence": null
   },
   "origin": {
-    "country": null,
-    "region": null,
-    "cultural_origin": null,
-    "origin_basis": [],
+    "country": null,                         // ENGLISH ISO country name
+    "region": null,                          // ENGLISH geographic region
+    "cultural_origin": null,                 // {{RESPONSE_LANGUAGE}}
+    "origin_basis": [],                      // {{RESPONSE_LANGUAGE}} array of strings
     "confidence": null
   },
   "dating": {
-    "era_or_period": null,
-    "dynasty": null,
-    "year_from": null,
-    "year_to": null,
-    "date_basis": [],
+    "era_or_period": null,                   // {{RESPONSE_LANGUAGE}}
+    "dynasty": null,                         // {{RESPONSE_LANGUAGE}}
+    "year_from": null,                       // number
+    "year_to": null,                         // number
+    "date_basis": [],                        // {{RESPONSE_LANGUAGE}} array of strings
     "confidence": null
   },
   "materials_and_craft": {
-    "materials": [],
-    "techniques": [],
-    "construction": [],
-    "surface_finish": null,
-    "material_notes": null,
+    "materials": [],                         // {{RESPONSE_LANGUAGE}} array of strings
+    "techniques": [],                        // {{RESPONSE_LANGUAGE}} array of strings
+    "construction": [],                      // {{RESPONSE_LANGUAGE}} array of strings
+    "surface_finish": null,                  // {{RESPONSE_LANGUAGE}}
+    "material_notes": null,                  // {{RESPONSE_LANGUAGE}}
     "confidence": null
   },
   "dimensions": {
@@ -825,73 +831,73 @@ Return exactly:
     "depth_cm": null,
     "diameter_cm": null,
     "weight_g": null,
-    "measurement_basis": null,
+    "measurement_basis": null,               // {{RESPONSE_LANGUAGE}}
     "confidence": null
   },
   "condition_assessment": {
-    "condition": null,
-    "condition_score": null,
-    "flaws": [],
-    "wear_summary": null,
-    "patina_or_oxidation": null,
-    "restoration_suspected": null,
-    "condition_notes": null,
+    "condition": null,                       // ENUM
+    "condition_score": null,                 // 0-100
+    "flaws": [],                             // array of {issue: {{RESPONSE_LANGUAGE}}, location: {{RESPONSE_LANGUAGE}}, severity: ENUM, confidence: number}
+    "wear_summary": null,                    // {{RESPONSE_LANGUAGE}}
+    "patina_or_oxidation": null,             // {{RESPONSE_LANGUAGE}}
+    "restoration_suspected": null,           // boolean
+    "condition_notes": null,                 // {{RESPONSE_LANGUAGE}}
     "confidence": null
   },
   "authenticity_assessment": {
-    "visual_authenticity": null,
-    "supporting_evidence": [],
-    "red_flags": [],
-    "reproduction_indicators": [],
-    "recommended_checks": [],
-    "professional_authentication_recommended": null,
+    "visual_authenticity": null,             // ENUM
+    "supporting_evidence": [],               // {{RESPONSE_LANGUAGE}} array of strings
+    "red_flags": [],                         // {{RESPONSE_LANGUAGE}} array of strings
+    "reproduction_indicators": [],           // {{RESPONSE_LANGUAGE}} array of strings
+    "recommended_checks": [],                // {{RESPONSE_LANGUAGE}} array of strings
+    "professional_authentication_recommended": null, // boolean
     "confidence": null
   },
   "rarity_assessment": {
-    "rarity": null,
-    "rarity_reason": null,
-    "rarity_factors": [],
+    "rarity": null,                          // ENUM
+    "rarity_reason": null,                   // {{RESPONSE_LANGUAGE}}
+    "rarity_factors": [],                    // {{RESPONSE_LANGUAGE}} array of strings
     "confidence": null
   },
   "valuation": {
-    "price_range": null,
-    "price_min": null,
-    "price_max": null,
-    "price_avg": null,
-    "currency": null,
-    "market_region": null,
-    "value_type": "secondary_market_resale",
-    "valuation_method": null,
-    "insufficient_evidence": null,
-    "value_basis": null,
-    "value_drivers": [],
-    "value_deductions": [],
-    "comparable_sales_used": null,
-    "comparable_sales": [],
+    "price_range": null,                     // {{RESPONSE_LANGUAGE}} formatted string
+    "price_min": null,                       // number
+    "price_max": null,                       // number
+    "price_avg": null,                       // number
+    "currency": null,                        // ENGLISH ISO 4217 code
+    "market_region": null,                   // ENGLISH ISO 3166-1 alpha-2
+    "value_type": "secondary_market_resale", // ENUM
+    "valuation_method": null,                // ENUM
+    "insufficient_evidence": null,           // boolean
+    "value_basis": null,                     // {{RESPONSE_LANGUAGE}}
+    "value_drivers": [],                     // {{RESPONSE_LANGUAGE}} array of strings
+    "value_deductions": [],                  // {{RESPONSE_LANGUAGE}} array of strings
+    "comparable_sales_used": null,           // boolean
+    "comparable_sales": [],                  // array of {title: {{RESPONSE_LANGUAGE}}, price: number, currency: ENGLISH, sale_date: ENGLISH, marketplace: ENGLISH, source: ENGLISH}
     "confidence": null
   },
   "historical_context": {
-    "context": null,
-    "collector_notes": [],
+    "context": null,                         // {{RESPONSE_LANGUAGE}}
+    "collector_notes": [],                   // {{RESPONSE_LANGUAGE}} array of strings
     "confidence": null
   },
   "care_and_preservation": {
-    "care_tips": [],
-    "cleaning_advice": null,
-    "storage_advice": null,
-    "professional_conservation_recommended": null
+    "care_tips": [],                         // {{RESPONSE_LANGUAGE}} array of strings
+    "cleaning_advice": null,                 // {{RESPONSE_LANGUAGE}}
+    "storage_advice": null,                  // {{RESPONSE_LANGUAGE}}
+    "professional_conservation_recommended": null // boolean
   },
   "next_actions": {
-    "specialist_review_recommended": null,
-    "specialist_flags": [],
-    "recommended_next_photos": [],
-    "recommended_next_steps": [],
-    "search_query": null
+    "specialist_review_recommended": null,   // boolean
+    "specialist_flags": [],                  // ENUM array of fixed tokens
+    "recommended_next_photos": [],           // {{RESPONSE_LANGUAGE}} array of strings
+    "recommended_next_steps": [],            // {{RESPONSE_LANGUAGE}} array of strings
+    "search_query": null                     // ENGLISH always
   },
   "overall_assessment": {
     "confidence": null,
-    "summary": null,
-    "limitations": []
+    "summary": null,                         // {{RESPONSE_LANGUAGE}}
+    "limitations": []                        // {{RESPONSE_LANGUAGE}} array of strings
   }
 }
 ```
