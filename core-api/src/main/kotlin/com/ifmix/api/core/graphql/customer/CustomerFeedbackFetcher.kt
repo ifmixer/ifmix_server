@@ -15,12 +15,13 @@ class CustomerFeedbackFetcher(private val feedbackService: FeedbackService) {
 
     @DgsMutation
     fun submitFeedback(
-        @InputArgument category: String,
-        @InputArgument comment: String?,
-        @InputArgument scanRecordId: String?,
+        @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
     ): String {
         val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val category = input["category"] as String
+        val comment = input["comment"] as? String
+        val scanRecordId = input["scanRecordId"] as? String
         val cat = FeedbackCategory.valueOf(category.uppercase())
         val req = SubmitReq(category = cat, note = comment, scanRecordId = scanRecordId)
         return feedbackService.submit(ctx.requestContext, req)

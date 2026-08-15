@@ -20,12 +20,13 @@ class CustomerIapFetcher(private val iapService: IapService) {
 
     @DgsMutation
     fun verifyPurchase(
-        @InputArgument platform: String,
-        @InputArgument purchaseToken: String?,
-        @InputArgument productId: String,
+        @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
     ): VerifyPurchaseResult {
         val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val platform = input["platform"] as String
+        val purchaseToken = input["purchaseToken"] as? String
+        val productId = input["productId"] as String
         val platformEnum = Platform.valueOf(platform.uppercase())
         val req = VerifyReq(
             platform = platformEnum,
@@ -34,7 +35,6 @@ class CustomerIapFetcher(private val iapService: IapService) {
         )
         val res = iapService.verifyPurchase(ctx.requestContext, req)
 
-        // expiresAt 暂时为空（Verifier 暂未返回，待商店验证接入后填充）
         return VerifyPurchaseResult(
             expiresAt = null,
             state = res.state.name,

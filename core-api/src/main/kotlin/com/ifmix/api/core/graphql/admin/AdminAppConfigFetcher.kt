@@ -42,16 +42,21 @@ class AdminAppConfigFetcher(
 
     @DgsMutation
     fun createAppConfigRevision(
-        @InputArgument appId: String,
-        @InputArgument authTenantId: String?,
-        @InputArgument appleBundleId: String?,
-        @InputArgument androidPackageName: String?,
-        @InputArgument appleConfig: Map<String, Any?>?,
-        @InputArgument googleConfig: Map<String, Any?>?,
-        @InputArgument iapConfig: Map<String, Any?>?,
+        @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
     ): AppConfigView {
         val now = Instant.now()
+        val appId = input["appId"] as? String
+            ?: DgsContext.getCustomContext<GraphQLRequestContext>(dfe).requestContext.appId
+        val authTenantId = input["authTenantId"] as? String
+        val appleBundleId = input["appleBundleId"] as? String
+        val androidPackageName = input["androidPackageName"] as? String
+        @Suppress("UNCHECKED_CAST")
+        val appleConfig = input["appleConfig"] as? Map<String, Any?>
+        @Suppress("UNCHECKED_CAST")
+        val googleConfig = input["googleConfig"] as? Map<String, Any?>
+        @Suppress("UNCHECKED_CAST")
+        val iapConfig = input["iapConfig"] as? Map<String, Any?>
 
         // 查找当前版本以确定下一个 revision 号
         val current = mongo.findOne(
