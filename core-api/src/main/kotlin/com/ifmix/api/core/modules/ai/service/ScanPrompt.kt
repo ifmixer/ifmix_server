@@ -5,17 +5,12 @@ import com.ifmix.api.core.modules.scan.dto.ScanInput
 /**
  * V5 Production Prompt for AI antique scanning.
  *
- * Prompts are loaded from classpath markdown files:
- * - `prompts/scan-part1-context.md` — runtime context & priority weights (contains {{placeholders}})
- * - `prompts/scan-part2-behavior.md` — static scanner behavior, rules, output schema
- *
- * Architecture:
- * - [systemPrompt]: PART1(filled) + PART2 → complete system message.
- * - [userPrompt]: Minimal task instruction. Log this for debugging.
+ * Single system prompt loaded from `prompts/scan-system.md`.
+ * Contains {{placeholders}} replaced per-request with runtime values.
  */
 object ScanPrompt {
-    private val part1Template: String = loadResource("prompts/scan-part1-context.md")
-    private val part2Body: String = loadResource("prompts/scan-part2-behavior.md")
+
+    private val template: String = loadResource("prompts/scan-system.md")
 
     private fun loadResource(path: String): String =
         ScanPrompt::class.java.classLoader.getResourceAsStream(path)
@@ -23,31 +18,22 @@ object ScanPrompt {
             ?: error("Classpath resource not found: $path")
 
     /**
-     * Build the complete system prompt: PART1 (runtime context, filled) + PART2 (static behavior).
-     *
-     * PART1 is placed first so language/currency/region have maximum model attention weight.
-     *
-     * @param input scan input (uses lang, country, currency, date)
+     * Build the complete system prompt with runtime values filled in.
      */
     fun systemPrompt(input: ScanInput): String {
         val resolvedLang = input.lang?.takeIf { it.isNotBlank() } ?: "en-US"
         val resolvedCurrency = input.currency?.takeIf { it.isNotBlank() } ?: "USD"
         val resolvedRegion = input.country?.takeIf { it.isNotBlank() } ?: "Not specified"
 
-        val combined = "$part1Template\n\n$part2Body"
+        return template
             .replace("{{CURRENT_DATE}}", input.date.toString())
             .replace("{{RESPONSE_LANGUAGE}}", resolvedLang)
             .replace("{{MARKET_REGION}}", resolvedRegion)
             .replace("{{VALUATION_CURRENCY}}", resolvedCurrency)
-
-        return combined
     }
 
     /**
-     * Build the user prompt — minimal task instruction.
-     * This is short and per-request varying. Log this for debugging.
-     *
-     * @param input scan input containing images
+     * Minimal user prompt — task instruction only. Log this for debugging.
      */
     fun userPrompt(input: ScanInput): String {
         val imageCount = input.items.size

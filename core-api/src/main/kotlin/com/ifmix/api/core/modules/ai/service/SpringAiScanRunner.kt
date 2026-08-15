@@ -82,7 +82,7 @@ open class SpringAiScanRunner(
                         .build()
 
                     val prompt = Prompt(listOf(systemMsg, userMsg))
-                    log.debug("Scan run start. model={}, key={}, userText={}", model, pickedKeyId, userText)
+                    log.debug("Scan run start. model={}, key={}, model, pickedKeyId)
 
                     val startMs = System.currentTimeMillis()
                     val response = client.prompt(prompt).call()
