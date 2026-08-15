@@ -47,8 +47,23 @@ class DgsCustomContextBuilderImpl(
     companion object {
         /** POC mock：通过 X-Role header 判定角色 → permissions 集合。 */
         val ROLE_PERMISSIONS = mapOf(
-            "customer" to setOf("todo:read", "todo:write"),
-            "admin" to setOf("todo:read", "todo:write", "todo:batch", "todo:admin"),
+            "customer" to setOf(
+                "todo:read", "todo:write",
+                "scan:read", "scan:write",
+                "storage:read", "storage:write",
+                "collection:read", "collection:write",
+                "feedback:write",
+                "iap:write",
+            ),
+            "admin" to setOf(
+                "todo:read", "todo:write", "todo:batch", "todo:admin",
+                "scan:read", "scan:write",
+                "storage:read", "storage:write",
+                "collection:read", "collection:write",
+                "feedback:write",
+                "iap:write",
+                "appconfig:write",
+            ),
         )
     }
 }
