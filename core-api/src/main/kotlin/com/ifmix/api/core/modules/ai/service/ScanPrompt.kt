@@ -10,7 +10,7 @@ import com.ifmix.api.core.modules.scan.dto.ScanInput
  */
 object ScanPrompt {
 
-    private val template: String = loadResource("prompts/scan-system.md")
+    private val template: String = loadResource("prompts/scan-system-simple.md")
 
     private fun loadResource(path: String): String =
         ScanPrompt::class.java.classLoader.getResourceAsStream(path)
