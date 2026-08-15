@@ -4,7 +4,6 @@ import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.common.service.CRUDService
 import com.ifmix.api.core.common.http.RequestContext
-import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
@@ -55,30 +54,19 @@ class TodoService(
         val toInsert = patch.items.filter { it.id == null }
 
         if (toUpdate.isNotEmpty() || patch.title != null || patch.done != null) {
-            val setDoc = Document()
-            patch.title?.let { setDoc["title"] = it }
-            patch.done?.let { setDoc["done"] = it }
-            setDoc["updatedAt"] = now
+            val update = Update()
+            patch.title?.let { update.set("title", it) }
+            patch.done?.let { update.set("done", it) }
+            update.set("updatedAt", now)
 
-            val arrayFilters = mutableListOf<Document>()
             for ((i, req) in toUpdate.withIndex()) {
                 val f = "f$i"
-                arrayFilters.add(Document("$f.id", req.id))
-                req.content?.let { setDoc["items.\$[$f].content"] = it }
-                req.done?.let { setDoc["items.\$[$f].done"] = it }
+                req.content?.let { update.set("items.\$[$f].content", it) }
+                req.done?.let { update.set("items.\$[$f].done", it) }
+                update.filterArray(Criteria.where("$f.id").`is`(req.id))
             }
 
-            val command = Document().apply {
-                put("update", "todos")
-                put("updates", listOf(
-                    Document().apply {
-                        put("q", baseQuery.queryObject)
-                        put("u", Document("\$set", setDoc))
-                        if (arrayFilters.isNotEmpty()) put("arrayFilters", arrayFilters)
-                    }
-                ))
-            }
-            mongo.db.runCommand(command)
+            mongo.updateFirst(baseQuery, update, TodoDocument::class.java)
         }
 
         // --- 2) $push 追加新 items ---
