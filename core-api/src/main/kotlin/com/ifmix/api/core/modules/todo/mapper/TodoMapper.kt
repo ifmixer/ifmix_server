@@ -10,6 +10,7 @@ fun TodoDocument.toTodoType(): TodoType = TodoType(
     id = this.id,
     title = this.title,
     done = this.done,
+    meta = this.meta,
     createdAt = this.createdAt,
     updatedAt = this.updatedAt,
 )

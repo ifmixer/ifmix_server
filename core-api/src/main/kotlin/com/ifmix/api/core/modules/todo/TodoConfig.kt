@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.mongodb.core.MongoTemplate
 
-/** todo 模块 bean 装配。todos 集合开启软删（由 BaseAppDocument 能力接口声明，CRUDRepository 反射探测）。 */
 @Configuration
 class TodoConfig {
 
@@ -29,16 +28,10 @@ class TodoConfig {
     // ---- TodoItem beans ----
 
     @Bean
-    fun todoItemRepository(clusterResolver: MongoClusterResolver): TodoItemRepository =
-        TodoItemRepository(clusterResolver)
+    fun todoItemRepository(mongo: MongoTemplate): TodoItemRepository =
+        TodoItemRepository(mongo)
 
     @Bean
-    fun todoItemCrudService(todoItemRepository: TodoItemRepository): CRUDService<TodoItemDocument> =
-        CRUDService(todoItemRepository)
-
-    @Bean
-    fun todoItemService(
-        todoItemCrudService: CRUDService<TodoItemDocument>,
-        todoItemRepository: TodoItemRepository,
-    ): TodoItemService = TodoItemService(todoItemCrudService, todoItemRepository)
+    fun todoItemService(todoItemRepository: TodoItemRepository): TodoItemService =
+        TodoItemService(todoItemRepository)
 }

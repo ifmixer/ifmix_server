@@ -2,7 +2,6 @@ package com.ifmix.api.core.graphql.admin
 
 import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
 import com.ifmix.api.core.graphql.common.type.OperationResult
-import com.ifmix.api.core.modules.todo.UpdateTodoRequest
 import com.ifmix.api.core.modules.todo.TodoService
 import com.ifmix.api.core.modules.todo.service.TodoItemService
 import com.netflix.graphql.dgs.DgsComponent
@@ -23,6 +22,8 @@ class AdminTodoFetcher(
         dfe: DgsDataFetchingEnvironment,
     ): OperationResult {
         val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        // 先删除关联 items，再删除 todos
+        ids.forEach { id -> todoItemService.deleteByTodoId(ctx.requestContext, id) }
         val count = todoService.deleteByIds(ctx.requestContext, ids)
         return OperationResult(success = count == ids.size, modifiedCount = count)
     }
@@ -35,11 +36,11 @@ class AdminTodoFetcher(
         val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
         val patchPairs = patches.map { patch ->
             val id = patch["id"] as String
-            val req = UpdateTodoRequest(
-                title = patch["title"] as? String,
-                done = patch["done"] as? Boolean,
-            )
-            id to req
+            val patchMap = mutableMapOf<String, Any?>()
+            patch["title"]?.let { patchMap["title"] = it }
+            patch["done"]?.let { patchMap["done"] = it }
+            patch["meta"]?.let { patchMap["meta"] = it }
+            id to patchMap
         }
         val count = todoService.updateByIds(ctx.requestContext, patchPairs)
         return OperationResult(success = count == patchPairs.size, modifiedCount = count)

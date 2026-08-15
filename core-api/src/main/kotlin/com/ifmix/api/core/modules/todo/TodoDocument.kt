@@ -4,13 +4,14 @@ import com.ifmix.api.core.common.db.BaseAppDocument
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.mapping.Document
 
-/** todos 集合。内嵌 items（聚合边界内、有界，单文档原子读写）。 */
+/** todos 集合。items 拆为独立集合 todo_items，通过 todoId 关联。 */
 @Document(collection = "todos")
 @CompoundIndex(name = "todos_app_id_id_idx", def = "{'appId': 1, '_id': 1}")
 class TodoDocument : BaseAppDocument() {
     lateinit var title: String
     var done: Boolean = false
-    var items: MutableList<TodoItem> = mutableListOf()
+    /** JSONB 元数据 */
+    var meta: Map<String, Any?>? = null
     /** 拥有者 userId（登录用户），可为 null（匿名用户时不填）。 */
     var userId: String? = null
     /** 拥有者 installId（匿名或登录均填）。 */

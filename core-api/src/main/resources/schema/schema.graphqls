@@ -1,4 +1,5 @@
 scalar DateTime
+scalar JSON
 
 directive @requirePermission(permission: String!) on FIELD_DEFINITION
 
@@ -27,6 +28,7 @@ type Todo {
     id: ID!
     title: String!
     done: Boolean!
+    meta: JSON
     items: [TodoItem!]!
     createdAt: DateTime!
     updatedAt: DateTime!
@@ -54,6 +56,8 @@ type OperationResult {
 
 input CreateTodoInput {
     title: String!
+    meta: JSON
+    items: [CreateTodoItemInput!]
 }
 
 input UpdateTodoInput {

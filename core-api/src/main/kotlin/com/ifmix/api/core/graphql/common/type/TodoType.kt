@@ -7,6 +7,7 @@ data class TodoType(
     val id: String,
     val title: String,
     val done: Boolean,
+    val meta: Map<String, Any?>?,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

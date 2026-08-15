@@ -1,38 +1,49 @@
 package com.ifmix.api.core.modules.todo.service
 
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.common.service.CRUDService
 import com.ifmix.api.core.modules.todo.document.TodoItemDocument
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
+import org.springframework.data.mongodb.core.query.Update
+import java.time.Instant
 
 /**
- * TodoItem 业务逻辑。items 独立存储在 todo_items 集合，由 [TodoItemService] 直接管理。
+ * TodoItem 业务服务。单表操作，不知道 Todo 的存在。
  */
-class TodoItemService(
-    private val crud: CRUDService<TodoItemDocument>,
-    private val repo: TodoItemRepository,
-) {
+class TodoItemService(private val repo: TodoItemRepository) {
 
-    fun create(ctx: RequestContext, todoId: String, content: String): String {
+    fun create(ctx: RequestContext, todoId: String, content: String, done: Boolean = false): String {
         val doc = TodoItemDocument().apply {
             this.todoId = todoId
             this.content = content
-            this.done = false
+            this.done = done
+            this.createdAt = Instant.now()
+            this.updatedAt = Instant.now()
         }
-        return crud.createOne(ctx, doc)
+        return repo.insertOne(ctx, doc)
     }
 
-    /** DataLoader 批量查询入口：按 todoId 分组返回。 */
+    fun getById(ctx: RequestContext, id: String): TodoItemDocument =
+        repo.findById(ctx, id) ?: throw com.ifmix.api.core.common.http.ApiError(
+            com.ifmix.api.core.common.http.ErrorCode.NOT_FOUND, "todo item not found"
+        )
+
+    fun findById(ctx: RequestContext, id: String): TodoItemDocument? = repo.findById(ctx, id)
+
     fun findByTodoIds(ctx: RequestContext, todoIds: List<String>): List<TodoItemDocument> =
         repo.findByTodoIds(ctx, todoIds)
 
-    fun getById(ctx: RequestContext, id: String): TodoItemDocument = crud.getById(ctx, id)
+    fun update(ctx: RequestContext, id: String, content: String? = null, done: Boolean? = null): Boolean {
+        val update = Update()
+        content?.let { update.set("content", it) }
+        done?.let { update.set("done", it) }
+        if (update.updateObject.isEmpty()) return true
+        update.set("updatedAt", Instant.now())
+        return repo.updateById(ctx, id, update)
+    }
 
-    fun findById(ctx: RequestContext, id: String): TodoItemDocument? = crud.findById(ctx, id)
+    fun deleteById(ctx: RequestContext, id: String): Boolean = repo.softDeleteById(ctx, id)
 
-    fun update(ctx: RequestContext, id: String, patch: Any): Boolean = crud.updateById(ctx, id, patch)
+    fun deleteByIds(ctx: RequestContext, ids: List<String>): Int = repo.softDeleteByIds(ctx, ids)
 
-    fun deleteById(ctx: RequestContext, id: String): Boolean = crud.deleteById(ctx, id)
-
-    fun deleteByIds(ctx: RequestContext, ids: List<String>): Int = crud.deleteByIds(ctx, ids)
+    fun deleteByTodoId(ctx: RequestContext, todoId: String): Int = repo.softDeleteByTodoId(ctx, todoId)
 }
