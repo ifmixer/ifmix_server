@@ -45,6 +45,12 @@ dependencies {
     implementation("org.springframework.security:spring-security-oauth2-jose")
     implementation("com.nimbusds:nimbus-jose-jwt:9.40")
     implementation("com.google.crypto.tink:tink:1.15.0")
+
+    // Netflix DGS 12 — GraphQL server (Spring Boot 4 MVC, DataLoader, Micrometer)
+    implementation(platform("com.netflix.graphql.dgs:graphql-dgs-platform-dependencies:12.0.0"))
+    implementation("com.netflix.graphql.dgs:graphql-dgs-spring-graphql-starter")
+    implementation("com.netflix.graphql.dgs:graphql-dgs-extended-scalars")
+    implementation("com.netflix.graphql.dgs:graphql-dgs-spring-boot-micrometer")
 }
 
 kotlin {
