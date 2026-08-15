@@ -2,7 +2,14 @@ package com.ifmix.api.core.graphql.validation
 
 import assertk.assertThat
 import assertk.assertions.contains
+import com.ifmix.api.core.graphql.common.type.CollectionItemConnection
+import com.ifmix.api.core.graphql.common.type.CollectionItemType
+import com.ifmix.api.core.graphql.common.type.CollectionType
 import com.ifmix.api.core.graphql.common.type.OperationResult
+import com.ifmix.api.core.graphql.common.type.PresignDownloadResult
+import com.ifmix.api.core.graphql.common.type.PresignUploadResult
+import com.ifmix.api.core.graphql.common.type.ScanConnection
+import com.ifmix.api.core.graphql.common.type.ScanRecordType
 import com.ifmix.api.core.graphql.common.type.TodoConnection
 import com.ifmix.api.core.graphql.common.type.TodoItemType
 import com.ifmix.api.core.graphql.common.type.TodoType
@@ -42,6 +49,42 @@ class SchemaTypeConsistencyTest {
     @Test
     fun `OperationResult fields match schema OperationResult type`() {
         assertTypeFieldsMatch("OperationResult", OperationResult::class)
+    }
+
+    @Test
+    fun `ScanRecordType fields match schema ScanRecord type`() {
+        // userDisplayName and userNotes are Kotlin-only fields not yet in the schema
+        assertTypeFieldsMatch("ScanRecord", ScanRecordType::class, ignoredFields = setOf("userDisplayName", "userNotes"))
+    }
+
+    @Test
+    fun `ScanConnection fields match schema ScanConnection type`() {
+        assertTypeFieldsMatch("ScanConnection", ScanConnection::class)
+    }
+
+    @Test
+    fun `PresignUploadResult fields match schema PresignUploadResult type`() {
+        assertTypeFieldsMatch("PresignUploadResult", PresignUploadResult::class)
+    }
+
+    @Test
+    fun `PresignDownloadResult fields match schema PresignDownloadResult type`() {
+        assertTypeFieldsMatch("PresignDownloadResult", PresignDownloadResult::class)
+    }
+
+    @Test
+    fun `CollectionType fields match schema Collection type`() {
+        assertTypeFieldsMatch("Collection", CollectionType::class)
+    }
+
+    @Test
+    fun `CollectionItemType fields match schema CollectionItemType type`() {
+        assertTypeFieldsMatch("CollectionItemType", CollectionItemType::class)
+    }
+
+    @Test
+    fun `CollectionItemConnection fields match schema CollectionItemConnection type`() {
+        assertTypeFieldsMatch("CollectionItemConnection", CollectionItemConnection::class)
     }
 
     private fun assertTypeFieldsMatch(

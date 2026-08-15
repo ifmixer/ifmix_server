@@ -1,0 +1,28 @@
+package com.ifmix.api.core.graphql.customer
+
+import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
+import com.ifmix.api.core.modules.feedback.FeedbackCategory
+import com.ifmix.api.core.modules.feedback.FeedbackService
+import com.ifmix.api.core.modules.feedback.SubmitReq
+import com.netflix.graphql.dgs.DgsComponent
+import com.netflix.graphql.dgs.DgsMutation
+import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
+import com.netflix.graphql.dgs.InputArgument
+import com.netflix.graphql.dgs.context.DgsContext
+
+@DgsComponent
+class CustomerFeedbackFetcher(private val feedbackService: FeedbackService) {
+
+    @DgsMutation
+    fun submitFeedback(
+        @InputArgument category: String,
+        @InputArgument comment: String?,
+        @InputArgument scanRecordId: String?,
+        dfe: DgsDataFetchingEnvironment,
+    ): String {
+        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val cat = FeedbackCategory.valueOf(category.uppercase())
+        val req = SubmitReq(category = cat, note = comment, scanRecordId = scanRecordId)
+        return feedbackService.submit(ctx.requestContext, req)
+    }
+}
