@@ -1,5 +1,7 @@
 package com.ifmix.api.core.modules.appconfig
 
+import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseDocument
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
 import org.bson.types.ObjectId
@@ -7,6 +9,8 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import org.springframework.data.mongodb.core.query.isEqualTo
+import org.springframework.data.mongodb.core.query.ne
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -37,7 +41,7 @@ class AppConfigRepo(
     private fun getBy(field: String, value: String): AppConfigView? {
         val key = "$field:$value"
         cache[key]?.let { if (System.currentTimeMillis() - it.at < cacheTtlMs) return it.cfg }
-        val query = Query(Criteria.where(field).`is`(value).and("deletedAt").`is`(null))
+        val query = Query(Criteria().andOperator(AppConfigDocument::id isEqualTo ObjectId(field), AppConfigDocument::deletedAt isEqualTo null))
         val doc = mongo.findOne(query, AppConfigDocument::class.java)
         val cfg = doc?.let { AppConfigMapper.toView(it) }
         cache[key] = Cached(System.currentTimeMillis(), cfg)
@@ -48,14 +52,17 @@ class AppConfigRepo(
     fun newVersion(ctx: RequestContext, appId: String, patch: AppConfigPatch) {
         txRunner.withTx(ctx) {
             val current = mongo.findOne(
-                Query(Criteria.where("appId").`is`(appId).and("deletedAt").`is`(null)),
+                Query(Criteria().andOperator(
+                    AppConfigDocument::appId isEqualTo ObjectId(appId),
+                    AppConfigDocument::deletedAt isEqualTo null,
+                )),
                 AppConfigDocument::class.java,
             )
             val now = Instant.now()
             if (current != null) {
                 mongo.updateFirst(
-                    Query(Criteria.where("_id").`is`(current.id)),
-                    Update().set("deletedAt", now).set("updatedAt", now),
+                    Query(Criteria().andOperator(AppConfigDocument::id isEqualTo current.id)),
+                    Update().set(BaseAppDocument::deletedAt, now).set(BaseDocument::updatedAt, now),
                     AppConfigDocument::class.java,
                 )
             }
@@ -80,7 +87,10 @@ class AppConfigRepo(
     /** 获取当前生效的 AppConfigDocument（按 appId，deletedAt=null）。 */
     fun getCurrentDoc(appId: String): AppConfigDocument? {
         return mongo.findOne(
-            Query(Criteria.where("appId").`is`(appId).and("deletedAt").`is`(null)),
+            Query(Criteria().andOperator(
+                AppConfigDocument::appId isEqualTo ObjectId(appId),
+                AppConfigDocument::deletedAt isEqualTo null,
+            )),
             AppConfigDocument::class.java,
         )
     }
@@ -98,21 +108,31 @@ class AppConfigRepo(
             if (enabled) {
                 // 软删同 appId 其他版本
                 mongo.updateMulti(
-                    Query(Criteria.where("appId").`is`(appId).and("deletedAt").`is`(null).and("_id").ne(ObjectId(id))),
-                    Update().set("deletedAt", now).set("updatedAt", now),
+                    Query(Criteria().andOperator(
+                        AppConfigDocument::appId isEqualTo ObjectId(appId),
+                        AppConfigDocument::deletedAt isEqualTo null,
+                        AppConfigDocument::id ne ObjectId(id),
+                    )),
+                    Update().set(BaseAppDocument::deletedAt, now).set(BaseDocument::updatedAt, now),
                     AppConfigDocument::class.java,
                 )
                 // 恢复目标版本
                 mongo.updateFirst(
-                    Query(Criteria.where("_id").`is`(ObjectId(id)).and("appId").`is`(appId)),
-                    Update().set("deletedAt", null).set("updatedAt", now),
+                    Query(Criteria().andOperator(
+                        AppConfigDocument::id isEqualTo ObjectId(id),
+                        AppConfigDocument::appId isEqualTo ObjectId(appId),
+                    )),
+                    Update().set(BaseAppDocument::deletedAt, null).set(BaseDocument::updatedAt, now),
                     AppConfigDocument::class.java,
                 )
             } else {
                 // 软删目标版本
                 mongo.updateFirst(
-                    Query(Criteria.where("_id").`is`(ObjectId(id)).and("appId").`is`(appId)),
-                    Update().set("deletedAt", now).set("updatedAt", now),
+                    Query(Criteria().andOperator(
+                        AppConfigDocument::id isEqualTo ObjectId(id),
+                        AppConfigDocument::appId isEqualTo ObjectId(appId),
+                    )),
+                    Update().set(BaseAppDocument::deletedAt, now).set(BaseDocument::updatedAt, now),
                     AppConfigDocument::class.java,
                 )
             }

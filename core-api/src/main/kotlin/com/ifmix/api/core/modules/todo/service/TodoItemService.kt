@@ -1,5 +1,6 @@
 package com.ifmix.api.core.modules.todo.service
 
+import com.ifmix.api.core.common.db.BaseDocument
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.modules.todo.document.TodoItemDocument
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
@@ -34,10 +35,10 @@ class TodoItemService(private val repo: TodoItemRepository) {
 
     fun update(ctx: RequestContext, id: String, content: String? = null, done: Boolean? = null): Boolean {
         val update = Update()
-        content?.let { update.set("content", it) }
-        done?.let { update.set("done", it) }
+        content?.let { update.set(TodoItemDocument::content, it) }
+        done?.let { update.set(TodoItemDocument::done, it) }
         if (update.updateObject.isEmpty()) return true
-        update.set("updatedAt", Instant.now())
+        update.set(BaseDocument::updatedAt, Instant.now())
         return repo.updateById(ctx, id, update)
     }
 

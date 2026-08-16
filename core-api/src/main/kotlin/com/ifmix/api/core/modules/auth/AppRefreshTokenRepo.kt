@@ -1,14 +1,16 @@
 package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.auth.Hashing
+import com.ifmix.api.core.common.db.BaseDocument
+import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.Instant
-import org.bson.types.ObjectId
 
 /** 签发刷新令牌的结果。 */
 data class RefreshIssued(val id: String, val token: String, val expiresAt: Instant)
@@ -36,7 +38,10 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
     }
 
     fun findByHash(appId: String, tokenPlain: String): AppRefreshTokenDocument? = mongo.findOne(
-        Query(Criteria.where("appId").`is`(appId).and("tokenHash").`is`(Hashing.sha256Base64Url(tokenPlain))),
+        Query(Criteria().andOperator(
+            AppRefreshTokenDocument::appId isEqualTo ObjectId(appId),
+            AppRefreshTokenDocument::tokenHash isEqualTo Hashing.sha256Base64Url(tokenPlain),
+        )),
         AppRefreshTokenDocument::class.java,
     )
 
@@ -44,8 +49,14 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
     fun tryRotate(appId: String, tokenHash: String, newId: String): Boolean {
         val now = Instant.now()
         val res = mongo.updateFirst(
-            Query(Criteria.where("appId").`is`(appId).and("tokenHash").`is`(tokenHash).and("revokedAt").`is`(null)),
-            Update().set("revokedAt", now).set("replacedBy", newId).set("updatedAt", now),
+            Query(Criteria().andOperator(
+                AppRefreshTokenDocument::appId isEqualTo ObjectId(appId),
+                AppRefreshTokenDocument::tokenHash isEqualTo tokenHash,
+                AppRefreshTokenDocument::revokedAt isEqualTo null,
+            )),
+            Update().set(AppRefreshTokenDocument::revokedAt, now)
+                .set(AppRefreshTokenDocument::replacedBy, newId)
+                .set(BaseDocument::updatedAt, now),
             AppRefreshTokenDocument::class.java,
         )
         return res.modifiedCount > 0
@@ -54,8 +65,12 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
     fun revokeByAppUser(appId: String, appUserId: String) {
         val now = Instant.now()
         mongo.updateMulti(
-            Query(Criteria.where("appId").`is`(appId).and("appUserId").`is`(appUserId).and("revokedAt").`is`(null)),
-            Update().set("revokedAt", now).set("updatedAt", now),
+            Query(Criteria().andOperator(
+                AppRefreshTokenDocument::appId isEqualTo ObjectId(appId),
+                AppRefreshTokenDocument::appUserId isEqualTo appUserId,
+                AppRefreshTokenDocument::revokedAt isEqualTo null,
+            )),
+            Update().set(AppRefreshTokenDocument::revokedAt, now).set(BaseDocument::updatedAt, now),
             AppRefreshTokenDocument::class.java,
         )
     }
@@ -64,8 +79,11 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
     fun revokeByDeviceSecret(deviceSecretId: String) {
         val now = Instant.now()
         mongo.updateMulti(
-            Query(Criteria.where("deviceSecretId").`is`(deviceSecretId).and("revokedAt").`is`(null)),
-            Update().set("revokedAt", now).set("updatedAt", now),
+            Query(Criteria().andOperator(
+                AppRefreshTokenDocument::deviceSecretId isEqualTo deviceSecretId,
+                AppRefreshTokenDocument::revokedAt isEqualTo null,
+            )),
+            Update().set(AppRefreshTokenDocument::revokedAt, now).set(BaseDocument::updatedAt, now),
             AppRefreshTokenDocument::class.java,
         )
     }

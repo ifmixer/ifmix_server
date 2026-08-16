@@ -1,11 +1,13 @@
 package com.ifmix.api.core.modules.iap
 
+import com.ifmix.api.core.common.db.BaseDocument
 import com.ifmix.api.core.common.http.RequestContext
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.stereotype.Component
 import java.time.Instant
 
@@ -24,8 +26,10 @@ class SubscriptionRepo(
      */
     fun upsert(ctx: RequestContext, doc: SubscriptionDocument): String {
         val query = Query(
-            Criteria.where("subscriptionPxid").`is`(doc.subscriptionPxid)
-                .and("appId").`is`(ctx.appId),
+            Criteria().andOperator(
+                SubscriptionDocument::subscriptionPxid isEqualTo doc.subscriptionPxid,
+                SubscriptionDocument::appId isEqualTo ObjectId(ctx.appId),
+            ),
         )
         val existing = mongo.findOne(query, SubscriptionDocument::class.java)
         val now = Instant.now()
@@ -33,14 +37,14 @@ class SubscriptionRepo(
         if (existing != null) {
             // 更新已有文档
             val update = Update()
-                .set("productId", doc.productId)
-                .set("platform", doc.platform)
-                .set("active", doc.active)
-                .set("subStatus", doc.subStatus)
-                .set("expiryDate", doc.expiryDate)
-                .set("purchaseToken", doc.purchaseToken)
-                .set("rawResponse", doc.rawResponse)
-                .set("updatedAt", now)
+                .set(SubscriptionDocument::productId, doc.productId)
+                .set(SubscriptionDocument::platform, doc.platform)
+                .set(SubscriptionDocument::active, doc.active)
+                .set(SubscriptionDocument::subStatus, doc.subStatus)
+                .set(SubscriptionDocument::expiryDate, doc.expiryDate)
+                .set(SubscriptionDocument::purchaseToken, doc.purchaseToken)
+                .set(SubscriptionDocument::rawResponse, doc.rawResponse)
+                .set(BaseDocument::updatedAt, now)
             mongo.updateFirst(query, update, SubscriptionDocument::class.java)
             return existing.id.toHexString()
         }
@@ -62,12 +66,14 @@ class SubscriptionRepo(
         updateFn: Update.() -> Unit,
     ): Boolean {
         val query = Query(
-            Criteria.where("originalTransactionId").`is`(originalTransactionId)
-                .and("appId").`is`(ctx.appId),
+            Criteria().andOperator(
+                SubscriptionDocument::originalTransactionId isEqualTo originalTransactionId,
+                SubscriptionDocument::appId isEqualTo ObjectId(ctx.appId),
+            ),
         )
         val u = Update()
         updateFn(u)
-        u.set("updatedAt", Instant.now())
+        u.set(BaseDocument::updatedAt, Instant.now())
         return mongo.updateFirst(query, u, SubscriptionDocument::class.java).modifiedCount > 0
     }
 
@@ -77,9 +83,11 @@ class SubscriptionRepo(
      */
     fun findActiveBySubject(ctx: RequestContext, subscriptionPxid: String): SubscriptionDocument? {
         val query = Query(
-            Criteria.where("subscriptionPxid").`is`(subscriptionPxid)
-                .and("appId").`is`(ctx.appId)
-                .and("active").`is`(true),
+            Criteria().andOperator(
+                SubscriptionDocument::subscriptionPxid isEqualTo subscriptionPxid,
+                SubscriptionDocument::appId isEqualTo ObjectId(ctx.appId),
+                SubscriptionDocument::active isEqualTo true,
+            ),
         )
         return mongo.findOne(query, SubscriptionDocument::class.java)
     }

@@ -1,8 +1,10 @@
 package com.ifmix.api.core.common.ai
 
+import com.ifmix.api.core.common.db.BaseDocument
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
+import org.springframework.data.mongodb.core.query.isEqualTo
 
 /**
  * Agnes key 仓储。
@@ -16,7 +18,7 @@ class AgnesKeyRepo(private val mongo: MongoTemplate) {
      */
     fun loadEnabled(): List<AgnesKeyDocument> {
         return mongo.find(
-            Query(Criteria.where("deletedAt").`is`(null)),
+            Query(Criteria().andOperator(AgnesKeyDocument::deletedAt isEqualTo null)),
             AgnesKeyDocument::class.java,
         )
     }

@@ -5,6 +5,7 @@ import com.ifmix.api.core.common.http.RequestContext
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
+import org.springframework.data.mongodb.core.query.isEqualTo
 
 /**
  * collection 仓储：按归属查默认收藏夹。
@@ -20,12 +21,12 @@ class CollectionRepository(private val mongo: MongoTemplate) {
      */
     fun findDefault(ctx: RequestContext): CollectionDocument? = mongo.findOne(
         Query(
-            Criteria.where("appId").`is`(ctx.appId)
-                .andOperator(
-                    ownerCriteria(ctx),
-                    Criteria.where("isDefault").`is`(true),
-                    Criteria.where("deletedAt").`is`(null),
-                ),
+            Criteria().andOperator(
+                CollectionDocument::appId isEqualTo ctx.appId,
+                ownerCriteria(ctx),
+                CollectionDocument::isDefault isEqualTo true,
+                CollectionDocument::deletedAt isEqualTo null,
+            ),
         ),
         CollectionDocument::class.java,
     )

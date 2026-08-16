@@ -1,5 +1,7 @@
 package com.ifmix.api.core.modules.collection
 
+import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseDocument
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.modules.antique.ScanRecordDocument
 import org.bson.types.ObjectId
@@ -7,6 +9,9 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import org.springframework.data.mongodb.core.query.inValues
+import org.springframework.data.mongodb.core.query.isEqualTo
+import org.springframework.data.mongodb.core.query.lt
 import java.time.Instant
 
 /**
@@ -26,9 +31,10 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
         val scanObjId = org.bson.types.ObjectId(scanRecordId)
         val existing = mongo.findOne(
             Query(
-                base(ctx, collectionId)
-                    .and("scanRecordId").`is`(scanObjId)
-                    .and("deletedAt").`is`(null),
+                Criteria().andOperator(
+                    CollectionItemDocument::scanRecordId isEqualTo scanObjId,
+                    CollectionItemDocument::deletedAt isEqualTo null,
+                ),
             ),
             CollectionItemDocument::class.java,
         )
@@ -54,13 +60,14 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
     fun softDeleteByScanIds(ctx: RequestContext, collectionId: String, scanRecordIds: List<String>): Long {
         val now = Instant.now()
         val query = Query(
-            base(ctx, collectionId)
-                .and("scanRecordId").`in`(scanRecordIds.map { org.bson.types.ObjectId(it) })
-                .and("deletedAt").`is`(null),
+            Criteria().andOperator(
+                CollectionItemDocument::appId isEqualTo ctx.appId,
+                CollectionItemDocument::deletedAt isEqualTo null,
+            ),
         )
         return mongo.updateMulti(
             query,
-            Update().set("deletedAt", now).set("updatedAt", now),
+            Update().set(BaseAppDocument::deletedAt, now).set(BaseDocument::updatedAt, now),
             CollectionItemDocument::class.java,
         ).modifiedCount
     }
@@ -81,11 +88,11 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
         limit: Int,
     ): Pair<List<ScanRecordDocument>, String?> {
         // 第一步：取该夹未删 item 的 scanRecordId（按 _id keyset 分页）
-        val itemQuery = Query(base(ctx, collectionId).and("deletedAt").`is`(null))
+        val itemQuery = Query(Criteria().andOperator(CollectionItemDocument::deletedAt isEqualTo null))
 
         // cursor 基于 item._id（ObjectId hex）做 keyset
         if (!cursor.isNullOrBlank() && ObjectId.isValid(cursor)) {
-            itemQuery.addCriteria(Criteria.where("_id").lt(ObjectId(cursor)))
+            itemQuery.addCriteria(BaseDocument::id lt ObjectId(cursor))
         }
 
         itemQuery.with(
@@ -110,23 +117,28 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
         // 第二步：批量取 scan_record（appId 分片 + 未删），保持 item 顺序
         val scans = mongo.find(
             Query(
-                Criteria.where("appId").`is`(ctx.appId)
-                    .and("_id").`in`(scanIds)
-                    .and("deletedAt").`is`(null),
+                Criteria().andOperator(
+                    ScanRecordDocument::appId isEqualTo ctx.appId,
+                    ScanRecordDocument::id inValues scanIds,
+                    ScanRecordDocument::deletedAt isEqualTo null,
+                ),
             ),
             ScanRecordDocument::class.java,
         ).associateBy { it.id.toHexString() }
 
         val ordered = page.mapNotNull { item ->
             val oid = item.scanRecordId ?: return@mapNotNull null
-            scans[oid.toString()]
+            scans[oid.toHexString()]
         }
         val nextCursor = if (hasMore) page.last().scanRecordId?.toHexString() else null
         return Pair(ordered, nextCursor)
     }
 
     private fun base(ctx: RequestContext, collectionId: String): Criteria =
-        Criteria.where("appId").`is`(ctx.appId).and("collectionId").`is`(collectionId)
+        Criteria().andOperator(
+            CollectionItemDocument::appId isEqualTo ctx.appId,
+            CollectionItemDocument::collectionId isEqualTo collectionId,
+        )
 
     /**
      * 按游标分页查询收藏条目文档（不带 scan_record 关联）。
@@ -138,9 +150,9 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
         cursor: String?,
         limit: Int,
     ): List<CollectionItemDocument> {
-        val query = Query(base(ctx, collectionId).and("deletedAt").`is`(null))
+        val query = Query(Criteria().andOperator(CollectionItemDocument::deletedAt isEqualTo null))
         if (!cursor.isNullOrBlank() && ObjectId.isValid(cursor)) {
-            query.addCriteria(Criteria.where("_id").lt(ObjectId(cursor)))
+            query.addCriteria(BaseDocument::id lt ObjectId(cursor))
         }
         query.with(
             org.springframework.data.domain.Sort.by(

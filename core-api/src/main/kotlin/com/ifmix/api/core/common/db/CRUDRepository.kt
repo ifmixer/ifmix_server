@@ -10,6 +10,10 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import org.springframework.data.mongodb.core.query.isEqualTo
+import org.springframework.data.mongodb.core.query.inValues
+import org.springframework.data.mongodb.core.query.lt
+import org.springframework.data.mongodb.core.query.gt
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Instant
 import java.util.Base64
@@ -76,7 +80,7 @@ open class CRUDRepository<T : BaseDocument>(
         val query = idQuery(ctx, id)
         val update = Update()
         sets.forEach { (field, value) -> update.set(field, value) }
-        update.set("updatedAt", Instant.now())
+        update.set(BaseDocument::updatedAt, Instant.now())
         return mongo.updateFirst(query, update, type).modifiedCount > 0
     }
 
@@ -84,7 +88,7 @@ open class CRUDRepository<T : BaseDocument>(
         if (invalidId(id)) return false
         val query = idQuery(ctx, id)
         return if (softDeletable) {
-            val update = Update().set("deletedAt", Instant.now()).set("updatedAt", Instant.now())
+            val update = Update().set(SoftDeletable::deletedAt, Instant.now()).set(BaseDocument::updatedAt, Instant.now())
             mongo.updateFirst(query, update, type).modifiedCount > 0
         } else {
             mongo.remove(query, type).deletedCount > 0
@@ -97,8 +101,8 @@ open class CRUDRepository<T : BaseDocument>(
         val query = Query()
         tenantCriteria(ctx)?.let { query.addCriteria(it) }
         extraCriteria(ctx)?.let { query.addCriteria(it) }
-        if (softDeletable) query.addCriteria(Criteria.where("deletedAt").`is`(null))
-        query.addCriteria(Criteria.where("_id").`in`(ids.mapNotNull { id -> if (invalidId(id)) null else ObjectId(id) }))
+        if (softDeletable) query.addCriteria(SoftDeletable::deletedAt isEqualTo null)
+        query.addCriteria(BaseDocument::id inValues ids.mapNotNull { id -> if (invalidId(id)) null else ObjectId(id) })
         applyReadPreference(query, ctx)
         return mongo.find(query, type)
     }
@@ -137,15 +141,14 @@ open class CRUDRepository<T : BaseDocument>(
         val query = Query()
         tenantCriteria(ctx)?.let { query.addCriteria(it) }
         extraCriteria(ctx)?.let { query.addCriteria(it) }
-        if (softDeletable) query.addCriteria(Criteria.where("deletedAt").`is`(null))
-
+        if (softDeletable) query.addCriteria(SoftDeletable::deletedAt isEqualTo null)
         val cursor = input.cursor
         if (!cursor.isNullOrBlank()) {
             if (sortField == "_id") {
                 if (ObjectId.isValid(cursor)) {
                     val cursorId = ObjectId(cursor)
                     query.addCriteria(
-                        if (desc) Criteria.where("_id").lt(cursorId) else Criteria.where("_id").gt(cursorId),
+                        if (desc) BaseDocument::id lt cursorId else BaseDocument::id gt cursorId,
                     )
                 }
             } else {
@@ -154,7 +157,7 @@ open class CRUDRepository<T : BaseDocument>(
                 val idHex = decoded?.second
                 if (value != null && idHex != null && ObjectId.isValid(idHex)) {
                     val cursorId = ObjectId(idHex)
-                    val idCond = if (desc) Criteria.where("_id").lt(cursorId) else Criteria.where("_id").gt(cursorId)
+                    val idCond = if (desc) BaseDocument::id lt cursorId else BaseDocument::id gt cursorId
                     val sortCond = if (desc) Criteria.where(sortField).lt(value) else Criteria.where(sortField).gt(value)
                     query.addCriteria(
                         Criteria().orOperator(
@@ -196,14 +199,14 @@ open class CRUDRepository<T : BaseDocument>(
         val list = mutableListOf<Criteria>()
         tenantCriteria(ctx)?.let { list.add(it) }
         extraIdCriteria(ctx)?.let { list.add(it) }
-        list.add(Criteria.where("_id").`is`(ObjectId(id)))
+        list.add(Criteria().andOperator(BaseDocument::id isEqualTo ObjectId(id)))
         return list
     }
 
     /** by-id 操作查询：idCriteria + 软删过滤（若 SoftDeletable）。 */
     private fun idQuery(ctx: RequestContext, id: String): Query {
         val criteria = idCriteria(ctx, id)
-        if (softDeletable) criteria.add(Criteria.where("deletedAt").`is`(null))
+        if (softDeletable) criteria.add(SoftDeletable::deletedAt isEqualTo null)
         return buildQuery(criteria)
     }
 

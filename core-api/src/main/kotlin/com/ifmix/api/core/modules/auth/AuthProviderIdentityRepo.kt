@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.auth.EmailNormalize
+import com.ifmix.api.core.common.db.BaseDocument
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -36,20 +37,24 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
     fun upsert(tenantId: String, input: UpsertInput): String {
         val now = Instant.now()
         val existing = mongo.findOne(
-            Query(
-                Criteria.where("authTenantId").isEqualTo(tenantId)
-                    .and("provider").isEqualTo(input.provider)
-                    .and("providerAccountId").isEqualTo(input.accountId),
-            ),
+            Query(Criteria().andOperator(
+                AuthProviderIdentityDocument::authTenantId isEqualTo tenantId,
+                AuthProviderIdentityDocument::provider isEqualTo input.provider,
+                AuthProviderIdentityDocument::providerAccountId isEqualTo input.accountId,
+            )),
             AuthProviderIdentityDocument::class.java,
         )
         if (existing?.authIdentityId != null) {
             mongo.updateFirst(
-                Query(Criteria.where("_id").isEqualTo(existing.id)),
-                Update().set("email", input.email).set("emailVerified", input.emailVerified)
-                    .set("phone", input.phone).set("loginIp", input.loginIp)
-                    .set("loginInstallId", input.loginInstallId).set("loginAppId", input.loginAppId)
-                    .set("userMetadata", input.userMetadata).set("updatedAt", now),
+                Query(Criteria().andOperator(AuthProviderIdentityDocument::id isEqualTo existing.id)),
+                Update().set(AuthProviderIdentityDocument::email, input.email)
+                    .set(AuthProviderIdentityDocument::emailVerified, input.emailVerified)
+                    .set(AuthProviderIdentityDocument::phone, input.phone)
+                    .set(AuthProviderIdentityDocument::loginIp, input.loginIp)
+                    .set(AuthProviderIdentityDocument::loginInstallId, input.loginInstallId)
+                    .set(AuthProviderIdentityDocument::loginAppId, input.loginAppId)
+                    .set(AuthProviderIdentityDocument::userMetadata, input.userMetadata)
+                    .set(BaseDocument::updatedAt, now),
                 AuthProviderIdentityDocument::class.java,
             )
             return existing.authIdentityId!!

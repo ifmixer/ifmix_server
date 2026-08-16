@@ -32,7 +32,10 @@ class AppUserRepo(private val mongo: MongoTemplate) {
     }
 
     private fun findId(appId: String, authIdentityId: String): String? = mongo.findOne(
-        Query(Criteria.where("appId").isEqualTo(appId).and("authIdentityId").isEqualTo(authIdentityId)),
+        Query(Criteria().andOperator(
+            AppUserDocument::appId isEqualTo ObjectId(appId),
+            AppUserDocument::authIdentityId isEqualTo authIdentityId,
+        )),
         AppUserDocument::class.java,
     )?.id?.toHexString()
 }

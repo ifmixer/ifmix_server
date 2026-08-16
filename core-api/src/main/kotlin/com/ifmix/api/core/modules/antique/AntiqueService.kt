@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import org.springframework.data.mongodb.core.query.isEqualTo
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -103,9 +104,9 @@ class AntiqueService(
         input: com.ifmix.api.core.common.db.CursorQueryInput = com.ifmix.api.core.common.db.CursorQueryInput(),
     ): com.ifmix.api.core.common.db.Page<ScanRecordDocument> {
         val query = Query()
-        query.addCriteria(Criteria.where("appId").`is`(ctx.appId))
+        query.addCriteria(ScanRecordDocument::appId isEqualTo ctx.appId)
         // 软删过滤
-        query.addCriteria(Criteria.where("deletedAt").`is`(null))
+        query.addCriteria(ScanRecordDocument::deletedAt isEqualTo null)
 
         val limit = input.effectiveLimit()
         query.limit(limit + 1)
@@ -135,10 +136,12 @@ class AntiqueService(
      * best-effort 语义：异常时静默忽略，不影响主流程。
      */
     fun markCollected(ctx: RequestContext, scanRecordId: String, collected: Boolean) {
-        val update = Update().set("collected", collected).set("updatedAt", Instant.now())
+        val update = Update().set(ScanRecordDocument::collected, collected).set(ScanRecordDocument::updatedAt, Instant.now())
         mongo.updateFirst(
-            Query(Criteria.where("_id").`is`(org.bson.types.ObjectId(scanRecordId))
-                .and("appId").`is`(ctx.appId)),
+            Query(Criteria().andOperator(
+                ScanRecordDocument::id isEqualTo ObjectId(scanRecordId),
+                ScanRecordDocument::appId isEqualTo ctx.appId,
+            )),
             update,
             ScanRecordDocument::class.java,
         )

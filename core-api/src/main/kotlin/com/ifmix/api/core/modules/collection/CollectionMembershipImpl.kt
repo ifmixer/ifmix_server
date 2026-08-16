@@ -5,6 +5,7 @@ import com.ifmix.api.core.modules.antique.CollectionMembership
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
+import org.springframework.data.mongodb.core.query.isEqualTo
 
 /**
  * CollectionMembership 端口实现：查询 collection_item 判断 scanRecordId 是否在默认夹中。
@@ -20,10 +21,12 @@ class CollectionMembershipImpl(
         val cid = collectionRepo.findDefault(ctx)?.id ?: return false
         return mongo.exists(
             Query(
-                Criteria.where("appId").`is`(ctx.appId)
-                    .and("collectionId").`is`(cid)
-                    .and("scanRecordId").`is`(org.bson.types.ObjectId(scanRecordId))
-                    .and("deletedAt").`is`(null),
+                Criteria().andOperator(
+                    CollectionItemDocument::appId isEqualTo ctx.appId,
+                    CollectionItemDocument::collectionId isEqualTo cid,
+                    CollectionItemDocument::scanRecordId isEqualTo org.bson.types.ObjectId(scanRecordId),
+                    CollectionItemDocument::deletedAt isEqualTo null,
+                ),
             ),
             CollectionItemDocument::class.java,
         )

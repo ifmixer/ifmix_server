@@ -18,6 +18,8 @@ fun ownsRow(ctx: RequestContext, userId: String?, installId: String?): Boolean =
  * 归属查询条件：登录时 userId OR installId；匿名仅 installId。
  *
  * 用于在 MongoDB 查询中过滤出当前用户拥有的行。
+ * 保持字符串形式：此函数为通用工具，适用于拥有 userId/installId 字段的多种文档类型，
+ * 无法用单一 KProperty 覆盖所有场景。
  */
 fun ownerCriteria(ctx: RequestContext): Criteria {
     val install = Criteria.where("installId").`is`(ctx.installId)

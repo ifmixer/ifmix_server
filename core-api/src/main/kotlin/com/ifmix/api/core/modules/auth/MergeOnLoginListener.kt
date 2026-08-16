@@ -1,15 +1,18 @@
 package com.ifmix.api.core.modules.auth
 
+import com.ifmix.api.core.common.db.BaseDocument
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
 import com.ifmix.api.core.modules.antique.ScanRecordDocument
 import com.ifmix.api.core.modules.iap.SubscriptionDocument
+import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import java.time.Instant
@@ -54,10 +57,14 @@ class MergeOnLoginListener(
         try {
             txRunner.withTx(RequestContext(appId = e.appId, installId = installId)) {
                 val q = Query(
-                    Criteria.where("appId").`is`(e.appId)
-                        .and("installId").`is`(installId).and("userId").`is`(null),
+                    Criteria().andOperator(
+                        ScanRecordDocument::appId isEqualTo ObjectId(e.appId),
+                        ScanRecordDocument::installId isEqualTo installId,
+                        ScanRecordDocument::userId isEqualTo null,
+                    ),
                 )
-                val u = Update().set("userId", e.appUserId).set("updatedAt", Instant.now())
+                val u = Update().set(ScanRecordDocument::userId, e.appUserId)
+                    .set(BaseDocument::updatedAt, Instant.now())
                 mongo.updateMulti(q, u, ScanRecordDocument::class.java)
                 mongo.updateMulti(q, u, SubscriptionDocument::class.java)
             }
