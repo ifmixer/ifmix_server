@@ -30,3 +30,9 @@ app:
     free: 1000
     pro: 10000
     enterprise: 1000000
+
+# Exposed ORM — Phase 1 并行引入，通过此开关控制是否启用
+exposed:
+  enabled: false
+  todo:
+    enabled: false
