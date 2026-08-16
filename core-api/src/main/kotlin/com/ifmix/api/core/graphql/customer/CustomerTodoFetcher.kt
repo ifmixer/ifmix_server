@@ -28,7 +28,7 @@ class CustomerTodoFetcher(
     private val todoItemService: TodoItemService,
 ) {
 
-    @DgsQuery
+    @DgsQuery(field = "todo_get")
     fun todo(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): TodoType? {
         val ctx = getContext(dfe)
         val doc = todoService.findById(ctx.requestContext, id) ?: return null
@@ -38,7 +38,7 @@ class CustomerTodoFetcher(
         return doc.toTodoType()
     }
 
-    @DgsQuery
+    @DgsQuery(field = "todo_list")
     fun todos(
         @InputArgument cursor: String?,
         @InputArgument limit: Int?,
@@ -55,7 +55,7 @@ class CustomerTodoFetcher(
         )
     }
 
-    @DgsMutation
+    @DgsMutation(field = "todo_create")
     fun createTodo(
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
@@ -77,7 +77,7 @@ class CustomerTodoFetcher(
         return todoService.getById(ctx.requestContext, todoId).toTodoType()
     }
 
-    @DgsMutation
+    @DgsMutation(field = "todo_update")
     fun updateTodo(
         @InputArgument id: String,
         @InputArgument input: Map<String, Any?>,
@@ -97,7 +97,7 @@ class CustomerTodoFetcher(
         return todoService.getById(ctx.requestContext, id).toTodoType()
     }
 
-    @DgsMutation
+    @DgsMutation(field = "todo_delete")
     fun deleteTodo(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): Boolean {
         val ctx = getContext(dfe)
         val doc = todoService.getById(ctx.requestContext, id)
@@ -108,7 +108,7 @@ class CustomerTodoFetcher(
         return todoService.deleteById(ctx.requestContext, id)
     }
 
-    @DgsMutation
+    @DgsMutation(field = "todoItem_create")
     fun createTodoItem(
         @InputArgument todoId: String,
         @InputArgument input: Map<String, Any>,
@@ -125,7 +125,7 @@ class CustomerTodoFetcher(
         return todoItemService.getById(ctx.requestContext, id).toTodoItemType()
     }
 
-    @DgsMutation
+    @DgsMutation(field = "todoItem_update")
     fun updateTodoItem(
         @InputArgument id: String,
         @InputArgument input: Map<String, Any?>,
@@ -138,7 +138,7 @@ class CustomerTodoFetcher(
         return todoItemService.getById(ctx.requestContext, id).toTodoItemType()
     }
 
-    @DgsMutation
+    @DgsMutation(field = "todoItem_delete")
     fun deleteTodoItem(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): Boolean {
         val ctx = getContext(dfe)
         return todoItemService.deleteById(ctx.requestContext, id)

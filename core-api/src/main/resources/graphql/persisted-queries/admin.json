@@ -1,10 +1,10 @@
 {
   "ad1234567890": {
-    "name": "AdminGetTodos",
-    "query": "query AdminGetTodos($cursor: String, $limit: Int, $userId: String) { todos(cursor: $cursor, limit: $limit, userId: $userId) { items { id title done createdAt updatedAt } nextCursor hasMore } }"
+    "name": "todo_list",
+    "query": "query todo_list($cursor: String, $limit: Int, $userId: String) { todo_list(cursor: $cursor, limit: $limit, userId: $userId) { items { id title done createdAt updatedAt } nextCursor hasMore } }"
   },
-  "ad0987654321": {
-    "name": "BatchDeleteTodos",
-    "query": "mutation BatchDeleteTodos($ids: [ID!]!) { batchDeleteTodos(ids: $ids) { success modifiedCount } }"
+  "adbatchdel01": {
+    "name": "todo_batchDelete",
+    "query": "mutation todo_batchDelete($ids: [ID!]!) { todo_batchDelete(ids: $ids) { success modifiedCount } }"
   }
 }

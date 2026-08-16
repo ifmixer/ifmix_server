@@ -16,7 +16,7 @@ class AdminTodoFetcher(
     private val todoItemService: TodoItemService,
 ) {
 
-    @DgsMutation
+    @DgsMutation(field = "todo_batchDelete")
     fun batchDeleteTodos(
         @InputArgument ids: List<String>,
         dfe: DgsDataFetchingEnvironment,
@@ -28,7 +28,7 @@ class AdminTodoFetcher(
         return OperationResult(success = count == ids.size, modifiedCount = count)
     }
 
-    @DgsMutation
+    @DgsMutation(field = "todo_batchUpdate")
     fun batchUpdateTodos(
         @InputArgument patches: List<Map<String, Any?>>,
         dfe: DgsDataFetchingEnvironment,
@@ -46,7 +46,7 @@ class AdminTodoFetcher(
         return OperationResult(success = count == patchPairs.size, modifiedCount = count)
     }
 
-    @DgsMutation
+    @DgsMutation(field = "todoItem_batchDelete")
     fun batchDeleteTodoItems(
         @InputArgument ids: List<String>,
         dfe: DgsDataFetchingEnvironment,

@@ -18,7 +18,7 @@ import java.time.Instant
 @DgsComponent
 class CustomerIapFetcher(private val iapService: IapService) {
 
-    @DgsMutation
+    @DgsMutation(field = "iap_verifyPurchase")
     fun verifyPurchase(
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,

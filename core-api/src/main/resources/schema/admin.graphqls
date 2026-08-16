@@ -1,10 +1,10 @@
 extend type Mutation {
     # Admin batch
-    batchDeleteTodos(ids: [ID!]!): OperationResult! @requirePermission(permission: "todo:batch")
-    batchUpdateTodos(patches: [BatchUpdateTodoInput!]!): OperationResult! @requirePermission(permission: "todo:batch")
-    batchDeleteTodoItems(ids: [ID!]!): OperationResult! @requirePermission(permission: "todo:batch")
+    todo_batchDelete(ids: [ID!]!): OperationResult! @requirePermission(permission: "todo:batch")
+    todo_batchUpdate(patches: [BatchUpdateTodoInput!]!): OperationResult! @requirePermission(permission: "todo:batch")
+    todoItem_batchDelete(ids: [ID!]!): OperationResult! @requirePermission(permission: "todo:batch")
 
     # AppConfig
-    createAppConfigRevision(input: CreateAppConfigRevisionInput!): AppConfigRevision! @requirePermission(permission: "appconfig:write")
-    toggleAppConfigRevision(id: ID!, enabled: Boolean!): AppConfigRevision! @requirePermission(permission: "appconfig:write")
+    appConfig_createRevision(input: CreateAppConfigRevisionInput!): AppConfigRevision! @requirePermission(permission: "appconfig:write")
+    appConfig_toggleRevision(id: ID!, enabled: Boolean!): AppConfigRevision! @requirePermission(permission: "appconfig:write")
 }

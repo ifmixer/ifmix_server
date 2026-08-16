@@ -35,14 +35,14 @@ class CustomerScanFetcher(
     private val uploadRecordRepo: UploadRecordRepo,
 ) {
 
-    @DgsQuery
+    @DgsQuery(field = "scan_get")
     fun scanRecord(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): ScanRecord? {
         val ctx = getContext(dfe)
         val doc = antiqueService.getScanRecordById(id)
         return doc.toScanRecord()
     }
 
-    @DgsQuery
+    @DgsQuery(field = "scan_list")
     fun scanRecords(
         @InputArgument cursor: String?,
         @InputArgument limit: Int?,
@@ -59,7 +59,7 @@ class CustomerScanFetcher(
         )
     }
 
-    @DgsMutation
+    @DgsMutation(field = "scan_create")
     fun newScan(
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
@@ -72,7 +72,7 @@ class CustomerScanFetcher(
         return antiqueService.getScanRecordById(id).toScanRecord()
     }
 
-    @DgsMutation
+    @DgsMutation(field = "scan_update")
     fun updateScan(
         @InputArgument id: String,
         @InputArgument collected: Boolean,
@@ -82,13 +82,13 @@ class CustomerScanFetcher(
         return scanRecordRepo.updateById(ctx.requestContext, id, mapCollectedPatch(collected))
     }
 
-    @DgsMutation
+    @DgsMutation(field = "scan_delete")
     fun deleteScan(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): Boolean {
         val ctx = getContext(dfe)
         return scanRecordRepo.deleteById(ctx.requestContext, id)
     }
 
-    @DgsMutation
+    @DgsMutation(field = "storage_presignUpload")
     fun presignUpload(
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
@@ -111,7 +111,7 @@ class CustomerScanFetcher(
         )
     }
 
-    @DgsMutation
+    @DgsMutation(field = "storage_presignDownload")
     fun presignDownload(
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,

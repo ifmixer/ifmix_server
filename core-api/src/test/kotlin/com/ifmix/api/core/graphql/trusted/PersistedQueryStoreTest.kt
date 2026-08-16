@@ -24,7 +24,7 @@ class PersistedQueryStoreTest {
     fun `get returns entry for known hash and customer bff`() {
         val entry = store.get("a1b2c3d4e5f6", "customer")
         assertThat(entry).isNotNull()
-        assertThat(entry!!.name).isEqualTo("GetTodo")
+        assertThat(entry!!.name).isEqualTo("todo_get")
     }
 
     @Test
@@ -43,15 +43,15 @@ class PersistedQueryStoreTest {
     fun `get returns admin entry for admin bff`() {
         val entry = store.get("ad1234567890", "admin")
         assertThat(entry).isNotNull()
-        assertThat(entry!!.name).isEqualTo("AdminGetTodos")
+        assertThat(entry!!.name).isEqualTo("todo_list")
     }
 
     @Test
     fun `getByName returns entry for known name and customer bff`() {
-        val entry = store.getByName("GetTodo", "customer")
+        val entry = store.getByName("todo_get", "customer")
         assertThat(entry).isNotNull()
-        assertThat(entry!!.name).isEqualTo("GetTodo")
-        assertThat(entry.query).contains("query GetTodo")
+        assertThat(entry!!.name).isEqualTo("todo_get")
+        assertThat(entry.query).contains("query todo_get")
     }
 
     @Test
@@ -62,15 +62,15 @@ class PersistedQueryStoreTest {
 
     @Test
     fun `getByName returns entry for admin bff`() {
-        val entry = store.getByName("AdminGetTodos", "admin")
+        val entry = store.getByName("todo_list", "admin")
         assertThat(entry).isNotNull()
-        assertThat(entry!!.name).isEqualTo("AdminGetTodos")
+        assertThat(entry!!.name).isEqualTo("todo_list")
     }
 
     @Test
     fun `getByName finds same entry as get for known hash`() {
         val byHash = store.get("f6e5d4c3b2a1", "customer")
-        val byName = store.getByName("GetTodos", "customer")
+        val byName = store.getByName("todo_list", "customer")
         assertThat(byName).isNotNull()
         assertThat(byName!!.name).isEqualTo(byHash!!.name)
         assertThat(byName.query).isEqualTo(byHash.query)

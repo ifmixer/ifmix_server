@@ -25,13 +25,13 @@ class AdminAppConfigFetcher(
     private val appConfigRepo: AppConfigRepo,
 ) {
 
-    @DgsQuery
+    @DgsQuery(field = "appConfig_getCurrent")
     fun currentAppConfig(dfe: DgsDataFetchingEnvironment): AppConfigView? {
         val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
         return appConfigRepo.getByAppId(ctx.requestContext.appId)
     }
 
-    @DgsMutation
+    @DgsMutation(field = "appConfig_createRevision")
     fun createAppConfigRevision(
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
@@ -61,7 +61,7 @@ class AdminAppConfigFetcher(
             ?: throw IllegalStateException("Failed to read AppConfig after creation")
     }
 
-    @DgsMutation
+    @DgsMutation(field = "appConfig_toggleRevision")
     fun toggleAppConfigRevision(
         @InputArgument id: String,
         @InputArgument enabled: Boolean,

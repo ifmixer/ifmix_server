@@ -23,13 +23,13 @@ class CustomerCollectionFetcher(
     private val collectionService: CollectionService,
 ) {
 
-    @DgsQuery
+    @DgsQuery(field = "collection_getDefault")
     fun defaultCollection(dfe: DgsDataFetchingEnvironment): Collection {
         val ctx = getContext(dfe)
         return collectionService.getDefault(ctx.requestContext).toCollection()
     }
 
-    @DgsQuery
+    @DgsQuery(field = "collectionItem_list")
     fun collectionItems(
         @InputArgument collectionId: String?,
         @InputArgument cursor: String?,
@@ -51,7 +51,7 @@ class CustomerCollectionFetcher(
         )
     }
 
-    @DgsMutation
+    @DgsMutation(field = "collectionItem_add")
     fun addCollectionItem(
         @InputArgument collectionId: String?,
         @InputArgument scanRecordId: String,
@@ -62,7 +62,7 @@ class CustomerCollectionFetcher(
         return collectionService.addItem(ctx.requestContext, req)
     }
 
-    @DgsMutation
+    @DgsMutation(field = "collectionItem_remove")
     fun removeCollectionItems(
         @InputArgument collectionId: String?,
         @InputArgument scanRecordIds: List<String>,

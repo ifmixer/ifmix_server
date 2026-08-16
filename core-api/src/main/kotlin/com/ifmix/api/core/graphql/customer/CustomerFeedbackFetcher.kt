@@ -13,7 +13,7 @@ import com.netflix.graphql.dgs.context.DgsContext
 @DgsComponent
 class CustomerFeedbackFetcher(private val feedbackService: FeedbackService) {
 
-    @DgsMutation
+    @DgsMutation(field = "feedback_submit")
     fun submitFeedback(
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
