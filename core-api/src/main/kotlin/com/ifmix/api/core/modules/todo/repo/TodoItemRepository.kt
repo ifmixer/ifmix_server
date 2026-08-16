@@ -2,6 +2,7 @@ package com.ifmix.api.core.modules.todo.repo
 
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.modules.todo.document.TodoItemDocument
+import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -14,9 +15,9 @@ import java.time.Instant
 class TodoItemRepository(private val mongo: MongoTemplate) {
 
     fun insertOne(ctx: RequestContext, doc: TodoItemDocument): String {
-        doc.appId = ctx.appId
+        doc.appId = ObjectId(ctx.appId)
         mongo.insert(doc)
-        return doc.id
+        return doc.id.toHexString()
     }
 
     fun findById(ctx: RequestContext, id: String): TodoItemDocument? {

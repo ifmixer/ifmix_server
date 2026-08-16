@@ -4,6 +4,7 @@ plugins {
     id("org.springframework.boot")
     id("io.spring.dependency-management")
     id("com.google.devtools.ksp")
+    id("com.netflix.dgs.codegen") version "8.4.0"
 }
 
 dependencies {
@@ -21,10 +22,15 @@ dependencies {
     // Konvert：KSP 编译期生成 DTO<->document 映射（Kotlin 2.3.10 + KSP 2.3.10）
     implementation("io.mcarle:konvert-api:4.5.0")
     ksp("io.mcarle:konvert:4.5.0")
+    // 自定义 Konvert TypeConverter 所需依赖（ObjectId↔String 转换）
+    implementation("com.google.devtools.ksp:symbol-processing-api")
+    implementation("com.squareup:kotlinpoet-jvm:2.2.0")
+    implementation("io.mcarle:konvert-converter-api:4.5.0")
+    implementation("io.mcarle:konvert-converter:4.5.0")
 
     testImplementation("com.willowtreeapps.assertk:assertk-jvm:0.28.1")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.mockito:mockito-core:5.14.2")
+    testImplementation("org.mockito:mockito-core:5.14.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
@@ -53,12 +59,48 @@ dependencies {
     implementation("com.netflix.graphql.dgs:graphql-dgs-spring-boot-micrometer")
     // json-path 3.x — DGS 12 需要 Jackson3JsonProvider
     implementation("com.jayway.jsonpath:json-path:3.0.0")
+
+    // DGS Codegen — 编译期从 schema 生成 Kotlin 类型（仅开发时运行）
+    developmentOnly("com.netflix.graphql.dgs.codegen:graphql-dgs-codegen-core")
+}
+
+// DGS Codegen — 从 schema.graphqls 生成 Kotlin data class
+tasks.named<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask>("generateJava") {
+    language = "KOTLIN"
+    packageName = "com.ifmix.api.core.graphql.generated"
+    generatedSourcesDir = file("build/generated/dgs").absolutePath
+    @Suppress("UNCHECKED_CAST")
+    // DGS Codegen — 扫描 schema/ 下所有 .graphqls 文件（自动合并）
+    schemaPaths = mutableListOf(project.rootProject.projectDir.absolutePath + "/core-api/src/main/resources/schema")
+    generateClient = false
+    generateDataTypes = true
+    @Suppress("UNCHECKED_AS")
+    typeMapping = mutableMapOf(
+        "DateTime" to "java.time.Instant",
+        "JSON" to "Map<String, Any?>",
+        "Long" to "kotlin.Long",
+    )
+    includeQueries = mutableListOf<String>()
+    includeMutations = mutableListOf<String>()
+}
+
+// Ensure generated sources are compiled before Kotlin compilation
+tasks.named("compileKotlin") {
+    dependsOn("generateJava")
 }
 
 kotlin {
     jvmToolchain(25)
     compilerOptions {
         freeCompilerArgs.add("-Xjsr305=strict")
+    }
+
+    sourceSets {
+        main {
+            kotlin {
+                srcDir("build/generated/dgs/generated/sources/dgs-codegen")
+            }
+        }
     }
 }
 

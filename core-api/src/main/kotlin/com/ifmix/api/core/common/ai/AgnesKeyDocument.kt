@@ -3,7 +3,7 @@ package com.ifmix.api.core.common.ai
 import com.ifmix.api.core.common.db.BaseDocument
 import com.ifmix.api.core.common.db.AppScoped
 import com.ifmix.api.core.common.db.SoftDeletable
-import org.springframework.data.annotation.Id
+import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.mapping.Document
 import java.time.Instant
@@ -18,7 +18,7 @@ import java.time.Instant
 class AgnesKeyDocument : BaseDocument(), AppScoped, SoftDeletable {
 
     /** 所属应用 ID（分片键）。 */
-    override var appId: String = ""
+    override lateinit var appId: ObjectId
 
     /** 删除时间（null = 启用，非 null = 已软删）。 */
     override var deletedAt: Instant? = null

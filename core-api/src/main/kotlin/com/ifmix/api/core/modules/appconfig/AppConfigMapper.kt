@@ -4,8 +4,8 @@ package com.ifmix.api.core.modules.appconfig
 object AppConfigMapper {
 
     fun toView(doc: AppConfigDocument): AppConfigView = AppConfigView(
-        id = doc.id,
-        appId = doc.appId,
+        id = doc.id.toHexString(),
+        appId = doc.appId.toHexString(),
         authTenantId = doc.authTenantId,
         revision = doc.revision,
         appleBundleId = doc.appleBundleId,

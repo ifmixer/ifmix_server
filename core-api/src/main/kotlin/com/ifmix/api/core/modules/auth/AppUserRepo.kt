@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.isEqualTo
+import org.bson.types.ObjectId
 import org.springframework.stereotype.Component
 import java.time.Instant
 
@@ -21,10 +22,10 @@ class AppUserRepo(private val mongo: MongoTemplate) {
         findId(appId, authIdentityId)?.let { return it }
         val now = Instant.now()
         val doc = AppUserDocument().apply {
-            this.appId = appId; this.authIdentityId = authIdentityId; createdAt = now; updatedAt = now
+            this.appId = ObjectId(appId); this.authIdentityId = authIdentityId; createdAt = now; updatedAt = now
         }
         return try {
-            mongo.insert(doc); doc.id
+            mongo.insert(doc); doc.id.toHexString()
         } catch (e: DuplicateKeyException) {
             findId(appId, authIdentityId) ?: throw e
         }
@@ -33,5 +34,5 @@ class AppUserRepo(private val mongo: MongoTemplate) {
     private fun findId(appId: String, authIdentityId: String): String? = mongo.findOne(
         Query(Criteria.where("appId").isEqualTo(appId).and("authIdentityId").isEqualTo(authIdentityId)),
         AppUserDocument::class.java,
-    )?.id
+    )?.id?.toHexString()
 }

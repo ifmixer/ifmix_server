@@ -55,7 +55,7 @@ open class AgnesKeyStore(
         val docs = loadKeys()
         val states = mutableMapOf<String, KeyState>()
         for (doc in docs) {
-            val keyId = doc.id
+            val keyId = doc.id.toHexString()
             val quota = doc.rateLimit.takeIf { it > 0 } ?: 999_999L
             // 从 Redis 读取当前已用计数，计算剩余
             val used = redis.opsForValue().get(buildQuotaKey(keyId))?.toLongOrNull() ?: 0L
@@ -97,11 +97,11 @@ open class AgnesKeyStore(
         for (candidate in candidates) {
             cumulative += candidate.remaining
             if (target <= cumulative) {
-                return candidate.doc.id
+                return candidate.doc.id.toHexString()
             }
         }
         // 浮点精度兜底：返回最后一个候选
-        return candidates.last().doc.id
+        return candidates.last().doc.id.toHexString()
     }
 
     /**

@@ -42,15 +42,15 @@ class SubscriptionRepo(
                 .set("rawResponse", doc.rawResponse)
                 .set("updatedAt", now)
             mongo.updateFirst(query, update, SubscriptionDocument::class.java)
-            return existing.id
+            return existing.id.toHexString()
         }
 
         // 插入新文档
-        doc.appId = ctx.appId
+        doc.appId = org.bson.types.ObjectId(ctx.appId)
         doc.createdAt = now
         doc.updatedAt = now
         mongo.insert(doc)
-        return doc.id
+        return doc.id.toHexString()
     }
 
     /**

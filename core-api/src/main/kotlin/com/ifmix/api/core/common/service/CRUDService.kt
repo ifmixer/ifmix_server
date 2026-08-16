@@ -7,6 +7,7 @@ import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.common.db.SoftDeletable
 import com.ifmix.api.core.common.http.RequestContext
+import org.bson.types.ObjectId
 import java.time.Instant
 
 /**
@@ -20,12 +21,12 @@ class CRUDService<T : BaseDocument>(
     /** 盖章能力字段 + 时间戳后插入，返回 Mongo 生成的 id。 */
     fun createOne(ctx: RequestContext, entity: T): String {
         val now = Instant.now()
-        if (entity is AppScoped) entity.appId = ctx.appId
+        if (entity is AppScoped) entity.appId = ObjectId(ctx.appId)
         entity.createdAt = now
         entity.updatedAt = now
         if (entity is SoftDeletable) entity.deletedAt = null
         repo.insertOne(ctx, entity)
-        return entity.id
+        return entity.id.toHexString()
     }
 
     fun findById(ctx: RequestContext, id: String): T? = repo.findById(ctx, id)

@@ -54,13 +54,13 @@ class AppConfigRepo(
             val now = Instant.now()
             if (current != null) {
                 mongo.updateFirst(
-                    Query(Criteria.where("_id").`is`(ObjectId(current.id))),
+                    Query(Criteria.where("_id").`is`(current.id)),
                     Update().set("deletedAt", now).set("updatedAt", now),
                     AppConfigDocument::class.java,
                 )
             }
             val next = AppConfigDocument().apply {
-                this.appId = appId
+                this.appId = ObjectId(appId)
                 authTenantId = patch.authTenantId ?: current?.authTenantId
                 appleBundleId = patch.appleBundleId ?: current?.appleBundleId
                 androidPackageName = patch.androidPackageName ?: current?.androidPackageName

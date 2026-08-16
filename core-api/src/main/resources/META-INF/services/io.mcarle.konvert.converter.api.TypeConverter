@@ -1,0 +1,4 @@
+io.mcarle.konvert.converter.api.TypeConverter
+#
+com.ifmix.api.core.common.db.ObjectIdToStringConverter
+com.ifmix.api.core.common.db.StringToObjectIdConverter

@@ -7,7 +7,7 @@ import com.ifmix.api.core.modules.todo.document.TodoItemDocument
 
 /** TodoDocument → GraphQL TodoType 转换。 */
 fun TodoDocument.toTodoType(): TodoType = TodoType(
-    id = this.id,
+    id = this.id.toHexString(),
     title = this.title,
     done = this.done,
     meta = this.meta,
@@ -17,7 +17,7 @@ fun TodoDocument.toTodoType(): TodoType = TodoType(
 
 /** TodoItemDocument → GraphQL TodoItemType 转换。 */
 fun TodoItemDocument.toTodoItemType(): TodoItemType = TodoItemType(
-    id = this.id,
+    id = this.id.toHexString(),
     todoId = this.todoId,
     content = this.content,
     done = this.done,

@@ -3,13 +3,13 @@ package com.ifmix.api.core.graphql.customer
 import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
-import com.ifmix.api.core.graphql.common.type.PresignDownloadResult
-import com.ifmix.api.core.graphql.common.type.PresignUploadResult
-import com.ifmix.api.core.graphql.common.type.ScanConnection
-import com.ifmix.api.core.graphql.common.type.ScanRecordType
+import com.ifmix.api.core.graphql.generated.types.PresignDownloadResult
+import com.ifmix.api.core.graphql.generated.types.PresignUploadResult
+import com.ifmix.api.core.graphql.generated.types.ScanConnection
+import com.ifmix.api.core.graphql.generated.types.ScanRecord
 import com.ifmix.api.core.modules.antique.AntiqueService
 import com.ifmix.api.core.modules.antique.CreateScanRequest
-import com.ifmix.api.core.modules.antique.toScanRecordType
+import com.ifmix.api.core.modules.antique.toScanRecord
 import com.ifmix.api.core.modules.antique.ScanRecordDocument
 import com.ifmix.api.core.modules.antique.ScanRecordRepository
 import com.ifmix.api.core.modules.storage.UploadRecordDocument
@@ -36,10 +36,10 @@ class CustomerScanFetcher(
 ) {
 
     @DgsQuery
-    fun scanRecord(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): ScanRecordType? {
+    fun scanRecord(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): ScanRecord? {
         val ctx = getContext(dfe)
         val doc = antiqueService.getScanRecordById(id)
-        return doc.toScanRecordType()
+        return doc.toScanRecord()
     }
 
     @DgsQuery
@@ -53,7 +53,7 @@ class CustomerScanFetcher(
         val input = CursorQueryInput(cursor = cursor, limit = limit)
         val page = antiqueService.findByCursor(ctx.requestContext, input)
         return ScanConnection(
-            items = page.items.map { it.toScanRecordType() },
+            items = page.items.map { it.toScanRecord() },
             nextCursor = page.nextCursor,
             hasMore = page.hasMore,
         )
@@ -63,13 +63,13 @@ class CustomerScanFetcher(
     fun newScan(
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
-    ): ScanRecordType {
+    ): ScanRecord {
         val ctx = getContext(dfe)
         val imageUrl = input["imageUrl"] as String
         val relatedId = input["relatedId"] as? String
         val request = CreateScanRequest(imageUrl = imageUrl, relatedId = relatedId)
         val id = antiqueService.createScan(ctx.requestContext, request)
-        return antiqueService.getScanRecordById(id).toScanRecordType()
+        return antiqueService.getScanRecordById(id).toScanRecord()
     }
 
     @DgsMutation

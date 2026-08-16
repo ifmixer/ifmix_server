@@ -2,6 +2,7 @@ package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.db.AppScoped
 import com.ifmix.api.core.common.db.BaseDocument
+import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
@@ -18,7 +19,7 @@ import java.time.Instant
     CompoundIndex(name = "refresh_device_idx", def = "{'deviceSecretId': 1}"),
 )
 class AppRefreshTokenDocument : BaseDocument(), AppScoped {
-    override var appId: String = ""
+    override lateinit var appId: ObjectId
     var appUserId: String? = null
     var deviceSecretId: String? = null
     var tokenHash: String? = null

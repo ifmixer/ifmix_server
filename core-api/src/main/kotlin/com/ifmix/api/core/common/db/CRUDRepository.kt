@@ -221,7 +221,7 @@ open class CRUDRepository<T : BaseDocument>(
     private fun mongoField(field: String): String = if (field == "id") "_id" else field
 
     private fun encodeNextCursor(last: T, sortBy: String, sortField: String): String {
-        val id = last.id
+        val id = last.id.toHexString()
         return if (sortField == "_id") id else Cursor.encode(propertyValue(last, sortBy), id)
     }
 

@@ -45,7 +45,7 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
         )
         if (existing?.authIdentityId != null) {
             mongo.updateFirst(
-                Query(Criteria.where("_id").isEqualTo(org.bson.types.ObjectId(existing.id))),
+                Query(Criteria.where("_id").isEqualTo(existing.id)),
                 Update().set("email", input.email).set("emailVerified", input.emailVerified)
                     .set("phone", input.phone).set("loginIp", input.loginIp)
                     .set("loginInstallId", input.loginInstallId).set("loginAppId", input.loginAppId)
@@ -68,7 +68,7 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
         mongo.insert(identity)
         val pi = AuthProviderIdentityDocument().apply {
             authTenantId = tenantId
-            authIdentityId = identity.id
+            authIdentityId = identity.id.toHexString()
             provider = input.provider
             providerAccountId = input.accountId
             email = input.email
@@ -79,6 +79,6 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
             createdAt = now; updatedAt = now
         }
         mongo.insert(pi)
-        return identity.id
+        return identity.id.toHexString()
     }
 }

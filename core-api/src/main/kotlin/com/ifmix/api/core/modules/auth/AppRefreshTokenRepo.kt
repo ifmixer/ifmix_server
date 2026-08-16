@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.Instant
+import org.bson.types.ObjectId
 
 /** 签发刷新令牌的结果。 */
 data class RefreshIssued(val id: String, val token: String, val expiresAt: Instant)
@@ -25,13 +26,13 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         val now = Instant.now()
         val exp = now.plus(ttl)
         val doc = AppRefreshTokenDocument().apply {
-            if (id != null) this.id = id
-            this.appId = appId; this.appUserId = appUserId; this.deviceSecretId = deviceSecretId
+            if (id != null) this.id = ObjectId(id)
+            this.appId = ObjectId(appId); this.appUserId = appUserId; this.deviceSecretId = deviceSecretId
             tokenHash = Hashing.sha256Base64Url(token); this.loginInstallId = loginInstallId
             expiresAt = exp; createdAt = now; updatedAt = now
         }
         mongo.insert(doc)
-        return RefreshIssued(doc.id, token, exp)
+        return RefreshIssued(doc.id.toHexString(), token, exp)
     }
 
     fun findByHash(appId: String, tokenPlain: String): AppRefreshTokenDocument? = mongo.findOne(

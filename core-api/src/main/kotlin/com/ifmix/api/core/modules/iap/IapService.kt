@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.iap
 import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
+import org.bson.types.ObjectId
 import com.ifmix.api.core.modules.appconfig.AppConfigRepo
 import java.time.Instant
 
@@ -45,7 +46,7 @@ class IapService(
 
         // 落盘订阅记录
         val doc = SubscriptionDocument().apply {
-            appId = ctx.appId
+            appId = ObjectId(ctx.appId)
             subscriptionPxid = result.originalTransactionId ?: "pending-${java.util.UUID.randomUUID()}"
             originalTransactionId = result.originalTransactionId
             productId = result.productId

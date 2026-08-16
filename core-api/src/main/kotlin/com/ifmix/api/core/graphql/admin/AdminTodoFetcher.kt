@@ -1,7 +1,7 @@
 package com.ifmix.api.core.graphql.admin
 
 import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
-import com.ifmix.api.core.graphql.common.type.OperationResult
+import com.ifmix.api.core.graphql.generated.types.OperationResult
 import com.ifmix.api.core.modules.todo.TodoService
 import com.ifmix.api.core.modules.todo.service.TodoItemService
 import com.netflix.graphql.dgs.DgsComponent

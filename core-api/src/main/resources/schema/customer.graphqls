@@ -1,0 +1,39 @@
+type Query {
+    todo(id: ID!): Todo
+    todos(cursor: String, limit: Int, userId: String): TodoConnection!
+
+    scanRecord(id: ID!): ScanRecord
+    scanRecords(cursor: String, limit: Int, collected: Boolean): ScanConnection!
+    defaultCollection: Collection!
+    collectionItems(collectionId: ID, cursor: String, limit: Int): CollectionItemConnection!
+    currentAppConfig: AppConfigRevision
+}
+
+type Mutation {
+    # Customer
+    createTodo(input: CreateTodoInput!): Todo! @requirePermission(permission: "todo:write")
+    updateTodo(id: ID!, input: UpdateTodoInput!): Todo! @requirePermission(permission: "todo:write")
+    deleteTodo(id: ID!): Boolean! @requirePermission(permission: "todo:write")
+    createTodoItem(todoId: ID!, input: CreateTodoItemInput!): TodoItem! @requirePermission(permission: "todo:write")
+    updateTodoItem(id: ID!, input: UpdateTodoItemInput!): TodoItem! @requirePermission(permission: "todo:write")
+    deleteTodoItem(id: ID!): Boolean! @requirePermission(permission: "todo:write")
+
+    # Scan
+    newScan(input: NewScanInput!): ScanRecord! @requirePermission(permission: "scan:write")
+    updateScan(id: ID!, collected: Boolean): Boolean! @requirePermission(permission: "scan:write")
+    deleteScan(id: ID!): Boolean! @requirePermission(permission: "scan:write")
+
+    # Storage
+    presignUpload(input: PresignUploadInput!): PresignUploadResult! @requirePermission(permission: "storage:write")
+    presignDownload(input: PresignDownloadInput!): PresignDownloadResult! @requirePermission(permission: "storage:read")
+
+    # Collection
+    addCollectionItem(collectionId: ID, scanRecordId: ID!): ID! @requirePermission(permission: "collection:write")
+    removeCollectionItems(collectionId: ID, scanRecordIds: [ID!]!): Int! @requirePermission(permission: "collection:write")
+
+    # Feedback
+    submitFeedback(input: SubmitFeedbackInput!): ID! @requirePermission(permission: "feedback:write")
+
+    # IAP
+    verifyPurchase(input: VerifyPurchaseInput!): VerifyPurchaseResult! @requirePermission(permission: "iap:write")
+}

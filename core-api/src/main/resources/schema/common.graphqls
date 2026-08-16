@@ -1,0 +1,128 @@
+scalar DateTime
+scalar JSON
+scalar Long
+
+directive @requirePermission(permission: String!) on FIELD_DEFINITION
+
+# ---- Types ----
+
+type Todo {
+    id: ID!
+    title: String!
+    done: Boolean!
+    meta: JSON
+    items: [TodoItem!]!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+type TodoItem {
+    id: ID!
+    todoId: ID!
+    content: String!
+    done: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+type TodoConnection {
+    items: [Todo!]!
+    nextCursor: String
+    hasMore: Boolean!
+}
+
+type OperationResult {
+    success: Boolean!
+    modifiedCount: Int
+}
+
+type ScanRecord {
+    id: ID!
+    scanId: String
+    imageUrl: String
+    status: String
+    resultJson: String
+    tier: String
+    collected: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+type ScanConnection {
+    items: [ScanRecord!]!
+    nextCursor: String
+    hasMore: Boolean!
+}
+
+type PresignUploadResult {
+    mediaId: ID!
+    uploadUrl: String!
+    imageKey: String!
+    downloadUrl: String!
+}
+
+type PresignDownloadResult {
+    downloadUrl: String!
+}
+
+# Collection
+type Collection { id: ID! isDefault: Boolean! createdAt: DateTime! }
+type CollectionItemType { id: ID! collectionId: ID! scanRecordId: ID! scanRecord: ScanRecord createdAt: DateTime! }
+type CollectionItemConnection { items: [CollectionItemType!]! nextCursor: String hasMore: Boolean! }
+
+# IAP
+type VerifyPurchaseResult { expiresAt: Long state: String! productId: String! tier: String! }
+
+# AppConfig
+type AppConfigRevision { id: ID! appId: ID! content: JSON revisionNumber: Int! enabled: Boolean! slug: String! note: String! createdAt: DateTime! }
+
+# ---- Inputs ----
+
+input CreateTodoInput {
+    title: String!
+    meta: JSON
+    items: [CreateTodoItemInput!]
+}
+
+input UpdateTodoInput {
+    title: String
+    done: Boolean
+}
+
+input CreateTodoItemInput {
+    content: String!
+}
+
+input UpdateTodoItemInput {
+    content: String
+    done: Boolean
+}
+
+input BatchUpdateTodoInput {
+    id: ID!
+    title: String
+    done: Boolean
+}
+
+input NewScanInput {
+    imageUrl: String!
+    relatedId: String
+}
+
+input PresignUploadInput {
+    category: String!
+    contentType: String!
+}
+
+input PresignDownloadInput {
+    imageKey: String!
+    durationSeconds: Int
+}
+
+input AddCollectionItemInput { collectionId: ID scanRecordId: ID! }
+
+input SubmitFeedbackInput { category: String! comment: String scanRecordId: ID }
+
+input VerifyPurchaseInput { platform: String! purchaseToken: String productId: String! }
+
+input CreateAppConfigRevisionInput { content: JSON! revisionNumber: Int! enabled: Boolean! slug: String! note: String! authTenantId: ID appleBundleId: String androidPackageName: String }

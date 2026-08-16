@@ -1,14 +1,15 @@
 package com.ifmix.api.core.graphql.customer
 
 import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
-import com.ifmix.api.core.graphql.common.type.CollectionItemConnection
-import com.ifmix.api.core.graphql.common.type.CollectionType
-import com.ifmix.api.core.modules.antique.toScanRecordType
+import com.ifmix.api.core.graphql.generated.types.CollectionItemConnection
+import com.ifmix.api.core.graphql.generated.types.CollectionItemType
+import com.ifmix.api.core.graphql.generated.types.Collection
+import com.ifmix.api.core.modules.antique.toScanRecord
 import com.ifmix.api.core.modules.collection.AddItemReq
 import com.ifmix.api.core.modules.collection.ListItemsReq
 import com.ifmix.api.core.modules.collection.RemoveItemsReq
 import com.ifmix.api.core.modules.collection.toCollectionItemType
-import com.ifmix.api.core.modules.collection.toCollectionType
+import com.ifmix.api.core.modules.collection.toCollection
 import com.ifmix.api.core.modules.collection.CollectionService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -23,9 +24,9 @@ class CustomerCollectionFetcher(
 ) {
 
     @DgsQuery
-    fun defaultCollection(dfe: DgsDataFetchingEnvironment): CollectionType {
+    fun defaultCollection(dfe: DgsDataFetchingEnvironment): Collection {
         val ctx = getContext(dfe)
-        return collectionService.getDefault(ctx.requestContext).toCollectionType()
+        return collectionService.getDefault(ctx.requestContext).toCollection()
     }
 
     @DgsQuery
@@ -42,10 +43,10 @@ class CustomerCollectionFetcher(
 
         return CollectionItemConnection(
             items = items.map { item ->
-                val scanRecord = item.scanRecordId?.let { scanMap[it.toHexString()] }?.toScanRecordType()
+                val scanRecord = item.scanRecordId?.let { scanMap[it.toHexString()] }?.toScanRecord()
                 item.toCollectionItemType(scanRecord)
             },
-            nextCursor = if (items.isNotEmpty()) items.last().id else null,
+            nextCursor = if (items.isNotEmpty()) items.last().id?.toHexString() else null,
             hasMore = hasMore,
         )
     }

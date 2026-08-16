@@ -52,13 +52,13 @@ class CollectionService(
      * 解析 collectionId：null → 默认夹；指定 id → 验证归属。
      */
     private fun resolveCollectionId(ctx: RequestContext, collectionId: String?): String {
-        if (collectionId == null) return getDefault(ctx).id
+        if (collectionId == null) return getDefault(ctx).id.toHexString()
         val coll = collectionCrud.findById(ctx, collectionId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "collection not found")
         if (!ownsRow(ctx, coll.userId, coll.installId)) {
             throw ApiError(ErrorCode.NOT_FOUND, "collection not found")
         }
-        return coll.id
+        return coll.id.toHexString()
     }
 
     /**
@@ -113,7 +113,7 @@ class CollectionService(
         // 批量加载关联的 scan records
         val scanIds = pageItems.mapNotNull { it.scanRecordId?.toHexString() }.distinct()
         val scanMap = if (scanIds.isNotEmpty()) {
-            antiqueService.findByIds(ctx, scanIds).associateBy { it.id }
+            antiqueService.findByIds(ctx, scanIds).associateBy { it.id.toHexString() }
         } else emptyMap()
 
         return Triple(pageItems, scanMap, hasMore)

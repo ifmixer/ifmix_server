@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.http.RequestContext
+import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -62,7 +63,7 @@ class UserInstallBindingRepo(private val mongo: MongoTemplate) {
         } else {
             // 插入新记录
             val doc = UserInstallBindingDocument().apply {
-                appId = ctx.appId
+                appId = ObjectId(ctx.appId)
                 this.userId = userId
                 this.installId = installId
                 firstSeenAt = now

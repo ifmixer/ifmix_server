@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.feedback
 
 import com.ifmix.api.core.common.http.RequestContext
+import org.bson.types.ObjectId
 import com.ifmix.api.core.common.service.CRUDService
 
 /**
@@ -11,7 +12,7 @@ class FeedbackService(val crud: CRUDService<FeedbackDocument>) {
     /** 提交反馈，返回新建文档的 id。 */
     fun submit(ctx: RequestContext, req: SubmitReq): String {
         val doc = FeedbackDocument().apply {
-            appId = ctx.appId
+            appId = ObjectId(ctx.appId)
             installId = ctx.installId
             userId = ctx.userId
             scanRecordId = req.scanRecordId

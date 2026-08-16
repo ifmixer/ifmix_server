@@ -6,6 +6,7 @@ import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.ratelimit.RateLimiter
 import com.ifmix.api.core.common.storage.ObjectStorage
 import com.ifmix.api.core.modules.antique.ScanResult.Status
+import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -52,7 +53,7 @@ class AntiqueService(
 
         // 3. 创建扫描记录文档
         val record = ScanRecordDocument().apply {
-            appId = ctx.appId
+            appId = ObjectId(ctx.appId)
             scanId = UUID.randomUUID().toString()
             imageUrl = uploadUrl
             status = Status.PENDING.name
@@ -61,7 +62,7 @@ class AntiqueService(
         }
         mongo.insert(record)
 
-        return record.id
+        return record.id.toHexString()
     }
 
     /**
@@ -78,7 +79,7 @@ class AntiqueService(
     fun getScanResult(ctx: RequestContext, id: String): ScanDto {
         val record = getScanRecordById(id)
         return ScanDto(
-            id = record.id,
+            id = record.id.toHexString(),
             scanId = record.scanId,
             imageUrl = record.imageUrl,
             status = record.status,

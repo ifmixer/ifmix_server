@@ -32,18 +32,18 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
             ),
             CollectionItemDocument::class.java,
         )
-        if (existing != null) return existing.id
+        if (existing != null) return existing.id.toHexString()
 
         val now = Instant.now()
         val doc = CollectionItemDocument().apply {
-            appId = ctx.appId
+            appId = ObjectId(ctx.appId)
             this.collectionId = collectionId
             this.scanRecordId = scanObjId
             createdAt = now
             updatedAt = now
         }
         mongo.insert(doc)
-        return doc.id
+        return doc.id.toHexString()
     }
 
     /**
@@ -115,13 +115,13 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
                     .and("deletedAt").`is`(null),
             ),
             ScanRecordDocument::class.java,
-        ).associateBy { it.id }
+        ).associateBy { it.id.toHexString() }
 
         val ordered = page.mapNotNull { item ->
             val oid = item.scanRecordId ?: return@mapNotNull null
             scans[oid.toString()]
         }
-        val nextCursor = if (hasMore) page.last().scanRecordId?.toString() else null
+        val nextCursor = if (hasMore) page.last().scanRecordId?.toHexString() else null
         return Pair(ordered, nextCursor)
     }
 
