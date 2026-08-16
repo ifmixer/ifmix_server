@@ -61,7 +61,8 @@ class AntiqueConfig {
         objectStorage: ObjectStorage,
         rateLimiter: RateLimiter,
         mongo: MongoTemplate,
+        scanRecordRepo: ScanRecordRepository,
     ): AntiqueService {
-        return AntiqueService(scanRunner, objectStorage, rateLimiter, mongo)
+        return AntiqueService(scanRunner, objectStorage, rateLimiter, mongo, scanRecordRepo)
     }
 }

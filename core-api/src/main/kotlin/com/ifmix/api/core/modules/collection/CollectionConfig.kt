@@ -3,11 +3,11 @@ package com.ifmix.api.core.modules.collection
 import com.ifmix.api.core.common.db.CRUDRepository
 import com.ifmix.api.core.common.db.MongoClusterResolver
 import com.ifmix.api.core.common.service.CRUDService
+import com.ifmix.api.core.modules.antique.AntiqueService
 import com.ifmix.api.core.modules.antique.CollectionMembership
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.data.mongodb.core.MongoTemplate
 
 /**
  * 收藏模块 bean 装配。
@@ -51,9 +51,9 @@ class CollectionConfig {
         collectionCrud: CRUDService<CollectionDocument>,
         itemRepo: CollectionItemRepository,
         collectionRepo: CollectionRepository,
-        mongo: MongoTemplate,
+        antiqueService: AntiqueService,
     ): CollectionService {
-        return CollectionService(collectionCrud, itemRepo, collectionRepo, mongo)
+        return CollectionService(collectionCrud, itemRepo, collectionRepo, antiqueService)
     }
 
     @Bean

@@ -9,7 +9,9 @@ import com.ifmix.api.core.modules.antique.ScanResult.Status
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
+import org.springframework.data.mongodb.core.query.Update
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -24,6 +26,7 @@ class AntiqueService(
     private val objectStorage: ObjectStorage,
     private val rateLimiter: RateLimiter,
     private val mongo: MongoTemplate,
+    private val scanRecordRepo: ScanRecordRepository,
 ) {
 
     /**
@@ -124,4 +127,23 @@ class AntiqueService(
     fun presignedDownloadUrl(objectKey: String, duration: Duration): String {
         return objectStorage.presignDownload(objectKey, duration)
     }
+
+    /**
+     * 将扫描记录标记为已收藏（或取消收藏）。
+     *
+     * best-effort 语义：异常时静默忽略，不影响主流程。
+     */
+    fun markCollected(ctx: RequestContext, scanRecordId: String, collected: Boolean) {
+        val update = Update().set("collected", collected).set("updatedAt", Instant.now())
+        mongo.updateFirst(
+            Query(Criteria.where("_id").`is`(org.bson.types.ObjectId(scanRecordId))
+                .and("appId").`is`(ctx.appId)),
+            update,
+            ScanRecordDocument::class.java,
+        )
+    }
+
+    /** 按 id 列表批量查询扫描记录（委托给 scanRecordRepo）。 */
+    fun findByIds(ctx: RequestContext, ids: List<String>): List<ScanRecordDocument> =
+        scanRecordRepo.findByIds(ctx, ids)
 }

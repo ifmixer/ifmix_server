@@ -127,4 +127,28 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
 
     private fun base(ctx: RequestContext, collectionId: String): Criteria =
         Criteria.where("appId").`is`(ctx.appId).and("collectionId").`is`(collectionId)
+
+    /**
+     * 按游标分页查询收藏条目文档（不带 scan_record 关联）。
+     * 用于 GraphQL fetcher 自行关联 scan record。
+     */
+    fun findItemsByCursor(
+        ctx: RequestContext,
+        collectionId: String,
+        cursor: String?,
+        limit: Int,
+    ): List<CollectionItemDocument> {
+        val query = Query(base(ctx, collectionId).and("deletedAt").`is`(null))
+        if (!cursor.isNullOrBlank() && ObjectId.isValid(cursor)) {
+            query.addCriteria(Criteria.where("_id").lt(ObjectId(cursor)))
+        }
+        query.with(
+            org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.DESC,
+                "_id",
+            ),
+        )
+        query.limit(limit + 1)
+        return mongo.find(query, CollectionItemDocument::class.java)
+    }
 }

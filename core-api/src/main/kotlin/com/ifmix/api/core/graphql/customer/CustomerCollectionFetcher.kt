@@ -38,17 +38,15 @@ class CustomerCollectionFetcher(
         val ctx = getContext(dfe)
         val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
         val req = ListItemsReq(collectionId = collectionId, cursor = cursor, limit = effectiveLimit)
-        val page = collectionService.listItems(ctx.requestContext, req)
+        val (items, scanMap, hasMore) = collectionService.listItemsWithRecords(ctx.requestContext, req)
 
         return CollectionItemConnection(
-            items = page.items.map { it.toScanRecordType() }.map { scanType ->
-                com.ifmix.api.core.graphql.common.type.CollectionItemType(
-                    id = scanType.id,
-                    scanRecord = scanType,
-                )
+            items = items.map { item ->
+                val scanRecord = item.scanRecordId?.let { scanMap[it.toHexString()] }?.toScanRecordType()
+                item.toCollectionItemType(scanRecord)
             },
-            nextCursor = page.nextCursor,
-            hasMore = page.hasMore,
+            nextCursor = if (items.isNotEmpty()) items.last().id else null,
+            hasMore = hasMore,
         )
     }
 

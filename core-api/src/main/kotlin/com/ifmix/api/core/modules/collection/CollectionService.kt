@@ -7,13 +7,9 @@ import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.service.CRUDService
+import com.ifmix.api.core.modules.antique.AntiqueService
 import com.ifmix.api.core.modules.antique.ScanRecordDocument
 import org.springframework.dao.DuplicateKeyException
-import org.springframework.data.mongodb.core.MongoTemplate
-import org.springframework.data.mongodb.core.query.Criteria
-import org.springframework.data.mongodb.core.query.Query
-import org.springframework.data.mongodb.core.query.Update
-import java.time.Instant
 
 /**
  * 收藏业务编排。
@@ -25,7 +21,7 @@ class CollectionService(
     private val collectionCrud: CRUDService<CollectionDocument>,
     private val itemRepo: CollectionItemRepository,
     private val collectionRepo: CollectionRepository,
-    private val mongo: MongoTemplate,
+    private val antiqueService: AntiqueService,
 ) {
 
     /**
@@ -72,15 +68,9 @@ class CollectionService(
     fun addItem(ctx: RequestContext, req: AddItemReq): String {
         val cid = resolveCollectionId(ctx, req.collectionId)
         val itemId = itemRepo.insertIfAbsent(ctx, cid, req.scanRecordId!!)
-        // 标记 scan_record 为已收藏
+        // 标记 scan_record 为已收藏（best-effort，不影响主流程）
         try {
-            val update = Update().set("collected", true).set("updatedAt", Instant.now())
-            mongo.updateFirst(
-                Query(Criteria.where("_id").`is`(org.bson.types.ObjectId(req.scanRecordId))
-                    .and("appId").`is`(ctx.appId)),
-                update,
-                ScanRecordDocument::class.java,
-            )
+            antiqueService.markCollected(ctx, req.scanRecordId!!, true)
         } catch (_: Exception) {
             // best-effort，不影响主流程
         }
@@ -103,5 +93,29 @@ class CollectionService(
         val limit = (req.limit ?: CursorQueryInput.DEFAULT_LIMIT).coerceIn(1, CursorQueryInput.MAX_LIMIT)
         val (scans, next) = itemRepo.listScanRecords(ctx, cid, req.cursor, limit)
         return Page(scans, next, next != null)
+    }
+
+    /**
+     * 列出收藏条目文档（含关联的 scan record），用于 GraphQL CollectionItemType 构建。
+     *
+     * @return Triple<item文档列表, scanRecordId→ScanRecordDocument映射, hasMore>
+     */
+    fun listItemsWithRecords(
+        ctx: RequestContext,
+        req: ListItemsReq,
+    ): Triple<List<com.ifmix.api.core.modules.collection.CollectionItemDocument>, Map<String, ScanRecordDocument>, Boolean> {
+        val cid = resolveCollectionId(ctx, req.collectionId)
+        val limit = (req.limit ?: CursorQueryInput.DEFAULT_LIMIT).coerceIn(1, CursorQueryInput.MAX_LIMIT)
+        val items = itemRepo.findItemsByCursor(ctx, cid, req.cursor, limit)
+        val hasMore = items.size > limit
+        val pageItems = if (hasMore) items.dropLast(1) else items
+
+        // 批量加载关联的 scan records
+        val scanIds = pageItems.mapNotNull { it.scanRecordId?.toHexString() }.distinct()
+        val scanMap = if (scanIds.isNotEmpty()) {
+            antiqueService.findByIds(ctx, scanIds).associateBy { it.id }
+        } else emptyMap()
+
+        return Triple(pageItems, scanMap, hasMore)
     }
 }
