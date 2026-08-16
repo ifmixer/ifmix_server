@@ -1,0 +1,145 @@
+type ScanRecord {
+  id: ID!
+  appId: ID!
+  imageKeys: [ImageRef!]!
+  result: JSON
+  status: ScanStatus!
+  clientIp: String
+  lang: String
+  country: String
+  currency: String
+  userDisplayName: String
+  userNotes: String
+  collected: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum ScanStatus {
+  UNKNOWN
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+type ImageRef {
+  key: String!
+}
+
+type ScanRecordEdge {
+  cursor: String!
+  node: ScanRecord!
+}
+
+type ScanRecordConnection {
+  edges: [ScanRecordEdge!]!
+  pageInfo: PageInfo!
+}
+
+type TodoItem {
+  id: ID!
+  todoId: ID!
+  appId: ID!
+  content: String!
+  done: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type TodoEdge {
+  cursor: String!
+  node: Todo!
+}
+
+type TodoConnection {
+  edges: [TodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Todo {
+  id: ID!
+  appId: ID!
+  installId: ID
+  userId: ID
+  title: String!
+  done: Boolean!
+  meta: JSON
+  items: [TodoItem!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type FeedbackEdge {
+  cursor: String!
+  node: Feedback!
+}
+
+type FeedbackConnection {
+  edges: [FeedbackEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Feedback {
+  id: ID!
+  appId: ID!
+  installId: ID
+  userId: ID
+  scanRecordId: ID
+  category: FeedbackCategory!
+  comment: String
+  createdAt: DateTime!
+}
+
+enum FeedbackCategory {
+  UNKNOWN
+  LIKED
+  PRICE_TOO_HIGH
+  PRICE_TOO_LOW
+  PRICE_MISSING
+  WRONG_IDENTIFICATION
+  FEATURE_REQUEST
+  MORE_RECOMMENDATIONS
+}
+
+type Query {
+  scan_get(id: ID!): ScanRecord
+  scan_list(limit: Int = 20, cursor: String): ScanRecordConnection! @requirePermission(permission: "scan.read")
+  todo_get(id: ID!): Todo
+  todo_list(limit: Int = 20, cursor: String): TodoConnection! @requirePermission(permission: "todo.read")
+  feedback_list(limit: Int = 20, cursor: String): FeedbackConnection! @requirePermission(permission: "feedback.read")
+}
+
+type Mutation {
+  todo_create(input: TodoCreateInput!): ID!
+  todo_update(input: TodoUpdateInput!): Boolean!
+  todo_delete(id: ID!): Boolean!
+  feedback_create(input: FeedbackCreateInput!): ID!
+}
+
+input TodoCreateInput {
+  title: String!
+  done: Boolean
+  items: [TodoItemInput!]
+  meta: JSON
+}
+
+input TodoItemInput {
+  id: ID
+  content: String!
+  done: Boolean
+}
+
+input TodoUpdateInput {
+  id: ID!
+  title: String
+  done: Boolean
+  items: [TodoItemInput!]
+  meta: JSON
+}
+
+input FeedbackCreateInput {
+  scanRecordId: ID
+  category: FeedbackCategory!
+  comment: String
+}

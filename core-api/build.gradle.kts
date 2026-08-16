@@ -4,6 +4,7 @@ plugins {
     id("org.springframework.boot")
     id("io.spring.dependency-management")
     id("com.google.devtools.ksp")
+    id("com.netflix.dgs.codegen") version "8.6.0"
 }
 
 dependencies {
@@ -57,6 +58,18 @@ dependencies {
     implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
     ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")
 
+    // Exposed (JetBrains ORM) — 与 Jimmer 并行引入，Phase 1 不替换
+    implementation("org.jetbrains.exposed:exposed-spring-boot-starter:0.61.0")
+    implementation("org.jetbrains.exposed:exposed-java-time:0.61.0")
+    implementation("org.jetbrains.exposed:exposed-json:0.61.0")
+    implementation("org.jetbrains.exposed:exposed-dao:0.61.0")
+
+    // DGS GraphQL — Spring Boot 4 兼容（DGS 12.x 使用 Spring GraphQl 原生配置）
+    implementation(platform("com.netflix.graphql.dgs:graphql-dgs-platform-dependencies:12.0.1"))
+    implementation("com.netflix.graphql.dgs:graphql-dgs-spring-graphql-starter")
+    implementation("com.netflix.graphql.dgs:graphql-dgs-extended-scalars")
+    implementation("com.netflix.graphql.dgs:graphql-dgs-spring-boot-micrometer")
+
     // UUIDv7 generator (cursor pagination requires time-ordered IDs)
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
 
@@ -105,4 +118,13 @@ ksp {
     arg("jimmer.language", "kotlin")
     // input DTO 中 nullable 属性默认使用 dynamic 修饰（不传=不修改）
     arg("jimmer.dto.defaultNullableInputModifier", "fuzzy")
+}
+
+// DGS Codegen — 从 schema/*.graphqls 生成 Kotlin types
+tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask>().configureEach {
+    packageName = "com.ifmix.api.core.graphql.generated"
+    typeMapping = mutableMapOf(
+        "DateTime" to "java.time.Instant",
+        "JSON" to "kotlin.collections.Map<kotlin.String, kotlin.Any?>",
+    )
 }

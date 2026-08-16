@@ -1,0 +1,11 @@
+scalar DateTime
+scalar JSON
+
+directive @requirePermission(permission: String!) on FIELD_DEFINITION
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
