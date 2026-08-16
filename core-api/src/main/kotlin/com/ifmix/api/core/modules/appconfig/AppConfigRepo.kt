@@ -76,4 +76,49 @@ class AppConfigRepo(
         }
         cache.clear()
     }
+
+    /** 获取当前生效的 AppConfigDocument（按 appId，deletedAt=null）。 */
+    fun getCurrentDoc(appId: String): AppConfigDocument? {
+        return mongo.findOne(
+            Query(Criteria.where("appId").`is`(appId).and("deletedAt").`is`(null)),
+            AppConfigDocument::class.java,
+        )
+    }
+
+    /**
+     * 切换指定 revision 的启用状态。
+     * enabled=true：软删同 appId 其他版本，恢复目标版本。
+     * enabled=false：软删目标版本。
+     * 返回切换后当前生效的 AppConfigView（可能为 null）。
+     */
+    fun toggleRevision(ctx: RequestContext, id: String, enabled: Boolean): AppConfigView? {
+        val appId = ctx.appId
+        val now = Instant.now()
+        txRunner.withTx(ctx) {
+            if (enabled) {
+                // 软删同 appId 其他版本
+                mongo.updateMulti(
+                    Query(Criteria.where("appId").`is`(appId).and("deletedAt").`is`(null).and("_id").ne(ObjectId(id))),
+                    Update().set("deletedAt", now).set("updatedAt", now),
+                    AppConfigDocument::class.java,
+                )
+                // 恢复目标版本
+                mongo.updateFirst(
+                    Query(Criteria.where("_id").`is`(ObjectId(id)).and("appId").`is`(appId)),
+                    Update().set("deletedAt", null).set("updatedAt", now),
+                    AppConfigDocument::class.java,
+                )
+            } else {
+                // 软删目标版本
+                mongo.updateFirst(
+                    Query(Criteria.where("_id").`is`(ObjectId(id)).and("appId").`is`(appId)),
+                    Update().set("deletedAt", now).set("updatedAt", now),
+                    AppConfigDocument::class.java,
+                )
+            }
+        }
+        cache.clear()
+        val doc = getCurrentDoc(appId)
+        return doc?.let { AppConfigMapper.toView(it) }
+    }
 }
