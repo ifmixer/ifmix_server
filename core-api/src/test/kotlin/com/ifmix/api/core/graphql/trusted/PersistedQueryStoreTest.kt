@@ -1,6 +1,7 @@
 package com.ifmix.api.core.graphql.trusted
 
 import assertk.assertThat
+import assertk.assertions.contains
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
@@ -43,5 +44,35 @@ class PersistedQueryStoreTest {
         val entry = store.get("ad1234567890", "admin")
         assertThat(entry).isNotNull()
         assertThat(entry!!.name).isEqualTo("AdminGetTodos")
+    }
+
+    @Test
+    fun `getByName returns entry for known name and customer bff`() {
+        val entry = store.getByName("GetTodo", "customer")
+        assertThat(entry).isNotNull()
+        assertThat(entry!!.name).isEqualTo("GetTodo")
+        assertThat(entry.query).contains("query GetTodo")
+    }
+
+    @Test
+    fun `getByName returns null for unknown name`() {
+        val entry = store.getByName("UnknownOp", "customer")
+        assertThat(entry).isNull()
+    }
+
+    @Test
+    fun `getByName returns entry for admin bff`() {
+        val entry = store.getByName("AdminGetTodos", "admin")
+        assertThat(entry).isNotNull()
+        assertThat(entry!!.name).isEqualTo("AdminGetTodos")
+    }
+
+    @Test
+    fun `getByName finds same entry as get for known hash`() {
+        val byHash = store.get("f6e5d4c3b2a1", "customer")
+        val byName = store.getByName("GetTodos", "customer")
+        assertThat(byName).isNotNull()
+        assertThat(byName!!.name).isEqualTo(byHash!!.name)
+        assertThat(byName.query).isEqualTo(byHash.query)
     }
 }

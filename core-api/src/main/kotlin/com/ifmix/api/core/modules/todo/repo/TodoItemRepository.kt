@@ -40,7 +40,7 @@ class TodoItemRepository(private val mongo: MongoTemplate) {
             Criteria().andOperator(
                 TodoItemDocument::appId isEqualTo ctx.appId,
                 TodoItemDocument::todoId inValues todoIds,
-                BaseAppDocument::deletedAt isEqualTo null,
+                TodoItemDocument::deletedAt isEqualTo null,
             )
         )
         return mongo.find(query, TodoItemDocument::class.java)
@@ -52,7 +52,7 @@ class TodoItemRepository(private val mongo: MongoTemplate) {
             Criteria().andOperator(
                 TodoItemDocument::id isEqualTo id,
                 TodoItemDocument::appId isEqualTo ctx.appId,
-                BaseAppDocument::deletedAt isEqualTo null,
+                TodoItemDocument::deletedAt isEqualTo null,
             )
         )
         return mongo.updateFirst(query, update, TodoItemDocument::class.java).modifiedCount > 0

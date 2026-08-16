@@ -26,6 +26,8 @@ class DgsCustomContextBuilderImpl(
 
         val requestContext = RequestContext(
             appId = appId,
+            operationId = request.getHeader("x-op-id")
+                ?: (request.getAttribute("trusted.operation.name") as? String),
             installId = installId,
             lang = request.getHeader(RequestHeaders.LANG),
             currency = request.getHeader(RequestHeaders.CURRENCY),

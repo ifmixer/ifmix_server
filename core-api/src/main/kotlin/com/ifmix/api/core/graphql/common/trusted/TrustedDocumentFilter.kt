@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
@@ -16,12 +18,12 @@ import java.io.InputStreamReader
 /**
  * Trusted Documents filter（OncePerRequestFilter）。
  *
- * 请求 body 中如果有 extensions.persistedQuery.sha256Hash：
- * - 查 allowlist，命中 → 将 query 字段注入到 body → 放行
- * - 未命中 + enabled=true → 返回 403
- * - 未命中 + enabled=false → 放行原始 query（开发模式）
+ * 请求支持两种模式：
+ * 1. **x-op-id 头**（优先）：客户端发 x-op-id header，从 store 按 name 查找 query 并注入 body
+ * 2. **persisted query hash**（向后兼容）：body 中 extensions.persistedQuery.sha256Hash，
+ *    从 store 按 hash 查找 query 并注入 body
  *
- * 没有 persistedQuery extension 且 enabled=true → 拒绝（要求必须通过 persisted query 调用）
+ * 没有持久化查询且 enabled=true → 返回 403
  */
 @Component
 @Order(1)
@@ -30,6 +32,8 @@ class TrustedDocumentFilter(
     @Value("\${graphql.trusted-documents.enabled:false}")
     private val enabled: Boolean,
 ) : OncePerRequestFilter() {
+
+    private val mapper = ObjectMapper()
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -42,14 +46,28 @@ class TrustedDocumentFilter(
             return
         }
 
+        val bff = if (uri.startsWith("/admin/")) "admin" else "customer"
         val bodyBytes = request.inputStream.readBytes()
         val bodyStr = String(bodyBytes, Charsets.UTF_8)
+        val opId = request.getHeader("x-op-id")
+
+        if (opId != null) {
+            // 新路径：x-op-id header
+            val entry = store.getByName(opId, bff)
+            if (entry == null) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Unknown operation: $opId")
+                return
+            }
+            val newBody = buildBody(entry, bodyStr)
+            request.setAttribute("trusted.operation.name", entry.name)
+            filterChain.doFilter(CachedBodyRequest(request, newBody.toByteArray(Charsets.UTF_8)), response)
+            return
+        }
+
+        // 原有路径：从 body 提取 sha256Hash
         val hash = extractPersistedQueryHash(bodyStr)
-
         if (hash != null) {
-            val bff = if (uri.startsWith("/admin/")) "admin" else "customer"
             val entry = store.get(hash, bff)
-
             if (entry != null) {
                 val newBody = injectQuery(bodyStr, entry.query)
                 request.setAttribute("trusted.operation.name", entry.name)
@@ -81,6 +99,23 @@ class TrustedDocumentFilter(
             queryRegex.replace(body, """"query":"$escaped"""")
         } else {
             body.replaceFirst("{", """{"query":"$escaped",""")
+        }
+    }
+
+    /** 将 x-op-id 请求的 body 包装为包含注入 query 的完整 GraphQL request。 */
+    private fun buildBody(entry: PersistedQueryEntry, originalBody: String): String {
+        val variables = extractVariables(originalBody)
+        val escaped = entry.query.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+        return """{"query":"$escaped","operationName":"${entry.name}","variables":$variables}"""
+    }
+
+    private fun extractVariables(body: String): String {
+        if (body.isBlank() || body == "{}") return "{}"
+        return try {
+            val node: JsonNode = mapper.readTree(body)
+            node.get("variables")?.toString() ?: "{}"
+        } catch (_: Exception) {
+            "{}"
         }
     }
 }

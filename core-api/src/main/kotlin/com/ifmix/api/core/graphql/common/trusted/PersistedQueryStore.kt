@@ -10,12 +10,10 @@ import jakarta.annotation.PostConstruct
 /** Allowlist entry: human-readable name + full query text. */
 data class PersistedQueryEntry(val name: String, val query: String)
 
-/**
- * Allowlist 接口：按 (hash, bff) 查找预注册 query。
- * 生产实现可替换为 Redis 版，调用方代码不变。
- */
+/** Allowlist 接口：按 (hash, bff) 或 (name, bff) 查找预注册 query。 */
 interface PersistedQueryStore {
     fun get(hash: String, bff: String): PersistedQueryEntry?
+    fun getByName(name: String, bff: String): PersistedQueryEntry?
 }
 
 /**
@@ -34,7 +32,8 @@ class ClasspathPersistedQueryStore(
 ) : PersistedQueryStore {
 
     private val mapper = ObjectMapper()
-    private val stores = mutableMapOf<String, Map<String, PersistedQueryEntry>>()
+    private val storesByHash = mutableMapOf<String, Map<String, PersistedQueryEntry>>()
+    private val storesByName = mutableMapOf<String, Map<String, PersistedQueryEntry>>()
 
     @PostConstruct
     fun init() {
@@ -43,19 +42,26 @@ class ClasspathPersistedQueryStore(
             val resource = resolver.getResource("$allowlistPath${bff}.json")
             if (resource.exists()) {
                 val root: JsonNode = mapper.readTree(resource.inputStream)
-                val entries = mutableMapOf<String, PersistedQueryEntry>()
+                val byHash = mutableMapOf<String, PersistedQueryEntry>()
+                val byName = mutableMapOf<String, PersistedQueryEntry>()
                 root.properties().forEach { (hash, node) ->
-                    entries[hash] = PersistedQueryEntry(
+                    val entry = PersistedQueryEntry(
                         name = node.get("name")?.asString() ?: "",
                         query = node.get("query")?.asString() ?: "",
                     )
+                    byHash[hash] = entry
+                    byName[entry.name] = entry
                 }
-                stores[bff] = entries
+                storesByHash[bff] = byHash
+                storesByName[bff] = byName
             } else {
-                stores[bff] = emptyMap()
+                storesByHash[bff] = emptyMap()
+                storesByName[bff] = emptyMap()
             }
         }
     }
 
-    override fun get(hash: String, bff: String): PersistedQueryEntry? = stores[bff]?.get(hash)
+    override fun get(hash: String, bff: String): PersistedQueryEntry? = storesByHash[bff]?.get(hash)
+
+    override fun getByName(name: String, bff: String): PersistedQueryEntry? = storesByName[bff]?.get(name)
 }

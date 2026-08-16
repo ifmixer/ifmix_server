@@ -12,6 +12,7 @@ import com.mongodb.ReadPreference
  */
 data class RequestContext(
     val appId: String,
+    val operationId: String? = null,   // x-op-id header 或 persisted query name
     val installId: String? = null,
     val lang: String? = null,
     val currency: String? = null,
