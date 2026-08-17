@@ -24,25 +24,16 @@ import java.time.Duration
 
 /**
  * customer BFF 的对象存储路由。
- *
- * objectKey 格式: app_{appId}/{category}/i_{installId}/{uuid}.{ext}
  */
 @RestController
 @RequestMapping("/customer")
 @ConditionalOnBean(AntiqueService::class)
 class CustomerStorageController(
-    private val antiqueService: AntiqueService,
+    private val scanService: AntiqueService,
     private val uploadRecordRepo: UploadRecordJooqRepository,
 ) {
 
-    @Operation(
-        summary = "获取预签名上传 URL",
-        description = """
-            服务端生成 objectKey 并返回预签名上传 URL + imageKey。
-            客户端上传完成后用 imageKey 调 antique/newScan。
-            不要求登录；user 未登录时 objectKey 中 user 段为 "none"。
-        """,
-    )
+    @Operation(summary = "获取预签名上传 URL")
     @PostMapping("/mutation/core/storage/presignUpload")
     fun presignUpload(
         ctx: OperationContext,
@@ -51,67 +42,38 @@ class CustomerStorageController(
         val appId = ctx.mustGetAppId()
         val installId = ctx.mustGetInstallId()
         val mediaId = UuidV7.generate()
-
-        // objectKey: app/{appId}/{category}/install/{installId}/{id}.{ext}
         val objectKey = "app/$appId/${req.category.path}/install/$installId/$mediaId.${req.contentType.extension}"
 
-        val url = antiqueService.presignedUploadUrl(ctx, objectKey, req.contentType.mimeType, Duration.ofSeconds(300))
-        val downloadUrl = antiqueService.getPublicUrl(ctx, objectKey)
+        val url = scanService.presignedUploadUrl(ctx, objectKey, req.contentType.mimeType, Duration.ofSeconds(300))
+        val downloadUrl = scanService.getPublicUrl(ctx, objectKey)
 
-        // 记录上传信息到 DB（id 与文件名一致）
         val uploadRecord = UploadRecord(
-            id = mediaId,
-            appId = appId,
-            installId = installId,
-            userId = ctx.userId,
-            objectKey = objectKey,
-            contentType = req.contentType.mimeType,
-            category = req.category.name,
-            clientIp = ctx.clientIp,
+            id = mediaId, appId = appId, installId = installId, userId = ctx.userId,
+            objectKey = objectKey, contentType = req.contentType.mimeType,
+            category = req.category.name, clientIp = ctx.clientIp,
         )
         uploadRecordRepo.insert(ctx.repoCtx, uploadRecord)
 
-        return PresignedUploadResponse(mediaId=mediaId,uploadUrl = url, imageKey = objectKey, downloadUrl = downloadUrl)
+        return PresignedUploadResponse(mediaId = mediaId, uploadUrl = url, imageKey = objectKey, downloadUrl = downloadUrl)
     }
 
-    @Operation(
-        summary = "获取预签名下载 URL",
-        description = """
-            用 imageKey 换取临时下载 URL。durationSeconds 默认 3600，上限 86400。
-            服务端校验 imageKey 归属（必须属于当前用户的 installId 或 userId）。
-            需要 Bearer token。
-        """,
-    )
+    @Operation(summary = "获取预签名下载 URL")
     @PostMapping("/mutation/core/storage/presignDownload")
     fun presignDownload(
         ctx: OperationContext,
         @Valid @RequestBody req: PresignDownloadReq,
     ): PresignedDownloadResponse {
         validateObjectKey(ctx, req.imageKey)
-        val url = antiqueService.presignedDownloadUrl(ctx, req.imageKey, Duration.ofSeconds(req.durationSeconds ?: 3600L))
+        val url = scanService.presignedDownloadUrl(ctx, req.imageKey, Duration.ofSeconds(req.durationSeconds ?: 3600L))
         return PresignedDownloadResponse(url)
     }
 
-    /**
-     * 校验 objectKey 格式和归属：
-     * 1. 不能包含路径遍历（..）
-     * 2. 必须以 app/{appId}/ 开头且 appId 匹配
-     * 3. 必须包含 /install/{installId}/ 且匹配当前用户
-     */
     private fun validateObjectKey(ctx: OperationContext, objectKey: String) {
-        if (objectKey.contains("..")) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: path traversal not allowed")
-        }
+        if (objectKey.contains("..")) throw ApiError(ErrorCode.INVALID_REQUEST, "path traversal not allowed")
         val appId = ctx.mustGetAppId()
         val normalized = objectKey.removePrefix("/")
-        if (!normalized.startsWith("app/$appId/")) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: appId mismatch")
-        }
-        // 校验 installId 归属
+        if (!normalized.startsWith("app/$appId/")) throw ApiError(ErrorCode.INVALID_REQUEST, "appId mismatch")
         val installId = ctx.installId
-        if (installId != null && !normalized.contains("/install/$installId/")) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "imageKey: installId mismatch")
-        }
+        if (installId != null && !normalized.contains("/install/$installId/")) throw ApiError(ErrorCode.INVALID_REQUEST, "installId mismatch")
     }
-
 }
