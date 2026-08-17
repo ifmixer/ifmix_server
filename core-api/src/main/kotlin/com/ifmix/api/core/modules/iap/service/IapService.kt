@@ -1,15 +1,15 @@
 package com.ifmix.api.core.modules.iap.service
 
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.iap.repo.SubscriptionRepository
-import com.ifmix.api.core.modules.iap.repo.StoreNotificationRepository
-import com.ifmix.api.core.entity.iap.Subscription
-import com.ifmix.api.core.entity.iap.SubscriptionDraft
-import com.ifmix.api.core.entity.iap.StoreNotification
+import com.ifmix.api.core.infra.jooq.TxRunner
+import com.ifmix.api.core.model.Subscription
+import com.ifmix.api.core.model.StoreNotification
+import com.ifmix.api.core.modules.iap.repo.StoreNotificationJooqRepository
+import com.ifmix.api.core.modules.iap.repo.SubscriptionJooqRepository
 import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
-import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.entity.enums.Platform
 import com.ifmix.api.core.entity.enums.Tier
@@ -24,7 +24,6 @@ import com.ifmix.api.core.modules.iap.dto.statusFromExpiry
 import com.ifmix.api.core.modules.iap.dto.tierOf
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -35,9 +34,10 @@ open class IapService(
     private val appleVerifier: PurchaseVerifier,
     @Qualifier("googleVerifier")
     private val googleVerifier: PurchaseVerifier,
-    private val subscriptionRepo: SubscriptionRepository,
-    private val storeNotificationRepo: StoreNotificationRepository,
+    private val subscriptionRepo: SubscriptionJooqRepository,
+    private val storeNotificationRepo: StoreNotificationJooqRepository,
     private val appConfigRepo: AppConfigRevisionRepository,
+    private val tx: TxRunner,
 ) {
 
     private val verifierMap: Map<String, PurchaseVerifier> = hashMapOf(
@@ -45,7 +45,6 @@ open class IapService(
         "GOOGLE" to googleVerifier
     )
 
-    @Transactional
     fun verifyPurchase(ctx: OperationContext, req: VerifyReq): VerifyRes {
         val rc = ctx.repoCtx
         val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
@@ -96,36 +95,39 @@ open class IapService(
         }
 
         val now = Instant.now()
-        val subscription = Subscription {
-            id = UuidV7.generate()
-            this.appId = appId
-            this.subscriptionPxid = subscriptionPxid
-            this.originalTransactionId = verifyResult.originalTransactionId
-            this.productId = req.productId
-            this.platform = req.platform
-            this.active = true
-            this.subStatus = subStatus
-            this.expiryDate = verifyResult.expiryDate
-            this.purchaseToken = purchaseToken
-            this.rawResponse = mapOf(
-                "original_transaction_id" to verifyResult.originalTransactionId,
-                "product_id" to req.productId,
-                "expiry_date" to verifyResult.expiryDate?.toString(),
-                "sub_status" to verifyResult.subStatus.name,
-                "platform" to req.platform
-            )
-            createdAt = now
-            updatedAt = now
-        }
-
-        subscriptionRepo.upsertSubscription(rc, subscription)
-
-        return VerifyRes(
-            expiresAt = verifyResult.expiryDate?.toEpochMilli(),
-            state = statusFromExpiry(verifyResult.expiryDate),
+        val subscription = Subscription(
+            id = UuidV7.generate(),
+            appId = appId,
+            subscriptionPxid = subscriptionPxid,
+            originalTransactionId = verifyResult.originalTransactionId,
             productId = req.productId,
-            tier = tier
+            platform = req.platform.toShort(),
+            active = true,
+            subStatus = subStatus,
+            expiryDate = verifyResult.expiryDate,
+            purchaseToken = purchaseToken,
+            rawResponse = tools.jackson.databind.ObjectMapper().writeValueAsString(
+                mapOf(
+                    "original_transaction_id" to verifyResult.originalTransactionId,
+                    "product_id" to req.productId,
+                    "expiry_date" to verifyResult.expiryDate?.toString(),
+                    "sub_status" to verifyResult.subStatus.name,
+                    "platform" to req.platform
+                )
+            ),
+            createdAt = now,
+            updatedAt = now,
         )
+
+        return tx.withTx(ctx) { txCtx ->
+            subscriptionRepo.upsertSubscription(txCtx.repoCtx, subscription)
+            VerifyRes(
+                expiresAt = verifyResult.expiryDate?.toEpochMilli(),
+                state = statusFromExpiry(verifyResult.expiryDate),
+                productId = req.productId,
+                tier = tier
+            )
+        }
     }
 
     fun handleAppleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) {
@@ -136,7 +138,6 @@ open class IapService(
         handleNotification(ctx, rawPayload, decoder, "GOOGLE")
     }
 
-    @Transactional
     fun handleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder, platform: String) {
         val rc = ctx.repoCtx
         val appId = ctx.appId ?: return
@@ -158,55 +159,42 @@ open class IapService(
         }
 
         if (subscription == null) {
-            createStoreNotification(rc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+            tx.withTx(ctx) { txCtx ->
+                createStoreNotification(txCtx.repoCtx, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+            }
             return
         }
 
         when (decoderResult.type) {
-            NotificationType.REFUNDED -> updateSubscription(rc, subscription) {
-                active = false
-                subStatus = "refunded"
-                expiryDate = null
-            }
-            NotificationType.CANCELLED -> updateSubscription(rc, subscription) {
-                active = false
-                subStatus = "cancelled"
-            }
-            NotificationType.RENEWED -> updateSubscription(rc, subscription) {
-                active = true
-                subStatus = "renewed"
-                expiryDate = decoderResult.timestamp.plus(Duration.ofDays(30))
-            }
-            NotificationType.BILLING_RETRY -> updateSubscription(rc, subscription) {}
+            NotificationType.REFUNDED -> updateSubscription(ctx, subscription, active = false, subStatus = "refunded", expiryDate = null)
+            NotificationType.CANCELLED -> updateSubscription(ctx, subscription, active = false, subStatus = "cancelled")
+            NotificationType.RENEWED -> updateSubscription(ctx, subscription, active = true, subStatus = "renewed", expiryDate = decoderResult.timestamp.plus(Duration.ofDays(30)))
+            NotificationType.BILLING_RETRY -> {} // no change
             NotificationType.GRACE_PERIOD_EXPIRED,
-            NotificationType.EXPIRED -> updateSubscription(rc, subscription) {
-                active = false
-                subStatus = decoderResult.type.name.lowercase()
-            }
-            else -> updateSubscription(rc, subscription) {}
+            NotificationType.EXPIRED -> updateSubscription(ctx, subscription, active = false, subStatus = decoderResult.type.name.lowercase())
+            else -> {} // no change
         }
 
-        createStoreNotification(rc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+        tx.withTx(ctx) { txCtx ->
+            createStoreNotification(txCtx.repoCtx, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+        }
     }
 
-    private fun updateSubscription(rc: RepoContext, sub: Subscription, block: SubscriptionDraft.() -> Unit) {
-        val updated = Subscription {
-            id = sub.id
-            appId = sub.appId
-            subscriptionPxid = sub.subscriptionPxid
-            originalTransactionId = sub.originalTransactionId
-            productId = sub.productId
-            platform = sub.platform
-            active = sub.active
-            subStatus = sub.subStatus
-            expiryDate = sub.expiryDate
-            purchaseToken = sub.purchaseToken
-            rawResponse = sub.rawResponse
-            createdAt = sub.createdAt
-            updatedAt = Instant.now()
-            block()
-        }
-        subscriptionRepo.upsertSubscription(rc, updated)
+    private fun updateSubscription(
+        ctx: OperationContext,
+        sub: Subscription,
+        active: Boolean? = null,
+        subStatus: String? = null,
+        expiryDate: Instant? = null,
+    ) {
+        val now = Instant.now()
+        val updated = sub.copy(
+            active = active ?: sub.active,
+            subStatus = subStatus ?: sub.subStatus,
+            expiryDate = expiryDate ?: sub.expiryDate,
+            updatedAt = now,
+        )
+        subscriptionRepo.upsertSubscription(ctx.repoCtx, updated)
     }
 
     private fun createStoreNotification(
@@ -216,25 +204,22 @@ open class IapService(
         rawPayload: String,
         notificationType: NotificationType,
         appId: UUID,
-        processed: Boolean = false
+        processed: Boolean = false,
     ) {
-        val notif = StoreNotification {
-            id = UuidV7.generate()
-            this.appId = appId
-            this.platform = platform
-            this.subscriptionPxid = subscriptionPxid
-            this.purchaseToken = subscriptionPxid
-            this.notificationType = notificationType.name
-            this.rawPayload = rawPayload
-            this.processed = processed
-            this.processedAt = if (processed) Instant.now() else null
-            this.createdAt = Instant.now()
-            this.updatedAt = Instant.now()
-        }
-        storeNotificationRepo.save(rc, notif)
-    }
-
-    private fun String.toUUIDOrNull(): UUID? {
-        return try { UUID.fromString(this) } catch (e: Exception) { null }
+        val now = Instant.now()
+        val notif = StoreNotification(
+            id = UuidV7.generate(),
+            appId = appId,
+            platform = platform,
+            subscriptionPxid = subscriptionPxid,
+            purchaseToken = subscriptionPxid,
+            notificationType = notificationType.name,
+            rawPayload = rawPayload,
+            processed = processed,
+            processedAt = if (processed) now else null,
+            createdAt = now,
+            updatedAt = now,
+        )
+        storeNotificationRepo.insert(rc, notif)
     }
 }

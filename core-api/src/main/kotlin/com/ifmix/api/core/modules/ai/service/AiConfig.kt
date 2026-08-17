@@ -2,14 +2,14 @@ package com.ifmix.api.core.modules.ai.service
 
 import com.ifmix.api.core.entity.enums.AgnesKeyType
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.modules.ai.repo.AgnesKeyRepository
+import com.ifmix.api.core.modules.ai.repo.AgnesKeyJooqRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.core.StringRedisTemplate
 
 /**
- * AI configuration — assembly bean untuk Agnes AI scanning.
+ * AI configuration — assembly bean dla Agnes AI scanning.
  *
  * 不再使用 ConditionalOnProperty，AgnesKeyStore / AgnesChatClientFactory 始终加载。
  * SpringAiScanRunner 已经是 @Service @Primary，不在这里手动创建。
@@ -20,7 +20,7 @@ class AiConfig {
     @Bean
     fun agnesKeyStore(
         redis: StringRedisTemplate,
-        agnesKeyRepo: AgnesKeyRepository,
+        agnesKeyRepo: AgnesKeyJooqRepository,
     ): AgnesKeyStore {
         return AgnesKeyStore(
             redis = redis,
@@ -29,8 +29,8 @@ class AiConfig {
                 agnesKeyRepo.findAllEnabled(ctx).map { key ->
                     AgnesKeyStore.AgnesKeyDoc(
                         id = key.id.toString(),
-                        key = key.key ?: "",
-                        type = AgnesKeyType.fromCode(key.type).name,
+                        key = key.key,
+                        type = AgnesKeyType.fromCode(key.type.toInt()).name,
                         rateLimit = key.rateLimit,
                         windowSec = key.windowSec,
                         models = key.models,
