@@ -48,4 +48,15 @@ class TodoItemService(private val repo: TodoItemRepository) {
     fun deleteByIds(ctx: RequestContext, ids: List<String>): Int = repo.softDeleteByIds(ctx, ids)
 
     fun deleteByTodoId(ctx: RequestContext, todoId: String): Int = repo.softDeleteByTodoId(ctx, todoId)
+
+    /** 清除指定字段（白名单校验）。TodoItem 目前无可 unset 字段，预留接口。 */
+    fun unsetFields(ctx: RequestContext, id: String, fields: List<String>): Boolean {
+        val allowed = setOf<String>() // 暂无可 unset 字段
+        val valid = fields.filter { it in allowed }
+        if (valid.isEmpty()) return true
+        val update = Update()
+        valid.forEach { update.unset(it) }
+        update.set(BaseDocument::updatedAt, Instant.now())
+        return repo.updateById(ctx, id, update)
+    }
 }

@@ -9,10 +9,12 @@ import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.graphql.generated.types.Todo
 import com.ifmix.api.core.graphql.generated.types.TodoConnection
 import com.ifmix.api.core.graphql.generated.types.TodoItem
+import com.ifmix.api.core.graphql.generated.types.TodoItemAction
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
 import com.ifmix.api.core.modules.todo.mapper.toTodo
 import com.ifmix.api.core.modules.todo.mapper.toTodoItem
+import com.ifmix.api.core.modules.todo.service.TodoCacheService
 import com.ifmix.api.core.modules.todo.service.TodoItemService
 import com.ifmix.api.core.modules.todo.TodoDocument
 import com.ifmix.api.core.modules.todo.TodoService
@@ -30,6 +32,7 @@ import java.util.concurrent.CompletableFuture
 class CustomerTodoFetcher(
     private val todoService: TodoService,
     private val todoItemService: TodoItemService,
+    private val todoCacheService: TodoCacheService,
 ) {
 
     @DgsQuery(field = "todo_get")
@@ -38,7 +41,7 @@ class CustomerTodoFetcher(
         val cacheKey = "todo:$id"
         @Suppress("UNCHECKED_CAST")
         val doc = ctx.requestCache.getOrPut(cacheKey) {
-            todoService.findById(ctx, id)
+            todoCacheService.getById(ctx, id)
         } as? TodoDocument ?: return null
         if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, doc.userId, doc.installId)) {
             throw ApiError(ErrorCode.FORBIDDEN)
@@ -96,6 +99,7 @@ class CustomerTodoFetcher(
         if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, doc.userId, doc.installId)) {
             throw ApiError(ErrorCode.FORBIDDEN)
         }
+        // 1. 更新 todo 本身
         todoService.update(
             ctx, id,
             title = input.set?.title,
@@ -103,7 +107,42 @@ class CustomerTodoFetcher(
             meta = input.set?.meta,
             unsetFields = input.unset,
         )
+        // 2. 处理嵌套 items
+        input.items?.forEach { mutation ->
+            when (mutation.action) {
+                TodoItemAction.CREATE -> {
+                    val set = mutation.set
+                        ?: throw ApiError(ErrorCode.INVALID_REQUEST, "CREATE requires set.content")
+                    todoItemService.create(ctx, todoId = id, content = set.content!!, done = set.done ?: false)
+                }
+                TodoItemAction.SET -> {
+                    val itemId = mutation.id
+                        ?: throw ApiError(ErrorCode.INVALID_REQUEST, "SET requires id")
+                    todoItemService.update(
+                        ctx, itemId,
+                        content = mutation.set?.content,
+                        done = mutation.set?.done,
+                        unsetFields = mutation.unset,
+                    )
+                }
+                TodoItemAction.UNSET -> {
+                    val itemId = mutation.id
+                        ?: throw ApiError(ErrorCode.INVALID_REQUEST, "UNSET requires id")
+                    todoItemService.update(
+                        ctx, itemId,
+                        unsetFields = mutation.unset,
+                    )
+                }
+                TodoItemAction.DELETE -> {
+                    val itemId = mutation.id
+                        ?: throw ApiError(ErrorCode.INVALID_REQUEST, "DELETE requires id")
+                    todoItemService.deleteById(ctx, itemId)
+                }
+            }
+        }
+        // 3. 返回完整对象（items 由 DataLoader 自动填充）
         ctx.requestCache.remove("todo:$id")
+        todoCacheService.invalidate(ctx, id)
         return todoService.getById(ctx, id).toTodo()
     }
 
@@ -117,6 +156,7 @@ class CustomerTodoFetcher(
         todoItemService.deleteByTodoId(ctx, id)
         val deleted = todoService.deleteById(ctx, id)
         ctx.requestCache.remove("todo:$id")
+        todoCacheService.invalidate(ctx, id)
         return deleted
     }
 

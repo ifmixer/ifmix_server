@@ -1,4 +1,20 @@
 package com.ifmix.api.core.common.redis
 
-// TODO: 后续接入 Redis 实际配置（连接池、序列化等）。
-// 当前仅占位，确保 spring-boot-starter-data-redis 的自动配置生效。
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.data.redis.connection.RedisConnectionFactory
+import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.serializer.StringRedisSerializer
+
+@Configuration
+class RedisConfig {
+
+    @Bean
+    fun redisTemplate(connectionFactory: RedisConnectionFactory): RedisTemplate<String, String> {
+        val template = RedisTemplate<String, String>()
+        template.connectionFactory = connectionFactory
+        template.keySerializer = StringRedisSerializer()
+        template.valueSerializer = StringRedisSerializer()
+        return template
+    }
+}
