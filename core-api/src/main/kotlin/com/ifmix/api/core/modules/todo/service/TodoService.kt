@@ -13,7 +13,12 @@ import com.ifmix.api.core.infra.graphql.FetcherBuilder
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.todo.graphql.*
+import com.ifmix.api.core.generated.types.CreateTodoInput
+import com.ifmix.api.core.generated.types.CreateTodoItemForTodoInput
+import com.ifmix.api.core.generated.types.TodoQueryInput
+import com.ifmix.api.core.generated.types.TodoUnsetField
+import com.ifmix.api.core.generated.types.UpdateTodoInput
+import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.modules.todo.repo.TodoRepository
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 import org.babyfish.jimmer.sql.fetcher.Fetcher
@@ -59,7 +64,7 @@ class TodoService(
         fetcher: Fetcher<Todo>,
     ): Page<Todo> {
         val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id is required")
-        val limit = input.limit.coerceIn(1, 100)
+        val limit = (input.limit ?: 20).coerceIn(1, 100)
         val cursorUuid = input.cursor?.let { try { UUID.fromString(it) } catch (_: Exception) { null } }
         return sql.createQuery(Todo::class) {
             where(table.appId eq appId)
@@ -104,7 +109,7 @@ class TodoService(
             this.installId = ctx.installId
             this.userId = ctx.userId
             this.title = input.title
-            this.done = input.done
+            this.done = input.done ?: false
             this.note = input.note
             this.meta = null
         }
@@ -114,7 +119,7 @@ class TodoService(
                 this.id = UuidV7.generate()
                 this.appId = appId
                 this.content = itemInput.content
-                this.done = itemInput.done
+                this.done = itemInput.done ?: false
             }
             sql.entities.save(itemDraft)
         }
@@ -134,7 +139,7 @@ class TodoService(
                 set.done?.let { this.done = it }
                 set.note?.let { this.note = it }
             }
-            if (input.unset.contains(TodoUnsetField.NOTE)) {
+            if (input.unset?.contains(TodoUnsetField.NOTE) == true) {
                 this.note = null
             }
         }
@@ -161,7 +166,7 @@ class TodoService(
                 this.id = UuidV7.generate()
                 this.appId = appId
                 this.content = createInput.content
-                this.done = createInput.done
+                this.done = createInput.done ?: false
             }
             sql.entities.save(itemDraft)
         }
@@ -174,8 +179,8 @@ class TodoService(
             }.limit(1).execute().firstOrNull()
                 ?: throw ApiError(ErrorCode.NOT_FOUND)
             val draft = existing.copy {
-                updateInput.set.content?.let { this.content = it }
-                updateInput.set.done?.let { this.done = it }
+                updateInput.set?.content?.let { this.content = it }
+                updateInput.set?.done?.let { this.done = it }
             }
             sql.entities.save(draft)
         }

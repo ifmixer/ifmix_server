@@ -5,7 +5,15 @@ import com.ifmix.api.core.infra.graphql.FetcherBuilder
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.modules.todo.graphql.*
+import com.ifmix.api.core.generated.types.CreateTodoInput
+import com.ifmix.api.core.generated.types.CreateTodoPayload
+import com.ifmix.api.core.generated.types.DeleteTodoPayload
+import com.ifmix.api.core.generated.types.TodoPage
+import com.ifmix.api.core.generated.types.TodoQueryInput
+import com.ifmix.api.core.generated.types.UpdateTodoInput
+import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
+import com.ifmix.api.core.generated.types.UpdateTodoItemsPayload
+import com.ifmix.api.core.generated.types.UpdateTodoPayload
 import com.ifmix.api.core.modules.todo.service.TodoService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -110,11 +118,4 @@ class TodoFetcher(
         return DeleteTodoPayload(success = count == ids.size)
     }
 
-    // ==================== Nested types ====================
-
-    data class TodoPage(
-        val items: List<Todo>,
-        val nextCursor: String?,
-        val hasMore: Boolean,
-    )
 }

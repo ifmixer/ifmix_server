@@ -4,6 +4,7 @@ plugins {
     id("org.springframework.boot")
     id("io.spring.dependency-management")
     id("com.google.devtools.ksp")
+    id("com.netflix.dgs.codegen")
 }
 
 dependencies {
@@ -109,4 +110,33 @@ ksp {
     arg("jimmer.language", "kotlin")
     // input DTO 中 nullable 属性默认使用 dynamic 修饰（不传=不修改）
     arg("jimmer.dto.defaultNullableInputModifier", "fuzzy")
+}
+
+// DGS Codegen — 从 .graphqls schema 生成 Kotlin input/payload/enum types
+tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
+    // 生成代码的包名
+    packageName = "com.ifmix.api.core.generated"
+    language = "kotlin"
+    generateClient = true       // 生成类型安全 client（测试用）
+    generateDataTypes = true    // 生成 input/type data classes
+    snakeCaseConstantNames = true
+
+    // schema 文件位置（包含 common + customer 目录）
+    schemaPaths = mutableListOf(
+        "${projectDir}/src/main/resources/schema/common",
+        "${projectDir}/src/main/resources/schema/customer",
+    )
+
+    // 类型映射：GraphQL output type → Jimmer entity interface（不生成 data class）
+    // input types / payload types / enums 不在此映射，由 codegen 生成
+    typeMapping = mutableMapOf(
+        // Scalars
+        "UUID" to "java.util.UUID",
+        "DateTime" to "java.time.Instant",
+        "Long" to "kotlin.Long",
+        "JSON" to "kotlin.Any",
+        // Entity output types → Jimmer interfaces（避免 codegen 为这些生成 data class）
+        "Todo" to "com.ifmix.api.core.entity.todo.Todo",
+        "TodoItem" to "com.ifmix.api.core.entity.todo.TodoItem",
+    )
 }
