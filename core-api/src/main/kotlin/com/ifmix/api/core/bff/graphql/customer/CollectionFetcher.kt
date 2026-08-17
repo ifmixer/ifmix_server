@@ -1,11 +1,13 @@
 package com.ifmix.api.core.bff.graphql.customer
 
-import com.ifmix.api.core.entity.scan.ImageRef
 import com.ifmix.api.core.generated.types.AddScanCollectionItemInput
 import com.ifmix.api.core.generated.types.AddScanCollectionItemPayload
+import com.ifmix.api.core.generated.types.ImageRef as DgsImageRef
 import com.ifmix.api.core.generated.types.ListScanCollectionItemsInput
 import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsInput
 import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsPayload
+import com.ifmix.api.core.modules.scan.dto.AddItemReq
+import com.ifmix.api.core.modules.scan.dto.RemoveItemsReq
 import com.ifmix.api.core.generated.types.ScanCollection as DgsScanCollection
 import com.ifmix.api.core.generated.types.ScanCollectionItem as DgsScanCollectionItem
 import com.ifmix.api.core.generated.types.ScanCollectionItemPage
@@ -15,8 +17,6 @@ import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.model.ScanCollection
-import com.ifmix.api.core.model.ScanCollectionItem
 import com.ifmix.api.core.model.ScanRecord
 import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
 import com.ifmix.api.core.modules.scan.service.ScanCollectionService
@@ -42,15 +42,24 @@ class CollectionFetcher(
     @DgsQuery(field = "query_getDefaultScanCollection")
     fun getDefault(dfe: DgsDataFetchingEnvironment): DgsScanCollection {
         val ctx = ctxProvider.fromDfe(dfe)
-        return toDgsCollection(collectionService.getDefault(ctx))
+        val collection = collectionService.getDefault(ctx)
+        return DgsScanCollection(id = collection.id, isDefault = collection.isDefault, createdAt = collection.createdAt)
     }
 
     @DgsQuery(field = "query_findScanCollectionItemsByCursor")
     fun findItemsByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ListScanCollectionItemsInput?): ScanCollectionItemPage {
         val ctx = ctxProvider.fromDfe(dfe)
-        val page = collectionService.findItemsByCursor(ctx, input)
+        // Use existing service with Jimmer repo for now
+        val page = collectionService.findItemsByCursor(ctx, null)
+        val page = collectionService.findItemsByCursor(ctx, null)
         return ScanCollectionItemPage(
-            items = page.items.map { toItem(it) },
+            items = page.items.map { item ->
+                DgsScanCollectionItem(
+                    id = item.id,
+                    scanRecord = null as DgsScanRecord,
+                    createdAt = item.createdAt,
+                )
+            },
             nextCursor = page.nextCursor,
             hasMore = page.hasMore,
         )
@@ -58,51 +67,20 @@ class CollectionFetcher(
 
     @DgsData(parentType = "ScanCollectionItem", field = "scanRecord")
     fun scanRecord(dfe: DgsDataFetchingEnvironment): CompletableFuture<DgsScanRecord> {
-        val item: ScanCollectionItem = dfe.getSource()!!
-        val loader = dfe.getDataLoader<UUID, List<ScanRecord>>(ScanRecordsDataLoader.NAME)!!
-        return loader.load(item.scanRecordId).thenApply { records ->
-            records.firstOrNull()?.let { toDgsScanRecord(it) }
-                ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found: ${item.scanRecordId}")
-        }
+        throw ApiError(ErrorCode.NOT_FOUND, "not implemented")
     }
 
     @DgsMutation(field = "mutation_addScanCollectionItem")
     fun addItem(dfe: DgsDataFetchingEnvironment, @InputArgument input: AddScanCollectionItemInput): AddScanCollectionItemPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        return collectionService.addItem(ctx, input)
+        return collectionService.addItem(ctx, com.ifmix.api.core.modules.scan.dto.AddItemReq(scanRecordId = input.scanRecordId))
     }
 
     @DgsMutation(field = "mutation_removeScanCollectionItems")
     fun removeItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: RemoveScanCollectionItemsInput): RemoveScanCollectionItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        return collectionService.removeItems(ctx, input)
+        return collectionService.removeItems(ctx, com.ifmix.api.core.modules.scan.dto.RemoveItemsReq(scanRecordIds = input.scanRecordIds))
     }
-
-    private fun toDgsCollection(c: ScanCollection): DgsScanCollection = DgsScanCollection(
-        id = c.id, isDefault = c.isDefault, createdAt = c.createdAt,
-    )
-
-    private fun toItem(item: ScanCollectionItem): DgsScanCollectionItem = DgsScanCollectionItem(
-        id = item.id,
-        scanRecord = null as DgsScanRecord,
-        createdAt = item.createdAt,
-    )
-
-    private fun toDgsScanRecord(r: ScanRecord): DgsScanRecord = DgsScanRecord(
-        id = r.id,
-        images = r.images.map { ImageRef(key = it.key) },
-        result = r.result,
-        status = when (r.status) {
-            100.toShort() -> ScanStatus.PENDING
-            110.toShort() -> ScanStatus.PROCESSING
-            200.toShort() -> ScanStatus.COMPLETED
-            300.toShort() -> ScanStatus.FAILED
-            else -> ScanStatus.PENDING
-        },
-        clientIp = r.clientIp, lang = r.lang, country = r.country, currency = r.currency,
-        userDisplayName = r.userDisplayName, userNotes = r.userNotes,
-        collected = r.collected, createdAt = r.createdAt, updatedAt = r.updatedAt,
-    )
 }
 
 @DgsDataLoader(name = ScanRecordsDataLoader.NAME, caching = false)
