@@ -1,7 +1,5 @@
 package com.ifmix.api.core.bff.graphql.customer
 
-import com.ifmix.api.core.entity.todo.Todo
-import com.ifmix.api.core.entity.todo.TodoItem
 import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.CreateTodoPayload
 import com.ifmix.api.core.generated.types.DeleteTodoPayload
@@ -14,8 +12,10 @@ import com.ifmix.api.core.generated.types.UpdateTodoPayload
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.modules.todo.repo.TodoRepository
-import com.ifmix.api.core.modules.todo.service.TodoService
+import com.ifmix.api.core.model.Todo
+import com.ifmix.api.core.model.TodoItem
+import com.ifmix.api.core.modules.todo.repo.TodoJooqRepository
+import com.ifmix.api.core.modules.todo.service.TodoJooqService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsData
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -29,14 +29,14 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 
 /**
- * Todo GraphQL DataFetcher。
+ * Todo GraphQL DataFetcher（jOOQ 版）。
  *
- * Query/Mutation 委托给 TodoService（返回 allScalar 的 Todo interface）。
+ * Query/Mutation 委托给 TodoJooqService（返回 Domain Model data class）。
  * 关联字段 items 通过 DataLoader 按需批量加载。
  */
 @DgsComponent
 class TodoFetcher(
-    private val todoService: TodoService,
+    private val todoService: TodoJooqService,
     private val ctxProvider: OperationContextProvider,
 ) {
 
@@ -88,7 +88,7 @@ class TodoFetcher(
     fun updateTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoInput): UpdateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val success = todoService.updateTodo(ctx, input)
-        // 如果客户端 select 了 todo 字段，回查
+        // 如果客户端 select 了 todo 字段，回查（readCache=false → 直读主库）
         val todo = if (success && dfe.selectionSet.fields.any { it.name == "todo" }) {
             todoService.findById(ctx, input.id)
         } else null
@@ -123,14 +123,14 @@ class TodoFetcher(
 
 /**
  * DataLoader: 批量加载 Todo 的 items 关联。
- * 当 GraphQL 请求包含 Todo.items 字段时，DGS 攒一批 todoId 一次查完。
+ * caching=false — 只保留 batching，防止 mutation document 内脏读。
  */
-@DgsDataLoader(name = TodoItemsDataLoader.NAME)
-class TodoItemsDataLoader(private val repo: TodoRepository) : MappedBatchLoader<UUID, List<TodoItem>> {
+@DgsDataLoader(name = TodoItemsDataLoader.NAME, caching = false)
+class TodoItemsDataLoader(private val repo: TodoJooqRepository) : MappedBatchLoader<UUID, List<TodoItem>> {
 
     override fun load(todoIds: Set<UUID>): CompletionStage<Map<UUID, List<TodoItem>>> {
         val items = repo.findItemsByTodoIds(todoIds)
-        val grouped = items.groupBy { it.todo.id }
+        val grouped = items.groupBy { it.todoId }
         val result = todoIds.associateWith { grouped[it] ?: emptyList() }
         return CompletableFuture.completedFuture(result)
     }

@@ -1,11 +1,7 @@
 package com.ifmix.api.core.modules.todo.service
 
-import com.ifmix.api.core.entity.todo.Todo
-import com.ifmix.api.core.entity.todo.TodoItem
 import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.TodoQueryInput
-import com.ifmix.api.core.generated.types.TodoItemUnsetField
-import com.ifmix.api.core.generated.types.TodoUnsetField
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.infra.db.UuidV7
@@ -15,20 +11,23 @@ import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.redis.CacheAside
-import com.ifmix.api.core.modules.todo.repo.TodoRepository
+import com.ifmix.api.core.model.Todo
+import com.ifmix.api.core.model.TodoItem
+import com.ifmix.api.core.modules.todo.repo.TodoJooqRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 /**
- * Todo 业务逻辑层。
+ * jOOQ 版 TodoService。
  *
- * 职责：业务编排 + 缓存管理。
- * 所有 SQL 委托给 TodoRepository。
+ * 与原 Jimmer 版 TodoService 并存，供逐步切换。
+ * 职责：业务编排 + 缓存管理。所有 SQL 委托给 TodoJooqRepository。
  */
-@Service
-class TodoService(
-    private val repo: TodoRepository,
+@Service("todoJooqService")
+class TodoJooqService(
+    private val repo: TodoJooqRepository,
     private val cache: CacheAside,
 ) {
 
@@ -80,28 +79,28 @@ class TodoService(
     fun createTodo(ctx: OperationContext, input: CreateTodoInput): UUID {
         val appId = ctx.mustGetAppId()
         val id = UuidV7.generate()
-        val entity = Todo {
-            this.id = id
-            this.appId = appId
-            this.installId = ctx.installId
-            this.userId = ctx.userId
-            this.title = input.title
-            this.done = input.done ?: false
-            this.note = input.note
-            this.meta = null
-        }
-        repo.insert(entity)
+        repo.insert(
+            appId = appId,
+            id = id,
+            installId = ctx.installId,
+            userId = ctx.userId,
+            title = input.title,
+            done = input.done ?: false,
+            note = input.note,
+        )
         input.items?.takeIf { it.isNotEmpty() }?.let { items ->
-            val itemEntities = items.map { itemInput ->
-                TodoItem {
-                    this.id = UuidV7.generate()
-                    this.appId = appId
-                    this.content = itemInput.content
-                    this.done = itemInput.done ?: false
-                    this.note = itemInput.note
-                }
-            }
-            repo.saveItems(itemEntities)
+            val now = Instant.now()
+            repo.saveItems(appId, items.map { i ->
+                TodoItem(
+                    id = UuidV7.generate(),
+                    appId = appId,
+                    todoId = id,
+                    content = i.content,
+                    done = i.done ?: false,
+                    note = i.note,
+                    createdAt = now,
+                )
+            })
         }
         return id
     }
@@ -111,21 +110,8 @@ class TodoService(
     @Transactional
     fun updateTodo(ctx: OperationContext, input: UpdateTodoInput): Boolean {
         val appId = ctx.mustGetAppId()
-        // 校验存在性
         if (!repo.exists(appId, input.id)) throw ApiError(ErrorCode.NOT_FOUND)
-
-        // 直接构造 partial entity — Jimmer 只 UPDATE 被赋值的列
-        val entity = Todo {
-            this.id = input.id
-            this.appId = appId
-            input.set?.title?.let { this.title = it }
-            input.set?.done?.let { this.done = it }
-            input.set?.note?.let { this.note = it }
-            if (input.unset?.contains(TodoUnsetField.NOTE) == true) {
-                this.note = null
-            }
-        }
-        repo.save(entity)
+        repo.partialUpdate(appId, input)
         cache.evict(cacheKey(appId, input.id))
         return true
     }
@@ -135,36 +121,29 @@ class TodoService(
     @Transactional
     fun updateTodoItems(ctx: OperationContext, input: UpdateTodoItemsMutationInput) {
         val appId = ctx.mustGetAppId()
+        val now = Instant.now()
 
-        // Create + Update 合并为一次 saveEntities（Jimmer 按 id 自动区分 INSERT/UPDATE）
-        val entities = buildList<TodoItem> {
-            input.create?.forEach { c ->
-                add(TodoItem {
-                    this.id = UuidV7.generate()
-                    this.appId = appId
-                    this.content = c.content
-                    this.done = c.done ?: false
-                    this.note = c.note
-                })
-            }
-            input.update?.forEach { u ->
-                add(TodoItem {
-                    this.id = u.id
-                    this.appId = appId
-                    u.set?.content?.let { this.content = it }
-                    u.set?.done?.let { this.done = it }
-                    u.set?.note?.let { this.note = it }
-                    if (u.unset?.contains(TodoItemUnsetField.NOTE) == true) {
-                        this.note = null
-                    }
-                })
-            }
-        }
-        if (entities.isNotEmpty()) {
-            repo.saveItems(entities)
+        // Create
+        input.create?.takeIf { it.isNotEmpty() }?.let { creates ->
+            repo.saveItems(appId, creates.map { c ->
+                TodoItem(
+                    id = UuidV7.generate(),
+                    appId = appId,
+                    todoId = c.todoId,
+                    content = c.content,
+                    done = c.done ?: false,
+                    note = c.note,
+                    createdAt = now,
+                )
+            })
         }
 
-        // Delete
+        // Update (partial, with set/unset)
+        input.update?.takeIf { it.isNotEmpty() }?.let { updates ->
+            repo.updateItems(appId, updates)
+        }
+
+        // Delete (soft)
         input.delete?.takeIf { it.isNotEmpty() }?.let { ids ->
             repo.deleteItemsByIds(appId, ids)
         }
@@ -175,7 +154,7 @@ class TodoService(
     @Transactional
     fun deleteTodo(ctx: OperationContext, id: UUID): Boolean {
         val appId = ctx.mustGetAppId()
-        val deleted = repo.deleteTodo(appId, id)
+        val deleted = repo.deleteById(appId, id)
         if (deleted) cache.evict(cacheKey(appId, id))
         return deleted
     }
@@ -184,7 +163,7 @@ class TodoService(
     fun deleteTodosByIds(ctx: OperationContext, ids: List<UUID>): Int {
         val appId = ctx.mustGetAppId()
         if (ids.isEmpty()) return 0
-        val count = repo.deleteTodosByIds(appId, ids)
+        val count = repo.deleteByIds(appId, ids)
         cache.evictAll(ids.map { cacheKey(appId, it) })
         return count
     }

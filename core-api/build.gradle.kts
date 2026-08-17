@@ -5,6 +5,7 @@ plugins {
     id("io.spring.dependency-management")
     id("com.google.devtools.ksp")
     id("com.netflix.dgs.codegen")
+    id("nu.studer.jooq")
 }
 
 dependencies {
@@ -56,6 +57,10 @@ dependencies {
     implementation("org.babyfish.jimmer:jimmer-spring-boot-starter:$jimmerVersion")
     implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
     ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")
+
+    // === jOOQ (coexists with Jimmer during migration) ===
+    implementation("org.springframework.boot:spring-boot-starter-jooq")
+    jooqGenerator("org.postgresql:postgresql")
 
     // UUIDv7 generator (cursor pagination requires time-ordered IDs)
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
@@ -127,7 +132,7 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "${projectDir}/src/main/resources/schema/customer",
     )
 
-    // 类型映射：GraphQL output type → Jimmer entity interface（不生成 data class）
+    // 类型映射：GraphQL output type → Domain Model data class（不生成 data class）
     // input types / payload types / enums 不在此映射，由 codegen 生成
     typeMapping = mutableMapOf(
         // Scalars
@@ -135,8 +140,42 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "DateTime" to "java.time.Instant",
         "Long" to "kotlin.Long",
         "JSON" to "kotlin.Any",
-        // Entity output types → Jimmer interfaces（避免 codegen 为这些生成 data class）
-        "Todo" to "com.ifmix.api.core.entity.todo.Todo",
-        "TodoItem" to "com.ifmix.api.core.entity.todo.TodoItem",
+        // Entity output types → Domain Model data classes
+        "Todo" to "com.ifmix.api.core.model.Todo",
+        "TodoItem" to "com.ifmix.api.core.model.TodoItem",
     )
+}
+
+// jOOQ codegen — 手动触发: ./gradlew :core-api:generateJooq
+jooq {
+    configurations {
+        create("main") {
+            generateSchemaSourceOnCompilation.set(false) // 不自动在 compileKotlin 时触发 codegen
+
+            jooqConfiguration.apply {
+                jdbc.apply {
+                    driver = "org.postgresql.Driver"
+                    url = "jdbc:postgresql://localhost:5432/ifmix_core_local"
+                    user = "postgres"
+                    password = "postgres"
+                }
+                generator.apply {
+                    name = "org.jooq.codegen.KotlinGenerator"
+                    database.apply {
+                        inputSchema = "public"
+                        includes = "core_.*"
+                        excludes = "flyway_.*"
+                    }
+                    target.apply {
+                        packageName = "com.ifmix.api.core.jooq"
+                        directory = "src/main/jooq"
+                    }
+                    generate.apply {
+                        isKotlinNotNullPojoAttributes = true
+                        isKotlinNotNullRecordAttributes = true
+                    }
+                }
+            }
+        }
+    }
 }

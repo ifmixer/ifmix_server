@@ -19,8 +19,14 @@ data class OperationContext(
     val clientPlatform: ClientPlatform? = null,
     val userId: UUID? = null,
     val clientIp: String? = null,
-    /** true = 允许读从库（仅影响 ReadWriteRoutingDataSource）。事务内自动走主库。 */
+    /** true = 允许读从库。mutation 时为 false。 */
     val readFromReplica: Boolean = false,
+    /** GraphQL operation name */
+    val opName: String? = null,
+    /** true = mutation */
+    val isMutation: Boolean = false,
+    /** 是否允许读缓存。mutation 时为 false，避免脏读。 */
+    val readCache: Boolean = !isMutation,
 ) {
     /**
      * Repository 层专用上下文。

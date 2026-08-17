@@ -31,6 +31,11 @@ class OperationContextProvider {
 
         val userIdStr = servletRequest.getAttribute(AuthInterceptor.ATTR_USER_ID) as? String
 
+        val isMutation = dfe.executionStepInfo.parent?.type?.let {
+            (it as? graphql.schema.GraphQLObjectType)?.name == "Mutation"
+        } ?: false
+        val opName = dfe.field?.name
+
         return OperationContext(
             appId = parseUuid(servletRequest.getHeader("x-app-id")),
             installId = parseUuid(servletRequest.getHeader("x-install-id")),
@@ -40,6 +45,9 @@ class OperationContextProvider {
             clientPlatform = ClientPlatform.fromHeader(servletRequest.getHeader("x-client-platform")),
             userId = userIdStr?.let { tryParseUuid(it) },
             clientIp = ClientIpResolver.resolve(servletRequest),
+            readFromReplica = !isMutation,
+            opName = opName,
+            isMutation = isMutation,
         )
     }
 
