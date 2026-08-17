@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreScanRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.JSONB
@@ -40,17 +40,17 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
         set(value): Unit = set(4, value)
         get(): String? = get(4) as String?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(5, value)
-        get(): OffsetDateTime? = get(5) as OffsetDateTime?
+        get(): Instant? = get(5) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(6, value)
-        get(): OffsetDateTime? = get(6) as OffsetDateTime?
+        get(): Instant? = get(6) as Instant?
 
-    open var deletedAt: OffsetDateTime?
+    open var deletedAt: Instant?
         set(value): Unit = set(7, value)
-        get(): OffsetDateTime? = get(7) as OffsetDateTime?
+        get(): Instant? = get(7) as Instant?
 
     open var imageKeys: JSONB?
         set(value): Unit = set(8, value)
@@ -89,7 +89,7 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
     /**
      * Create a detached, initialised CoreScanRecordRecord
      */
-    constructor(id: UUID, appId: UUID, resultJson: JSONB? = null, status: Short? = null, clientIp: String? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null, deletedAt: OffsetDateTime? = null, imageKeys: JSONB? = null, userDisplayName: String? = null, userNotes: String? = null, collected: Boolean? = null, lang: String? = null, country: String? = null, currency: String? = null): this() {
+    constructor(id: UUID, appId: UUID, resultJson: JSONB? = null, status: Short? = null, clientIp: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null, imageKeys: JSONB? = null, userDisplayName: String? = null, userNotes: String? = null, collected: Boolean? = null, lang: String? = null, country: String? = null, currency: String? = null): this() {
         this.id = id
         this.appId = appId
         this.resultJson = resultJson
@@ -106,5 +106,29 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
         this.country = country
         this.currency = currency
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreScanRecordRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreScanRecord?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.resultJson = value.resultJson
+            this.status = value.status
+            this.clientIp = value.clientIp
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            this.deletedAt = value.deletedAt
+            this.imageKeys = value.imageKeys
+            this.userDisplayName = value.userDisplayName
+            this.userNotes = value.userNotes
+            this.collected = value.collected
+            this.lang = value.lang
+            this.country = value.country
+            this.currency = value.currency
+            resetTouchedOnNotNull()
+        }
     }
 }

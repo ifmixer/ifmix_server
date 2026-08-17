@@ -4,6 +4,7 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.IDX_CORE_TODO_APP_INSTALL
 import com.ifmix.api.core.jooq.indexes.IDX_CORE_TODO_APP_USER
@@ -11,7 +12,7 @@ import com.ifmix.api.core.jooq.indexes.TODO_APP_ID_ID_IDX
 import com.ifmix.api.core.jooq.keys.TODO_PKEY
 import com.ifmix.api.core.jooq.tables.records.CoreTodoRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -101,17 +102,17 @@ open class CoreTodo(
     /**
      * The column <code>public.core_todo.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreTodoRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
+    val CREATED_AT: TableField<CoreTodoRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_todo.updated_at</code>.
      */
-    val UPDATED_AT: TableField<CoreTodoRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
+    val UPDATED_AT: TableField<CoreTodoRecord, Instant?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_todo.deleted_at</code>.
      */
-    val DELETED_AT: TableField<CoreTodoRecord, OffsetDateTime?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+    val DELETED_AT: TableField<CoreTodoRecord, Instant?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_todo.install_id</code>.

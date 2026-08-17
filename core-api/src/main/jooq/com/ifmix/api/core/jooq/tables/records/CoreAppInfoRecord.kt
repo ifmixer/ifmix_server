@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreAppInfo
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.Record1
@@ -35,13 +35,13 @@ open class CoreAppInfoRecord private constructor() : UpdatableRecordImpl<CoreApp
         set(value): Unit = set(3, value)
         get(): String = get(3) as String
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(4, value)
-        get(): OffsetDateTime? = get(4) as OffsetDateTime?
+        get(): Instant? = get(4) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(5, value)
-        get(): OffsetDateTime? = get(5) as OffsetDateTime?
+        get(): Instant? = get(5) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -52,7 +52,7 @@ open class CoreAppInfoRecord private constructor() : UpdatableRecordImpl<CoreApp
     /**
      * Create a detached, initialised CoreAppInfoRecord
      */
-    constructor(id: UUID, name: String? = null, description: String? = null, slug: String, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, name: String? = null, description: String? = null, slug: String, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
         this.id = id
         this.name = name
         this.description = description
@@ -60,5 +60,20 @@ open class CoreAppInfoRecord private constructor() : UpdatableRecordImpl<CoreApp
         this.createdAt = createdAt
         this.updatedAt = updatedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreAppInfoRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreAppInfo?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.name = value.name
+            this.description = value.description
+            this.slug = value.slug
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

@@ -166,6 +166,11 @@ jooq {
                         inputSchema = "public"
                         includes = "core_.*"
                         excludes = "flyway_.*"
+                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
+                            userType = "java.time.Instant"
+                            converter = "com.ifmix.api.core.infra.jooq.InstantConverter"
+                            includeTypes = ".*(?i:timestamp).*"
+                        })
                     }
                     target.apply {
                         packageName = "com.ifmix.api.core.jooq"
@@ -174,6 +179,8 @@ jooq {
                     generate.apply {
                         isKotlinNotNullPojoAttributes = true
                         isKotlinNotNullRecordAttributes = true
+                        isPojos = true
+                        isPojosAsKotlinDataClasses = true
                     }
                 }
             }

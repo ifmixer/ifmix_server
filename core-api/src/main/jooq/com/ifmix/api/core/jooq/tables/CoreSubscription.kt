@@ -4,6 +4,7 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.SUBSCRIPTION_APP_ID_IDX
 import com.ifmix.api.core.jooq.indexes.SUBSCRIPTION_ORIGINAL_TXN_IDX
@@ -11,7 +12,7 @@ import com.ifmix.api.core.jooq.indexes.SUBSCRIPTION_PXID_ACTIVE_IDX
 import com.ifmix.api.core.jooq.keys.SUBSCRIPTION_PKEY
 import com.ifmix.api.core.jooq.tables.records.CoreSubscriptionRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -121,7 +122,7 @@ open class CoreSubscription(
     /**
      * The column <code>public.core_subscription.expiry_date</code>.
      */
-    val EXPIRY_DATE: TableField<CoreSubscriptionRecord, OffsetDateTime?> = createField(DSL.name("expiry_date"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+    val EXPIRY_DATE: TableField<CoreSubscriptionRecord, Instant?> = createField(DSL.name("expiry_date"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_subscription.purchase_token</code>.
@@ -136,17 +137,17 @@ open class CoreSubscription(
     /**
      * The column <code>public.core_subscription.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreSubscriptionRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val CREATED_AT: TableField<CoreSubscriptionRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_subscription.updated_at</code>.
      */
-    val UPDATED_AT: TableField<CoreSubscriptionRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val UPDATED_AT: TableField<CoreSubscriptionRecord, Instant?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_subscription.deleted_at</code>.
      */
-    val DELETED_AT: TableField<CoreSubscriptionRecord, OffsetDateTime?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+    val DELETED_AT: TableField<CoreSubscriptionRecord, Instant?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
     private constructor(alias: Name, aliased: Table<CoreSubscriptionRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreSubscriptionRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

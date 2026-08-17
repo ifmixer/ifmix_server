@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreFeedback
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.Record1
@@ -47,9 +47,9 @@ open class CoreFeedbackRecord private constructor() : UpdatableRecordImpl<CoreFe
         set(value): Unit = set(6, value)
         get(): String? = get(6) as String?
 
-    open var createdAt: OffsetDateTime
+    open var createdAt: Instant
         set(value): Unit = set(7, value)
-        get(): OffsetDateTime = get(7) as OffsetDateTime
+        get(): Instant = get(7) as Instant
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -60,7 +60,7 @@ open class CoreFeedbackRecord private constructor() : UpdatableRecordImpl<CoreFe
     /**
      * Create a detached, initialised CoreFeedbackRecord
      */
-    constructor(id: UUID, appId: UUID, installId: UUID, userId: UUID? = null, scanRecordId: UUID? = null, category: Short? = null, comment: String? = null, createdAt: OffsetDateTime): this() {
+    constructor(id: UUID, appId: UUID, installId: UUID, userId: UUID? = null, scanRecordId: UUID? = null, category: Short? = null, comment: String? = null, createdAt: Instant): this() {
         this.id = id
         this.appId = appId
         this.installId = installId
@@ -70,5 +70,22 @@ open class CoreFeedbackRecord private constructor() : UpdatableRecordImpl<CoreFe
         this.comment = comment
         this.createdAt = createdAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreFeedbackRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreFeedback?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.installId = value.installId
+            this.userId = value.userId
+            this.scanRecordId = value.scanRecordId
+            this.category = value.category
+            this.comment = value.comment
+            this.createdAt = value.createdAt
+            resetTouchedOnNotNull()
+        }
     }
 }

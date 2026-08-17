@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreStoreNotification
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.JSONB
@@ -52,21 +52,21 @@ open class CoreStoreNotificationRecord private constructor() : UpdatableRecordIm
         set(value): Unit = set(7, value)
         get(): Boolean? = get(7) as Boolean?
 
-    open var processedAt: OffsetDateTime?
+    open var processedAt: Instant?
         set(value): Unit = set(8, value)
-        get(): OffsetDateTime? = get(8) as OffsetDateTime?
+        get(): Instant? = get(8) as Instant?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(9, value)
-        get(): OffsetDateTime? = get(9) as OffsetDateTime?
+        get(): Instant? = get(9) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(10, value)
-        get(): OffsetDateTime? = get(10) as OffsetDateTime?
+        get(): Instant? = get(10) as Instant?
 
-    open var deletedAt: OffsetDateTime?
+    open var deletedAt: Instant?
         set(value): Unit = set(11, value)
-        get(): OffsetDateTime? = get(11) as OffsetDateTime?
+        get(): Instant? = get(11) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -77,7 +77,7 @@ open class CoreStoreNotificationRecord private constructor() : UpdatableRecordIm
     /**
      * Create a detached, initialised CoreStoreNotificationRecord
      */
-    constructor(id: UUID, appId: UUID, platform: String? = null, subscriptionPxid: String? = null, purchaseToken: String? = null, notificationType: String? = null, rawPayload: JSONB? = null, processed: Boolean? = null, processedAt: OffsetDateTime? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null, deletedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, appId: UUID, platform: String? = null, subscriptionPxid: String? = null, purchaseToken: String? = null, notificationType: String? = null, rawPayload: JSONB? = null, processed: Boolean? = null, processedAt: Instant? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null): this() {
         this.id = id
         this.appId = appId
         this.platform = platform
@@ -91,5 +91,26 @@ open class CoreStoreNotificationRecord private constructor() : UpdatableRecordIm
         this.updatedAt = updatedAt
         this.deletedAt = deletedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreStoreNotificationRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreStoreNotification?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.platform = value.platform
+            this.subscriptionPxid = value.subscriptionPxid
+            this.purchaseToken = value.purchaseToken
+            this.notificationType = value.notificationType
+            this.rawPayload = value.rawPayload
+            this.processed = value.processed
+            this.processedAt = value.processedAt
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            this.deletedAt = value.deletedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

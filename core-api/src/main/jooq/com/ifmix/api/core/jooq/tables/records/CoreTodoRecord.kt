@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreTodo
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.JSONB
@@ -36,17 +36,17 @@ open class CoreTodoRecord private constructor() : UpdatableRecordImpl<CoreTodoRe
         set(value): Unit = set(3, value)
         get(): UUID = get(3) as UUID
 
-    open var createdAt: OffsetDateTime
+    open var createdAt: Instant
         set(value): Unit = set(4, value)
-        get(): OffsetDateTime = get(4) as OffsetDateTime
+        get(): Instant = get(4) as Instant
 
-    open var updatedAt: OffsetDateTime
+    open var updatedAt: Instant
         set(value): Unit = set(5, value)
-        get(): OffsetDateTime = get(5) as OffsetDateTime
+        get(): Instant = get(5) as Instant
 
-    open var deletedAt: OffsetDateTime?
+    open var deletedAt: Instant?
         set(value): Unit = set(6, value)
-        get(): OffsetDateTime? = get(6) as OffsetDateTime?
+        get(): Instant? = get(6) as Instant?
 
     open var installId: UUID?
         set(value): Unit = set(7, value)
@@ -69,7 +69,7 @@ open class CoreTodoRecord private constructor() : UpdatableRecordImpl<CoreTodoRe
     /**
      * Create a detached, initialised CoreTodoRecord
      */
-    constructor(id: UUID, title: String, done: Boolean? = null, appId: UUID, createdAt: OffsetDateTime, updatedAt: OffsetDateTime, deletedAt: OffsetDateTime? = null, installId: UUID? = null, userId: UUID? = null, meta: JSONB? = null): this() {
+    constructor(id: UUID, title: String, done: Boolean? = null, appId: UUID, createdAt: Instant, updatedAt: Instant, deletedAt: Instant? = null, installId: UUID? = null, userId: UUID? = null, meta: JSONB? = null): this() {
         this.id = id
         this.title = title
         this.done = done
@@ -81,5 +81,24 @@ open class CoreTodoRecord private constructor() : UpdatableRecordImpl<CoreTodoRe
         this.userId = userId
         this.meta = meta
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreTodoRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreTodo?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.title = value.title
+            this.done = value.done
+            this.appId = value.appId
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            this.deletedAt = value.deletedAt
+            this.installId = value.installId
+            this.userId = value.userId
+            this.meta = value.meta
+            resetTouchedOnNotNull()
+        }
     }
 }

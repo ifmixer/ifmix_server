@@ -4,6 +4,7 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.IDX_UPLOAD_RECORD_APP_ID
 import com.ifmix.api.core.jooq.indexes.IDX_UPLOAD_RECORD_CREATED_AT
@@ -11,7 +12,7 @@ import com.ifmix.api.core.jooq.indexes.IDX_UPLOAD_RECORD_USER_ID
 import com.ifmix.api.core.jooq.keys.CORE_UPLOAD_RECORD_PKEY
 import com.ifmix.api.core.jooq.tables.records.CoreUploadRecordRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -120,7 +121,7 @@ open class CoreUploadRecord(
     /**
      * The column <code>public.core_upload_record.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreUploadRecordRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val CREATED_AT: TableField<CoreUploadRecordRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     private constructor(alias: Name, aliased: Table<CoreUploadRecordRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreUploadRecordRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

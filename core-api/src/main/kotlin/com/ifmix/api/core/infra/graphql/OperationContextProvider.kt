@@ -1,6 +1,7 @@
 package com.ifmix.api.core.infra.graphql
 
 import com.ifmix.api.core.infra.auth.AuthInterceptor
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientIpResolver
 import com.ifmix.api.core.infra.http.ClientPlatform
@@ -9,6 +10,7 @@ import com.ifmix.api.core.infra.http.OperationContext
 import com.netflix.graphql.dgs.context.DgsContext
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.internal.DgsWebMvcRequestData
+import graphql.schema.GraphQLObjectType
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.stereotype.Component
 import org.springframework.web.context.request.ServletRequestAttributes
@@ -18,9 +20,7 @@ class OperationContextProvider {
 
     /**
      * 从 DGS DataFetchingEnvironment 中提取 OperationContext。
-     *
-     * DgsWebMvcRequestData.webRequest 是 Spring WebRequest 接口实现，
-     * 在 Servlet 环境中实际类型为 ServletRequestAttributes，可从中拿到 HttpServletRequest。
+     * 自动判断 query/mutation，构建 repoCtx（含 DSLContext）。
      */
     fun fromDfe(dfe: DgsDataFetchingEnvironment): OperationContext {
         val requestData = DgsContext.getRequestData(dfe) as? DgsWebMvcRequestData
@@ -32,9 +32,12 @@ class OperationContextProvider {
         val userIdStr = servletRequest.getAttribute(AuthInterceptor.ATTR_USER_ID) as? String
 
         val isMutation = dfe.executionStepInfo.parent?.type?.let {
-            (it as? graphql.schema.GraphQLObjectType)?.name == "Mutation"
+            (it as? GraphQLObjectType)?.name == "Mutation"
         } ?: false
         val opName = dfe.field?.name
+
+        // 将来多集群：根据 appId 从 ClusterRegistry 解析不同的 DSLContext
+        val repoCtx = RepoContext.DEFAULT
 
         return OperationContext(
             appId = parseUuid(servletRequest.getHeader("x-app-id")),
@@ -48,6 +51,7 @@ class OperationContextProvider {
             readFromReplica = !isMutation,
             opName = opName,
             isMutation = isMutation,
+            repoCtx = repoCtx,
         )
     }
 

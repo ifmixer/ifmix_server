@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreAppUser
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.JSONB
@@ -36,13 +36,13 @@ open class CoreAppUserRecord private constructor() : UpdatableRecordImpl<CoreApp
         set(value): Unit = set(3, value)
         get(): JSONB? = get(3) as JSONB?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(4, value)
-        get(): OffsetDateTime? = get(4) as OffsetDateTime?
+        get(): Instant? = get(4) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(5, value)
-        get(): OffsetDateTime? = get(5) as OffsetDateTime?
+        get(): Instant? = get(5) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -53,7 +53,7 @@ open class CoreAppUserRecord private constructor() : UpdatableRecordImpl<CoreApp
     /**
      * Create a detached, initialised CoreAppUserRecord
      */
-    constructor(id: UUID, appId: UUID, authIdentityId: UUID, metadata: JSONB? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, appId: UUID, authIdentityId: UUID, metadata: JSONB? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
         this.id = id
         this.appId = appId
         this.authIdentityId = authIdentityId
@@ -61,5 +61,20 @@ open class CoreAppUserRecord private constructor() : UpdatableRecordImpl<CoreApp
         this.createdAt = createdAt
         this.updatedAt = updatedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreAppUserRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreAppUser?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.authIdentityId = value.authIdentityId
+            this.metadata = value.metadata
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

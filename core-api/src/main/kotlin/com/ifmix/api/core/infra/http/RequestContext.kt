@@ -21,16 +21,12 @@ data class OperationContext(
     val clientIp: String? = null,
     /** true = 允许读从库。mutation 时为 false。 */
     val readFromReplica: Boolean = false,
-    /** GraphQL operation name */
+    /** GraphQL operation field name */
     val opName: String? = null,
     /** true = mutation */
     val isMutation: Boolean = false,
     /** 是否允许读缓存。mutation 时为 false，避免脏读。 */
     val readCache: Boolean = !isMutation,
-) {
-    /**
-     * Repository 层专用上下文。
-     * 当前实现为单例 DEFAULT；将来多集群路由时可根据 appId 等信息动态构造。
-     */
-    val repoCtx: RepoContext get() = RepoContext.DEFAULT
-}
+    /** Repository 层上下文（持有 DSLContext，按 appId/集群路由） */
+    val repoCtx: RepoContext = RepoContext.DEFAULT,
+)

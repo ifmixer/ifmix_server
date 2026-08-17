@@ -4,6 +4,7 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.AGNES_KEY_APP_IDX
 import com.ifmix.api.core.jooq.indexes.AGNES_KEY_UNAVAILABLE_IDX
@@ -11,7 +12,7 @@ import com.ifmix.api.core.jooq.indexes.AGNES_KEY_UQ
 import com.ifmix.api.core.jooq.keys.AGNES_KEY_PKEY
 import com.ifmix.api.core.jooq.tables.records.CoreAgnesKeyRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -115,22 +116,22 @@ open class CoreAgnesKey(
     /**
      * The column <code>public.core_agnes_key.unavailable_until</code>.
      */
-    val UNAVAILABLE_UNTIL: TableField<CoreAgnesKeyRecord, OffsetDateTime?> = createField(DSL.name("unavailable_until"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+    val UNAVAILABLE_UNTIL: TableField<CoreAgnesKeyRecord, Instant?> = createField(DSL.name("unavailable_until"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_agnes_key.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreAgnesKeyRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val CREATED_AT: TableField<CoreAgnesKeyRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_agnes_key.updated_at</code>.
      */
-    val UPDATED_AT: TableField<CoreAgnesKeyRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val UPDATED_AT: TableField<CoreAgnesKeyRecord, Instant?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_agnes_key.deleted_at</code>.
      */
-    val DELETED_AT: TableField<CoreAgnesKeyRecord, OffsetDateTime?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+    val DELETED_AT: TableField<CoreAgnesKeyRecord, Instant?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_agnes_key.type</code>.

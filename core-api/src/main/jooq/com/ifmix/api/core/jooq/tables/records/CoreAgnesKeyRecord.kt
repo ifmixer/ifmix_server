@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreAgnesKey
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.Record1
@@ -47,21 +47,21 @@ open class CoreAgnesKeyRecord private constructor() : UpdatableRecordImpl<CoreAg
         set(value): Unit = set(6, value)
         get(): String? = get(6) as String?
 
-    open var unavailableUntil: OffsetDateTime?
+    open var unavailableUntil: Instant?
         set(value): Unit = set(7, value)
-        get(): OffsetDateTime? = get(7) as OffsetDateTime?
+        get(): Instant? = get(7) as Instant?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(8, value)
-        get(): OffsetDateTime? = get(8) as OffsetDateTime?
+        get(): Instant? = get(8) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(9, value)
-        get(): OffsetDateTime? = get(9) as OffsetDateTime?
+        get(): Instant? = get(9) as Instant?
 
-    open var deletedAt: OffsetDateTime?
+    open var deletedAt: Instant?
         set(value): Unit = set(10, value)
-        get(): OffsetDateTime? = get(10) as OffsetDateTime?
+        get(): Instant? = get(10) as Instant?
 
     open var type: Short?
         set(value): Unit = set(11, value)
@@ -76,7 +76,7 @@ open class CoreAgnesKeyRecord private constructor() : UpdatableRecordImpl<CoreAg
     /**
      * Create a detached, initialised CoreAgnesKeyRecord
      */
-    constructor(id: UUID, appId: UUID, key: String, email: String? = null, rateLimit: Long? = null, windowSec: Long? = null, models: String? = null, unavailableUntil: OffsetDateTime? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null, deletedAt: OffsetDateTime? = null, type: Short? = null): this() {
+    constructor(id: UUID, appId: UUID, key: String, email: String? = null, rateLimit: Long? = null, windowSec: Long? = null, models: String? = null, unavailableUntil: Instant? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null, type: Short? = null): this() {
         this.id = id
         this.appId = appId
         this.key = key
@@ -90,5 +90,26 @@ open class CoreAgnesKeyRecord private constructor() : UpdatableRecordImpl<CoreAg
         this.deletedAt = deletedAt
         this.type = type
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreAgnesKeyRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreAgnesKey?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.key = value.key
+            this.email = value.email
+            this.rateLimit = value.rateLimit
+            this.windowSec = value.windowSec
+            this.models = value.models
+            this.unavailableUntil = value.unavailableUntil
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            this.deletedAt = value.deletedAt
+            this.type = value.type
+            resetTouchedOnNotNull()
+        }
     }
 }

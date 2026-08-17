@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreAppRefreshToken
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.Record1
@@ -43,25 +43,25 @@ open class CoreAppRefreshTokenRecord private constructor() : UpdatableRecordImpl
         set(value): Unit = set(5, value)
         get(): UUID? = get(5) as UUID?
 
-    open var expiresAt: OffsetDateTime?
+    open var expiresAt: Instant?
         set(value): Unit = set(6, value)
-        get(): OffsetDateTime? = get(6) as OffsetDateTime?
+        get(): Instant? = get(6) as Instant?
 
-    open var revokedAt: OffsetDateTime?
+    open var revokedAt: Instant?
         set(value): Unit = set(7, value)
-        get(): OffsetDateTime? = get(7) as OffsetDateTime?
+        get(): Instant? = get(7) as Instant?
 
     open var replacedBy: UUID?
         set(value): Unit = set(8, value)
         get(): UUID? = get(8) as UUID?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(9, value)
-        get(): OffsetDateTime? = get(9) as OffsetDateTime?
+        get(): Instant? = get(9) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(10, value)
-        get(): OffsetDateTime? = get(10) as OffsetDateTime?
+        get(): Instant? = get(10) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -72,7 +72,7 @@ open class CoreAppRefreshTokenRecord private constructor() : UpdatableRecordImpl
     /**
      * Create a detached, initialised CoreAppRefreshTokenRecord
      */
-    constructor(id: UUID, appId: UUID, appUserId: UUID, deviceSecretId: UUID? = null, tokenHash: String, loginInstallId: UUID? = null, expiresAt: OffsetDateTime? = null, revokedAt: OffsetDateTime? = null, replacedBy: UUID? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, appId: UUID, appUserId: UUID, deviceSecretId: UUID? = null, tokenHash: String, loginInstallId: UUID? = null, expiresAt: Instant? = null, revokedAt: Instant? = null, replacedBy: UUID? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
         this.id = id
         this.appId = appId
         this.appUserId = appUserId
@@ -85,5 +85,25 @@ open class CoreAppRefreshTokenRecord private constructor() : UpdatableRecordImpl
         this.createdAt = createdAt
         this.updatedAt = updatedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreAppRefreshTokenRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreAppRefreshToken?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.appUserId = value.appUserId
+            this.deviceSecretId = value.deviceSecretId
+            this.tokenHash = value.tokenHash
+            this.loginInstallId = value.loginInstallId
+            this.expiresAt = value.expiresAt
+            this.revokedAt = value.revokedAt
+            this.replacedBy = value.replacedBy
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

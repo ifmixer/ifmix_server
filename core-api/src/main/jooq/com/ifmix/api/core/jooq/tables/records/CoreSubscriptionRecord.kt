@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreSubscription
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.JSONB
@@ -52,9 +52,9 @@ open class CoreSubscriptionRecord private constructor() : UpdatableRecordImpl<Co
         set(value): Unit = set(7, value)
         get(): String? = get(7) as String?
 
-    open var expiryDate: OffsetDateTime?
+    open var expiryDate: Instant?
         set(value): Unit = set(8, value)
-        get(): OffsetDateTime? = get(8) as OffsetDateTime?
+        get(): Instant? = get(8) as Instant?
 
     open var purchaseToken: String?
         set(value): Unit = set(9, value)
@@ -64,17 +64,17 @@ open class CoreSubscriptionRecord private constructor() : UpdatableRecordImpl<Co
         set(value): Unit = set(10, value)
         get(): JSONB? = get(10) as JSONB?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(11, value)
-        get(): OffsetDateTime? = get(11) as OffsetDateTime?
+        get(): Instant? = get(11) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(12, value)
-        get(): OffsetDateTime? = get(12) as OffsetDateTime?
+        get(): Instant? = get(12) as Instant?
 
-    open var deletedAt: OffsetDateTime?
+    open var deletedAt: Instant?
         set(value): Unit = set(13, value)
-        get(): OffsetDateTime? = get(13) as OffsetDateTime?
+        get(): Instant? = get(13) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -85,7 +85,7 @@ open class CoreSubscriptionRecord private constructor() : UpdatableRecordImpl<Co
     /**
      * Create a detached, initialised CoreSubscriptionRecord
      */
-    constructor(id: UUID, appId: UUID, subscriptionPxid: String? = null, originalTransactionId: String? = null, productId: String? = null, platform: Short? = null, active: Boolean? = null, subStatus: String? = null, expiryDate: OffsetDateTime? = null, purchaseToken: String? = null, rawResponse: JSONB? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null, deletedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, appId: UUID, subscriptionPxid: String? = null, originalTransactionId: String? = null, productId: String? = null, platform: Short? = null, active: Boolean? = null, subStatus: String? = null, expiryDate: Instant? = null, purchaseToken: String? = null, rawResponse: JSONB? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null): this() {
         this.id = id
         this.appId = appId
         this.subscriptionPxid = subscriptionPxid
@@ -101,5 +101,28 @@ open class CoreSubscriptionRecord private constructor() : UpdatableRecordImpl<Co
         this.updatedAt = updatedAt
         this.deletedAt = deletedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreSubscriptionRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreSubscription?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.subscriptionPxid = value.subscriptionPxid
+            this.originalTransactionId = value.originalTransactionId
+            this.productId = value.productId
+            this.platform = value.platform
+            this.active = value.active
+            this.subStatus = value.subStatus
+            this.expiryDate = value.expiryDate
+            this.purchaseToken = value.purchaseToken
+            this.rawResponse = value.rawResponse
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            this.deletedAt = value.deletedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

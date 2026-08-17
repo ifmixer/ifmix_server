@@ -4,6 +4,7 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.USER_INSTALL_BINDING_APP_INSTALL_IDX
 import com.ifmix.api.core.jooq.indexes.USER_INSTALL_BINDING_APP_USER_IDX
@@ -11,7 +12,7 @@ import com.ifmix.api.core.jooq.indexes.USER_INSTALL_BINDING_UQ
 import com.ifmix.api.core.jooq.keys.CORE_USER_INSTALL_BINDING_PKEY
 import com.ifmix.api.core.jooq.tables.records.CoreUserInstallBindingRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -101,12 +102,12 @@ open class CoreUserInstallBinding(
     /**
      * The column <code>public.core_user_install_binding.first_seen_at</code>.
      */
-    val FIRST_SEEN_AT: TableField<CoreUserInstallBindingRecord, OffsetDateTime?> = createField(DSL.name("first_seen_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val FIRST_SEEN_AT: TableField<CoreUserInstallBindingRecord, Instant?> = createField(DSL.name("first_seen_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_user_install_binding.last_seen_at</code>.
      */
-    val LAST_SEEN_AT: TableField<CoreUserInstallBindingRecord, OffsetDateTime?> = createField(DSL.name("last_seen_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val LAST_SEEN_AT: TableField<CoreUserInstallBindingRecord, Instant?> = createField(DSL.name("last_seen_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_user_install_binding.login_count</code>.
@@ -126,12 +127,12 @@ open class CoreUserInstallBinding(
     /**
      * The column <code>public.core_user_install_binding.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreUserInstallBindingRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val CREATED_AT: TableField<CoreUserInstallBindingRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_user_install_binding.updated_at</code>.
      */
-    val UPDATED_AT: TableField<CoreUserInstallBindingRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val UPDATED_AT: TableField<CoreUserInstallBindingRecord, Instant?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     private constructor(alias: Name, aliased: Table<CoreUserInstallBindingRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreUserInstallBindingRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

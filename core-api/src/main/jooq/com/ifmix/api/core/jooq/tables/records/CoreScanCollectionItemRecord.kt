@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreScanCollectionItem
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.Record1
@@ -35,17 +35,17 @@ open class CoreScanCollectionItemRecord private constructor() : UpdatableRecordI
         set(value): Unit = set(3, value)
         get(): UUID = get(3) as UUID
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(4, value)
-        get(): OffsetDateTime? = get(4) as OffsetDateTime?
+        get(): Instant? = get(4) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(5, value)
-        get(): OffsetDateTime? = get(5) as OffsetDateTime?
+        get(): Instant? = get(5) as Instant?
 
-    open var deletedAt: OffsetDateTime?
+    open var deletedAt: Instant?
         set(value): Unit = set(6, value)
-        get(): OffsetDateTime? = get(6) as OffsetDateTime?
+        get(): Instant? = get(6) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -56,7 +56,7 @@ open class CoreScanCollectionItemRecord private constructor() : UpdatableRecordI
     /**
      * Create a detached, initialised CoreScanCollectionItemRecord
      */
-    constructor(id: UUID, appId: UUID, collectionId: UUID, scanRecordId: UUID, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null, deletedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, appId: UUID, collectionId: UUID, scanRecordId: UUID, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null): this() {
         this.id = id
         this.appId = appId
         this.collectionId = collectionId
@@ -65,5 +65,21 @@ open class CoreScanCollectionItemRecord private constructor() : UpdatableRecordI
         this.updatedAt = updatedAt
         this.deletedAt = deletedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreScanCollectionItemRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreScanCollectionItem?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.collectionId = value.collectionId
+            this.scanRecordId = value.scanRecordId
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            this.deletedAt = value.deletedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

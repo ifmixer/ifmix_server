@@ -4,6 +4,7 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.COLLECTION_ITEM_APP_COLL_IDX
 import com.ifmix.api.core.jooq.indexes.COLLECTION_ITEM_SCAN_RECORD_IDX
@@ -15,7 +16,7 @@ import com.ifmix.api.core.jooq.tables.CoreScanCollection.CoreScanCollectionPath
 import com.ifmix.api.core.jooq.tables.CoreScanRecord.CoreScanRecordPath
 import com.ifmix.api.core.jooq.tables.records.CoreScanCollectionItemRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -106,17 +107,17 @@ open class CoreScanCollectionItem(
     /**
      * The column <code>public.core_scan_collection_item.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreScanCollectionItemRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val CREATED_AT: TableField<CoreScanCollectionItemRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_scan_collection_item.updated_at</code>.
      */
-    val UPDATED_AT: TableField<CoreScanCollectionItemRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val UPDATED_AT: TableField<CoreScanCollectionItemRecord, Instant?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_scan_collection_item.deleted_at</code>.
      */
-    val DELETED_AT: TableField<CoreScanCollectionItemRecord, OffsetDateTime?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+    val DELETED_AT: TableField<CoreScanCollectionItemRecord, Instant?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
     private constructor(alias: Name, aliased: Table<CoreScanCollectionItemRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreScanCollectionItemRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

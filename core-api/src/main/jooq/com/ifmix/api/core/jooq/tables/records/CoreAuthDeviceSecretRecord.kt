@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreAuthDeviceSecret
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.Record1
@@ -39,25 +39,25 @@ open class CoreAuthDeviceSecretRecord private constructor() : UpdatableRecordImp
         set(value): Unit = set(4, value)
         get(): UUID? = get(4) as UUID?
 
-    open var expiresAt: OffsetDateTime?
+    open var expiresAt: Instant?
         set(value): Unit = set(5, value)
-        get(): OffsetDateTime? = get(5) as OffsetDateTime?
+        get(): Instant? = get(5) as Instant?
 
-    open var revokedAt: OffsetDateTime?
+    open var revokedAt: Instant?
         set(value): Unit = set(6, value)
-        get(): OffsetDateTime? = get(6) as OffsetDateTime?
+        get(): Instant? = get(6) as Instant?
 
-    open var lastUsedAt: OffsetDateTime?
+    open var lastUsedAt: Instant?
         set(value): Unit = set(7, value)
-        get(): OffsetDateTime? = get(7) as OffsetDateTime?
+        get(): Instant? = get(7) as Instant?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(8, value)
-        get(): OffsetDateTime? = get(8) as OffsetDateTime?
+        get(): Instant? = get(8) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(9, value)
-        get(): OffsetDateTime? = get(9) as OffsetDateTime?
+        get(): Instant? = get(9) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -68,7 +68,7 @@ open class CoreAuthDeviceSecretRecord private constructor() : UpdatableRecordImp
     /**
      * Create a detached, initialised CoreAuthDeviceSecretRecord
      */
-    constructor(id: UUID, authTenantId: UUID, authIdentityId: UUID, secretHash: String, loginInstallId: UUID? = null, expiresAt: OffsetDateTime? = null, revokedAt: OffsetDateTime? = null, lastUsedAt: OffsetDateTime? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, authTenantId: UUID, authIdentityId: UUID, secretHash: String, loginInstallId: UUID? = null, expiresAt: Instant? = null, revokedAt: Instant? = null, lastUsedAt: Instant? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
         this.id = id
         this.authTenantId = authTenantId
         this.authIdentityId = authIdentityId
@@ -80,5 +80,24 @@ open class CoreAuthDeviceSecretRecord private constructor() : UpdatableRecordImp
         this.createdAt = createdAt
         this.updatedAt = updatedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreAuthDeviceSecretRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreAuthDeviceSecret?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.authTenantId = value.authTenantId
+            this.authIdentityId = value.authIdentityId
+            this.secretHash = value.secretHash
+            this.loginInstallId = value.loginInstallId
+            this.expiresAt = value.expiresAt
+            this.revokedAt = value.revokedAt
+            this.lastUsedAt = value.lastUsedAt
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

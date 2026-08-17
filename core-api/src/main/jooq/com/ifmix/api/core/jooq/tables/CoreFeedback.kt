@@ -4,12 +4,13 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.FEEDBACK_APP_CREATED_IDX
 import com.ifmix.api.core.jooq.keys.FEEDBACK_PKEY
 import com.ifmix.api.core.jooq.tables.records.CoreFeedbackRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -113,7 +114,7 @@ open class CoreFeedback(
     /**
      * The column <code>public.core_feedback.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreFeedbackRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
+    val CREATED_AT: TableField<CoreFeedbackRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", InstantConverter())
 
     private constructor(alias: Name, aliased: Table<CoreFeedbackRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreFeedbackRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

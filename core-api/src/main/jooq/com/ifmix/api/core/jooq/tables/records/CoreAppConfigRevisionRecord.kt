@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreAppConfigRevision
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.JSONB
@@ -44,9 +44,9 @@ open class CoreAppConfigRevisionRecord private constructor() : UpdatableRecordIm
         set(value): Unit = set(5, value)
         get(): Int? = get(5) as Int?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(6, value)
-        get(): OffsetDateTime? = get(6) as OffsetDateTime?
+        get(): Instant? = get(6) as Instant?
 
     open var enabled: Boolean?
         set(value): Unit = set(7, value)
@@ -73,7 +73,7 @@ open class CoreAppConfigRevisionRecord private constructor() : UpdatableRecordIm
     /**
      * Create a detached, initialised CoreAppConfigRevisionRecord
      */
-    constructor(id: UUID, appId: UUID, authTenantId: UUID? = null, appleBundleId: String? = null, androidPackageName: String? = null, revisionNumber: Int? = null, createdAt: OffsetDateTime? = null, enabled: Boolean? = null, slug: String? = null, content: JSONB? = null, note: String? = null): this() {
+    constructor(id: UUID, appId: UUID, authTenantId: UUID? = null, appleBundleId: String? = null, androidPackageName: String? = null, revisionNumber: Int? = null, createdAt: Instant? = null, enabled: Boolean? = null, slug: String? = null, content: JSONB? = null, note: String? = null): this() {
         this.id = id
         this.appId = appId
         this.authTenantId = authTenantId
@@ -86,5 +86,25 @@ open class CoreAppConfigRevisionRecord private constructor() : UpdatableRecordIm
         this.content = content
         this.note = note
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreAppConfigRevisionRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreAppConfigRevision?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.authTenantId = value.authTenantId
+            this.appleBundleId = value.appleBundleId
+            this.androidPackageName = value.androidPackageName
+            this.revisionNumber = value.revisionNumber
+            this.createdAt = value.createdAt
+            this.enabled = value.enabled
+            this.slug = value.slug
+            this.content = value.content
+            this.note = value.note
+            resetTouchedOnNotNull()
+        }
     }
 }

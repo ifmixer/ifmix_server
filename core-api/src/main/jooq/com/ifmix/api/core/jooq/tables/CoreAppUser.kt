@@ -4,6 +4,7 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.APP_USER_UQ
 import com.ifmix.api.core.jooq.keys.APP_USER_PKEY
@@ -13,7 +14,7 @@ import com.ifmix.api.core.jooq.tables.CoreAppRefreshToken.CoreAppRefreshTokenPat
 import com.ifmix.api.core.jooq.tables.CoreAuthIdentity.CoreAuthIdentityPath
 import com.ifmix.api.core.jooq.tables.records.CoreAppUserRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -104,12 +105,12 @@ open class CoreAppUser(
     /**
      * The column <code>public.core_app_user.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreAppUserRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val CREATED_AT: TableField<CoreAppUserRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_app_user.updated_at</code>.
      */
-    val UPDATED_AT: TableField<CoreAppUserRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val UPDATED_AT: TableField<CoreAppUserRecord, Instant?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     private constructor(alias: Name, aliased: Table<CoreAppUserRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreAppUserRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

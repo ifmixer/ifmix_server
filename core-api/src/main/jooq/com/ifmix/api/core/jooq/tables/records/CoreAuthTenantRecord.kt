@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreAuthTenant
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.Record1
@@ -31,13 +31,13 @@ open class CoreAuthTenantRecord private constructor() : UpdatableRecordImpl<Core
         set(value): Unit = set(2, value)
         get(): String? = get(2) as String?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(3, value)
-        get(): OffsetDateTime? = get(3) as OffsetDateTime?
+        get(): Instant? = get(3) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(4, value)
-        get(): OffsetDateTime? = get(4) as OffsetDateTime?
+        get(): Instant? = get(4) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -48,12 +48,26 @@ open class CoreAuthTenantRecord private constructor() : UpdatableRecordImpl<Core
     /**
      * Create a detached, initialised CoreAuthTenantRecord
      */
-    constructor(id: UUID, jwtPrivateKeyPem: String? = null, jwtIssuer: String? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, jwtPrivateKeyPem: String? = null, jwtIssuer: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
         this.id = id
         this.jwtPrivateKeyPem = jwtPrivateKeyPem
         this.jwtIssuer = jwtIssuer
         this.createdAt = createdAt
         this.updatedAt = updatedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreAuthTenantRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreAuthTenant?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.jwtPrivateKeyPem = value.jwtPrivateKeyPem
+            this.jwtIssuer = value.jwtIssuer
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreAuthIdentity
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.JSONB
@@ -64,13 +64,13 @@ open class CoreAuthIdentityRecord private constructor() : UpdatableRecordImpl<Co
         set(value): Unit = set(10, value)
         get(): JSONB? = get(10) as JSONB?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(11, value)
-        get(): OffsetDateTime? = get(11) as OffsetDateTime?
+        get(): Instant? = get(11) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(12, value)
-        get(): OffsetDateTime? = get(12) as OffsetDateTime?
+        get(): Instant? = get(12) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -81,7 +81,7 @@ open class CoreAuthIdentityRecord private constructor() : UpdatableRecordImpl<Co
     /**
      * Create a detached, initialised CoreAuthIdentityRecord
      */
-    constructor(id: UUID, authTenantId: UUID, rawEmail: String? = null, email: String? = null, rawPhone: String? = null, phone: String? = null, contactEmail: String? = null, displayName: String? = null, passwordHash: String? = null, profile: JSONB? = null, metadata: JSONB? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, authTenantId: UUID, rawEmail: String? = null, email: String? = null, rawPhone: String? = null, phone: String? = null, contactEmail: String? = null, displayName: String? = null, passwordHash: String? = null, profile: JSONB? = null, metadata: JSONB? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
         this.id = id
         this.authTenantId = authTenantId
         this.rawEmail = rawEmail
@@ -96,5 +96,27 @@ open class CoreAuthIdentityRecord private constructor() : UpdatableRecordImpl<Co
         this.createdAt = createdAt
         this.updatedAt = updatedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreAuthIdentityRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreAuthIdentity?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.authTenantId = value.authTenantId
+            this.rawEmail = value.rawEmail
+            this.email = value.email
+            this.rawPhone = value.rawPhone
+            this.phone = value.phone
+            this.contactEmail = value.contactEmail
+            this.displayName = value.displayName
+            this.passwordHash = value.passwordHash
+            this.profile = value.profile
+            this.metadata = value.metadata
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

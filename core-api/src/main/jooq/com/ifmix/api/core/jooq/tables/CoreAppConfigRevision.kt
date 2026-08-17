@@ -4,13 +4,14 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.APP_CONFIG_BUNDLE_IDX
 import com.ifmix.api.core.jooq.indexes.APP_CONFIG_PACKAGE_IDX
 import com.ifmix.api.core.jooq.keys.APP_CONFIG_PKEY
 import com.ifmix.api.core.jooq.tables.records.CoreAppConfigRevisionRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -112,7 +113,7 @@ open class CoreAppConfigRevision(
     /**
      * The column <code>public.core_app_config_revision.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreAppConfigRevisionRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val CREATED_AT: TableField<CoreAppConfigRevisionRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_app_config_revision.enabled</code>.

@@ -4,6 +4,7 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.AUTH_PROVIDER_IDENTITY_IDX
 import com.ifmix.api.core.jooq.indexes.AUTH_PROVIDER_UQ
@@ -14,7 +15,7 @@ import com.ifmix.api.core.jooq.tables.CoreAuthIdentity.CoreAuthIdentityPath
 import com.ifmix.api.core.jooq.tables.CoreAuthTenant.CoreAuthTenantPath
 import com.ifmix.api.core.jooq.tables.records.CoreAuthProviderIdentityRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -157,12 +158,12 @@ open class CoreAuthProviderIdentity(
     /**
      * The column <code>public.core_auth_provider_identity.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreAuthProviderIdentityRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val CREATED_AT: TableField<CoreAuthProviderIdentityRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_auth_provider_identity.updated_at</code>.
      */
-    val UPDATED_AT: TableField<CoreAuthProviderIdentityRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val UPDATED_AT: TableField<CoreAuthProviderIdentityRecord, Instant?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     private constructor(alias: Name, aliased: Table<CoreAuthProviderIdentityRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreAuthProviderIdentityRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

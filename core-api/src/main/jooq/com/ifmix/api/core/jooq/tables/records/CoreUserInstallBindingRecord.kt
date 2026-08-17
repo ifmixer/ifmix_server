@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreUserInstallBinding
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.Record1
@@ -35,13 +35,13 @@ open class CoreUserInstallBindingRecord private constructor() : UpdatableRecordI
         set(value): Unit = set(3, value)
         get(): UUID = get(3) as UUID
 
-    open var firstSeenAt: OffsetDateTime?
+    open var firstSeenAt: Instant?
         set(value): Unit = set(4, value)
-        get(): OffsetDateTime? = get(4) as OffsetDateTime?
+        get(): Instant? = get(4) as Instant?
 
-    open var lastSeenAt: OffsetDateTime?
+    open var lastSeenAt: Instant?
         set(value): Unit = set(5, value)
-        get(): OffsetDateTime? = get(5) as OffsetDateTime?
+        get(): Instant? = get(5) as Instant?
 
     open var loginCount: Int?
         set(value): Unit = set(6, value)
@@ -55,13 +55,13 @@ open class CoreUserInstallBindingRecord private constructor() : UpdatableRecordI
         set(value): Unit = set(8, value)
         get(): String? = get(8) as String?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(9, value)
-        get(): OffsetDateTime? = get(9) as OffsetDateTime?
+        get(): Instant? = get(9) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(10, value)
-        get(): OffsetDateTime? = get(10) as OffsetDateTime?
+        get(): Instant? = get(10) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -72,7 +72,7 @@ open class CoreUserInstallBindingRecord private constructor() : UpdatableRecordI
     /**
      * Create a detached, initialised CoreUserInstallBindingRecord
      */
-    constructor(id: UUID, appId: UUID, userId: UUID, installId: UUID, firstSeenAt: OffsetDateTime? = null, lastSeenAt: OffsetDateTime? = null, loginCount: Int? = null, clientIp: String? = null, clientPlatform: String? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, appId: UUID, userId: UUID, installId: UUID, firstSeenAt: Instant? = null, lastSeenAt: Instant? = null, loginCount: Int? = null, clientIp: String? = null, clientPlatform: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
         this.id = id
         this.appId = appId
         this.userId = userId
@@ -85,5 +85,25 @@ open class CoreUserInstallBindingRecord private constructor() : UpdatableRecordI
         this.createdAt = createdAt
         this.updatedAt = updatedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreUserInstallBindingRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreUserInstallBinding?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.userId = value.userId
+            this.installId = value.installId
+            this.firstSeenAt = value.firstSeenAt
+            this.lastSeenAt = value.lastSeenAt
+            this.loginCount = value.loginCount
+            this.clientIp = value.clientIp
+            this.clientPlatform = value.clientPlatform
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

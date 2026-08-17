@@ -4,6 +4,7 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.REFRESH_APPUSER_IDX
 import com.ifmix.api.core.jooq.indexes.REFRESH_DEVICE_IDX
@@ -15,7 +16,7 @@ import com.ifmix.api.core.jooq.tables.CoreAppUser.CoreAppUserPath
 import com.ifmix.api.core.jooq.tables.CoreAuthDeviceSecret.CoreAuthDeviceSecretPath
 import com.ifmix.api.core.jooq.tables.records.CoreAppRefreshTokenRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -115,12 +116,12 @@ open class CoreAppRefreshToken(
     /**
      * The column <code>public.core_app_refresh_token.expires_at</code>.
      */
-    val EXPIRES_AT: TableField<CoreAppRefreshTokenRecord, OffsetDateTime?> = createField(DSL.name("expires_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+    val EXPIRES_AT: TableField<CoreAppRefreshTokenRecord, Instant?> = createField(DSL.name("expires_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_app_refresh_token.revoked_at</code>.
      */
-    val REVOKED_AT: TableField<CoreAppRefreshTokenRecord, OffsetDateTime?> = createField(DSL.name("revoked_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+    val REVOKED_AT: TableField<CoreAppRefreshTokenRecord, Instant?> = createField(DSL.name("revoked_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_app_refresh_token.replaced_by</code>.
@@ -130,12 +131,12 @@ open class CoreAppRefreshToken(
     /**
      * The column <code>public.core_app_refresh_token.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreAppRefreshTokenRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val CREATED_AT: TableField<CoreAppRefreshTokenRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_app_refresh_token.updated_at</code>.
      */
-    val UPDATED_AT: TableField<CoreAppRefreshTokenRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val UPDATED_AT: TableField<CoreAppRefreshTokenRecord, Instant?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     private constructor(alias: Name, aliased: Table<CoreAppRefreshTokenRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreAppRefreshTokenRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

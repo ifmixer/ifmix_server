@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreUploadRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.Record1
@@ -51,9 +51,9 @@ open class CoreUploadRecordRecord private constructor() : UpdatableRecordImpl<Co
         set(value): Unit = set(7, value)
         get(): String? = get(7) as String?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(8, value)
-        get(): OffsetDateTime? = get(8) as OffsetDateTime?
+        get(): Instant? = get(8) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -64,7 +64,7 @@ open class CoreUploadRecordRecord private constructor() : UpdatableRecordImpl<Co
     /**
      * Create a detached, initialised CoreUploadRecordRecord
      */
-    constructor(id: UUID, appId: UUID, installId: UUID? = null, userId: UUID? = null, objectKey: String, contentType: String, category: String, clientIp: String? = null, createdAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, appId: UUID, installId: UUID? = null, userId: UUID? = null, objectKey: String, contentType: String, category: String, clientIp: String? = null, createdAt: Instant? = null): this() {
         this.id = id
         this.appId = appId
         this.installId = installId
@@ -75,5 +75,23 @@ open class CoreUploadRecordRecord private constructor() : UpdatableRecordImpl<Co
         this.clientIp = clientIp
         this.createdAt = createdAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreUploadRecordRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreUploadRecord?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.appId = value.appId
+            this.installId = value.installId
+            this.userId = value.userId
+            this.objectKey = value.objectKey
+            this.contentType = value.contentType
+            this.category = value.category
+            this.clientIp = value.clientIp
+            this.createdAt = value.createdAt
+            resetTouchedOnNotNull()
+        }
     }
 }

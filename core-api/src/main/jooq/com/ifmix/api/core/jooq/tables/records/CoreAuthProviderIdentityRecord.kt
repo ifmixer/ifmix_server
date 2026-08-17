@@ -6,7 +6,7 @@ package com.ifmix.api.core.jooq.tables.records
 
 import com.ifmix.api.core.jooq.tables.CoreAuthProviderIdentity
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import org.jooq.JSONB
@@ -72,13 +72,13 @@ open class CoreAuthProviderIdentityRecord private constructor() : UpdatableRecor
         set(value): Unit = set(12, value)
         get(): UUID? = get(12) as UUID?
 
-    open var createdAt: OffsetDateTime?
+    open var createdAt: Instant?
         set(value): Unit = set(13, value)
-        get(): OffsetDateTime? = get(13) as OffsetDateTime?
+        get(): Instant? = get(13) as Instant?
 
-    open var updatedAt: OffsetDateTime?
+    open var updatedAt: Instant?
         set(value): Unit = set(14, value)
-        get(): OffsetDateTime? = get(14) as OffsetDateTime?
+        get(): Instant? = get(14) as Instant?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -89,7 +89,7 @@ open class CoreAuthProviderIdentityRecord private constructor() : UpdatableRecor
     /**
      * Create a detached, initialised CoreAuthProviderIdentityRecord
      */
-    constructor(id: UUID, authTenantId: UUID, authIdentityId: UUID, provider: String, providerAccountId: String, email: String? = null, emailVerified: Boolean? = null, phone: String? = null, userMetadata: JSONB? = null, providerMetadata: JSONB? = null, loginIp: String? = null, loginInstallId: UUID? = null, loginAppId: UUID? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID, authTenantId: UUID, authIdentityId: UUID, provider: String, providerAccountId: String, email: String? = null, emailVerified: Boolean? = null, phone: String? = null, userMetadata: JSONB? = null, providerMetadata: JSONB? = null, loginIp: String? = null, loginInstallId: UUID? = null, loginAppId: UUID? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
         this.id = id
         this.authTenantId = authTenantId
         this.authIdentityId = authIdentityId
@@ -106,5 +106,29 @@ open class CoreAuthProviderIdentityRecord private constructor() : UpdatableRecor
         this.createdAt = createdAt
         this.updatedAt = updatedAt
         resetTouchedOnNotNull()
+    }
+
+    /**
+     * Create a detached, initialised CoreAuthProviderIdentityRecord
+     */
+    constructor(value: com.ifmix.api.core.jooq.tables.pojos.CoreAuthProviderIdentity?): this() {
+        if (value != null) {
+            this.id = value.id
+            this.authTenantId = value.authTenantId
+            this.authIdentityId = value.authIdentityId
+            this.provider = value.provider
+            this.providerAccountId = value.providerAccountId
+            this.email = value.email
+            this.emailVerified = value.emailVerified
+            this.phone = value.phone
+            this.userMetadata = value.userMetadata
+            this.providerMetadata = value.providerMetadata
+            this.loginIp = value.loginIp
+            this.loginInstallId = value.loginInstallId
+            this.loginAppId = value.loginAppId
+            this.createdAt = value.createdAt
+            this.updatedAt = value.updatedAt
+            resetTouchedOnNotNull()
+        }
     }
 }

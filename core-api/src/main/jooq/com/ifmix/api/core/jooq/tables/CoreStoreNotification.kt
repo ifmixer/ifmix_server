@@ -4,13 +4,14 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.STORE_NOTIF_PLATFORM_SUB_IDX
 import com.ifmix.api.core.jooq.indexes.STORE_NOTIF_PLATFORM_TOKEN_IDX
 import com.ifmix.api.core.jooq.keys.STORE_NOTIFICATION_PKEY
 import com.ifmix.api.core.jooq.tables.records.CoreStoreNotificationRecord
 
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -120,22 +121,22 @@ open class CoreStoreNotification(
     /**
      * The column <code>public.core_store_notification.processed_at</code>.
      */
-    val PROCESSED_AT: TableField<CoreStoreNotificationRecord, OffsetDateTime?> = createField(DSL.name("processed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+    val PROCESSED_AT: TableField<CoreStoreNotificationRecord, Instant?> = createField(DSL.name("processed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_store_notification.created_at</code>.
      */
-    val CREATED_AT: TableField<CoreStoreNotificationRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val CREATED_AT: TableField<CoreStoreNotificationRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_store_notification.updated_at</code>.
      */
-    val UPDATED_AT: TableField<CoreStoreNotificationRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+    val UPDATED_AT: TableField<CoreStoreNotificationRecord, Instant?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", InstantConverter())
 
     /**
      * The column <code>public.core_store_notification.deleted_at</code>.
      */
-    val DELETED_AT: TableField<CoreStoreNotificationRecord, OffsetDateTime?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+    val DELETED_AT: TableField<CoreStoreNotificationRecord, Instant?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
     private constructor(alias: Name, aliased: Table<CoreStoreNotificationRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreStoreNotificationRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

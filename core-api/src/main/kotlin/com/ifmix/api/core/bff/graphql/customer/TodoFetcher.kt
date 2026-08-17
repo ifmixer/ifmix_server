@@ -10,12 +10,14 @@ import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.generated.types.UpdateTodoItemsPayload
 import com.ifmix.api.core.generated.types.UpdateTodoPayload
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
+import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.model.Todo
 import com.ifmix.api.core.model.TodoItem
-import com.ifmix.api.core.modules.todo.repo.TodoJooqRepository
-import com.ifmix.api.core.modules.todo.service.TodoJooqService
+import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
+import com.ifmix.api.core.modules.todo.service.TodoItemService
+import com.ifmix.api.core.modules.todo.service.TodoService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsData
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -36,7 +38,8 @@ import java.util.concurrent.CompletionStage
  */
 @DgsComponent
 class TodoFetcher(
-    private val todoService: TodoJooqService,
+    private val todoService: TodoService,
+    private val todoItemService: TodoItemService,
     private val ctxProvider: OperationContextProvider,
 ) {
 
@@ -100,7 +103,7 @@ class TodoFetcher(
     @DgsMutation(field = "mutation_updateTodoItems")
     fun updateTodoItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoItemsMutationInput): UpdateTodoItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        todoService.updateTodoItems(ctx, input)
+        todoItemService.updateItems(ctx, input)
         return UpdateTodoItemsPayload(success = true)
     }
 
@@ -126,10 +129,12 @@ class TodoFetcher(
  * caching=false — 只保留 batching，防止 mutation document 内脏读。
  */
 @DgsDataLoader(name = TodoItemsDataLoader.NAME, caching = false)
-class TodoItemsDataLoader(private val repo: TodoJooqRepository) : MappedBatchLoader<UUID, List<TodoItem>> {
+class TodoItemsDataLoader(private val itemRepo: TodoItemRepository) : MappedBatchLoader<UUID, List<TodoItem>> {
 
     override fun load(todoIds: Set<UUID>): CompletionStage<Map<UUID, List<TodoItem>>> {
-        val items = repo.findItemsByTodoIds(todoIds)
+        // ponytail: DataLoader 没有 OperationContext，直接用 DEFAULT。
+        // 多集群场景需要从 GraphQLContext 传入 repoCtx。
+        val items = itemRepo.findByTodoIds(RepoContext.DEFAULT, todoIds)
         val grouped = items.groupBy { it.todoId }
         val result = todoIds.associateWith { grouped[it] ?: emptyList() }
         return CompletableFuture.completedFuture(result)
