@@ -1,6 +1,6 @@
 package com.ifmix.api.core.graphql.admin
 
-import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
+import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.modules.appconfig.AppleConfig
 import com.ifmix.api.core.modules.appconfig.AppConfigMapper
 import com.ifmix.api.core.modules.appconfig.AppConfigPatch
@@ -27,8 +27,8 @@ class AdminAppConfigFetcher(
 
     @DgsQuery(field = "appConfig_getCurrent")
     fun currentAppConfig(dfe: DgsDataFetchingEnvironment): AppConfigView? {
-        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
-        return appConfigRepo.getByAppId(ctx.requestContext.appId)
+        val ctx = DgsContext.getCustomContext<RequestContext>(dfe)
+        return appConfigRepo.getByAppId(ctx.appId)
     }
 
     @DgsMutation(field = "appConfig_createRevision")
@@ -36,8 +36,8 @@ class AdminAppConfigFetcher(
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
     ): AppConfigView {
-        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
-        val appId = input["appId"] as? String ?: ctx.requestContext.appId
+        val ctx = DgsContext.getCustomContext<RequestContext>(dfe)
+        val appId = input["appId"] as? String ?: ctx.appId
 
         @Suppress("UNCHECKED_CAST")
         val appleConfig = input["appleConfig"] as? Map<String, Any?>
@@ -55,7 +55,7 @@ class AdminAppConfigFetcher(
             iap = iapConfig?.let { parseIapConfig(it) },
         )
 
-        appConfigRepo.newVersion(ctx.requestContext, appId, patch)
+        appConfigRepo.newVersion(ctx, appId, patch)
 
         return appConfigRepo.getByAppId(appId)
             ?: throw IllegalStateException("Failed to read AppConfig after creation")
@@ -67,8 +67,8 @@ class AdminAppConfigFetcher(
         @InputArgument enabled: Boolean,
         dfe: DgsDataFetchingEnvironment,
     ): AppConfigView {
-        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
-        return appConfigRepo.toggleRevision(ctx.requestContext, id, enabled)
+        val ctx = DgsContext.getCustomContext<RequestContext>(dfe)
+        return appConfigRepo.toggleRevision(ctx, id, enabled)
             ?: throw IllegalStateException("No active AppConfigRevision found after toggle")
     }
 

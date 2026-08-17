@@ -1,6 +1,6 @@
 package com.ifmix.api.core.graphql.customer
 
-import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
+import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.modules.iap.IapService
 import com.ifmix.api.core.modules.iap.Platform
 import com.ifmix.api.core.modules.iap.VerifyReq
@@ -23,7 +23,7 @@ class CustomerIapFetcher(private val iapService: IapService) {
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
     ): VerifyPurchaseResult {
-        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val ctx = DgsContext.getCustomContext<RequestContext>(dfe)
         val platform = input["platform"] as String
         val purchaseToken = input["purchaseToken"] as? String
         val productId = input["productId"] as String
@@ -33,7 +33,7 @@ class CustomerIapFetcher(private val iapService: IapService) {
             purchaseToken = purchaseToken ?: "",
             productId = productId,
         )
-        val res = iapService.verifyPurchase(ctx.requestContext, req)
+        val res = iapService.verifyPurchase(ctx, req)
 
         return VerifyPurchaseResult(
             expiresAt = null,

@@ -87,6 +87,7 @@ input CreateTodoInput {
 input UpdateTodoInput {
     set: TodoUpdateSetInput
     unset: [String!]
+    items: [TodoItemMutationInput!]
 }
 
 input TodoUpdateSetInput {
@@ -107,6 +108,20 @@ input UpdateTodoItemInput {
 input TodoItemUpdateSetInput {
     content: String
     done: Boolean
+}
+
+enum TodoItemAction {
+    CREATE
+    SET
+    UNSET
+    DELETE
+}
+
+input TodoItemMutationInput {
+    action: TodoItemAction!
+    id: ID
+    set: TodoItemUpdateSetInput
+    unset: [String!]
 }
 
 input BatchUpdateTodoInput {

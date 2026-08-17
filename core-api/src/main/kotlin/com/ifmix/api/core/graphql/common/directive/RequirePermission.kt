@@ -1,6 +1,6 @@
 package com.ifmix.api.core.graphql.common.directive
 
-import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
+import com.ifmix.api.core.common.http.RequestContext
 import com.netflix.graphql.dgs.DgsDirective
 import com.netflix.graphql.dgs.context.DgsContext
 import graphql.schema.DataFetcher
@@ -36,8 +36,8 @@ class RequirePermissionDirective : SchemaDirectiveWiring {
         val originalFetcher = environment.fieldDataFetcher
 
         val authFetcher = DataFetcher<Any> { dfe ->
-            val customContext = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
-            if (!customContext.permissions.contains(requiredPermission)) {
+            val ctx = DgsContext.getCustomContext<RequestContext>(dfe)
+            if (!ctx.permissions.contains(requiredPermission)) {
                 throw PermissionDeniedException(
                     "Permission denied: requires '$requiredPermission'"
                 )

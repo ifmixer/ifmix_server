@@ -2,7 +2,6 @@ package com.ifmix.api.core.graphql.customer
 
 import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
 import com.ifmix.api.core.graphql.generated.types.PresignDownloadResult
 import com.ifmix.api.core.graphql.generated.types.PresignUploadResult
 import com.ifmix.api.core.graphql.generated.types.ScanConnection
@@ -51,7 +50,7 @@ class CustomerScanFetcher(
     ): ScanConnection {
         val ctx = getContext(dfe)
         val input = CursorQueryInput(cursor = cursor, limit = limit)
-        val page = antiqueService.findByCursor(ctx.requestContext, input)
+        val page = antiqueService.findByCursor(ctx, input)
         return ScanConnection(
             items = page.items.map { it.toScanRecord() },
             nextCursor = page.nextCursor,
@@ -68,7 +67,7 @@ class CustomerScanFetcher(
         val imageUrl = input["imageUrl"] as String
         val relatedId = input["relatedId"] as? String
         val request = CreateScanRequest(imageUrl = imageUrl, relatedId = relatedId)
-        val id = antiqueService.createScan(ctx.requestContext, request)
+        val id = antiqueService.createScan(ctx, request)
         return antiqueService.getScanRecordById(id).toScanRecord()
     }
 
@@ -79,14 +78,14 @@ class CustomerScanFetcher(
         dfe: DgsDataFetchingEnvironment,
     ): ScanRecord {
         val ctx = getContext(dfe)
-        scanRecordRepo.updateById(ctx.requestContext, id, mapCollectedPatch(collected))
+        scanRecordRepo.updateById(ctx, id, mapCollectedPatch(collected))
         return antiqueService.getScanRecordById(id).toScanRecord()
     }
 
     @DgsMutation(field = "scan_delete")
     fun deleteScan(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): Boolean {
         val ctx = getContext(dfe)
-        return scanRecordRepo.deleteById(ctx.requestContext, id)
+        return scanRecordRepo.deleteById(ctx, id)
     }
 
     @DgsMutation(field = "storage_presignUpload")
@@ -103,7 +102,7 @@ class CustomerScanFetcher(
             category == "scan" -> uploadUrl
             else -> antiqueService.presignedDownloadUrl(objectKey, Duration.ofHours(1))
         }
-        recordUpload(ctx.requestContext, objectKey, contentType, category)
+        recordUpload(ctx, objectKey, contentType, category)
         return PresignUploadResult(
             mediaId = objectKey,
             uploadUrl = uploadUrl,
@@ -148,6 +147,6 @@ class CustomerScanFetcher(
         }
     }
 
-    private fun getContext(dfe: DgsDataFetchingEnvironment): GraphQLRequestContext =
-        DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+    private fun getContext(dfe: DgsDataFetchingEnvironment): RequestContext =
+        DgsContext.getCustomContext<RequestContext>(dfe)
 }

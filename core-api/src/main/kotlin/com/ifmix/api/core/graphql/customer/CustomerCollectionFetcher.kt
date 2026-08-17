@@ -1,6 +1,6 @@
 package com.ifmix.api.core.graphql.customer
 
-import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
+import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.graphql.generated.types.CollectionItemConnection
 import com.ifmix.api.core.graphql.generated.types.CollectionItemType
 import com.ifmix.api.core.graphql.generated.types.Collection
@@ -26,7 +26,7 @@ class CustomerCollectionFetcher(
     @DgsQuery(field = "collection_getDefault")
     fun defaultCollection(dfe: DgsDataFetchingEnvironment): Collection {
         val ctx = getContext(dfe)
-        return collectionService.getDefault(ctx.requestContext).toCollection()
+        return collectionService.getDefault(ctx).toCollection()
     }
 
     @DgsQuery(field = "collectionItem_list")
@@ -39,7 +39,7 @@ class CustomerCollectionFetcher(
         val ctx = getContext(dfe)
         val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
         val req = ListItemsReq(collectionId = collectionId, cursor = cursor, limit = effectiveLimit)
-        val (items, scanMap, hasMore) = collectionService.listItemsWithRecords(ctx.requestContext, req)
+        val (items, scanMap, hasMore) = collectionService.listItemsWithRecords(ctx, req)
 
         return CollectionItemConnection(
             items = items.map { item ->
@@ -59,7 +59,7 @@ class CustomerCollectionFetcher(
     ): String {
         val ctx = getContext(dfe)
         val req = AddItemReq(collectionId = collectionId, scanRecordId = scanRecordId)
-        return collectionService.addItem(ctx.requestContext, req)
+        return collectionService.addItem(ctx, req)
     }
 
     @DgsMutation(field = "collectionItem_remove")
@@ -70,9 +70,9 @@ class CustomerCollectionFetcher(
     ): Int {
         val ctx = getContext(dfe)
         val req = RemoveItemsReq(collectionId = collectionId, scanRecordIds = scanRecordIds)
-        return collectionService.removeItems(ctx.requestContext, req).toInt()
+        return collectionService.removeItems(ctx, req).toInt()
     }
 
-    private fun getContext(dfe: DgsDataFetchingEnvironment): GraphQLRequestContext =
+    private fun getContext(dfe: DgsDataFetchingEnvironment): RequestContext =
         DgsContext.getCustomContext(dfe)
 }

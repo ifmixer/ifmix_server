@@ -1,6 +1,6 @@
 package com.ifmix.api.core.graphql.admin
 
-import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
+import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.graphql.generated.types.OperationResult
 import com.ifmix.api.core.modules.todo.TodoService
 import com.ifmix.api.core.modules.todo.service.TodoItemService
@@ -21,10 +21,10 @@ class AdminTodoFetcher(
         @InputArgument ids: List<String>,
         dfe: DgsDataFetchingEnvironment,
     ): OperationResult {
-        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val ctx = DgsContext.getCustomContext<RequestContext>(dfe)
         // 先删除关联 items，再删除 todos
-        ids.forEach { id -> todoItemService.deleteByTodoId(ctx.requestContext, id) }
-        val count = todoService.deleteByIds(ctx.requestContext, ids)
+        ids.forEach { id -> todoItemService.deleteByTodoId(ctx, id) }
+        val count = todoService.deleteByIds(ctx, ids)
         return OperationResult(success = count == ids.size, modifiedCount = count)
     }
 
@@ -33,7 +33,7 @@ class AdminTodoFetcher(
         @InputArgument patches: List<Map<String, Any?>>,
         dfe: DgsDataFetchingEnvironment,
     ): OperationResult {
-        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
+        val ctx = DgsContext.getCustomContext<RequestContext>(dfe)
         val patchPairs = patches.map { patch ->
             val id = patch["id"] as String
             val patchMap = mutableMapOf<String, Any?>()
@@ -42,7 +42,7 @@ class AdminTodoFetcher(
             patch["meta"]?.let { patchMap["meta"] = it }
             id to patchMap
         }
-        val count = todoService.updateByIds(ctx.requestContext, patchPairs)
+        val count = todoService.updateByIds(ctx, patchPairs)
         return OperationResult(success = count == patchPairs.size, modifiedCount = count)
     }
 
@@ -51,8 +51,8 @@ class AdminTodoFetcher(
         @InputArgument ids: List<String>,
         dfe: DgsDataFetchingEnvironment,
     ): OperationResult {
-        val ctx = DgsContext.getCustomContext<GraphQLRequestContext>(dfe)
-        val count = todoItemService.deleteByIds(ctx.requestContext, ids)
+        val ctx = DgsContext.getCustomContext<RequestContext>(dfe)
+        val count = todoItemService.deleteByIds(ctx, ids)
         return OperationResult(success = true, modifiedCount = count)
     }
 }

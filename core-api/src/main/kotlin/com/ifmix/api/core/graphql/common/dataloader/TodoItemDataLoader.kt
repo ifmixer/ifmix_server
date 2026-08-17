@@ -1,6 +1,6 @@
 package com.ifmix.api.core.graphql.common.dataloader
 
-import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
+import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.graphql.generated.types.TodoItem
 import com.ifmix.api.core.modules.todo.mapper.toTodoItem
 import com.ifmix.api.core.modules.todo.service.TodoItemService
@@ -25,10 +25,10 @@ class TodoItemDataLoader(
         environment: BatchLoaderEnvironment,
     ): CompletionStage<Map<String, List<TodoItem>>> {
         return CompletableFuture.supplyAsync {
-            // 从 DGS context 获取 GraphQLRequestContext（含 appId 等租户信息）
+            // 从 DGS context 获取 RequestContext（含 appId 等租户信息）
             @Suppress("UNCHECKED_CAST")
-            val customContext = DgsContext.getCustomContext<GraphQLRequestContext>(environment)
-            val ctx = customContext.requestContext
+            val ctx = DgsContext.getCustomContext<RequestContext>(environment)
+            
 
             todoItemService.findByTodoIds(ctx, keys.toList())
                 .map { it.toTodoItem() }

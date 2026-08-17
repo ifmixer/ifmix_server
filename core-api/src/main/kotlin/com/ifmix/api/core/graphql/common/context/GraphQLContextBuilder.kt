@@ -1,5 +1,7 @@
 package com.ifmix.api.core.graphql.common.context
 
+import com.ifmix.api.core.common.http.ActorType
+import com.ifmix.api.core.common.http.Bff
 import com.ifmix.api.core.common.http.ClientPlatform
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.http.RequestHeaders
@@ -9,14 +11,14 @@ import org.springframework.stereotype.Component
 
 /**
  * GraphQL 请求上下文构建器。
- * 从 HTTP headers 构造 RequestContext + permissions，存入 DGS custom context。
+ * 从 HTTP headers 构造 RequestContext（含 bff / permissions / actorType），存入 DGS custom context。
  */
 @Component
 class DgsCustomContextBuilderImpl(
     private val request: HttpServletRequest,
-) : DgsCustomContextBuilder<GraphQLRequestContext> {
+) : DgsCustomContextBuilder<RequestContext> {
 
-    override fun build(): GraphQLRequestContext {
+    override fun build(): RequestContext {
         val appId = request.getHeader(RequestHeaders.APP_ID) ?: ""
         val installId = request.getHeader(RequestHeaders.INSTALL_ID)
         val role = request.getHeader("X-Role") ?: "customer"
@@ -24,7 +26,17 @@ class DgsCustomContextBuilderImpl(
 
         val permissions = ROLE_PERMISSIONS[role] ?: emptySet()
 
-        val requestContext = RequestContext(
+        // 从请求 URI 判断 BFF 类型
+        val bff = if (request.requestURI.startsWith("/admin/")) Bff.ADMIN else Bff.CUSTOMER
+
+        val actorType = when {
+            bff == Bff.ADMIN -> ActorType.ADMIN
+            userId != null -> ActorType.CUSTOMER_USER
+            installId != null -> ActorType.CUSTOMER_INSTALL
+            else -> ActorType.CUSTOMER_INSTALL
+        }
+
+        return RequestContext(
             appId = appId,
             operationId = request.getHeader("x-op-id")
                 ?: (request.getAttribute("trusted.operation.name") as? String),
@@ -34,15 +46,9 @@ class DgsCustomContextBuilderImpl(
             country = request.getHeader(RequestHeaders.COUNTRY),
             clientPlatform = ClientPlatform.fromHeader(request.getHeader(RequestHeaders.CLIENT_PLATFORM)),
             userId = userId,
-        )
-
-        // 从请求 URI 判断 BFF 类型
-        val bff = if (request.requestURI.startsWith("/admin/")) "admin" else "customer"
-
-        return GraphQLRequestContext(
-            requestContext = requestContext,
-            permissions = permissions,
             bff = bff,
+            permissions = permissions,
+            actorType = actorType,
         )
     }
 
@@ -69,12 +75,3 @@ class DgsCustomContextBuilderImpl(
         )
     }
 }
-
-/**
- * GraphQL 请求级上下文，通过 DgsContext.getCustomContext<GraphQLRequestContext>(dfe) 获取。
- */
-data class GraphQLRequestContext(
-    val requestContext: RequestContext,
-    val permissions: Set<String>,
-    val bff: String,
-)
