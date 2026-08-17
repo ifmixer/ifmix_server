@@ -2,7 +2,7 @@
 
 > 日期: 2026-08-18
 > 前置: docs/superpowers/specs/2026-08-18-jooq-migration-design.md (架构设计)
-> 状态: Todo 模块已完成示范（TodoJooqRepository + TodoJooqService + TodoFetcher）
+> 状态: 全部完成（Wave 1-4）示范（TodoJooqRepository + TodoJooqService + TodoFetcher）
 
 ## 模块清单与依赖关系
 
