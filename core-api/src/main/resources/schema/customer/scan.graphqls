@@ -1,0 +1,83 @@
+# schema/customer/scan.graphqls
+type ScanRecord {
+    id: UUID!
+    images: [ImageRef!]!
+    result: JSON
+    status: ScanStatus!
+    clientIp: String
+    lang: String
+    country: String
+    currency: String
+    userDisplayName: String
+    userNotes: String
+    collected: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime
+}
+
+type ImageRef {
+    key: String!
+}
+
+enum ScanStatus { PENDING, PROCESSING, COMPLETED, FAILED }
+
+# --- Query ---
+input ScanQueryInput {
+    cursor: String
+    limit: Int
+    collected: Boolean
+}
+
+type ScanRecordPage {
+    items: [ScanRecord!]!
+    nextCursor: String
+    hasMore: Boolean!
+}
+
+extend type Query {
+    query_findScanById(id: UUID!): ScanRecord!
+    query_findScansByCursor(input: ScanQueryInput): ScanRecordPage!
+}
+
+# --- Mutation ---
+input NewScanInput {
+    images: [NewScanImageInput!]!
+}
+
+input NewScanImageInput {
+    imageKey: String!
+    mediaType: String
+}
+
+type NewScanPayload {
+    scanRecord: ScanRecord!
+}
+
+input UpdateScanInput {
+    id: UUID!
+    set: UpdateScanSetInput
+    unset: [ScanUnsetField!]
+}
+
+input UpdateScanSetInput {
+    userDisplayName: String
+    userNotes: String
+    collected: Boolean
+}
+
+enum ScanUnsetField { USER_DISPLAY_NAME, USER_NOTES }
+
+type UpdateScanPayload {
+    success: Boolean!
+    scanRecord: ScanRecord
+}
+
+type DeleteScanPayload {
+    success: Boolean!
+}
+
+extend type Mutation {
+    mutation_newScan(input: NewScanInput!): NewScanPayload!
+    mutation_updateScan(input: UpdateScanInput!): UpdateScanPayload!
+    mutation_deleteScanById(id: UUID!): DeleteScanPayload!
+}

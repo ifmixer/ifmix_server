@@ -107,7 +107,7 @@ class CustomerTodoController(private val todoService: TodoService) {
         ctx.mustGetInstallId()
         val todos = todoService.findByIds(ctx, req.ids)
         todos.forEach { checkOwnership(ctx, it) }
-        val count = todoService.deleteByIds(ctx, req.ids)
+        val count = todoService.deleteTodosByIds(ctx, req.ids)
         return OperationResult(success = count == req.ids.size, modifiedCount = count)
     }
 

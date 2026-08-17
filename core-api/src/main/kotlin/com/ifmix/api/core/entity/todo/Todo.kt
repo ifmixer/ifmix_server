@@ -22,6 +22,9 @@ interface Todo : AppScopedProps, SoftDeletableProps {
 
     val done: Boolean
 
+    /** nullable — 演示 GraphQL unset 语义 */
+    val note: String?
+
     /** JSONB 元数据，用于测试 Jimmer 对嵌套 JSON 局部更新的行为 */
     @Serialized
     val meta: Map<String, Any?>?

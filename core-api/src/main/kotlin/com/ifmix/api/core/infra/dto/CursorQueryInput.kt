@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.dto
 
-import io.swagger.v3.oas.annotations.media.Schema
+
 
 /**
  * 游标分页的分页/排序参数（客户端可绑定的请求体）。
@@ -10,13 +10,9 @@ import io.swagger.v3.oas.annotations.media.Schema
  * 读偏好由 BaseRepository 强制注入/接管，调用方无法绕过。
  */
 data class CursorQueryInput(
-    @Schema(description = "上一页返回的 nextCursor，首次请求不传")
     val cursor: String? = null,
-    @Schema(description = "排序字段，默认 id")
     val sortBy: String = "id",
-    @Schema(description = "排序方向，默认 DESC")
     val order: SortOrder = SortOrder.DESC,
-    @Schema(description = "每页条数，默认 20，上限 100", minimum = "1", maximum = "100")
     val limit: Int = DEFAULT_LIMIT,
 ) {
 

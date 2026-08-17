@@ -11,7 +11,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
     // Spring Boot 4 使用 Jackson 3（tools.jackson），需用 Jackson 3 的 Kotlin 模块，
     // 否则 data class 的 Kotlin 默认值（缺失字段）不会生效。
     implementation("tools.jackson.module:jackson-module-kotlin")
@@ -79,6 +78,11 @@ dependencies {
 
     // H2 for routing tests (needed in task 3)
     testImplementation("com.h2database:h2")
+
+    // GraphQL (Netflix DGS Framework 12.x)
+    implementation(platform("com.netflix.graphql.dgs:graphql-dgs-platform-dependencies:12.0.1"))
+    implementation("com.netflix.graphql.dgs:graphql-dgs-spring-graphql-starter")
+    testImplementation("com.netflix.graphql.dgs:graphql-dgs-client")
 }
 
 kotlin {

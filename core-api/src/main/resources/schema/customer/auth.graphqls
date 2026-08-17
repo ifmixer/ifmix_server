@@ -1,0 +1,69 @@
+type UserInfo {
+    id: UUID!
+    email: String
+    displayName: String
+    avatarUrl: String
+}
+
+type LoginPayload {
+    accessToken: String!
+    refreshToken: String!
+    expiresIn: Int!
+    user: UserInfo!
+    deviceSecret: String
+}
+
+type MePayload {
+    user: UserInfo!
+    tier: String!
+    tierActive: Boolean!
+    tierExpiresAt: DateTime
+}
+
+type RefreshPayload {
+    accessToken: String!
+    refreshToken: String!
+    expiresIn: Int!
+}
+
+type ExchangePayload {
+    accessToken: String!
+    refreshToken: String!
+    expiresIn: Int!
+}
+
+input ProviderLoginInput {
+    idToken: String!
+}
+
+input WechatLoginInput {
+    code: String!
+}
+
+input ExchangeInput {
+    deviceSecret: String!
+    targetAppId: UUID!
+}
+
+input RefreshInput {
+    refreshToken: String!
+}
+
+input LogoutInput {
+    refreshToken: String!
+}
+
+extend type Query {
+    query_me: MePayload!
+}
+
+extend type Mutation {
+    mutation_authGoogle(input: ProviderLoginInput!): LoginPayload!
+    mutation_authApple(input: ProviderLoginInput!): LoginPayload!
+    mutation_authWechat(input: WechatLoginInput!): LoginPayload!
+    mutation_authAnonymous: LoginPayload!
+    mutation_authExchange(input: ExchangeInput!): ExchangePayload!
+    mutation_authRefresh(input: RefreshInput!): RefreshPayload!
+    mutation_authLogout(input: LogoutInput!): OperationResult!
+    mutation_authDeleteAccount: OperationResult!
+}

@@ -1,0 +1,12 @@
+scalar UUID       # 22-char Base58
+scalar DateTime   # epoch millis (Long)
+scalar Long
+scalar JSON       # 透传 JSONB
+
+type OperationResult {
+    success: Boolean!
+    modifiedCount: Int
+}
+
+type Query
+type Mutation

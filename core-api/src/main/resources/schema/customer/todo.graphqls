@@ -1,0 +1,115 @@
+type Todo {
+    id: UUID!
+    title: String!
+    done: Boolean!
+    note: String          # nullable — 演示 unset
+    meta: JSON
+    items: [TodoItem!]!
+    createdAt: DateTime!
+    updatedAt: DateTime
+}
+
+type TodoItem {
+    id: UUID!
+    content: String!
+    done: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime
+}
+
+# --- Query ---
+input TodoQueryInput {
+    cursor: String
+    limit: Int
+}
+
+type TodoPage {
+    items: [Todo!]!
+    nextCursor: String
+    hasMore: Boolean!
+}
+
+extend type Query {
+    query_findTodoById(id: UUID!): Todo!
+    query_findTodosByCursor(input: TodoQueryInput): TodoPage!
+    query_findTodosByIds(ids: [UUID!]!): [Todo!]!
+}
+
+# --- Mutation: Create ---
+input CreateTodoInput {
+    title: String!
+    done: Boolean
+    note: String
+    items: [CreateTodoItemInput!]   # 嵌入子实体
+}
+
+input CreateTodoItemInput {
+    content: String!
+    done: Boolean
+}
+
+type CreateTodoPayload {
+    todo: Todo!
+}
+
+# --- Mutation: Update Todo ---
+input UpdateTodoInput {
+    id: UUID!
+    set: UpdateTodoSetInput
+    unset: [TodoUnsetField!]
+}
+
+input UpdateTodoSetInput {
+    title: String
+    done: Boolean
+    note: String
+}
+
+enum TodoUnsetField {
+    NOTE
+}
+
+type UpdateTodoPayload {
+    success: Boolean!
+    todo: Todo
+}
+
+# --- Mutation: Update TodoItems（独立，不需要 todoId） ---
+input UpdateTodoItemsMutationInput {
+    create: [CreateTodoItemForTodoInput!]
+    update: [UpdateTodoItemInput!]
+    delete: [UUID!]
+}
+
+input CreateTodoItemForTodoInput {
+    todoId: UUID!                  # 新建时需要指定挂到哪个 todo
+    content: String!
+    done: Boolean
+}
+
+input UpdateTodoItemInput {
+    id: UUID!                      # 通过 id 定位，不需要 todoId
+    set: UpdateTodoItemSetInput
+}
+
+input UpdateTodoItemSetInput {
+    content: String
+    done: Boolean
+}
+
+type UpdateTodoItemsPayload {
+    success: Boolean!
+}
+
+# --- Mutation: Delete ---
+type DeleteTodoPayload {
+    success: Boolean!
+}
+
+extend type Mutation {
+    mutation_createTodo(input: CreateTodoInput!): CreateTodoPayload!
+    mutation_updateTodo(input: UpdateTodoInput!): UpdateTodoPayload!
+    mutation_updateTodoItems(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsPayload!
+    mutation_deleteTodoById(id: UUID!): DeleteTodoPayload!
+    mutation_deleteTodosByIds(ids: [UUID!]!): DeleteTodoPayload!
+}

@@ -1,0 +1,28 @@
+enum UploadCategory { ANTIQUE_SCAN }
+enum ContentType { IMAGE_JPEG, IMAGE_PNG, IMAGE_WEBP }
+
+input PresignUploadInput {
+    category: UploadCategory!
+    contentType: ContentType!
+}
+
+type PresignUploadPayload {
+    mediaId: UUID!
+    uploadUrl: String!
+    imageKey: String!
+    downloadUrl: String!
+}
+
+input PresignDownloadInput {
+    imageKey: String!
+    durationSeconds: Int
+}
+
+type PresignDownloadPayload {
+    url: String!
+}
+
+extend type Mutation {
+    mutation_presignUpload(input: PresignUploadInput!): PresignUploadPayload!
+    mutation_presignDownload(input: PresignDownloadInput!): PresignDownloadPayload!
+}

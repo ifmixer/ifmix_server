@@ -34,6 +34,12 @@ class WebConfig(
             .excludePathPatterns(
                 "/.well-known/**",
             )
+
+        // GraphQL 端点也需要相同拦截器
+        registry.addInterceptor(headerValidationInterceptor)
+            .addPathPatterns("/customer/graphql")
+        registry.addInterceptor(authInterceptor)
+            .addPathPatterns("/customer/graphql")
     }
 
     override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {

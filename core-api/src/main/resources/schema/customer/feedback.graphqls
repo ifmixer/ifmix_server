@@ -1,0 +1,23 @@
+enum FeedbackCategory {
+    LIKED
+    PRICE_TOO_HIGH
+    PRICE_TOO_LOW
+    PRICE_MISSING
+    WRONG_IDENTIFICATION
+    FEATURE_REQUEST
+    MORE_RECOMMENDATIONS
+}
+
+input SubmitFeedbackInput {
+    scanRecordId: UUID
+    category: FeedbackCategory!
+    comment: String
+}
+
+type SubmitFeedbackPayload {
+    id: UUID!
+}
+
+extend type Mutation {
+    mutation_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackPayload!
+}

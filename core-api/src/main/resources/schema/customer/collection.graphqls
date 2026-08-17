@@ -1,0 +1,49 @@
+type ScanCollection {
+    id: UUID!
+    isDefault: Boolean!
+    createdAt: DateTime!
+}
+
+type ScanCollectionItem {
+    id: UUID!
+    scanRecord: ScanRecord!
+    createdAt: DateTime!
+}
+
+type ScanCollectionItemPage {
+    items: [ScanCollectionItem!]!
+    nextCursor: String
+    hasMore: Boolean!
+}
+
+input ListScanCollectionItemsInput {
+    cursor: String
+    limit: Int
+}
+
+extend type Query {
+    query_getDefaultScanCollection: ScanCollection!
+    query_findScanCollectionItemsByCursor(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
+}
+
+input AddScanCollectionItemInput {
+    scanRecordId: UUID!
+}
+
+type AddScanCollectionItemPayload {
+    collectionId: UUID!
+    alreadyExists: Boolean!
+}
+
+input RemoveScanCollectionItemsInput {
+    scanRecordIds: [UUID!]!
+}
+
+type RemoveScanCollectionItemsPayload {
+    removedCount: Int!
+}
+
+extend type Mutation {
+    mutation_addScanCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemPayload!
+    mutation_removeScanCollectionItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsPayload!
+}
