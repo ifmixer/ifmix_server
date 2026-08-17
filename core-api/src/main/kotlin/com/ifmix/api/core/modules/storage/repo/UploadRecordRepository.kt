@@ -11,7 +11,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Repository
-class UploadRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<UploadRecord>(sql, UploadRecord::class) {
+class _UploadRecordRepository_old(sql: KSqlClient) : BaseAppCrudRepository<UploadRecord>(sql, UploadRecord::class) {
 
     fun create(
         ctx: RepoContext,

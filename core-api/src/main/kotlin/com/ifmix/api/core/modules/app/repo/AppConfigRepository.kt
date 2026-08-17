@@ -1,0 +1,115 @@
+package com.ifmix.api.core.modules.app.repo
+
+import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.jooq.tables.CoreAppConfigRevision.Companion.CORE_APP_CONFIG_REVISION
+import com.ifmix.api.core.model.AppConfigRevision
+import org.jooq.JSONB
+import org.springframework.stereotype.Repository
+import java.util.UUID
+
+/**
+ * App 配置相关 jOOQ 仓库。
+ *
+ * 注意：保留原有的 Jimmer AppConfigRevisionRepository 不动，
+ * 新代码通过此类访问 jOOQ 层。
+ */
+@Repository
+class AppConfigRepository {
+
+    /** 查询指定 app 下当前生效（enabled=true）的配置版本，按创建时间倒序取最新一条 */
+    fun findActiveByAppId(ctx: RepoContext, appId: UUID): AppConfigRevision? =
+        ctx.dsl.selectFrom(CORE_APP_CONFIG_REVISION)
+            .where(CORE_APP_CONFIG_REVISION.APP_ID.eq(appId))
+            .and(CORE_APP_CONFIG_REVISION.ENABLED.eq(true))
+            .orderBy(CORE_APP_CONFIG_REVISION.CREATED_AT.desc())
+            .limit(1)
+            .fetchOne()?.let { mapToModel(it) }
+
+    /** 按 Apple Bundle ID 查询生效的配置版本 */
+    fun findByBundleId(ctx: RepoContext, bundleId: String): AppConfigRevision? =
+        ctx.dsl.selectFrom(CORE_APP_CONFIG_REVISION)
+            .where(CORE_APP_CONFIG_REVISION.APPLE_BUNDLE_ID.eq(bundleId))
+            .and(CORE_APP_CONFIG_REVISION.ENABLED.eq(true))
+            .limit(1)
+            .fetchOne()?.let { mapToModel(it) }
+
+    /** 按 Android 包名查询生效的配置版本 */
+    fun findByAndroidPackage(ctx: RepoContext, pkg: String): AppConfigRevision? =
+        ctx.dsl.selectFrom(CORE_APP_CONFIG_REVISION)
+            .where(CORE_APP_CONFIG_REVISION.ANDROID_PACKAGE_NAME.eq(pkg))
+            .and(CORE_APP_CONFIG_REVISION.ENABLED.eq(true))
+            .limit(1)
+            .fetchOne()?.let { mapToModel(it) }
+
+    /** 将指定 app 下所有生效版本的 enabled 置为 false，返回影响行数 */
+    fun disableCurrentRevisions(ctx: RepoContext, appId: UUID): Int =
+        ctx.dsl.update(CORE_APP_CONFIG_REVISION)
+            .set(CORE_APP_CONFIG_REVISION.ENABLED, false)
+            .where(CORE_APP_CONFIG_REVISION.APP_ID.eq(appId))
+            .and(CORE_APP_CONFIG_REVISION.ENABLED.eq(true))
+            .execute()
+
+    /** 插入新配置版本，返回插入后的模型（含服务端生成的 createdAt） */
+    fun insert(ctx: RepoContext, revision: AppConfigRevision): AppConfigRevision {
+        ctx.dsl.insertInto(
+            CORE_APP_CONFIG_REVISION,
+            CORE_APP_CONFIG_REVISION.ID,
+            CORE_APP_CONFIG_REVISION.APP_ID,
+            CORE_APP_CONFIG_REVISION.AUTH_TENANT_ID,
+            CORE_APP_CONFIG_REVISION.APPLE_BUNDLE_ID,
+            CORE_APP_CONFIG_REVISION.ANDROID_PACKAGE_NAME,
+            CORE_APP_CONFIG_REVISION.REVISION_NUMBER,
+            CORE_APP_CONFIG_REVISION.ENABLED,
+            CORE_APP_CONFIG_REVISION.SLUG,
+            CORE_APP_CONFIG_REVISION.CONTENT,
+            CORE_APP_CONFIG_REVISION.NOTE,
+        )
+            .values(
+                revision.id,
+                revision.appId,
+                revision.authTenantId,
+                revision.appleBundleId,
+                revision.androidPackageName,
+                revision.revisionNumber,
+                revision.enabled,
+                revision.slug,
+                JSONB.jsonb(revision.content),
+                revision.note,
+            )
+            .execute()
+        return findById(ctx, revision.id)
+            ?: throw RuntimeException("failed to read newly inserted revision: ${revision.id}")
+    }
+
+    /** 按 id 查询单条记录（用于插入后回读或 toggle 后回读） */
+    fun findById(ctx: RepoContext, id: UUID): AppConfigRevision? =
+        ctx.dsl.selectFrom(CORE_APP_CONFIG_REVISION)
+            .where(CORE_APP_CONFIG_REVISION.ID.eq(id))
+            .fetchOne()?.let { mapToModel(it) }
+
+    /** 更新指定 revision 的 enabled 状态，返回影响行数 */
+    fun updateEnabled(ctx: RepoContext, revisionId: UUID, enabled: Boolean): Int =
+        ctx.dsl.update(CORE_APP_CONFIG_REVISION)
+            .set(CORE_APP_CONFIG_REVISION.ENABLED, enabled)
+            .where(CORE_APP_CONFIG_REVISION.ID.eq(revisionId))
+            .execute()
+
+    /** 将 jOOQ CoreAppConfigRevisionRecord 转换为领域模型，处理 JSONB → String 映射 */
+    private fun mapToModel(record: com.ifmix.api.core.jooq.tables.records.CoreAppConfigRevisionRecord): AppConfigRevision {
+        // jOOQ JSONB.toString() 返回 JSON 字符串（不含外层引号），可直接用于 Jackson 反序列化
+        val contentStr = record.content?.toString() ?: "{}"
+        return AppConfigRevision(
+            id = record.id!!,
+            appId = record.appId!!,
+            authTenantId = record.authTenantId,
+            appleBundleId = record.appleBundleId,
+            androidPackageName = record.androidPackageName,
+            revisionNumber = record.revisionNumber ?: 0,
+            createdAt = record.createdAt ?: java.time.Instant.now(),
+            enabled = record.enabled ?: false,
+            slug = record.slug ?: "",
+            content = contentStr,
+            note = record.note ?: "",
+        )
+    }
+}

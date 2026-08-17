@@ -11,7 +11,8 @@ import com.ifmix.api.core.modules.scan.dto.PresignUploadReq
 import com.ifmix.api.core.modules.scan.dto.PresignedDownloadResponse
 import com.ifmix.api.core.modules.scan.dto.PresignedUploadResponse
 import com.ifmix.api.core.modules.scan.service.AntiqueService
-import com.ifmix.api.core.modules.storage.repo.UploadRecordRepository
+import com.ifmix.api.core.model.UploadRecord
+import com.ifmix.api.core.modules.storage.repo.UploadRecordJooqRepository
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
@@ -31,7 +32,7 @@ import java.time.Duration
 @ConditionalOnBean(AntiqueService::class)
 class CustomerStorageController(
     private val antiqueService: AntiqueService,
-    private val uploadRecordRepo: UploadRecordRepository,
+    private val uploadRecordRepo: UploadRecordJooqRepository,
 ) {
 
     @Operation(
@@ -58,8 +59,7 @@ class CustomerStorageController(
         val downloadUrl = antiqueService.getPublicUrl(ctx, objectKey)
 
         // 记录上传信息到 DB（id 与文件名一致）
-        uploadRecordRepo.create(
-            ctx = ctx.repoCtx,
+        val uploadRecord = UploadRecord(
             id = mediaId,
             appId = appId,
             installId = installId,
@@ -69,6 +69,7 @@ class CustomerStorageController(
             category = req.category.name,
             clientIp = ctx.clientIp,
         )
+        uploadRecordRepo.insert(ctx.repoCtx, uploadRecord)
 
         return PresignedUploadResponse(mediaId=mediaId,uploadUrl = url, imageKey = objectKey, downloadUrl = downloadUrl)
     }
