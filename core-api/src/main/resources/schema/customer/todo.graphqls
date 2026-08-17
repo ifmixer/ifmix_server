@@ -13,6 +13,7 @@ type TodoItem {
     id: UUID!
     content: String!
     done: Boolean!
+    note: String          # nullable — 演示 unset
     createdAt: DateTime!
     updatedAt: DateTime
 }
@@ -46,6 +47,7 @@ input CreateTodoInput {
 input CreateTodoItemInput {
     content: String!
     done: Boolean
+    note: String
 }
 
 type CreateTodoPayload {
@@ -85,16 +87,23 @@ input CreateTodoItemForTodoInput {
     todoId: UUID!                  # 新建时需要指定挂到哪个 todo
     content: String!
     done: Boolean
+    note: String
 }
 
 input UpdateTodoItemInput {
     id: UUID!                      # 通过 id 定位，不需要 todoId
     set: UpdateTodoItemSetInput
+    unset: [TodoItemUnsetField!]
 }
 
 input UpdateTodoItemSetInput {
     content: String
     done: Boolean
+    note: String
+}
+
+enum TodoItemUnsetField {
+    NOTE
 }
 
 type UpdateTodoItemsPayload {

@@ -3,81 +3,108 @@ package com.ifmix.api.core.modules.todo.repo
 import com.ifmix.api.core.entity.todo.Todo
 import com.ifmix.api.core.entity.todo.TodoItem
 import com.ifmix.api.core.entity.todo.appId
-import com.ifmix.api.core.entity.todo.dto.TodoCreateInput
-import com.ifmix.api.core.entity.todo.dto.TodoUpdateInput
-import com.ifmix.api.core.entity.todo.dto.TodoDetailDto
-import com.ifmix.api.core.entity.todo.dto.TodoListDto
+import com.ifmix.api.core.entity.todo.by
 import com.ifmix.api.core.entity.todo.id
-import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
-import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode
-import org.babyfish.jimmer.sql.ast.mutation.SaveMode
+import com.ifmix.api.core.entity.todo.todoId
+import org.babyfish.jimmer.sql.fetcher.Fetcher
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
+import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import org.babyfish.jimmer.sql.kt.ast.expression.valueIn
+import org.babyfish.jimmer.sql.kt.ast.expression.desc
+import org.babyfish.jimmer.sql.kt.fetcher.newFetcher
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::class) {
+class TodoRepository(private val sql: KSqlClient) {
 
-    fun findTodoById(ctx: RepoContext, appId: UUID, id: UUID): TodoDetailDto? {
+    // ===== Query =====
+
+    fun findById(appId: UUID, id: UUID): Todo? {
         return sql.createQuery(Todo::class) {
             where(table.appId eq appId)
             where(table.id eq id)
-            select(table.fetch(TodoDetailDto::class))
+            select(table.fetch(ALL_SCALAR))
         }.limit(1).execute().firstOrNull()
     }
 
-    fun create(ctx: RepoContext, appId: UUID, installId: UUID?, userId: UUID?, input: TodoCreateInput): UUID {
-        val entity = input.toEntity {
-            id = UuidV7.generate()
-            this.appId = appId
-            this.installId = installId
-            this.userId = userId
-            items().forEach {
-                it.id = UuidV7.generate()
-                it.appId = appId
-            }
-        }
-        return sql.entities.save(entity) {
-            setMode(SaveMode.INSERT_ONLY)
-        }.modifiedEntity.id
+    fun findByIds(appId: UUID, ids: List<UUID>): List<Todo> {
+        if (ids.isEmpty()) return emptyList()
+        return sql.createQuery(Todo::class) {
+            where(table.appId eq appId)
+            where(table.id valueIn ids)
+            select(table.fetch(ALL_SCALAR))
+        }.execute()
     }
 
-    fun update(ctx: RepoContext, appId: UUID, input: TodoUpdateInput): Boolean {
-        if (!exists(appId, input.id)) return false
-        val entity = input.toEntity {
-            this.appId = appId
-            items()?.forEach {
-                if (it.id == null) it.id = UuidV7.generate()
-                it.appId = appId
+    fun findByCursor(appId: UUID, cursor: UUID?, limit: Int): List<Todo> {
+        return sql.createQuery(Todo::class) {
+            where(table.appId eq appId)
+            if (cursor != null) {
+                where(table.id lt cursor)
             }
-        }
+            orderBy(table.id.desc())
+            select(table.fetch(ALL_SCALAR))
+        }.limit(limit).execute()
+    }
+
+    fun exists(appId: UUID, id: UUID): Boolean {
+        return sql.createQuery(Todo::class) {
+            where(table.appId eq appId)
+            where(table.id eq id)
+            select(table.id)
+        }.limit(1).execute().isNotEmpty()
+    }
+
+    // ===== TodoItem Query =====
+
+    fun findItemsByTodoIds(todoIds: Collection<UUID>): List<TodoItem> {
+        if (todoIds.isEmpty()) return emptyList()
+        return sql.createQuery(TodoItem::class) {
+            where(table.todoId valueIn todoIds)
+            select(table.fetch(ITEM_WITH_TODO_ID))
+        }.execute()
+    }
+
+    fun findItemById(appId: UUID, itemId: UUID): TodoItem? {
+        return sql.createQuery(TodoItem::class) {
+            where(table.id eq itemId)
+            where(table.appId eq appId)
+            select(table)
+        }.limit(1).execute().firstOrNull()
+    }
+
+    // ===== Write =====
+
+    fun save(entity: Todo) {
+        sql.entities.save(entity)
+    }
+
+    fun insert(entity: Todo) {
         sql.entities.save(entity) {
-            setAssociatedMode(Todo::items, AssociatedSaveMode.MERGE)
+            setMode(org.babyfish.jimmer.sql.ast.mutation.SaveMode.INSERT_ONLY)
         }
-        return true
     }
 
-    fun batchUpdate(ctx: RepoContext, appId: UUID, inputs: List<TodoUpdateInput>): Int {
-        if (inputs.isEmpty()) return 0
-        val entities = inputs.map { input ->
-            input.toEntity {
-                this.appId = appId
-                items()?.forEach {
-                    if (it.id == null) it.id = UuidV7.generate()
-                    it.appId = appId
-                }
-            }
-        }
-        return sql.entities.saveEntities(entities) {
-            setAssociatedMode(Todo::items, AssociatedSaveMode.MERGE)
-        }.totalAffectedRowCount
+    fun saveItem(entity: TodoItem) {
+        sql.entities.save(entity)
     }
 
-    fun deleteTodo(ctx: RepoContext, appId: UUID, id: UUID): Boolean {
+    fun insertItem(entity: TodoItem) {
+        sql.entities.save(entity) {
+            setMode(org.babyfish.jimmer.sql.ast.mutation.SaveMode.INSERT_ONLY)
+        }
+    }
+
+    fun saveItems(entities: List<TodoItem>) {
+        if (entities.isEmpty()) return
+        sql.entities.saveEntities(entities)
+    }
+
+    // ===== Delete =====
+
+    fun deleteTodo(appId: UUID, id: UUID): Boolean {
         val count = sql.createDelete(Todo::class) {
             where(table.appId eq appId)
             where(table.id eq id)
@@ -85,7 +112,15 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         return count > 0
     }
 
-    fun deleteItemsByIds(ctx: RepoContext, appId: UUID, itemIds: List<UUID>): Int {
+    fun deleteTodosByIds(appId: UUID, ids: List<UUID>): Int {
+        if (ids.isEmpty()) return 0
+        return sql.createDelete(Todo::class) {
+            where(table.appId eq appId)
+            where(table.id valueIn ids)
+        }.execute()
+    }
+
+    fun deleteItemsByIds(appId: UUID, itemIds: List<UUID>): Int {
         if (itemIds.isEmpty()) return 0
         return sql.createDelete(TodoItem::class) {
             where(table.id valueIn itemIds)
@@ -93,20 +128,16 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         }.execute()
     }
 
-    fun findTodoByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): List<TodoListDto> {
-        if (ids.isEmpty()) return emptyList()
-        return sql.createQuery(Todo::class) {
-            where(table.appId eq appId)
-            where(table.id valueIn ids)
-            select(table.fetch(TodoListDto::class))
-        }.execute()
-    }
+    // ===== Fetchers =====
 
-    fun deleteTodosByIds(ctx: RepoContext, appId: UUID, ids: List<UUID>): Int {
-        if (ids.isEmpty()) return 0
-        return sql.createDelete(Todo::class) {
-            where(table.appId eq appId)
-            where(table.id valueIn ids)
-        }.execute()
+    companion object {
+        val ALL_SCALAR: Fetcher<Todo> = newFetcher(Todo::class).by {
+            allScalarFields()
+        }
+
+        val ITEM_WITH_TODO_ID: Fetcher<TodoItem> = newFetcher(TodoItem::class).by {
+            allScalarFields()
+            todo()  // id-only, 用于 groupBy
+        }
     }
 }

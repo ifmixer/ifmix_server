@@ -20,4 +20,6 @@ interface TodoItem : AppScopedProps, SoftDeletableProps {
     val content: String
 
     val done: Boolean
+
+    val note: String?
 }

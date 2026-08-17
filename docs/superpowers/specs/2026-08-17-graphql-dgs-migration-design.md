@@ -28,36 +28,86 @@
 
 ## 核心设计决策
 
-### D1: 查询返回 Jimmer Interface + Fetcher 动态投影
+### D1: 查询返回 Jimmer Interface — 固定 allScalar + DataLoader 解析关联
 
 **现状**: Service 返回 `TodoDetailDto` / `TodoListDto`（Jimmer 生成的 DTO class），形状固定。
 
-**改造**: Service 直接返回 Jimmer entity interface（`Todo`、`ScanRecord`），DataFetcher 层根据 GraphQL selection set 构建 `Fetcher<Todo>` 动态决定查询哪些字段。
+**改造**: Service 用固定的 `allScalarFields()` fetcher 查询标量字段，返回 Jimmer entity interface。关联字段（如 `Todo.items`）由 DGS 子字段解析器 + DataLoader 按需加载。
 
 ```kotlin
-// Repository — 接受 Fetcher 参数
-fun findById(appId: UUID, id: UUID, fetcher: Fetcher<Todo>): Todo? {
+// Service 层 — 固定 fetcher，可缓存
+fun findById(ctx: OperationContext, id: UUID): Todo? {
     return sql.createQuery(Todo::class) {
-        where(table.appId eq appId)
+        where(table.appId eq ctx.mustGetAppId())
         where(table.id eq id)
-        select(table.fetch(fetcher))
+        select(table.fetch(ALL_SCALAR_FETCHER))
     }.limit(1).execute().firstOrNull()
 }
 
-// DataFetcher — 从 GraphQL selection 构建 Fetcher
-@DgsQuery(field = "query_findTodoById")
-fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo {
-    val ctx = ctxProvider.fromDfe(dfe)
-    val fetcher = fetcherBuilder.build<Todo>(dfe.selectionSet)
-    return todoService.findById(ctx, id, fetcher)
-        ?: throw ApiError(ErrorCode.NOT_FOUND)
+companion object {
+    val ALL_SCALAR_FETCHER = newFetcher(Todo::class).by { allScalarFields() }
+}
+```
+
+```kotlin
+// DataLoader — 批量解析 items 关联
+@DgsDataLoader(name = "todoItems")
+class TodoItemsDataLoader(private val sql: KSqlClient) : MappedBatchLoader<UUID, List<TodoItem>> {
+    override fun load(todoIds: Set<UUID>): CompletionStage<Map<UUID, List<TodoItem>>> {
+        val items = sql.createQuery(TodoItem::class) {
+            where(table.todo.id valueIn todoIds)
+            select(table.fetch(newFetcher(TodoItem::class).by { allScalarFields() }))
+        }.execute()
+        return CompletableFuture.completedFuture(items.groupBy { it.todo.id })
+    }
+}
+
+// DGS 子字段解析器
+@DgsData(parentType = "Todo", field = "items")
+fun todoItems(dfe: DgsDataFetchingEnvironment): CompletableFuture<List<TodoItem>> {
+    val todo = dfe.getSource<Todo>()
+    val loader = dfe.getDataLoader<UUID, List<TodoItem>>("todoItems")
+    return loader.load(todo.id)
 }
 ```
 
 **优势**:
-- 客户端只请求 `{ id, title }` 时，SQL 只查 2 列（不 join items）
-- 请求 `{ id, title, items { content } }` 时自动 join
-- 消除 N 个 DTO class（`TodoDetailDto` / `TodoListDto` / `ScanRecordDto` / `ScanRecordListItem`…）
+- Service 层形状固定（allScalar），可以上显式 cache-aside
+- 关联字段按需加载，客户端不请求 `items` 时完全不查
+- DataLoader 自动批量化，列表查询不会 N+1
+- 消除复杂的 FetcherBuilder（selection → fetcher 的映射代码）
+
+### D1.1: 显式 Cache-Aside（CacheAside 工具类）
+
+Service 层使用 `CacheAside` 做显式缓存，不用 Spring `@Cacheable`：
+
+```kotlin
+@Service
+class TodoService(
+    private val sql: KSqlClient,
+    private val cache: CacheAside,
+) {
+    fun findById(ctx: OperationContext, id: UUID): Todo? {
+        val appId = ctx.mustGetAppId()
+        return cache.getOrLoadNullable("todo:$appId:$id", Todo::class.java) {
+            sql.createQuery(Todo::class) {
+                where(table.appId eq appId)
+                where(table.id eq id)
+                select(table.fetch(ALL_SCALAR_FETCHER))
+            }.limit(1).execute().firstOrNull()
+        }
+    }
+
+    @Transactional
+    fun updateTodo(ctx: OperationContext, input: UpdateTodoInput): Boolean {
+        // ... 更新逻辑 ...
+        cache.evict("todo:${ctx.mustGetAppId()}:${input.id}")
+        return true
+    }
+}
+```
+
+`CacheAside` 是显式调用（非注解魔法），调用方自己决定哪里走缓存、何时失效。
 
 ### D2: Update Input — set/unset 防呆
 
@@ -913,18 +963,23 @@ fun getTodo(ctx: OperationContext, id: UUID): TodoDetailDto
 ### 之后
 
 ```kotlin
-// 返回 Jimmer entity interface，形状由 fetcher 决定
-fun findByCursor(ctx: OperationContext, input: TodoQueryInput, fetcher: Fetcher<Todo>): Page<Todo>
-fun findById(ctx: OperationContext, id: UUID, fetcher: Fetcher<Todo>): Todo?
+// 返回 Jimmer entity interface，固定 allScalar fetcher（可缓存）
+fun findByCursor(ctx: OperationContext, input: TodoQueryInput): Page<Todo>
+fun findById(ctx: OperationContext, id: UUID): Todo?
 
-// Create 返回 ID（fetcher 层按需回查）
+// 关联字段由 DataLoader 解析，service 不感知
+// DataLoader: todoItems(todoIds) → Map<UUID, List<TodoItem>>
+
+// Create 返回 ID（DataFetcher 层回查）
 fun createTodo(ctx: OperationContext, input: CreateTodoInput): UUID
 
-// Update — service 返回 boolean，fetcher 层按需回查
+// Update — service 返回 boolean + 失效缓存
 fun updateTodo(ctx: OperationContext, input: UpdateTodoInput): Boolean
 fun updateTodoItems(ctx: OperationContext, input: UpdateTodoItemsMutationInput)
 fun deleteTodo(ctx: OperationContext, id: UUID): Boolean
 ```
+
+Service 层不再接收 `Fetcher<E>` 参数，形状固定为 allScalar，可被 CacheAside 缓存。
 
 ### Todo Entity 新增 `note` 字段
 

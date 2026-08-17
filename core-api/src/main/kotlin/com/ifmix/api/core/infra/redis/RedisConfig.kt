@@ -1,4 +1,17 @@
 package com.ifmix.api.core.infra.redis
 
-// TODO: 后续接入 Redis 实际配置（连接池、序列化等）。
-// 当前仅占位，确保 spring-boot-starter-data-redis 的自动配置生效。
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.data.redis.core.RedisTemplate
+import tools.jackson.databind.ObjectMapper
+import java.time.Duration
+
+@Configuration
+class RedisCacheConfig {
+
+    @Bean
+    fun cacheAside(
+        redisTemplate: RedisTemplate<String, String>,
+        objectMapper: ObjectMapper,
+    ): CacheAside = CacheAside(redisTemplate, objectMapper, defaultTtl = Duration.ofMinutes(5))
+}
