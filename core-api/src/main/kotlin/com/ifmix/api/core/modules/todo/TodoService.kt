@@ -42,13 +42,14 @@ class TodoService(
         title: String? = null,
         done: Boolean? = null,
         meta: Map<String, Any?>? = null,
+        unsetFields: List<String>? = null,
     ): Boolean {
         val patch = mutableMapOf<String, Any?>()
         title?.let { patch["title"] = it }
         done?.let { patch["done"] = it }
         meta?.let { patch["meta"] = it }
-        if (patch.isEmpty()) return true
-        return crud.updateById(ctx, id, patch)
+        if (patch.isEmpty() && unsetFields.isNullOrEmpty()) return true
+        return crud.updateByIdWithUnset(ctx, id, patch, unsetFields)
     }
 
     fun deleteById(ctx: RequestContext, id: String): Boolean = crud.deleteById(ctx, id)

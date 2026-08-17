@@ -20,7 +20,7 @@ type Mutation {
 
     # Scan
     scan_create(input: NewScanInput!): ScanRecord! @requirePermission(permission: "scan:write")
-    scan_update(id: ID!, collected: Boolean): Boolean! @requirePermission(permission: "scan:write")
+    scan_update(id: ID!, collected: Boolean): ScanRecord! @requirePermission(permission: "scan:write")
     scan_delete(id: ID!): Boolean! @requirePermission(permission: "scan:write")
 
     # Storage

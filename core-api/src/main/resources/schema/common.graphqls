@@ -85,8 +85,14 @@ input CreateTodoInput {
 }
 
 input UpdateTodoInput {
+    set: TodoUpdateSetInput
+    unset: [String!]
+}
+
+input TodoUpdateSetInput {
     title: String
     done: Boolean
+    meta: JSON
 }
 
 input CreateTodoItemInput {
@@ -94,6 +100,11 @@ input CreateTodoItemInput {
 }
 
 input UpdateTodoItemInput {
+    set: TodoItemUpdateSetInput
+    unset: [String!]
+}
+
+input TodoItemUpdateSetInput {
     content: String
     done: Boolean
 }

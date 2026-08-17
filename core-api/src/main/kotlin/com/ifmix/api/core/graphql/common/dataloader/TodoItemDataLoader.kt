@@ -1,8 +1,8 @@
 package com.ifmix.api.core.graphql.common.dataloader
 
 import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
-import com.ifmix.api.core.graphql.common.type.TodoItemType
-import com.ifmix.api.core.modules.todo.mapper.toTodoItemType
+import com.ifmix.api.core.graphql.generated.types.TodoItem
+import com.ifmix.api.core.modules.todo.mapper.toTodoItem
 import com.ifmix.api.core.modules.todo.service.TodoItemService
 import com.netflix.graphql.dgs.DgsDataLoader
 import com.netflix.graphql.dgs.context.DgsContext
@@ -18,12 +18,12 @@ import java.util.concurrent.CompletionStage
 @DgsDataLoader(name = "todoItems")
 class TodoItemDataLoader(
     private val todoItemService: TodoItemService,
-) : MappedBatchLoaderWithContext<String, List<TodoItemType>> {
+) : MappedBatchLoaderWithContext<String, List<TodoItem>> {
 
     override fun load(
         keys: Set<String>,
         environment: BatchLoaderEnvironment,
-    ): CompletionStage<Map<String, List<TodoItemType>>> {
+    ): CompletionStage<Map<String, List<TodoItem>>> {
         return CompletableFuture.supplyAsync {
             // 从 DGS context 获取 GraphQLRequestContext（含 appId 等租户信息）
             @Suppress("UNCHECKED_CAST")
@@ -31,7 +31,7 @@ class TodoItemDataLoader(
             val ctx = customContext.requestContext
 
             todoItemService.findByTodoIds(ctx, keys.toList())
-                .map { it.toTodoItemType() }
+                .map { it.toTodoItem() }
                 .groupBy { it.todoId }
         }
     }

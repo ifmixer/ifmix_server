@@ -84,6 +84,28 @@ open class CRUDRepository<T : BaseDocument>(
         return mongo.updateFirst(query, update, type).modifiedCount > 0
     }
 
+    /**
+     * 部分更新 + $unset：自动从 [patch] 生成 Mongo `$set`，并额外对 [unsetFields] 执行 `$unset`。
+     * unsetFields 为空列表时退化为普通 updateById。
+     */
+    fun updateByIdWithUnset(ctx: RequestContext, id: String, patch: Any, unsetFields: List<String>? = null): Boolean {
+        if (invalidId(id)) return false
+        val sets: Map<String, Any?> = when (patch) {
+            is Map<*, *> -> patch.entries.filter { it.value != null }.associate { it.key.toString() to it.value }
+            else -> patch::class.memberProperties
+                .mapNotNull { p -> p.getter.call(patch)?.let { p.name to it } }
+                .toMap()
+        }
+        if (sets.isEmpty() && (unsetFields.isNullOrEmpty())) return findById(ctx, id) != null
+
+        val query = idQuery(ctx, id)
+        val update = Update()
+        sets.forEach { (field, value) -> update.set(field, value) }
+        unsetFields?.forEach { field -> update.unset(field) }
+        update.set(BaseDocument::updatedAt, Instant.now())
+        return mongo.updateFirst(query, update, type).modifiedCount > 0
+    }
+
     fun deleteById(ctx: RequestContext, id: String): Boolean {
         if (invalidId(id)) return false
         val query = idQuery(ctx, id)

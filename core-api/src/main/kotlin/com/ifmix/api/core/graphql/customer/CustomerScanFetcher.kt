@@ -77,9 +77,10 @@ class CustomerScanFetcher(
         @InputArgument id: String,
         @InputArgument collected: Boolean,
         dfe: DgsDataFetchingEnvironment,
-    ): Boolean {
+    ): ScanRecord {
         val ctx = getContext(dfe)
-        return scanRecordRepo.updateById(ctx.requestContext, id, mapCollectedPatch(collected))
+        scanRecordRepo.updateById(ctx.requestContext, id, mapCollectedPatch(collected))
+        return antiqueService.getScanRecordById(id).toScanRecord()
     }
 
     @DgsMutation(field = "scan_delete")

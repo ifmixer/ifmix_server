@@ -33,11 +33,12 @@ class TodoItemService(private val repo: TodoItemRepository) {
     fun findByTodoIds(ctx: RequestContext, todoIds: List<String>): List<TodoItemDocument> =
         repo.findByTodoIds(ctx, todoIds)
 
-    fun update(ctx: RequestContext, id: String, content: String? = null, done: Boolean? = null): Boolean {
+    fun update(ctx: RequestContext, id: String, content: String? = null, done: Boolean? = null, unsetFields: List<String>? = null): Boolean {
         val update = Update()
         content?.let { update.set(TodoItemDocument::content, it) }
         done?.let { update.set(TodoItemDocument::done, it) }
-        if (update.updateObject.isEmpty()) return true
+        if (update.updateObject.isEmpty() && unsetFields.isNullOrEmpty()) return true
+        unsetFields?.forEach { field -> update.unset(field) }
         update.set(BaseDocument::updatedAt, Instant.now())
         return repo.updateById(ctx, id, update)
     }

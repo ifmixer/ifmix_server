@@ -39,7 +39,7 @@ class TrustedDocumentFilterTest {
 
     @Test
     fun `x-op-id header finds entry and injects query`() {
-        val request = mockHttpServletRequest("/customer/graphql", headers = mapOf("x-op-id" to "todo_list"))
+        val request = mockHttpServletRequest("/customer/graphql", headers = mapOf("x-op-id" to "query_todo_list"))
         val response = mockHttpServletResponse()
         val chain = RecordingFilterChain()
 
@@ -49,7 +49,7 @@ class TrustedDocumentFilterTest {
         val wrappedRequest = chain.requestOrNull
         assertThat(wrappedRequest).isNotNull()
         val body = wrappedRequest!!.inputStream.readBytes().toString(Charsets.UTF_8)
-        assertThat(body).contains("query todo_list")
+        assertThat(body).contains("query query_todo_list")
         assertThat(body).contains("todo_list")
     }
 
@@ -59,7 +59,7 @@ class TrustedDocumentFilterTest {
         val request = mockHttpServletRequest(
             "/customer/graphql",
             body = body,
-            headers = mapOf("x-op-id" to "todo_list"),
+            headers = mapOf("x-op-id" to "query_todo_list"),
         )
         val response = mockHttpServletResponse()
         val chain = RecordingFilterChain()
@@ -78,7 +78,7 @@ class TrustedDocumentFilterTest {
         val request = mockHttpServletRequest(
             "/customer/graphql",
             body = "{}",
-            headers = mapOf("x-op-id" to "todo_get"),
+            headers = mapOf("x-op-id" to "query_todo_get"),
         )
         val response = mockHttpServletResponse()
         val chain = RecordingFilterChain()
@@ -116,7 +116,7 @@ class TrustedDocumentFilterTest {
         val wrappedRequest = chain.requestOrNull
         assertThat(wrappedRequest).isNotNull()
         val output = wrappedRequest!!.inputStream.readBytes().toString(Charsets.UTF_8)
-        assertThat(output).contains("query todo_get")
+        assertThat(output).contains("query query_todo_get")
     }
 
     @Test
@@ -133,7 +133,7 @@ class TrustedDocumentFilterTest {
 
     @Test
     fun `x-op-id works for admin path`() {
-        val request = mockHttpServletRequest("/admin/graphql", headers = mapOf("x-op-id" to "todo_list"))
+        val request = mockHttpServletRequest("/admin/graphql", headers = mapOf("x-op-id" to "query_todo_list"))
         val response = mockHttpServletResponse()
         val chain = RecordingFilterChain()
 
@@ -142,7 +142,7 @@ class TrustedDocumentFilterTest {
         val wrappedRequest = chain.requestOrNull
         assertThat(wrappedRequest).isNotNull()
         val body = wrappedRequest!!.inputStream.readBytes().toString(Charsets.UTF_8)
-        assertThat(body).contains("query todo_list")
+        assertThat(body).contains("query query_todo_list")
         assertThat(body).contains("todo_list")
     }
 

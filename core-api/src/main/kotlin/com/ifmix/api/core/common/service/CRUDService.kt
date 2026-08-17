@@ -35,6 +35,9 @@ class CRUDService<T : BaseDocument>(
 
     fun updateById(ctx: RequestContext, id: String, patch: Any): Boolean = repo.updateById(ctx, id, patch)
 
+    fun updateByIdWithUnset(ctx: RequestContext, id: String, patch: Any, unsetFields: List<String>? = null): Boolean =
+        repo.updateByIdWithUnset(ctx, id, patch, unsetFields)
+
     fun deleteById(ctx: RequestContext, id: String): Boolean = repo.deleteById(ctx, id)
 
     fun findByCursor(ctx: RequestContext, input: CursorQueryInput = CursorQueryInput()): Page<T> =

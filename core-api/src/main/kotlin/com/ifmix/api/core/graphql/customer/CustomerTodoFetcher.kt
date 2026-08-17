@@ -5,11 +5,13 @@ import com.ifmix.api.core.common.db.ownsRow
 import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.graphql.common.context.GraphQLRequestContext
-import com.ifmix.api.core.graphql.common.type.TodoConnection
-import com.ifmix.api.core.graphql.common.type.TodoItemType
-import com.ifmix.api.core.graphql.common.type.TodoType
-import com.ifmix.api.core.modules.todo.mapper.toTodoItemType
-import com.ifmix.api.core.modules.todo.mapper.toTodoType
+import com.ifmix.api.core.graphql.generated.types.Todo
+import com.ifmix.api.core.graphql.generated.types.TodoConnection
+import com.ifmix.api.core.graphql.generated.types.TodoItem
+import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
+import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
+import com.ifmix.api.core.modules.todo.mapper.toTodo
+import com.ifmix.api.core.modules.todo.mapper.toTodoItem
 import com.ifmix.api.core.modules.todo.service.TodoItemService
 import com.ifmix.api.core.modules.todo.TodoService
 import com.netflix.graphql.dgs.DgsComponent
@@ -29,13 +31,13 @@ class CustomerTodoFetcher(
 ) {
 
     @DgsQuery(field = "todo_get")
-    fun todo(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): TodoType? {
+    fun todo(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): Todo? {
         val ctx = getContext(dfe)
         val doc = todoService.findById(ctx.requestContext, id) ?: return null
         if (ctx.bff == "customer" && !ownsRow(ctx.requestContext, doc.userId, doc.installId)) {
             throw ApiError(ErrorCode.FORBIDDEN)
         }
-        return doc.toTodoType()
+        return doc.toTodo()
     }
 
     @DgsQuery(field = "todo_list")
@@ -49,7 +51,7 @@ class CustomerTodoFetcher(
         val input = CursorQueryInput(cursor = cursor, limit = limit)
         val page = todoService.findByCursor(ctx.requestContext, input)
         return TodoConnection(
-            items = page.items.map { it.toTodoType() },
+            items = page.items.map { it.toTodo() },
             nextCursor = page.nextCursor,
             hasMore = page.hasMore,
         )
@@ -59,7 +61,7 @@ class CustomerTodoFetcher(
     fun createTodo(
         @InputArgument input: Map<String, Any?>,
         dfe: DgsDataFetchingEnvironment,
-    ): TodoType {
+    ): Todo {
         val ctx = getContext(dfe)
         val title = input["title"] as String
         val meta = input["meta"] as? Map<String, Any?>
@@ -74,15 +76,15 @@ class CustomerTodoFetcher(
             todoItemService.create(ctx.requestContext, todoId, content, done)
         }
 
-        return todoService.getById(ctx.requestContext, todoId).toTodoType()
+        return todoService.getById(ctx.requestContext, todoId).toTodo()
     }
 
     @DgsMutation(field = "todo_update")
     fun updateTodo(
         @InputArgument id: String,
-        @InputArgument input: Map<String, Any?>,
+        @InputArgument input: UpdateTodoInput,
         dfe: DgsDataFetchingEnvironment,
-    ): TodoType {
+    ): Todo {
         val ctx = getContext(dfe)
         val doc = todoService.getById(ctx.requestContext, id)
         if (ctx.bff == "customer" && !ownsRow(ctx.requestContext, doc.userId, doc.installId)) {
@@ -90,11 +92,12 @@ class CustomerTodoFetcher(
         }
         todoService.update(
             ctx.requestContext, id,
-            title = input["title"] as? String,
-            done = input["done"] as? Boolean,
-            meta = input["meta"] as? Map<String, Any?>,
+            title = input.set?.title,
+            done = input.set?.done,
+            meta = input.set?.meta,
+            unsetFields = input.unset,
         )
-        return todoService.getById(ctx.requestContext, id).toTodoType()
+        return todoService.getById(ctx.requestContext, id).toTodo()
     }
 
     @DgsMutation(field = "todo_delete")
@@ -113,7 +116,7 @@ class CustomerTodoFetcher(
         @InputArgument todoId: String,
         @InputArgument input: Map<String, Any>,
         dfe: DgsDataFetchingEnvironment,
-    ): TodoItemType {
+    ): TodoItem {
         val ctx = getContext(dfe)
         val todo = todoService.getById(ctx.requestContext, todoId)
         if (ctx.bff == "customer" && !ownsRow(ctx.requestContext, todo.userId, todo.installId)) {
@@ -122,20 +125,23 @@ class CustomerTodoFetcher(
         val content = input["content"] as String
         val done = input["done"] as? Boolean ?: false
         val id = todoItemService.create(ctx.requestContext, todoId, content, done)
-        return todoItemService.getById(ctx.requestContext, id).toTodoItemType()
+        return todoItemService.getById(ctx.requestContext, id).toTodoItem()
     }
 
     @DgsMutation(field = "todoItem_update")
     fun updateTodoItem(
         @InputArgument id: String,
-        @InputArgument input: Map<String, Any?>,
+        @InputArgument input: UpdateTodoItemInput,
         dfe: DgsDataFetchingEnvironment,
-    ): TodoItemType {
+    ): TodoItem {
         val ctx = getContext(dfe)
-        val content = input["content"] as? String
-        val done = input["done"] as? Boolean
-        todoItemService.update(ctx.requestContext, id, content, done)
-        return todoItemService.getById(ctx.requestContext, id).toTodoItemType()
+        todoItemService.update(
+            ctx.requestContext, id,
+            content = input.set?.content,
+            done = input.set?.done,
+            unsetFields = input.unset,
+        )
+        return todoItemService.getById(ctx.requestContext, id).toTodoItem()
     }
 
     @DgsMutation(field = "todoItem_delete")
@@ -145,12 +151,12 @@ class CustomerTodoFetcher(
     }
 
     @DgsData(parentType = "Todo", field = "items")
-    fun items(dfe: DgsDataFetchingEnvironment): CompletableFuture<List<TodoItemType>> {
+    fun items(dfe: DgsDataFetchingEnvironment): CompletableFuture<List<TodoItem>> {
         @Suppress("UNCHECKED_CAST")
-        val dataLoader = dfe.getDataLoader<String, List<TodoItemType>>("todoItems")
+        val dataLoader = dfe.getDataLoader<String, List<TodoItem>>("todoItems")
             ?: throw IllegalStateException("todoItems DataLoader not registered")
-        val todo = dfe.getSource<TodoType>()
-            ?: throw IllegalStateException("Expected TodoType source but got null")
+        val todo = dfe.getSource<Todo>()
+            ?: throw IllegalStateException("Expected Todo source but got null")
         return dataLoader.load(todo.id)
     }
 
