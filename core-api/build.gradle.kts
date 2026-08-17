@@ -148,6 +148,7 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
 
 // jOOQ codegen — 手动触发: ./gradlew :core-api:generateJooq
 jooq {
+    version.set("3.21.5")  // 对齐 Spring Boot dependency management 解析的 jOOQ 版本
     configurations {
         create("main") {
             generateSchemaSourceOnCompilation.set(false) // 不自动在 compileKotlin 时触发 codegen
