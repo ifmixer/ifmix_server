@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.connection.RedisConnectionFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.serializer.StringRedisSerializer
+import tools.jackson.databind.ObjectMapper
 
 @Configuration
 class RedisConfig {
@@ -17,4 +18,8 @@ class RedisConfig {
         template.valueSerializer = StringRedisSerializer()
         return template
     }
+
+    @Bean
+    fun cacheAside(redisTemplate: RedisTemplate<String, String>, objectMapper: ObjectMapper): CacheAside =
+        CacheAside(redisTemplate, objectMapper)
 }

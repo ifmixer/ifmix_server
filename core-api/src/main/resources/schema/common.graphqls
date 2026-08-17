@@ -84,44 +84,35 @@ input CreateTodoInput {
     items: [CreateTodoItemInput!]
 }
 
+input CreateTodoItemInput {
+    content: String!
+    done: Boolean
+}
+
 input UpdateTodoInput {
-    set: TodoUpdateSetInput
+    title: String
+    done: Boolean
+    meta: JSON
     unset: [String!]
     items: [TodoItemMutationInput!]
 }
 
-input TodoUpdateSetInput {
-    title: String
-    done: Boolean
-    meta: JSON
-}
-
-input CreateTodoItemInput {
-    content: String!
-}
-
 input UpdateTodoItemInput {
-    set: TodoItemUpdateSetInput
-    unset: [String!]
-}
-
-input TodoItemUpdateSetInput {
     content: String
     done: Boolean
-}
-
-enum TodoItemAction {
-    CREATE
-    SET
-    UNSET
-    DELETE
+    unset: [String!]
 }
 
 input TodoItemMutationInput {
-    action: TodoItemAction!
+    """目标 item id（create 时不传）"""
     id: ID
-    set: TodoItemUpdateSetInput
+    """要写入的字段"""
+    content: String
+    done: Boolean
+    """要 $unset 的字段名"""
     unset: [String!]
+    """是否删除此 item"""
+    delete: Boolean
 }
 
 input BatchUpdateTodoInput {

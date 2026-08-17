@@ -6,18 +6,17 @@ import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.Bff
 import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.graphql.generated.types.CreateTodoInput
+import com.ifmix.api.core.graphql.generated.types.CreateTodoItemInput
 import com.ifmix.api.core.graphql.generated.types.Todo
 import com.ifmix.api.core.graphql.generated.types.TodoConnection
 import com.ifmix.api.core.graphql.generated.types.TodoItem
-import com.ifmix.api.core.graphql.generated.types.TodoItemAction
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
+import com.ifmix.api.core.modules.todo.TodoService
 import com.ifmix.api.core.modules.todo.mapper.toTodo
 import com.ifmix.api.core.modules.todo.mapper.toTodoItem
-import com.ifmix.api.core.modules.todo.service.TodoCacheService
 import com.ifmix.api.core.modules.todo.service.TodoItemService
-import com.ifmix.api.core.modules.todo.TodoDocument
-import com.ifmix.api.core.modules.todo.TodoService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsData
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -25,24 +24,18 @@ import com.netflix.graphql.dgs.DgsMutation
 import com.netflix.graphql.dgs.DgsQuery
 import com.netflix.graphql.dgs.InputArgument
 import com.netflix.graphql.dgs.context.DgsContext
-import org.dataloader.DataLoader
 import java.util.concurrent.CompletableFuture
 
 @DgsComponent
 class CustomerTodoFetcher(
     private val todoService: TodoService,
     private val todoItemService: TodoItemService,
-    private val todoCacheService: TodoCacheService,
 ) {
 
     @DgsQuery(field = "todo_get")
     fun todo(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): Todo? {
         val ctx = getContext(dfe)
-        val cacheKey = "todo:$id"
-        @Suppress("UNCHECKED_CAST")
-        val doc = ctx.requestCache.getOrPut(cacheKey) {
-            todoCacheService.getById(ctx, id)
-        } as? TodoDocument ?: return null
+        val doc = todoService.findById(ctx, id) ?: return null
         if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, doc.userId, doc.installId)) {
             throw ApiError(ErrorCode.FORBIDDEN)
         }
@@ -57,8 +50,7 @@ class CustomerTodoFetcher(
         dfe: DgsDataFetchingEnvironment,
     ): TodoConnection {
         val ctx = getContext(dfe)
-        val input = CursorQueryInput(cursor = cursor, limit = limit)
-        val page = todoService.findByCursor(ctx, input)
+        val page = todoService.findByCursor(ctx, CursorQueryInput(cursor = cursor, limit = limit))
         return TodoConnection(
             items = page.items.map { it.toTodo() },
             nextCursor = page.nextCursor,
@@ -68,24 +60,17 @@ class CustomerTodoFetcher(
 
     @DgsMutation(field = "todo_create")
     fun createTodo(
-        @InputArgument input: Map<String, Any?>,
+        @InputArgument input: CreateTodoInput,
         dfe: DgsDataFetchingEnvironment,
     ): Todo {
         val ctx = getContext(dfe)
-        val title = input["title"] as String
-        val meta = input["meta"] as? Map<String, Any?>
-        val items = input["items"] as? List<Map<String, Any?>>
+        val todoId = todoService.create(ctx, input)
 
-        val todoId = todoService.create(ctx, title, meta)
-
-        // 创建关联 items
-        items?.forEach { item ->
-            val content = item["content"] as String
-            val done = item["done"] as? Boolean ?: false
-            todoItemService.create(ctx, todoId, content, done)
+        input.items?.forEach { itemInput ->
+            todoItemService.create(ctx, todoId, itemInput)
         }
 
-        return todoService.getById(ctx, todoId).toTodo()
+        return todoService.getById(ctx, todoId, useCache = false).toTodo()
     }
 
     @DgsMutation(field = "todo_update")
@@ -99,51 +84,16 @@ class CustomerTodoFetcher(
         if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, doc.userId, doc.installId)) {
             throw ApiError(ErrorCode.FORBIDDEN)
         }
+
         // 1. 更新 todo 本身
-        todoService.update(
-            ctx, id,
-            title = input.set?.title,
-            done = input.set?.done,
-            meta = input.set?.meta,
-            unsetFields = input.unset,
-        )
+        todoService.update(ctx, id, input)
+
         // 2. 处理嵌套 items
         input.items?.forEach { mutation ->
-            when (mutation.action) {
-                TodoItemAction.CREATE -> {
-                    val set = mutation.set
-                        ?: throw ApiError(ErrorCode.INVALID_REQUEST, "CREATE requires set.content")
-                    todoItemService.create(ctx, todoId = id, content = set.content!!, done = set.done ?: false)
-                }
-                TodoItemAction.SET -> {
-                    val itemId = mutation.id
-                        ?: throw ApiError(ErrorCode.INVALID_REQUEST, "SET requires id")
-                    todoItemService.update(
-                        ctx, itemId,
-                        content = mutation.set?.content,
-                        done = mutation.set?.done,
-                        unsetFields = mutation.unset,
-                    )
-                }
-                TodoItemAction.UNSET -> {
-                    val itemId = mutation.id
-                        ?: throw ApiError(ErrorCode.INVALID_REQUEST, "UNSET requires id")
-                    todoItemService.update(
-                        ctx, itemId,
-                        unsetFields = mutation.unset,
-                    )
-                }
-                TodoItemAction.DELETE -> {
-                    val itemId = mutation.id
-                        ?: throw ApiError(ErrorCode.INVALID_REQUEST, "DELETE requires id")
-                    todoItemService.deleteById(ctx, itemId)
-                }
-            }
+            todoItemService.applyMutation(ctx, todoId = id, mutation)
         }
-        // 3. 返回完整对象（items 由 DataLoader 自动填充）
-        ctx.requestCache.remove("todo:$id")
-        todoCacheService.invalidate(ctx, id)
-        return todoService.getById(ctx, id).toTodo()
+
+        return todoService.getById(ctx, id, useCache = false).toTodo()
     }
 
     @DgsMutation(field = "todo_delete")
@@ -154,16 +104,13 @@ class CustomerTodoFetcher(
             throw ApiError(ErrorCode.FORBIDDEN)
         }
         todoItemService.deleteByTodoId(ctx, id)
-        val deleted = todoService.deleteById(ctx, id)
-        ctx.requestCache.remove("todo:$id")
-        todoCacheService.invalidate(ctx, id)
-        return deleted
+        return todoService.deleteById(ctx, id)
     }
 
     @DgsMutation(field = "todoItem_create")
     fun createTodoItem(
         @InputArgument todoId: String,
-        @InputArgument input: Map<String, Any>,
+        @InputArgument input: CreateTodoItemInput,
         dfe: DgsDataFetchingEnvironment,
     ): TodoItem {
         val ctx = getContext(dfe)
@@ -171,9 +118,7 @@ class CustomerTodoFetcher(
         if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, todo.userId, todo.installId)) {
             throw ApiError(ErrorCode.FORBIDDEN)
         }
-        val content = input["content"] as String
-        val done = input["done"] as? Boolean ?: false
-        val id = todoItemService.create(ctx, todoId, content, done)
+        val id = todoItemService.create(ctx, todoId, input)
         return todoItemService.getById(ctx, id).toTodoItem()
     }
 
@@ -184,12 +129,7 @@ class CustomerTodoFetcher(
         dfe: DgsDataFetchingEnvironment,
     ): TodoItem {
         val ctx = getContext(dfe)
-        todoItemService.update(
-            ctx, id,
-            content = input.set?.content,
-            done = input.set?.done,
-            unsetFields = input.unset,
-        )
+        todoItemService.update(ctx, id, input)
         return todoItemService.getById(ctx, id).toTodoItem()
     }
 
@@ -201,7 +141,6 @@ class CustomerTodoFetcher(
 
     @DgsData(parentType = "Todo", field = "items")
     fun items(dfe: DgsDataFetchingEnvironment): CompletableFuture<List<TodoItem>> {
-        @Suppress("UNCHECKED_CAST")
         val dataLoader = dfe.getDataLoader<String, List<TodoItem>>("todoItems")
             ?: throw IllegalStateException("todoItems DataLoader not registered")
         val todo = dfe.getSource<Todo>()

@@ -2,8 +2,8 @@ package com.ifmix.api.core.modules.todo
 
 import com.ifmix.api.core.common.db.CRUDRepository
 import com.ifmix.api.core.common.db.MongoClusterResolver
+import com.ifmix.api.core.common.redis.CacheAside
 import com.ifmix.api.core.common.service.CRUDService
-import com.ifmix.api.core.modules.todo.document.TodoItemDocument
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 import com.ifmix.api.core.modules.todo.service.TodoItemService
 import org.springframework.context.annotation.Bean
@@ -22,8 +22,8 @@ class TodoConfig {
         CRUDService(todoRepository)
 
     @Bean
-    fun todoService(todoCrudService: CRUDService<TodoDocument>, mongo: MongoTemplate): TodoService =
-        TodoService(todoCrudService, mongo)
+    fun todoService(todoCrudService: CRUDService<TodoDocument>, cacheAside: CacheAside): TodoService =
+        TodoService(todoCrudService, cacheAside)
 
     // ---- TodoItem beans ----
 

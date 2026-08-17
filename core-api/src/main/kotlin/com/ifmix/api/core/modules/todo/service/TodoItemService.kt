@@ -1,7 +1,12 @@
 package com.ifmix.api.core.modules.todo.service
 
 import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.http.ApiError
+import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.graphql.generated.types.CreateTodoItemInput
+import com.ifmix.api.core.graphql.generated.types.TodoItemMutationInput
+import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
 import com.ifmix.api.core.modules.todo.document.TodoItemDocument
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 import org.springframework.data.mongodb.core.query.Update
@@ -12,11 +17,11 @@ import java.time.Instant
  */
 class TodoItemService(private val repo: TodoItemRepository) {
 
-    fun create(ctx: RequestContext, todoId: String, content: String, done: Boolean = false): String {
+    fun create(ctx: RequestContext, todoId: String, input: CreateTodoItemInput): String {
         val doc = TodoItemDocument().apply {
             this.todoId = todoId
-            this.content = content
-            this.done = done
+            this.content = input.content
+            this.done = input.done ?: false
             this.createdAt = Instant.now()
             this.updatedAt = Instant.now()
         }
@@ -24,23 +29,48 @@ class TodoItemService(private val repo: TodoItemRepository) {
     }
 
     fun getById(ctx: RequestContext, id: String): TodoItemDocument =
-        repo.findById(ctx, id) ?: throw com.ifmix.api.core.common.http.ApiError(
-            com.ifmix.api.core.common.http.ErrorCode.NOT_FOUND, "todo item not found"
-        )
+        repo.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND, "todo item not found")
 
     fun findById(ctx: RequestContext, id: String): TodoItemDocument? = repo.findById(ctx, id)
 
     fun findByTodoIds(ctx: RequestContext, todoIds: List<String>): List<TodoItemDocument> =
         repo.findByTodoIds(ctx, todoIds)
 
-    fun update(ctx: RequestContext, id: String, content: String? = null, done: Boolean? = null, unsetFields: List<String>? = null): Boolean {
+    fun update(ctx: RequestContext, id: String, input: UpdateTodoItemInput): Boolean {
         val update = Update()
-        content?.let { update.set(TodoItemDocument::content, it) }
-        done?.let { update.set(TodoItemDocument::done, it) }
-        if (update.updateObject.isEmpty() && unsetFields.isNullOrEmpty()) return true
-        unsetFields?.forEach { field -> update.unset(field) }
+        input.content?.let { update.set(TodoItemDocument::content, it) }
+        input.done?.let { update.set(TodoItemDocument::done, it) }
+        if (!input.unset.isNullOrEmpty()) {
+            input.unset.forEach { update.unset(it) }
+        }
+        if (update.updateObject.isEmpty()) return true
         update.set(BaseDocument::updatedAt, Instant.now())
         return repo.updateById(ctx, id, update)
+    }
+
+    /**
+     * 处理嵌套 item mutation（从 todo_update 的 items 字段来）。
+     * 语义：无 id → create；delete=true → 删除；否则 set/unset 字段。
+     */
+    fun applyMutation(ctx: RequestContext, todoId: String, mutation: TodoItemMutationInput) {
+        if (mutation.id == null) {
+            // create
+            val content = mutation.content ?: throw ApiError(ErrorCode.INVALID_REQUEST, "item create requires content")
+            create(ctx, todoId, CreateTodoItemInput(content = content, done = mutation.done))
+        } else if (mutation.delete == true) {
+            // delete
+            deleteById(ctx, mutation.id)
+        } else {
+            // set + unset
+            val update = Update()
+            mutation.content?.let { update.set(TodoItemDocument::content, it) }
+            mutation.done?.let { update.set(TodoItemDocument::done, it) }
+            mutation.unset?.forEach { update.unset(it) }
+            if (update.updateObject.isNotEmpty()) {
+                update.set(BaseDocument::updatedAt, Instant.now())
+                repo.updateById(ctx, mutation.id, update)
+            }
+        }
     }
 
     fun deleteById(ctx: RequestContext, id: String): Boolean = repo.softDeleteById(ctx, id)
@@ -48,15 +78,4 @@ class TodoItemService(private val repo: TodoItemRepository) {
     fun deleteByIds(ctx: RequestContext, ids: List<String>): Int = repo.softDeleteByIds(ctx, ids)
 
     fun deleteByTodoId(ctx: RequestContext, todoId: String): Int = repo.softDeleteByTodoId(ctx, todoId)
-
-    /** 清除指定字段（白名单校验）。TodoItem 目前无可 unset 字段，预留接口。 */
-    fun unsetFields(ctx: RequestContext, id: String, fields: List<String>): Boolean {
-        val allowed = setOf<String>() // 暂无可 unset 字段
-        val valid = fields.filter { it in allowed }
-        if (valid.isEmpty()) return true
-        val update = Update()
-        valid.forEach { update.unset(it) }
-        update.set(BaseDocument::updatedAt, Instant.now())
-        return repo.updateById(ctx, id, update)
-    }
 }
