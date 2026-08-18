@@ -42,15 +42,9 @@
 
 ---
 
-## 追加: 去除 @Transactional
+## 已完成
 
-以下文件仍用 `@Transactional`，需要改为 `tx.withTx(svc(opCtx)) { ... }`：
-
-| 文件 | 行 |
-|------|-----|
-| `modules/app/service/AppConfigFacadeService.kt` | line 40, 53 |
-| `modules/scan/service/ScanCollectionFacadeService.kt` | line 30, 46, 53 |
-| `modules/feedback/service/FeedbackFacadeService.kt` | line 20 |
-
-改法：去掉 `@Transactional` 注解，用 `tx.withTx(svc(opCtx)) { sc -> ... }` 包裹。
-注入 `TxRunner`，构建 `svc(opCtx)` 走 `SvcCtx.DEFAULT.dsl`。
+### 去除 @Transactional（提交 `7dd42bc`, `70a8348`, `bf4e873`）✅
+- `FeedbackFacadeService.kt` — 1 个方法改用 `tx.withTx`
+- `AppConfigFacadeService.kt` — 2 个方法改用 `tx.withTx`
+- `ScanCollectionFacadeService.kt` — 3 个方法改用 `tx.withTx`
