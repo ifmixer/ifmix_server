@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.ai.service
+package com.ifmix.api.core.modules.ai.service.internal
 
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.UpdateScanInput

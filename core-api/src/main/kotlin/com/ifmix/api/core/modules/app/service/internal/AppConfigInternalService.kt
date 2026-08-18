@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.app.service
+package com.ifmix.api.core.modules.app.service.internal
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7

@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.ai.service
+package com.ifmix.api.core.modules.ai.service.internal
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.dto.common.Page

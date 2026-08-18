@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.todo.service
+package com.ifmix.api.core.modules.todo.service.internal
 
 import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.TodoQueryInput

@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.storage.service
+package com.ifmix.api.core.modules.storage.service.internal
 
 import com.ifmix.api.core.dto.storage.PresignDownloadResult
 import com.ifmix.api.core.dto.storage.PresignUploadResult

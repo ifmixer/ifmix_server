@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.auth.service
+package com.ifmix.api.core.modules.auth.service.internal
 
 import com.ifmix.api.core.entity.auth.AppRefreshToken
 import com.ifmix.api.core.entity.auth.AuthDeviceSecret

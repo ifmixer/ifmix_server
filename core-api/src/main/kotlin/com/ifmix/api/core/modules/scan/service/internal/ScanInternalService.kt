@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.scan.service
+package com.ifmix.api.core.modules.scan.service.internal
 
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.db.SvcCtx
