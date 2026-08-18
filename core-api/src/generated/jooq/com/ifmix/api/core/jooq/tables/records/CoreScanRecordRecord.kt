@@ -28,57 +28,61 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
         set(value): Unit = set(1, value)
         get(): UUID = get(1) as UUID
 
-    open var resultJson: JSONB?
-        set(value): Unit = set(2, value)
-        get(): JSONB? = get(2) as JSONB?
-
     open var status: Int?
-        set(value): Unit = set(3, value)
-        get(): Int? = get(3) as Int?
+        set(value): Unit = set(2, value)
+        get(): Int? = get(2) as Int?
 
     open var clientIp: String?
-        set(value): Unit = set(4, value)
-        get(): String? = get(4) as String?
+        set(value): Unit = set(3, value)
+        get(): String? = get(3) as String?
 
     open var createdAt: Instant?
+        set(value): Unit = set(4, value)
+        get(): Instant? = get(4) as Instant?
+
+    open var updatedAt: Instant?
         set(value): Unit = set(5, value)
         get(): Instant? = get(5) as Instant?
 
-    open var updatedAt: Instant?
+    open var deletedAt: Instant?
         set(value): Unit = set(6, value)
         get(): Instant? = get(6) as Instant?
 
-    open var deletedAt: Instant?
-        set(value): Unit = set(7, value)
-        get(): Instant? = get(7) as Instant?
-
     open var imageKeys: JSONB?
-        set(value): Unit = set(8, value)
-        get(): JSONB? = get(8) as JSONB?
+        set(value): Unit = set(7, value)
+        get(): JSONB? = get(7) as JSONB?
 
     open var userDisplayName: String?
+        set(value): Unit = set(8, value)
+        get(): String? = get(8) as String?
+
+    open var userNotes: String?
         set(value): Unit = set(9, value)
         get(): String? = get(9) as String?
 
-    open var userNotes: String?
-        set(value): Unit = set(10, value)
-        get(): String? = get(10) as String?
-
     open var collected: Boolean?
-        set(value): Unit = set(11, value)
-        get(): Boolean? = get(11) as Boolean?
+        set(value): Unit = set(10, value)
+        get(): Boolean? = get(10) as Boolean?
 
     open var lang: String?
+        set(value): Unit = set(11, value)
+        get(): String? = get(11) as String?
+
+    open var country: String?
         set(value): Unit = set(12, value)
         get(): String? = get(12) as String?
 
-    open var country: String?
+    open var currency: String?
         set(value): Unit = set(13, value)
         get(): String? = get(13) as String?
 
-    open var currency: String?
+    open var basicResult: JSONB?
         set(value): Unit = set(14, value)
-        get(): String? = get(14) as String?
+        get(): JSONB? = get(14) as JSONB?
+
+    open var premiumResult: JSONB?
+        set(value): Unit = set(15, value)
+        get(): JSONB? = get(15) as JSONB?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -89,10 +93,9 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
     /**
      * Create a detached, initialised CoreScanRecordRecord
      */
-    constructor(id: UUID, appId: UUID, resultJson: JSONB? = null, status: Int? = null, clientIp: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null, imageKeys: JSONB? = null, userDisplayName: String? = null, userNotes: String? = null, collected: Boolean? = null, lang: String? = null, country: String? = null, currency: String? = null): this() {
+    constructor(id: UUID, appId: UUID, status: Int? = null, clientIp: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null, imageKeys: JSONB? = null, userDisplayName: String? = null, userNotes: String? = null, collected: Boolean? = null, lang: String? = null, country: String? = null, currency: String? = null, basicResult: JSONB? = null, premiumResult: JSONB? = null): this() {
         this.id = id
         this.appId = appId
-        this.resultJson = resultJson
         this.status = status
         this.clientIp = clientIp
         this.createdAt = createdAt
@@ -105,6 +108,8 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
         this.lang = lang
         this.country = country
         this.currency = currency
+        this.basicResult = basicResult
+        this.premiumResult = premiumResult
         resetTouchedOnNotNull()
     }
 
@@ -115,7 +120,6 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
         if (value != null) {
             this.id = value.id
             this.appId = value.appId
-            this.resultJson = value.resultJson
             this.status = value.status
             this.clientIp = value.clientIp
             this.createdAt = value.createdAt
@@ -128,6 +132,8 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
             this.lang = value.lang
             this.country = value.country
             this.currency = value.currency
+            this.basicResult = value.basicResult
+            this.premiumResult = value.premiumResult
             resetTouchedOnNotNull()
         }
     }

@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.jooq.CrudRepoOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreUserInstallBinding.Companion.CORE_USER_INSTALL_BINDING
 import com.ifmix.api.core.entity.auth.UserInstallBinding
 import org.springframework.stereotype.Repository
@@ -12,9 +12,14 @@ import java.util.UUID
  * UserInstallBinding jOOQ repository.
  */
 @Repository
-class UserInstallBindingRepository(
-    private val crud: CrudRepoOps,
-) {
+class UserInstallBindingRepository(factory: CrudRepoOpsFactory) {
+
+    private val crud = factory.create(
+        table = CORE_USER_INSTALL_BINDING,
+        idField = CORE_USER_INSTALL_BINDING.ID,
+        appIdField = CORE_USER_INSTALL_BINDING.APP_ID,
+        type = UserInstallBinding::class.java,
+    )
 
     /**
      * 记录一次登录绑定（幂等 upsert）：
@@ -50,7 +55,7 @@ class UserInstallBindingRepository(
                 createdAt = now,
                 updatedAt = now,
             )
-            crud.insert(ctx, CORE_USER_INSTALL_BINDING, entity)
+            crud.insert(ctx, entity)
         } else {
             ctx.dsl.update(CORE_USER_INSTALL_BINDING)
                 .set(CORE_USER_INSTALL_BINDING.LAST_SEEN_AT, now)

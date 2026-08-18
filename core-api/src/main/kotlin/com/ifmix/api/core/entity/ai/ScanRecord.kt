@@ -14,7 +14,8 @@ data class ScanRecord(
     val id: UUID,
     val appId: UUID,
     val imageKeys: List<ImageRef>,           // DB: IMAGE_KEYS (JSONB)
-    val result: Any? = null,             // DB: RESULT_JSON (JSONB)
+    val basicResult: Map<String, Any?>? = null,    // DB: BASIC_RESULT (JSONB)
+    val premiumResult: Map<String, Any?>? = null,  // DB: PREMIUM_RESULT (JSONB)
     val status: Int,
     val clientIp: String? = null,
     val lang: String? = null,

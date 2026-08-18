@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.jooq.CrudRepoOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreAuthProviderIdentity.Companion.CORE_AUTH_PROVIDER_IDENTITY
 import com.ifmix.api.core.entity.auth.AuthProviderIdentity
 import org.jooq.JSONB
@@ -11,7 +11,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Repository
-class AuthProviderIdentityRepository(private val crud: CrudRepoOps) {
+class AuthProviderIdentityRepository(factory: CrudRepoOpsFactory) {
 
     companion object {
         private val mapper = jacksonObjectMapper()

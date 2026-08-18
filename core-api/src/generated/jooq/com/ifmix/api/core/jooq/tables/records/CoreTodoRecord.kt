@@ -60,6 +60,10 @@ open class CoreTodoRecord private constructor() : UpdatableRecordImpl<CoreTodoRe
         set(value): Unit = set(9, value)
         get(): JSONB? = get(9) as JSONB?
 
+    open var note: String?
+        set(value): Unit = set(10, value)
+        get(): String? = get(10) as String?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -69,7 +73,7 @@ open class CoreTodoRecord private constructor() : UpdatableRecordImpl<CoreTodoRe
     /**
      * Create a detached, initialised CoreTodoRecord
      */
-    constructor(id: UUID, title: String, done: Boolean? = null, appId: UUID, createdAt: Instant, updatedAt: Instant, deletedAt: Instant? = null, installId: UUID? = null, userId: UUID? = null, meta: JSONB? = null): this() {
+    constructor(id: UUID, title: String, done: Boolean? = null, appId: UUID, createdAt: Instant, updatedAt: Instant, deletedAt: Instant? = null, installId: UUID? = null, userId: UUID? = null, meta: JSONB? = null, note: String? = null): this() {
         this.id = id
         this.title = title
         this.done = done
@@ -80,6 +84,7 @@ open class CoreTodoRecord private constructor() : UpdatableRecordImpl<CoreTodoRe
         this.installId = installId
         this.userId = userId
         this.meta = meta
+        this.note = note
         resetTouchedOnNotNull()
     }
 
@@ -98,6 +103,7 @@ open class CoreTodoRecord private constructor() : UpdatableRecordImpl<CoreTodoRe
             this.installId = value.installId
             this.userId = value.userId
             this.meta = value.meta
+            this.note = value.note
             resetTouchedOnNotNull()
         }
     }

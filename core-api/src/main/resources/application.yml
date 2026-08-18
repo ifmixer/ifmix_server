@@ -8,12 +8,19 @@ spring:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
   graphql:
-    path: /customer/graphql
+    path: /customer/core/gql
     graphiql:
       enabled: true
-      path: /customer/graphiql
+      path: /apidocs/core/customer/gql
     schema:
       locations: classpath:schema/common/,classpath:schema/customer/
+
+dgs:
+  graphql:
+    path: /customer/core/gql
+    graphiql:
+      enabled: true
+      path: /apidocs/core/customer/gql
   ai:
     openai:
       api-key: ${SPRING_AI_OPENAI_API_KEY:sk-placeholder}

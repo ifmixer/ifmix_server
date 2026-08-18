@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.jooq.CrudRepoOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreAppRefreshToken.Companion.CORE_APP_REFRESH_TOKEN
 import com.ifmix.api.core.entity.auth.AppRefreshToken
 import org.springframework.stereotype.Repository
@@ -12,9 +12,14 @@ import java.util.UUID
  * AppRefreshToken jOOQ repository.
  */
 @Repository
-class AppRefreshTokenRepository(
-    private val crud: CrudRepoOps,
-) {
+class AppRefreshTokenRepository(factory: CrudRepoOpsFactory) {
+
+    private val crud = factory.create(
+        table = CORE_APP_REFRESH_TOKEN,
+        idField = CORE_APP_REFRESH_TOKEN.ID,
+        appIdField = CORE_APP_REFRESH_TOKEN.APP_ID,
+        type = AppRefreshToken::class.java,
+    )
 
     fun findValidByHash(ctx: SvcCtx, appId: UUID, tokenHash: String): AppRefreshToken? =
         ctx.dsl.selectFrom(CORE_APP_REFRESH_TOKEN)
@@ -43,6 +48,6 @@ class AppRefreshTokenRepository(
     }
 
     fun insert(ctx: SvcCtx, token: AppRefreshToken) {
-        crud.insert(ctx, CORE_APP_REFRESH_TOKEN, token)
+        crud.insert(ctx, token)
     }
 }

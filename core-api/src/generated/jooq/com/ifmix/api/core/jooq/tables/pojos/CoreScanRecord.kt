@@ -18,7 +18,6 @@ import org.jooq.JSONB
 data class CoreScanRecord(
     var id: UUID,
     var appId: UUID,
-    var resultJson: JSONB? = null,
     var status: Int? = null,
     var clientIp: String? = null,
     var createdAt: Instant? = null,
@@ -30,7 +29,9 @@ data class CoreScanRecord(
     var collected: Boolean? = null,
     var lang: String? = null,
     var country: String? = null,
-    var currency: String? = null
+    var currency: String? = null,
+    var basicResult: JSONB? = null,
+    var premiumResult: JSONB? = null
 ): Serializable {
 
 
@@ -45,12 +46,6 @@ data class CoreScanRecord(
         if (this.id != o.id)
             return false
         if (this.appId != o.appId)
-            return false
-        if (this.resultJson == null) {
-            if (o.resultJson != null)
-                return false
-        }
-        else if (this.resultJson != o.resultJson)
             return false
         if (this.status == null) {
             if (o.status != null)
@@ -124,6 +119,18 @@ data class CoreScanRecord(
         }
         else if (this.currency != o.currency)
             return false
+        if (this.basicResult == null) {
+            if (o.basicResult != null)
+                return false
+        }
+        else if (this.basicResult != o.basicResult)
+            return false
+        if (this.premiumResult == null) {
+            if (o.premiumResult != null)
+                return false
+        }
+        else if (this.premiumResult != o.premiumResult)
+            return false
         return true
     }
 
@@ -132,7 +139,6 @@ data class CoreScanRecord(
         var result = 1
         result = prime * result + this.id.hashCode()
         result = prime * result + this.appId.hashCode()
-        result = prime * result + (if (this.resultJson == null) 0 else this.resultJson.hashCode())
         result = prime * result + (if (this.status == null) 0 else this.status.hashCode())
         result = prime * result + (if (this.clientIp == null) 0 else this.clientIp.hashCode())
         result = prime * result + (if (this.createdAt == null) 0 else this.createdAt.hashCode())
@@ -145,6 +151,8 @@ data class CoreScanRecord(
         result = prime * result + (if (this.lang == null) 0 else this.lang.hashCode())
         result = prime * result + (if (this.country == null) 0 else this.country.hashCode())
         result = prime * result + (if (this.currency == null) 0 else this.currency.hashCode())
+        result = prime * result + (if (this.basicResult == null) 0 else this.basicResult.hashCode())
+        result = prime * result + (if (this.premiumResult == null) 0 else this.premiumResult.hashCode())
         return result
     }
 
@@ -153,7 +161,6 @@ data class CoreScanRecord(
 
         sb.append(id)
         sb.append(", ").append(appId)
-        sb.append(", ").append(resultJson)
         sb.append(", ").append(status)
         sb.append(", ").append(clientIp)
         sb.append(", ").append(createdAt)
@@ -166,6 +173,8 @@ data class CoreScanRecord(
         sb.append(", ").append(lang)
         sb.append(", ").append(country)
         sb.append(", ").append(currency)
+        sb.append(", ").append(basicResult)
+        sb.append(", ").append(premiumResult)
 
         sb.append(")")
         return sb.toString()

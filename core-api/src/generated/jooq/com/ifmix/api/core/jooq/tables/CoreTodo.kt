@@ -6,8 +6,8 @@ package com.ifmix.api.core.jooq.tables
 
 import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
-import com.ifmix.api.core.jooq.indexes.IDX_CORE_demo_APP_INSTALL
-import com.ifmix.api.core.jooq.indexes.IDX_CORE_demo_APP_USER
+import com.ifmix.api.core.jooq.indexes.IDX_CORE_TODO_APP_INSTALL
+import com.ifmix.api.core.jooq.indexes.IDX_CORE_TODO_APP_USER
 import com.ifmix.api.core.jooq.indexes.TODO_APP_ID_ID_IDX
 import com.ifmix.api.core.jooq.keys.TODO_PKEY
 import com.ifmix.api.core.jooq.tables.records.CoreTodoRecord
@@ -129,6 +129,11 @@ open class CoreTodo(
      */
     val META: TableField<CoreTodoRecord, JSONB?> = createField(DSL.name("meta"), SQLDataType.JSONB, this, "")
 
+    /**
+     * The column <code>public.core_todo.note</code>.
+     */
+    val NOTE: TableField<CoreTodoRecord, String?> = createField(DSL.name("note"), SQLDataType.CLOB, this, "")
+
     private constructor(alias: Name, aliased: Table<CoreTodoRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreTodoRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<CoreTodoRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -148,7 +153,7 @@ open class CoreTodo(
      */
     constructor(): this(DSL.name("core_todo"), null)
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIndexes(): List<Index> = listOf(IDX_CORE_demo_APP_INSTALL, IDX_CORE_demo_APP_USER, TODO_APP_ID_ID_IDX)
+    override fun getIndexes(): List<Index> = listOf(IDX_CORE_TODO_APP_INSTALL, IDX_CORE_TODO_APP_USER, TODO_APP_ID_ID_IDX)
     override fun getPrimaryKey(): UniqueKey<CoreTodoRecord> = TODO_PKEY
     override fun `as`(alias: String): CoreTodo = CoreTodo(DSL.name(alias), this)
     override fun `as`(alias: Name): CoreTodo = CoreTodo(alias, this)

@@ -15,28 +15,16 @@ class WebConfig(
 
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(headerValidationInterceptor)
-            .addPathPatterns("/customer/**", "/app/**")
-            // openapi/swagger 端点无需 appId（本就不在 /customer、/app 下，这里显式排除以自文档化、防未来路径变更）
+            .addPathPatterns("/customer/**")
             .excludePathPatterns(
-                "/core/api-docs/**",
-                "/v3/api-docs/**",
-                "/swagger-ui/**",
-                "/swagger-ui.html",
+                "/apidocs/**",
             )
 
-        // JWT 认证拦截器：仅对需要认证的端点生效
-        // /customer/mutation/core/auth/* 不需要（登录/刷新/交换是公开接口）
-        // /customer/*/core/* 需要（业务 API）
         registry.addInterceptor(authInterceptor)
-            .addPathPatterns("/customer/query/core/**", "/customer/mutation/core/**")
+            .addPathPatterns("/customer/**")
             .excludePathPatterns(
+                "/apidocs/**",
                 "/.well-known/**",
             )
-
-        // GraphQL 端点也需要相同拦截器
-        registry.addInterceptor(headerValidationInterceptor)
-            .addPathPatterns("/customer/graphql")
-        registry.addInterceptor(authInterceptor)
-            .addPathPatterns("/customer/graphql")
     }
 }

@@ -1,7 +1,6 @@
 package com.ifmix.api.core.modules.payment.repo
 
 import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreSubscription.Companion.CORE_SUBSCRIPTION
 import com.ifmix.api.core.entity.iap.Subscription
 import org.jooq.JSONB
@@ -10,7 +9,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Repository
-class SubscriptionRepository(private val crud: CrudRepoOps) {
+class SubscriptionRepository {
 
     fun upsertSubscription(ctx: SvcCtx, subscription: Subscription): UUID {
         val record = ctx.dsl.newRecord(CORE_SUBSCRIPTION, subscription)

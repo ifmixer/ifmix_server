@@ -2,77 +2,60 @@ package com.ifmix.api.core.infra.jooq
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import org.jooq.Condition
-import org.jooq.impl.DSL
 import org.jooq.Record
 import org.jooq.Table
 import org.jooq.TableField
 import org.jooq.UpdateSetMoreStep
+import org.jooq.impl.DSL
 import org.jooq.impl.UpdatableRecordImpl
-import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.UUID
 
 /**
- * 通用 CRUD 操作工具 — 无状态，全局共享。
- * Repo 通过组合注入此 bean，按需调用。
+ * 实例级通用 CRUD 操作。
+ * 通过 [CrudRepoOpsFactory] 为每个表初始化一次，方法签名简洁。
+ *
+ * @param table      目标表
+ * @param idField    主键字段（UUID）
+ * @param appIdField 多租户 appId 字段，null 表示无该字段
+ * @param type       目标实体类型
+ * @param deletedAtField 软删除时间字段，null 表示硬删除
  */
-@Component
 @Suppress("UNCHECKED_CAST")
-class CrudRepoOps {
+class CrudRepoOps<T : Any>(
+    private val table: Table<*>,
+    private val idField: TableField<*, *>,
+    private val appIdField: TableField<*, *>?,
+    private val type: Class<T>,
+    private val deletedAtField: TableField<*, *>?,
+) {
 
     // ===== Query =====
 
-    fun <T : Any> findById(
-        ctx: SvcCtx,
-        table: Table<*>,
-        idField: TableField<*, *>,
-        id: UUID,
-        type: Class<T>,
-        deletedAtField: TableField<*, Instant?>? = null,
-    ): T? = ctx.dsl.selectFrom(table)
-        .where(buildDeletedAtCond(deletedAtField).and((idField as TableField<*, UUID?>).eq(id)))
-        .fetchOneInto(type)
+    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): T? {
+        require(appIdField != null) { "appIdField is required when calling findById with appId" }
+        return ctx.dsl.selectFrom(table)
+            .where(baseCond(appIdField, appId, deletedAtField).and((idField as TableField<*, UUID?>).eq(id)))
+            .fetchOneInto(type)
+    }
 
-    fun <T : Any> findById(
-        ctx: SvcCtx,
-        table: Table<*>,
-        appIdField: TableField<*, *>,
-        idField: TableField<*, *>,
-        appId: UUID,
-        id: UUID,
-        type: Class<T>,
-        deletedAtField: TableField<*, Instant?>? = null,
-    ): T? = ctx.dsl.selectFrom(table)
-        .where(baseCond(appIdField, appId, deletedAtField).and((idField as TableField<*, UUID?>).eq(id)))
-        .fetchOneInto(type)
+    fun findById(ctx: SvcCtx, id: UUID): T? {
+        require(appIdField == null) { "findById without appId is only for tables without appIdField" }
+        return ctx.dsl.selectFrom(table)
+            .where(buildDeletedAtCond(deletedAtField).and((idField as TableField<*, UUID?>).eq(id)))
+            .fetchOneInto(type)
+    }
 
-    fun <T : Any> findByIds(
-        ctx: SvcCtx,
-        table: Table<*>,
-        appIdField: TableField<*, *>,
-        idField: TableField<*, *>,
-        appId: UUID,
-        ids: Collection<UUID>,
-        type: Class<T>,
-        deletedAtField: TableField<*, Instant?>? = null,
-    ): List<T> {
+    fun findByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): List<T> {
+        require(appIdField != null) { "appIdField is required when calling findByIds" }
         if (ids.isEmpty()) return emptyList()
         return ctx.dsl.selectFrom(table)
             .where(baseCond(appIdField, appId, deletedAtField).and((idField as TableField<*, UUID?>).`in`(ids)))
             .fetchInto(type)
     }
 
-    fun <T : Any> findByCursor(
-        ctx: SvcCtx,
-        table: Table<*>,
-        appIdField: TableField<*, *>,
-        idField: TableField<*, *>,
-        appId: UUID,
-        cursor: UUID?,
-        limit: Int,
-        type: Class<T>,
-        deletedAtField: TableField<*, Instant?>? = null,
-    ): List<T> {
+    fun findByCursor(ctx: SvcCtx, appId: UUID, cursor: UUID?, limit: Int): List<T> {
+        require(appIdField != null) { "appIdField is required when calling findByCursor" }
         var cond = baseCond(appIdField, appId, deletedAtField)
         if (cursor != null) cond = cond.and((idField as TableField<*, UUID?>).lt(cursor))
         return ctx.dsl.selectFrom(table)
@@ -82,43 +65,36 @@ class CrudRepoOps {
             .fetchInto(type)
     }
 
-    fun <T : Any, V : Any> findByField(
+    fun findByField(
         ctx: SvcCtx,
-        table: Table<*>,
         field: TableField<*, *>,
-        values: Collection<V>,
-        type: Class<T>,
-        deletedAtField: TableField<*, Instant?>? = null,
+        values: Collection<*>,
+        fieldType: Class<*>,
     ): List<T> {
         if (values.isEmpty()) return emptyList()
-        var cond: Condition = (field as TableField<*, V?>).`in`(values)
+        var cond: Condition = (field as TableField<*, Any?>).`in`(values)
         if (deletedAtField != null) cond = cond.and(deletedAtField.isNull)
         return ctx.dsl.selectFrom(table)
             .where(cond)
             .fetchInto(type)
     }
 
-    fun exists(
-        ctx: SvcCtx,
-        table: Table<*>,
-        appIdField: TableField<*, *>,
-        idField: TableField<*, *>,
-        appId: UUID,
-        id: UUID,
-        deletedAtField: TableField<*, Instant?>? = null,
-    ): Boolean = ctx.dsl.fetchExists(
-        table,
-        baseCond(appIdField, appId, deletedAtField).and((idField as TableField<*, UUID?>).eq(id))
-    )
+    fun exists(ctx: SvcCtx, appId: UUID, id: UUID): Boolean {
+        require(appIdField != null) { "appIdField is required when calling exists" }
+        return ctx.dsl.fetchExists(
+            table,
+            baseCond(appIdField, appId, deletedAtField).and((idField as TableField<*, UUID?>).eq(id))
+        )
+    }
 
     // ===== Insert =====
 
-    fun <T : Any> insert(ctx: SvcCtx, table: Table<*>, model: T) {
+    fun insert(ctx: SvcCtx, model: T) {
         val record = ctx.dsl.newRecord(table, model)
         ctx.dsl.executeInsert(record as org.jooq.TableRecord<*>)
     }
 
-    fun <T : Any> batchInsert(ctx: SvcCtx, table: Table<*>, models: List<T>) {
+    fun batchInsert(ctx: SvcCtx, models: List<T>) {
         if (models.isEmpty()) return
         val records = models.map { ctx.dsl.newRecord(table, it) as org.jooq.TableRecord<*> }
         records.forEach { ctx.dsl.executeInsert(it) }
@@ -126,81 +102,85 @@ class CrudRepoOps {
 
     /**
      * 真正的 batch insert（单条 SQL: INSERT INTO ... VALUES (...), (...), ...）。
-     * 需要传入具体类型的 Table<R>。
      */
-    fun <R : UpdatableRecordImpl<R>, T : Any> batchInsertTyped(ctx: SvcCtx, table: Table<R>, models: List<T>) {
+    fun <R : UpdatableRecordImpl<R>> batchInsertTyped(ctx: SvcCtx, models: List<T>) {
+        @Suppress("UNCHECKED_CAST")
+        val typedTable = table as Table<R>
         if (models.isEmpty()) return
-        val records = models.map { ctx.dsl.newRecord(table, it) }
+        val records = models.map { ctx.dsl.newRecord(typedTable, it) }
         ctx.dsl.batchInsert(records).execute()
     }
 
     // ===== Partial Update =====
 
-    fun <R : Record> partialUpdate(
+    fun partialUpdate(
         ctx: SvcCtx,
-        table: Table<R>,
-        appIdField: TableField<R, *>,
-        idField: TableField<R, *>,
         appId: UUID,
         id: UUID,
-        block: UpdateSetMoreStep<R>.() -> Unit,
+        block: UpdateSetMoreStep<Record>.() -> Unit,
     ) {
+        require(appIdField != null) { "appIdField is required when calling partialUpdate" }
+        @Suppress("UNCHECKED_CAST")
+        val afield = appIdField as TableField<Record, UUID?>
+        @Suppress("UNCHECKED_CAST")
+        val ifield = idField as TableField<Record, UUID?>
         val step = ctx.dsl.update(table)
-            .set(appIdField as TableField<R, UUID?>, appId) as UpdateSetMoreStep<R>
+            .set(afield, appId) as UpdateSetMoreStep<Record>
         step.apply(block)
-        step.where((idField as TableField<R, UUID?>).eq(id).and((appIdField as TableField<R, UUID?>).eq(appId)))
-            .execute()
+        step.where(ifield.eq(id).and(afield.eq(appId))).execute()
     }
 
     // ===== Delete =====
 
-    fun deleteById(
-        ctx: SvcCtx,
-        table: Table<*>,
-        appIdField: TableField<*, *>,
-        idField: TableField<*, *>,
-        appId: UUID,
-        id: UUID,
-        deletedAtField: TableField<*, Instant?>? = null,
-    ): Boolean = if (deletedAtField != null) {
-        ctx.dsl.update(table)
-            .set(deletedAtField as TableField<Nothing, Instant?>, Instant.now())
-            .where((appIdField as TableField<Nothing, UUID?>).eq(appId).and((idField as TableField<Nothing, UUID?>).eq(id)))
-            .execute() > 0
-    } else {
-        ctx.dsl.deleteFrom(table)
-            .where((appIdField as TableField<Nothing, UUID?>).eq(appId).and((idField as TableField<Nothing, UUID?>).eq(id)))
-            .execute() > 0
+    fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean {
+        require(appIdField != null) { "appIdField is required when calling deleteById" }
+        @Suppress("UNCHECKED_CAST")
+        val afield = appIdField as TableField<Nothing, UUID?>
+        @Suppress("UNCHECKED_CAST")
+        val ifield = idField as TableField<Nothing, UUID?>
+        val dfield = deletedAtField as TableField<Nothing, Instant?>?
+        return if (dfield != null) {
+            ctx.dsl.update(table)
+                .set(dfield, Instant.now())
+                .where(afield.eq(appId).and(ifield.eq(id)))
+                .execute() > 0
+        } else {
+            ctx.dsl.deleteFrom(table)
+                .where(afield.eq(appId).and(ifield.eq(id)))
+                .execute() > 0
+        }
     }
 
-    fun deleteByIds(
-        ctx: SvcCtx,
-        table: Table<*>,
-        appIdField: TableField<*, *>,
-        idField: TableField<*, *>,
-        appId: UUID,
-        ids: Collection<UUID>,
-        deletedAtField: TableField<*, Instant?>? = null,
-    ): Int {
+    fun deleteByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): Int {
+        require(appIdField != null) { "appIdField is required when calling deleteByIds" }
         if (ids.isEmpty()) return 0
-        return if (deletedAtField != null) {
+        @Suppress("UNCHECKED_CAST")
+        val afield = appIdField as TableField<Nothing, UUID?>
+        @Suppress("UNCHECKED_CAST")
+        val ifield = idField as TableField<Nothing, UUID?>
+        val dfield = deletedAtField as TableField<Nothing, Instant?>?
+        return if (dfield != null) {
             ctx.dsl.update(table)
-                .set(deletedAtField as TableField<Nothing, Instant?>, Instant.now())
-                .where((appIdField as TableField<Nothing, UUID?>).eq(appId).and((idField as TableField<Nothing, UUID?>).`in`(ids)))
+                .set(dfield, Instant.now())
+                .where(afield.eq(appId).and(ifield.`in`(ids)))
                 .execute()
         } else {
             ctx.dsl.deleteFrom(table)
-                .where((appIdField as TableField<Nothing, UUID?>).eq(appId).and((idField as TableField<Nothing, UUID?>).`in`(ids)))
+                .where(afield.eq(appId).and(ifield.`in`(ids)))
                 .execute()
         }
     }
 
     // ===== Internal =====
 
-    private fun buildDeletedAtCond(deletedAtField: TableField<*, Instant?>?): Condition =
+    private fun buildDeletedAtCond(deletedAtField: TableField<*, *>?): Condition =
         if (deletedAtField != null) deletedAtField.isNull else DSL.noCondition()
 
-    private fun baseCond(appIdField: TableField<*, *>, appId: UUID, deletedAtField: TableField<*, Instant?>?): Condition {
+    private fun baseCond(
+        appIdField: TableField<*, *>,
+        appId: UUID,
+        deletedAtField: TableField<*, *>?,
+    ): Condition {
         var cond: Condition = (appIdField as TableField<*, UUID?>).eq(appId)
         if (deletedAtField != null) cond = cond.and(deletedAtField.isNull)
         return cond

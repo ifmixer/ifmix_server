@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.ai.repo
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.infra.jooq.CrudRepoOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreScanCollectionItem.Companion.CORE_SCAN_COLLECTION_ITEM
 import com.ifmix.api.core.entity.ai.ScanCollectionItem
 import org.springframework.stereotype.Repository
@@ -11,7 +11,15 @@ import java.time.Instant
 import java.util.UUID
 
 @Repository
-class ScanCollectionItemRepository(private val crud: CrudRepoOps) {
+class ScanCollectionItemRepository(factory: CrudRepoOpsFactory) {
+
+    private val crud = factory.create(
+        table = CORE_SCAN_COLLECTION_ITEM,
+        idField = CORE_SCAN_COLLECTION_ITEM.ID,
+        appIdField = CORE_SCAN_COLLECTION_ITEM.APP_ID,
+        type = ScanCollectionItem::class.java,
+        deletedAtField = CORE_SCAN_COLLECTION_ITEM.DELETED_AT,
+    )
 
     fun insertIfAbsent(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
         val existing = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION_ITEM)
@@ -24,7 +32,7 @@ class ScanCollectionItemRepository(private val crud: CrudRepoOps) {
         if (existing != null) return existing.id
 
         val id = UuidV7.generate()
-        crud.insert(ctx, CORE_SCAN_COLLECTION_ITEM, ScanCollectionItem(
+        crud.insert(ctx, ScanCollectionItem(
             id = id, appId = appId, collectionId = collectionId,
             scanRecordId = scanRecordId, createdAt = Instant.now(),
         ))

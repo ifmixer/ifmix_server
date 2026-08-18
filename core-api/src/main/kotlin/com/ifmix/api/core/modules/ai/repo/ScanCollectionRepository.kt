@@ -1,14 +1,22 @@
 package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.jooq.CrudRepoOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreScanCollection.Companion.CORE_SCAN_COLLECTION
 import com.ifmix.api.core.entity.ai.ScanCollection
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-class ScanCollectionRepository(private val crud: CrudRepoOps) {
+class ScanCollectionRepository(factory: CrudRepoOpsFactory) {
+
+    private val crud = factory.create(
+        table = CORE_SCAN_COLLECTION,
+        idField = CORE_SCAN_COLLECTION.ID,
+        appIdField = CORE_SCAN_COLLECTION.APP_ID,
+        type = ScanCollection::class.java,
+        deletedAtField = CORE_SCAN_COLLECTION.DELETED_AT,
+    )
 
     fun findDefault(ctx: SvcCtx, appId: UUID, installId: UUID?, userId: UUID?): ScanCollection? {
         // If userId is provided, prefer user-scoped default collection.
@@ -35,7 +43,7 @@ class ScanCollectionRepository(private val crud: CrudRepoOps) {
     }
 
     fun insert(ctx: SvcCtx, collection: ScanCollection) {
-        crud.insert(ctx, CORE_SCAN_COLLECTION, collection)
+        crud.insert(ctx, collection)
     }
 
     fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanCollection? =

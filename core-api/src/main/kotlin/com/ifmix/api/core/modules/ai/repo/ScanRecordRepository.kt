@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.ai.repo
 import com.ifmix.api.core.generated.types.ScanUnsetField
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.jooq.CrudRepoOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreScanRecord.Companion.CORE_SCAN_RECORD
 import com.ifmix.api.core.entity.ImageRef
 import com.ifmix.api.core.entity.ai.ScanRecord
@@ -13,7 +13,15 @@ import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.util.UUID
 
 @Repository
-class ScanRecordRepository(private val crud: CrudRepoOps) {
+class ScanRecordRepository(factory: CrudRepoOpsFactory) {
+
+    private val crud = factory.create(
+        table = CORE_SCAN_RECORD,
+        idField = CORE_SCAN_RECORD.ID,
+        appIdField = CORE_SCAN_RECORD.APP_ID,
+        type = ScanRecord::class.java,
+        deletedAtField = CORE_SCAN_RECORD.DELETED_AT,
+    )
 
     fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanRecord? =
         ctx.dsl.selectFrom(CORE_SCAN_RECORD)
@@ -45,12 +53,13 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
     fun insert(ctx: SvcCtx, entity: ScanRecord) {
         val record = ctx.dsl.newRecord(CORE_SCAN_RECORD, entity)
         record.imageKeys = JSONB.jsonb(mapper.writeValueAsString(entity.imageKeys))
-        record.resultJson = entity.result?.let { JSONB.jsonb(mapper.writeValueAsString(it)) }
+        record.basicResult = entity.basicResult?.let { JSONB.jsonb(mapper.writeValueAsString(it)) }
+        record.premiumResult = entity.premiumResult?.let { JSONB.jsonb(mapper.writeValueAsString(it)) }
         ctx.dsl.executeInsert(record)
     }
 
     fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, req: UpdateScanInput) {
-        crud.partialUpdate(ctx, CORE_SCAN_RECORD, CORE_SCAN_RECORD.APP_ID, CORE_SCAN_RECORD.ID, appId, id) {
+        crud.partialUpdate(ctx, appId, id) {
             req.set?.userDisplayName?.let { set(CORE_SCAN_RECORD.USER_DISPLAY_NAME, it) }
             req.set?.userNotes?.let { set(CORE_SCAN_RECORD.USER_NOTES, it) }
             req.set?.collected?.let { set(CORE_SCAN_RECORD.COLLECTED, it) }
@@ -59,11 +68,8 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
         }
     }
 
-    fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean =
-        crud.deleteById(ctx, CORE_SCAN_RECORD, CORE_SCAN_RECORD.APP_ID, CORE_SCAN_RECORD.ID, appId, id, CORE_SCAN_RECORD.DELETED_AT)
-
-    fun exists(ctx: SvcCtx, appId: UUID, id: UUID): Boolean =
-        crud.exists(ctx, CORE_SCAN_RECORD, CORE_SCAN_RECORD.APP_ID, CORE_SCAN_RECORD.ID, appId, id, CORE_SCAN_RECORD.DELETED_AT)
+    fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean = crud.deleteById(ctx, appId, id)
+    fun exists(ctx: SvcCtx, appId: UUID, id: UUID): Boolean = crud.exists(ctx, appId, id)
 
     // =========================================================================
     // JSON ↔ model helpers (JSONB fields require manual mapping)
@@ -73,7 +79,8 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
         id = r.get(CORE_SCAN_RECORD.ID)!!,
         appId = r.get(CORE_SCAN_RECORD.APP_ID)!!,
         imageKeys = parseImageKeys(r.get(CORE_SCAN_RECORD.IMAGE_KEYS)),
-        result = parseResult(r.get(CORE_SCAN_RECORD.RESULT_JSON)),
+        basicResult = parseJsonMap(r.get(CORE_SCAN_RECORD.BASIC_RESULT)),
+        premiumResult = parseJsonMap(r.get(CORE_SCAN_RECORD.PREMIUM_RESULT)),
         status = r.get(CORE_SCAN_RECORD.STATUS) ?: 100,
         clientIp = r.get(CORE_SCAN_RECORD.CLIENT_IP),
         lang = r.get(CORE_SCAN_RECORD.LANG),
@@ -95,9 +102,10 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
         }.getOrDefault(emptyList())
     }
 
-    private fun parseResult(jsonb: JSONB?): Any? =
+    @Suppress("UNCHECKED_CAST")
+    private fun parseJsonMap(jsonb: JSONB?): Map<String, Any?>? =
         jsonb?.toString()?.let { str ->
-            runCatching { mapper.readValue(str, Any::class.java) }
+            runCatching { mapper.readValue(str, Map::class.java) as Map<String, Any?> }
                 .getOrNull()
         }
 

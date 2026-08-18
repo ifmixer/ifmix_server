@@ -72,7 +72,7 @@ val SCAN_RECORD_PKEY: UniqueKey<CoreScanRecordRecord> = Internal.createUniqueKey
 val STORE_NOTIFICATION_PKEY: UniqueKey<CoreStoreNotificationRecord> = Internal.createUniqueKey(CoreStoreNotification.CORE_STORE_NOTIFICATION, DSL.name("store_notification_pkey"), arrayOf(CoreStoreNotification.CORE_STORE_NOTIFICATION.ID), true)
 val SUBSCRIPTION_PKEY: UniqueKey<CoreSubscriptionRecord> = Internal.createUniqueKey(CoreSubscription.CORE_SUBSCRIPTION, DSL.name("subscription_pkey"), arrayOf(CoreSubscription.CORE_SUBSCRIPTION.ID), true)
 val TODO_PKEY: UniqueKey<CoreTodoRecord> = Internal.createUniqueKey(CoreTodo.CORE_TODO, DSL.name("todo_pkey"), arrayOf(CoreTodo.CORE_TODO.ID), true)
-val TODO_ITEM_PKEY: UniqueKey<CoreTodoItemRecord> = Internal.createUniqueKey(CoreTodoItem.CORE_demo_ITEM, DSL.name("todo_item_pkey"), arrayOf(CoreTodoItem.CORE_demo_ITEM.ID), true)
+val TODO_ITEM_PKEY: UniqueKey<CoreTodoItemRecord> = Internal.createUniqueKey(CoreTodoItem.CORE_TODO_ITEM, DSL.name("todo_item_pkey"), arrayOf(CoreTodoItem.CORE_TODO_ITEM.ID), true)
 val CORE_UPLOAD_RECORD_PKEY: UniqueKey<CoreUploadRecordRecord> = Internal.createUniqueKey(CoreUploadRecord.CORE_UPLOAD_RECORD, DSL.name("core_upload_record_pkey"), arrayOf(CoreUploadRecord.CORE_UPLOAD_RECORD.ID), true)
 val CORE_USER_INSTALL_BINDING_PKEY: UniqueKey<CoreUserInstallBindingRecord> = Internal.createUniqueKey(CoreUserInstallBinding.CORE_USER_INSTALL_BINDING, DSL.name("core_user_install_binding_pkey"), arrayOf(CoreUserInstallBinding.CORE_USER_INSTALL_BINDING.ID), true)
 

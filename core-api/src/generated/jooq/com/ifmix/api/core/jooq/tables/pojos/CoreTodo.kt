@@ -25,7 +25,8 @@ data class CoreTodo(
     var deletedAt: Instant? = null,
     var installId: UUID? = null,
     var userId: UUID? = null,
-    var meta: JSONB? = null
+    var meta: JSONB? = null,
+    var note: String? = null
 ): Serializable {
 
 
@@ -77,6 +78,12 @@ data class CoreTodo(
         }
         else if (this.meta != o.meta)
             return false
+        if (this.note == null) {
+            if (o.note != null)
+                return false
+        }
+        else if (this.note != o.note)
+            return false
         return true
     }
 
@@ -93,6 +100,7 @@ data class CoreTodo(
         result = prime * result + (if (this.installId == null) 0 else this.installId.hashCode())
         result = prime * result + (if (this.userId == null) 0 else this.userId.hashCode())
         result = prime * result + (if (this.meta == null) 0 else this.meta.hashCode())
+        result = prime * result + (if (this.note == null) 0 else this.note.hashCode())
         return result
     }
 
@@ -109,6 +117,7 @@ data class CoreTodo(
         sb.append(", ").append(installId)
         sb.append(", ").append(userId)
         sb.append(", ").append(meta)
+        sb.append(", ").append(note)
 
         sb.append(")")
         return sb.toString()

@@ -92,11 +92,6 @@ open class CoreScanRecord(
     val APP_ID: TableField<CoreScanRecordRecord, UUID?> = createField(DSL.name("app_id"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
-     * The column <code>public.core_scan_record.result_json</code>.
-     */
-    val RESULT_JSON: TableField<CoreScanRecordRecord, JSONB?> = createField(DSL.name("result_json"), SQLDataType.JSONB, this, "")
-
-    /**
      * The column <code>public.core_scan_record.status</code>.
      */
     val STATUS: TableField<CoreScanRecordRecord, Int?> = createField(DSL.name("status"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.field(DSL.raw("100"), SQLDataType.SMALLINT)), this, "", SmallintToIntConverter())
@@ -155,6 +150,16 @@ open class CoreScanRecord(
      * The column <code>public.core_scan_record.currency</code>.
      */
     val CURRENCY: TableField<CoreScanRecordRecord, String?> = createField(DSL.name("currency"), SQLDataType.VARCHAR(8), this, "")
+
+    /**
+     * The column <code>public.core_scan_record.basic_result</code>.
+     */
+    val BASIC_RESULT: TableField<CoreScanRecordRecord, JSONB?> = createField(DSL.name("basic_result"), SQLDataType.JSONB, this, "")
+
+    /**
+     * The column <code>public.core_scan_record.premium_result</code>.
+     */
+    val PREMIUM_RESULT: TableField<CoreScanRecordRecord, JSONB?> = createField(DSL.name("premium_result"), SQLDataType.JSONB, this, "")
 
     private constructor(alias: Name, aliased: Table<CoreScanRecordRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreScanRecordRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.jooq.CrudRepoOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreAuthDeviceSecret.Companion.CORE_AUTH_DEVICE_SECRET
 import com.ifmix.api.core.entity.auth.AuthDeviceSecret
 import org.springframework.stereotype.Repository
@@ -12,9 +12,14 @@ import java.util.UUID
  * AuthDeviceSecret jOOQ repository.
  */
 @Repository
-class AuthDeviceSecretRepository(
-    private val crud: CrudRepoOps,
-) {
+class AuthDeviceSecretRepository(factory: CrudRepoOpsFactory) {
+
+    private val crud = factory.create(
+        table = CORE_AUTH_DEVICE_SECRET,
+        idField = CORE_AUTH_DEVICE_SECRET.ID,
+        appIdField = null,
+        type = AuthDeviceSecret::class.java,
+    )
 
     fun findValidByHash(ctx: SvcCtx, secretHash: String): AuthDeviceSecret? =
         ctx.dsl.selectFrom(CORE_AUTH_DEVICE_SECRET)
@@ -42,6 +47,6 @@ class AuthDeviceSecretRepository(
     }
 
     fun insert(ctx: SvcCtx, secret: AuthDeviceSecret) {
-        crud.insert(ctx, CORE_AUTH_DEVICE_SECRET, secret)
+        crud.insert(ctx, secret)
     }
 }
