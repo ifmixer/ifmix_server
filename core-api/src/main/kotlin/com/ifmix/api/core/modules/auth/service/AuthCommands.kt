@@ -21,36 +21,10 @@ import com.ifmix.api.core.model.auth.AuthDeviceSecret
 import com.ifmix.api.core.model.auth.AuthIdentity
 import com.ifmix.api.core.modules.auth.ProviderVerifier
 import com.ifmix.api.core.dto.iap.SubscriptionState
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Service
-
-@Service
-class AuthFacadeService(
-    private val queries: AuthQueries,
-    private val commands: AuthCommands,
-) {
-    fun me(ctx: OperationContext): MeRes = queries.me(ctx)
-    fun loginWithIdToken(ctx: OperationContext, provider: String, req: ProviderLoginReq): LoginRes =
-        commands.loginWithIdToken(ctx, provider, req)
-    fun loginWithCode(ctx: OperationContext, provider: String, req: WechatLoginReq): LoginRes =
-        commands.loginWithCode(ctx, provider, req)
-    fun exchange(ctx: OperationContext, req: ExchangeReq): ExchangeRes = commands.exchange(ctx, req)
-    fun refresh(ctx: OperationContext, req: RefreshReq): RefreshRes = commands.refresh(ctx, req)
-    fun logout(ctx: OperationContext, req: LogoutReq): LogoutRes = commands.logout(ctx, req)
-    fun anonymousLogin(ctx: OperationContext): LoginRes = commands.anonymousLogin(ctx)
-    fun requestAccountDeletion(ctx: OperationContext): DeleteAccountRes = commands.requestAccountDeletion(ctx)
-}
-
-class AuthQueries(
-    private val appConfigRepo: AppConfigRepository,
-) {
-    private fun svcCtx(opCtx: OperationContext): SvcCtx = SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl)
-
-    fun me(ctx: OperationContext): MeRes {
-        val userId = ctx.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
-        return MeRes(userId, null)
-    }
-}
+import java.time.Instant
+import java.util.UUID
 
 class AuthCommands(
     private val appConfigRepo: AppConfigRepository,
