@@ -10,7 +10,7 @@
 
 | 类型 | 位置 | 谁写 |
 |------|------|------|
-| DB 实体 | `model/` | 手写 |
+| DB 实体 | `entity/` | 手写 |
 | GraphQL input/payload/enum | `build/generated/` | DGS codegen |
 | Service 内部 DTO (Req/Res) | `dto/` | 手写 |
 | 通用类型 (Page, OperationResult) | `dto/common/` | 手写 + typeMapping |

@@ -52,7 +52,7 @@ ifmix-server/
 │  Repository Layer (modules/*/repo/)                                   │
 │  纯数据访问 · 注入 CrudOps (jOOQ) · 接收 RepoContext                  │
 ├─────────────────────────────────────────────────────────────────────┤
-│  Model (model/)                                                      │
+│  Model (entity/)                                                      │
 │  Domain data class · 可加业务方法 · Jackson 直接序列化                  │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Infra (infra/)                                                      │
@@ -72,7 +72,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   ├── graphql/customer/       # DGS DataFetcher (Todo/Scan/Collection/Feedback)
 │   ├── webhooks/               # Apple/Google IAP 回调 (REST)
 │   └── wellknown/              # JWKS (REST)
-├── model/                      # Domain data class (jOOQ 时代)
+├── entity/                      # Domain data class (jOOQ 时代)
 │   ├── Todo, TodoItem, ScanRecord, ScanCollection, ...
 │   ├── AppUser, AuthIdentity, AuthDeviceSecret, ...
 │   └── Subscription, StoreNotification, Feedback, ...
@@ -128,7 +128,7 @@ ${query|mutation}_${module}_${action}
 ### DGS Codegen
 
 - 从 `.graphqls` 生成 Kotlin input/payload/enum types
-- output types 通过 `typeMapping` 映射到 `model/` 下的 data class（不生成）
+- output types 通过 `typeMapping` 映射到 `entity/` 下的 data class（不生成）
 - 生成代码包: `com.ifmix.api.core.generated`
 
 ### Update Input — set/unset 防呆
@@ -221,9 +221,9 @@ data class OperationContext(
 
 `AuditRecordListener` 全局拦截 insert/update，自动填充 `created_at`/`updated_at`
 
-### Domain Model
+### Domain Entity
 
-- 普通 Kotlin `data class`，放 `model/`
+- 普通 Kotlin `data class`，放 `entity/`
 - 字段名与 DB column camelCase 对齐
 - 时间统一 `Instant`
 - 可加业务方法，Jackson 直接序列化
@@ -265,7 +265,7 @@ DB (via jOOQ)
 | 4 | CrudOps 组合注入 | 灵活可测、不强制继承 |
 | 5 | DataLoader caching=false | 防 mutation 间脏读 |
 | 6 | CacheAside 显式调用 | 不用 @Cacheable 魔法 |
-| 7 | Domain Model = data class | 可加方法、Jackson 直接序列化、无框架依赖 |
+| 7 | Domain Entity = data class | 可加方法、Jackson 直接序列化、无框架依赖 |
 | 8 | jOOQ codegen 手动执行 | 不依赖 DB 来编译 |
 | 9 | set/unset Update 语义 | 防 null vs undefined 歧义 |
 | 10 | AuthInterceptor 非阻塞 | 支持匿名+认证混合 |
@@ -305,7 +305,7 @@ DB (via jOOQ)
 - **PG**: SMALLINT（jOOQ forcedType 自动转 Int）
 - **Kotlin Model**: `val status: Int`
 - **Kotlin 内部辅助**: 常量放 model class 的嵌套 object（如 `ScanRecord.Status.COMPLETED`）
-- **跨模块共享**: 放 `model/shared/`
+- **跨模块共享**: 放 `entity/shared/`
 
 **编码规则（新增）：** 0 保留不用，从 10 开始步长 10
 
@@ -378,14 +378,15 @@ DB (via jOOQ)
 | 层 | 文件 | 职责 | 注入 |
 |---|---|---|---|
 | **FacadeService** | `XxxFacadeService.kt` | opCtx→svcCtx 转换、开事务、委托 internal | TxRunner + Internal Services + CrudServiceOps(简单查询) |
-| **Internal Service** | `XxxCommands.kt` / `XxxQueries.kt` | 纯业务实现，接收 SvcCtx | Repo |
+| **Internal Service** | `XxxInternalService.kt` | 纯业务实现，接收 SvcCtx | Repo |
 
 **约束：**
 - FacadeService 是模块对外唯一入口，DataFetcher 只注入 FacadeService
 - Internal Service **不注入 TxRunner**，**不构建 SvcCtx**，只接收 SvcCtx 参数
 - 所有 mutation 必须在 FacadeService 通过 `tx.withTx(svc(opCtx)) { sc -> ... }` 包裹
 - 简单的单行 repo 查询（如 `findById`）可保留在 FacadeService 直接调 repo/ops
-- 有逻辑的查询或复杂操作必须委托给 Internal Service
+- 有逻辑的操作必须委托给 Internal Service
+- Internal Service 按 domain entity 拆文件（纯粹控制文件大小，不是设计分层）
 - 全局事务由 DataFetcher 层的 `GlobalTxRunner` 开启，FacadeService 通过 `opCtx.globalTxDsl` 检测并复用
 
 ### 目录结构
@@ -396,10 +397,18 @@ modules/todo/
 │   ├── TodoRepository.kt
 │   └── TodoItemRepository.kt
 └── service/
-    ├── TodoFacadeService.kt       # 对外入口
-    ├── TodoQueries.kt             # internal: 查询实现
-    ├── TodoCommands.kt            # internal: 写操作实现
-    └── TodoItemCommands.kt        # internal: 子实体写操作
+    ├── TodoFacadeService.kt           # 对外入口：事务 + 委托
+    ├── TodoInternalService.kt         # Todo 表的实现
+    └── TodoItemInternalService.kt     # TodoItem 表的实现（文件不大可合并）
+```
+
+简单模块（如 feedback）：
+```
+modules/feedback/
+├── repo/FeedbackRepository.kt
+└── service/
+    ├── FeedbackFacadeService.kt
+    └── FeedbackInternalService.kt
 ```
 
 ### 完整 Demo — Todo 模块
@@ -409,9 +418,8 @@ modules/todo/
 
 @Service
 class TodoFacadeService(
-    private val queries: TodoQueries,
-    private val commands: TodoCommands,
-    private val itemCommands: TodoItemCommands,
+    private val todoInternal: TodoInternalService,
+    private val todoItemInternal: TodoItemInternalService,
     private val repo: TodoRepository,
     private val tx: TxRunner,
     factory: CrudServiceOpsFactory,
@@ -430,52 +438,34 @@ class TodoFacadeService(
     fun findByIds(opCtx: OperationContext, ids: List<UUID>): List<Todo> =
         ops.findByIds(svc(opCtx), ids, repo::findByIds)
 
-    // --- 有逻辑的查询：走 internal ---
     fun findByCursor(opCtx: OperationContext, input: TodoQueryInput): Page<Todo> =
-        queries.findByCursor(svc(opCtx), input)
+        ops.findByCursor(svc(opCtx), input.cursor, input.limit, repo::findByCursor)
 
     // --- Mutation：开事务 + 走 internal ---
     fun createTodo(opCtx: OperationContext, input: CreateTodoInput): UUID =
-        tx.withTx(svc(opCtx)) { sc -> commands.create(sc, input) }
+        tx.withTx(svc(opCtx)) { sc -> todoInternal.create(sc, input) }
 
     fun updateTodo(opCtx: OperationContext, input: UpdateTodoInput): Boolean =
-        tx.withTx(svc(opCtx)) { sc -> commands.update(sc, input) }
+        tx.withTx(svc(opCtx)) { sc -> todoInternal.update(sc, input) }
 
     fun deleteTodo(opCtx: OperationContext, id: UUID): Boolean =
-        tx.withTx(svc(opCtx)) { sc -> commands.delete(sc, id) }
+        tx.withTx(svc(opCtx)) { sc -> todoInternal.delete(sc, id) }
 
     fun updateItems(opCtx: OperationContext, input: UpdateTodoItemsMutationInput) =
-        tx.withTx(svc(opCtx)) { sc -> itemCommands.update(sc, input) }
+        tx.withTx(svc(opCtx)) { sc -> todoItemInternal.update(sc, input) }
 
     // --- DataLoader 用 ---
     fun findItemsByTodoIds(opCtx: OperationContext, todoIds: Collection<UUID>): List<TodoItem> =
-        queries.findItemsByTodoIds(svc(opCtx), todoIds)
+        todoItemInternal.findByTodoIds(svc(opCtx), todoIds)
 }
 
-// ======================== Internal: Queries ========================
+// ======================== Internal: TodoInternalService ========================
 
 @Component
-class TodoQueries(
+class TodoInternalService(
     private val repo: TodoRepository,
     private val itemRepo: TodoItemRepository,
-    factory: CrudServiceOpsFactory,
-) {
-    private val ops = factory.create(Todo::class.java, "todo") { it.id }
-
-    fun findByCursor(sc: SvcCtx, input: TodoQueryInput): Page<Todo> =
-        ops.findByCursor(sc, input.cursor, input.limit, repo::findByCursor)
-
-    fun findItemsByTodoIds(sc: SvcCtx, todoIds: Collection<UUID>): List<TodoItem> =
-        itemRepo.findByTodoIds(sc, todoIds)
-}
-
-// ======================== Internal: Commands ========================
-
-@Component
-class TodoCommands(
-    private val repo: TodoRepository,
-    private val itemRepo: TodoItemRepository,
-    // 注意：不注入 TxRunner
+    // 不注入 TxRunner
 ) {
     fun create(sc: SvcCtx, input: CreateTodoInput): UUID {
         val appId = sc.mustGetAppId()
@@ -511,13 +501,16 @@ class TodoCommands(
     }
 }
 
-// ======================== Internal: TodoItemCommands ========================
+// ======================== Internal: TodoItemInternalService ========================
 
 @Component
-class TodoItemCommands(
+class TodoItemInternalService(
     private val repo: TodoItemRepository,
     // 不注入 TxRunner
 ) {
+    fun findByTodoIds(sc: SvcCtx, todoIds: Collection<UUID>): List<TodoItem> =
+        repo.findByTodoIds(sc, todoIds)
+
     fun update(sc: SvcCtx, input: UpdateTodoItemsMutationInput) {
         val appId = sc.mustGetAppId()
         val now = Instant.now()

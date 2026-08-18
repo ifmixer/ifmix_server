@@ -23,7 +23,7 @@
 | DataFetcher | `bff/graphql/customer/` | `@DgsComponent` | GraphQL 路由、构造 OperationContext、DataLoader |
 | Service | `modules/*/service/` | `@Service` | 业务编排、TxRunner 事务、CrudServiceOps 缓存 |
 | Repository | `modules/*/repo/` | `@Repository` | 纯数据访问、注入 CrudOps、接收 RepoContext |
-| Model | `model/` | 无 | Domain data class、可加业务方法 |
+| Model | `entity/` | 无 | Domain data class、可加业务方法 |
 | Infra | `infra/` | `@Component`/`@Configuration` | 横切关注点、外部集成 |
 
 ### DI 风格
@@ -111,10 +111,10 @@
 11. **Webhook 必须验签** — Apple JWS / Google 通过 packageName 反查 appId
 12. **DataLoader caching=false** — 只 batching，防 mutation 间脏读
 13. **CacheAside 显式调用** — 不用 @Cacheable 魔法
-14. **Domain Model = data class** — 不是 jOOQ codegen POJO
+14. **Domain Entity = data class** — 不是 jOOQ codegen POJO
 15. **set/unset Update 语义** — 防 null vs undefined 歧义
 16. **枚举全链路 Int 透传** — GraphQL 不用 enum，灰度/多版本安全
-17. **枚举常量放 model class 嵌套 object** — 就近原则，跨模块的放 model/shared/
+17. **枚举常量放 model class 嵌套 object** — 就近原则，跨模块的放 entity/shared/
 18. **codegen 输出不与手写混** — jOOQ 生成到 src/generated/jooq/，DGS 在 build/generated/
 19. **Operation 命名含对象** — `query_todo_findTodoById` 而非 `query_todo_findById`
 
