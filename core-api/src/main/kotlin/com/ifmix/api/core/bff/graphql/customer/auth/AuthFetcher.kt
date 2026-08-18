@@ -1,5 +1,6 @@
 package com.ifmix.api.core.bff.graphql.customer.auth
 
+import com.ifmix.api.core.dto.common.OperationResult
 import com.ifmix.api.core.generated.types.*
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.modules.auth.service.AuthFacadeService
