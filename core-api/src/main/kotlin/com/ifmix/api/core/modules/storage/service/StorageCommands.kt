@@ -1,9 +1,9 @@
 package com.ifmix.api.core.modules.storage.service
 
+import com.ifmix.api.core.dto.storage.PresignDownloadResult
+import com.ifmix.api.core.dto.storage.PresignUploadResult
 import com.ifmix.api.core.generated.types.PresignDownloadInput
-import com.ifmix.api.core.generated.types.PresignDownloadPayload
 import com.ifmix.api.core.generated.types.PresignUploadInput
-import com.ifmix.api.core.generated.types.PresignUploadPayload
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.OperationContext
@@ -20,7 +20,7 @@ class StorageCommands(
     private val uploadRecordRepo: UploadRecordRepository,
     private val objectStorage: ObjectStorage,
 ) {
-    fun presignUpload(opCtx: OperationContext, input: PresignUploadInput): PresignUploadPayload {
+    fun presignUpload(opCtx: OperationContext, input: PresignUploadInput): PresignUploadResult {
         val appId = opCtx.appId!!
         val installId = opCtx.installId!!
         val mediaId = UuidV7.generate()
@@ -55,7 +55,7 @@ class StorageCommands(
             createdAt = Instant.now(),
         ))
 
-        return PresignUploadPayload(
+        return PresignUploadResult(
             mediaId = mediaId,
             uploadUrl = uploadUrl,
             imageKey = objectKey,
@@ -63,9 +63,9 @@ class StorageCommands(
         )
     }
 
-    fun presignDownload(opCtx: OperationContext, input: PresignDownloadInput): PresignDownloadPayload {
+    fun presignDownload(opCtx: OperationContext, input: PresignDownloadInput): PresignDownloadResult {
         val duration = Duration.ofSeconds((input.durationSeconds ?: 3600).toLong())
         val url = objectStorage.presignDownload("ugc", input.imageKey, duration)
-        return PresignDownloadPayload(url = url)
+        return PresignDownloadResult(url = url)
     }
 }

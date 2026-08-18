@@ -13,9 +13,9 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.model.scan.ScanCollectionItem
 import com.ifmix.api.core.model.scan.ScanRecord
-import com.ifmix.api.core.modules.scan.dto.AddItemReq
-import com.ifmix.api.core.modules.scan.dto.ListItemsReq
-import com.ifmix.api.core.modules.scan.dto.RemoveItemsReq
+import com.ifmix.api.core.dto.scan.AddItemReq
+import com.ifmix.api.core.dto.scan.ListItemsReq
+import com.ifmix.api.core.dto.scan.RemoveItemsReq
 import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
 import com.ifmix.api.core.modules.scan.service.ScanCollectionFacadeService
 import com.netflix.graphql.dgs.DgsComponent

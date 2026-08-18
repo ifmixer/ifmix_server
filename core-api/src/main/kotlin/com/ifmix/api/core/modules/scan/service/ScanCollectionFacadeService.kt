@@ -2,17 +2,17 @@ package com.ifmix.api.core.modules.scan.service
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.dto.Page
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.model.scan.ScanCollection
 import com.ifmix.api.core.model.scan.ScanCollectionItem
-import com.ifmix.api.core.modules.scan.dto.AddItemReq
-import com.ifmix.api.core.modules.scan.dto.AddItemRes
-import com.ifmix.api.core.modules.scan.dto.ListItemsReq
-import com.ifmix.api.core.modules.scan.dto.RemoveItemsReq
-import com.ifmix.api.core.modules.scan.dto.RemoveItemsRes
+import com.ifmix.api.core.dto.scan.AddItemReq
+import com.ifmix.api.core.dto.scan.AddItemRes
+import com.ifmix.api.core.dto.scan.ListItemsReq
+import com.ifmix.api.core.dto.scan.RemoveItemsReq
+import com.ifmix.api.core.dto.scan.RemoveItemsRes
 import com.ifmix.api.core.modules.scan.repo.ScanCollectionItemRepository
 import com.ifmix.api.core.modules.scan.repo.ScanCollectionRepository
 import org.springframework.stereotype.Service

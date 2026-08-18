@@ -1,4 +1,4 @@
-package com.ifmix.api.core.infra.dto
+package com.ifmix.api.core.dto.common
 
 
 data class Page<T>(

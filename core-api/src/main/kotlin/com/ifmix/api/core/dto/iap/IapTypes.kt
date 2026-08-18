@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.iap
+package com.ifmix.api.core.dto.iap
 
 import com.ifmix.api.core.model.shared.Tiers
 import java.time.Instant

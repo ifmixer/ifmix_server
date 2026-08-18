@@ -20,7 +20,7 @@ import com.ifmix.api.core.model.auth.AppRefreshToken
 import com.ifmix.api.core.model.auth.AuthDeviceSecret
 import com.ifmix.api.core.model.auth.AuthIdentity
 import com.ifmix.api.core.modules.auth.ProviderVerifier
-import com.ifmix.api.core.modules.iap.SubscriptionState
+import com.ifmix.api.core.dto.iap.SubscriptionState
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service

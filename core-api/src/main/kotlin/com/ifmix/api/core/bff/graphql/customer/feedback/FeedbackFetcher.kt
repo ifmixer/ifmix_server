@@ -3,7 +3,7 @@ package com.ifmix.api.core.bff.graphql.customer.feedback
 import com.ifmix.api.core.generated.types.SubmitFeedbackInput
 import com.ifmix.api.core.generated.types.SubmitFeedbackPayload
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
-import com.ifmix.api.core.modules.feedback.dto.SubmitFeedbackReq
+import com.ifmix.api.core.dto.feedback.SubmitFeedbackReq
 import com.ifmix.api.core.modules.feedback.service.FeedbackFacadeService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -28,7 +28,7 @@ class FeedbackFetcher(
     }
 }
 
-private fun SubmitFeedbackInput.toReq() = com.ifmix.api.core.modules.feedback.dto.SubmitFeedbackReq(
+private fun SubmitFeedbackInput.toReq() = SubmitFeedbackReq(
     category = category,
     comment = comment,
     scanRecordId = scanRecordId,

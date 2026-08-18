@@ -12,11 +12,11 @@ import com.ifmix.api.core.model.shared.Tiers
 import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.ifmix.api.core.modules.iap.NotificationType
 import com.ifmix.api.core.modules.iap.PurchaseVerifier
-import com.ifmix.api.core.modules.iap.SubStatus
-import com.ifmix.api.core.modules.iap.VerifyReq
-import com.ifmix.api.core.modules.iap.VerifyRes
-import com.ifmix.api.core.modules.iap.statusFromExpiry
-import com.ifmix.api.core.modules.iap.tierOf
+import com.ifmix.api.core.dto.iap.SubStatus
+import com.ifmix.api.core.dto.iap.VerifyReq
+import com.ifmix.api.core.dto.iap.VerifyRes
+import com.ifmix.api.core.dto.iap.statusFromExpiry
+import com.ifmix.api.core.dto.iap.tierOf
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
 import com.ifmix.api.core.modules.iap.repo.StoreNotificationRepository
 import com.ifmix.api.core.modules.iap.repo.SubscriptionRepository

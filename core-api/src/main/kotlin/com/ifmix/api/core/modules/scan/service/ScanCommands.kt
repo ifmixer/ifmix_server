@@ -8,8 +8,8 @@ import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.model.ImageRef
 import com.ifmix.api.core.model.scan.ScanRecord
 import com.ifmix.api.core.modules.scan.ScanRunner
-import com.ifmix.api.core.modules.scan.dto.ScanInput
-import com.ifmix.api.core.modules.scan.dto.ScanMediaItem
+import com.ifmix.api.core.dto.scan.ScanInput
+import com.ifmix.api.core.dto.scan.ScanMediaItem
 import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.UpdateScanInput

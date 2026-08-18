@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.scan.service
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.ScanQueryInput
 import com.ifmix.api.core.generated.types.UpdateScanInput
-import com.ifmix.api.core.infra.dto.Page
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.model.scan.ScanRecord
 import org.springframework.stereotype.Service

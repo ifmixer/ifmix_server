@@ -2,8 +2,8 @@ package com.ifmix.api.core.modules.iap.service
 
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.iap.NotificationDecoder
-import com.ifmix.api.core.modules.iap.VerifyReq
-import com.ifmix.api.core.modules.iap.VerifyRes
+import com.ifmix.api.core.dto.iap.VerifyReq
+import com.ifmix.api.core.dto.iap.VerifyRes
 import org.springframework.stereotype.Service
 
 @Service

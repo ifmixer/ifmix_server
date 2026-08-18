@@ -1,5 +1,6 @@
 package com.ifmix.api.core.modules.iap
 
+import com.ifmix.api.core.dto.iap.SubStatus
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.model.shared.Platforms
 

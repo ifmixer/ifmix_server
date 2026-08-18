@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.scan
 
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.scan.dto.ScanInput
+import com.ifmix.api.core.dto.scan.ScanInput
 
 /**
  * AI 扫描服务接口。

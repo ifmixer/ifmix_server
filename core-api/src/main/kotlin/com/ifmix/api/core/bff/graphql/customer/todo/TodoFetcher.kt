@@ -16,7 +16,7 @@ import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.jooq.GlobalTxRunner
 import com.ifmix.api.core.model.todo.Todo
 import com.ifmix.api.core.model.todo.TodoItem
-import com.ifmix.api.core.modules.scan.dto.AddItemReq
+import com.ifmix.api.core.dto.scan.AddItemReq
 import com.ifmix.api.core.modules.scan.service.ScanCollectionFacadeService
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 import com.ifmix.api.core.modules.todo.service.TodoFacadeService

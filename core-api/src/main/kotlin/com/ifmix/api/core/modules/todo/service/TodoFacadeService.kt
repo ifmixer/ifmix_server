@@ -5,7 +5,7 @@ import com.ifmix.api.core.generated.types.TodoQueryInput
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.dto.Page
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext

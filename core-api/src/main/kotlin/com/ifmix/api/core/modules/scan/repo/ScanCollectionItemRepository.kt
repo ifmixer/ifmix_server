@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.scan.repo
 
 import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.dto.Page
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanCollectionItem.Companion.CORE_SCAN_COLLECTION_ITEM
 import com.ifmix.api.core.model.scan.ScanCollectionItem

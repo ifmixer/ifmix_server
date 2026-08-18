@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.scan.service
 
 import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.dto.Page
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.model.scan.ScanRecord
 import org.springframework.stereotype.Component

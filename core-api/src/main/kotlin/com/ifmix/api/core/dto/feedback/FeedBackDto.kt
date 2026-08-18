@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.feedback.dto
+package com.ifmix.api.core.dto.feedback
 
 import java.util.UUID
 

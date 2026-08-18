@@ -3,7 +3,7 @@ package com.ifmix.api.core.bff.graphql.customer.iap
 import com.ifmix.api.core.generated.types.VerifyPurchaseInput
 import com.ifmix.api.core.generated.types.VerifyPurchasePayload
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
-import com.ifmix.api.core.modules.iap.VerifyReq
+import com.ifmix.api.core.dto.iap.VerifyReq
 import com.ifmix.api.core.modules.iap.service.IapFacadeService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment

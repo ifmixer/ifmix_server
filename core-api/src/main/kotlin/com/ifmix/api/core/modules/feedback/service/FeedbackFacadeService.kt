@@ -2,10 +2,10 @@ package com.ifmix.api.core.modules.feedback.service
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.dto.CreateOneRes
+import com.ifmix.api.core.dto.common.CreateOneRes
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.model.feedback.Feedback
-import com.ifmix.api.core.modules.feedback.dto.SubmitFeedbackReq
+import com.ifmix.api.core.dto.feedback.SubmitFeedbackReq
 import com.ifmix.api.core.modules.feedback.repo.FeedbackRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
