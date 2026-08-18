@@ -10,5 +10,5 @@ type SubmitFeedbackPayload {
 }
 
 extend type Mutation {
-    mutation_feedback_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackPayload!
+    mutation_cms_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackPayload!
 }

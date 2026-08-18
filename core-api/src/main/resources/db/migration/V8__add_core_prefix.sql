@@ -3,7 +3,7 @@
 
 -- === V1 tables ===
 ALTER TABLE todo RENAME TO core_todo;
-ALTER TABLE todo_item RENAME TO core_todo_item;
+ALTER TABLE todo_item RENAME TO core_demo_item;
 ALTER TABLE feedback RENAME TO core_feedback;
 
 -- === V2 tables ===

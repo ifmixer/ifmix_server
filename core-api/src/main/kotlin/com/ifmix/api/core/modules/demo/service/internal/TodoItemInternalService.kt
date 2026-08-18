@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.demo.service.internal
 
 import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.entity.todo.TodoItem
+import com.ifmix.api.core.entity.demo.TodoItem
 import com.ifmix.api.core.modules.demo.repo.TodoItemRepository
 import org.springframework.stereotype.Component
 import java.time.Instant

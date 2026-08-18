@@ -1,0 +1,133 @@
+# schema/customer/ai.graphqls
+
+# ==================== Scan ====================
+
+type ScanRecord {
+    id: UUID!
+    images: [ImageRef!]!
+    result: JSON
+    "扫描状态。100=PENDING, 110=PROCESSING, 200=COMPLETED, 300=FAILED"
+    status: Int!
+    clientIp: String
+    lang: String
+    country: String
+    currency: String
+    userDisplayName: String
+    userNotes: String
+    collected: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime
+}
+
+type ImageRef {
+    key: String!
+}
+
+input ScanQueryInput {
+    cursor: String
+    limit: Int
+    collected: Boolean
+}
+
+type ScanRecordPage {
+    items: [ScanRecord!]!
+    nextCursor: String
+    hasMore: Boolean!
+}
+
+input NewScanInput {
+    images: [NewScanImageInput!]!
+}
+
+input NewScanImageInput {
+    imageKey: String!
+    mediaType: String
+}
+
+type NewScanPayload {
+    scanRecord: ScanRecord!
+}
+
+input UpdateScanInput {
+    id: UUID!
+    set: UpdateScanSetInput
+    unset: [ScanUnsetField!]
+}
+
+input UpdateScanSetInput {
+    userDisplayName: String
+    userNotes: String
+    collected: Boolean
+}
+
+enum ScanUnsetField { USER_DISPLAY_NAME, USER_NOTES }
+
+type UpdateScanPayload {
+    success: Boolean!
+    scanRecord: ScanRecord
+}
+
+type DeleteScanPayload {
+    success: Boolean!
+}
+
+# ==================== Collection ====================
+
+type ScanCollection {
+    id: UUID!
+    isDefault: Boolean!
+    createdAt: DateTime!
+}
+
+type ScanCollectionItem {
+    id: UUID!
+    scanRecord: ScanRecord!
+    createdAt: DateTime!
+}
+
+type ScanCollectionItemPage {
+    items: [ScanCollectionItem!]!
+    nextCursor: String
+    hasMore: Boolean!
+}
+
+input ListScanCollectionItemsInput {
+    cursor: String
+    limit: Int
+}
+
+input AddScanCollectionItemInput {
+    scanRecordId: UUID!
+}
+
+type AddScanCollectionItemPayload {
+    collectionId: UUID!
+    alreadyExists: Boolean!
+}
+
+input RemoveScanCollectionItemsInput {
+    scanRecordIds: [UUID!]!
+}
+
+type RemoveScanCollectionItemsPayload {
+    removedCount: Int!
+}
+
+# ==================== Query ====================
+
+extend type Query {
+    query_ai_findScanById(id: UUID!): ScanRecord!
+    query_ai_findScansByCursor(input: ScanQueryInput): ScanRecordPage!
+    query_ai_getDefaultCollection: ScanCollection!
+    query_ai_findCollectionItemsByCursor(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
+}
+
+# ==================== Mutation ====================
+
+extend type Mutation {
+    mutation_ai_createScan(input: NewScanInput!): NewScanPayload!
+    mutation_ai_updateScan(input: UpdateScanInput!): UpdateScanPayload!
+    mutation_ai_deleteScan(id: UUID!): DeleteScanPayload!
+    mutation_ai_addCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemPayload!
+    mutation_ai_removeCollectionItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsPayload!
+}

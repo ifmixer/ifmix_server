@@ -108,9 +108,9 @@ val CORE_SUBSCRIPTION: CoreSubscription = CoreSubscription.CORE_SUBSCRIPTION
 val CORE_TODO: CoreTodo = CoreTodo.CORE_TODO
 
 /**
- * The table <code>public.core_todo_item</code>.
+ * The table <code>public.core_demo_item</code>.
  */
-val CORE_TODO_ITEM: CoreTodoItem = CoreTodoItem.CORE_TODO_ITEM
+val CORE_demo_ITEM: CoreTodoItem = CoreTodoItem.CORE_demo_ITEM
 
 /**
  * The table <code>public.core_upload_record</code>.

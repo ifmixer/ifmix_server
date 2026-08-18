@@ -1,8 +1,8 @@
 package com.ifmix.api.core.modules.auth
 
 import tools.jackson.module.kotlin.jacksonObjectMapper
-import com.ifmix.api.core.entity.appconfig.ConfigContent
-import com.ifmix.api.core.entity.appconfig.WechatConfigValue
+import com.ifmix.api.core.entity.app.ConfigContent
+import com.ifmix.api.core.entity.app.WechatConfigValue
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode

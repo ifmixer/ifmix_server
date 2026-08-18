@@ -1,10 +1,10 @@
 package com.ifmix.api.core.modules.payment
 
-import com.ifmix.api.core.dto.iap.SubStatus
+import com.ifmix.api.core.dto.payment.SubStatus
 import com.ifmix.api.core.infra.db.UuidV7
 
 /**
- * 购买验证接缝：各商店（Apple / Google）的 verifyPurchase 实现不同，
+ * 购买验证接缝：各商店（Apple / Google）的 verifyIapPurchase 实现不同，
  * 通过此接口解耦。
  */
 interface PurchaseVerifier {

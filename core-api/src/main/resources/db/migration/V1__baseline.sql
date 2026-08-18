@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS todo_item (
 );
 
 CREATE INDEX IF NOT EXISTS todo_item_app_id_id_idx ON todo_item (app_id, id);
-CREATE INDEX IF NOT EXISTS todo_item_todo_id_idx ON todo_item (todo_id);
+CREATE INDEX IF NOT EXISTS todo_item_demo_id_idx ON todo_item (todo_id);
 
 CREATE TABLE IF NOT EXISTS feedback (
     id UUID NOT NULL PRIMARY KEY,

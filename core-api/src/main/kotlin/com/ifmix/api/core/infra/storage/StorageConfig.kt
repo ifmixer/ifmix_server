@@ -76,6 +76,7 @@ class StorageBeanConfig(private val storageConfig: StorageConfig) {
     private fun isCustomEndpoint() = !storageConfig.endpoint.contains("amazonaws.com")
 
     @Bean
+    
     fun s3Presigner(): S3Presigner {
         val builder = S3Presigner.builder()
             .region(Region.of(storageConfig.region))
@@ -92,6 +93,7 @@ class StorageBeanConfig(private val storageConfig: StorageConfig) {
     }
 
     @Bean
+    
     fun s3Client(): S3Client {
         val builder = S3Client.builder()
             .region(Region.of(storageConfig.region))
@@ -104,4 +106,9 @@ class StorageBeanConfig(private val storageConfig: StorageConfig) {
 
         return builder.build()
     }
+
+    @Bean
+    
+    fun objectStorage(presigner: S3Presigner, s3Client: S3Client): ObjectStorage =
+        S3ObjectStorage(presigner, s3Client, storageConfig)
 }

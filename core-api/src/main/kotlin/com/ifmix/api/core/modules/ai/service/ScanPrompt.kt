@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.ai.service
 
-import com.ifmix.api.core.dto.scan.ScanInput
+import com.ifmix.api.core.dto.ai.ScanInput
 
 /**
  * V5 Production Prompt for AI antique scanning.

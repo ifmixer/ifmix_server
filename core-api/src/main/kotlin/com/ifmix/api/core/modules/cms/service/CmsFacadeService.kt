@@ -4,7 +4,7 @@ import com.ifmix.api.core.dto.common.CreateOneRes
 import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jooq.TxRunner
-import com.ifmix.api.core.dto.feedback.SubmitFeedbackReq
+import com.ifmix.api.core.dto.cms.SubmitFeedbackReq
 import com.ifmix.api.core.modules.cms.service.internal.FeedbackInternalService
 import org.springframework.stereotype.Service
 

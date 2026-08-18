@@ -9,11 +9,11 @@ import com.ifmix.api.core.entity.shared.Platforms
 import com.ifmix.api.core.entity.shared.Tiers
 import com.ifmix.api.core.modules.payment.PurchaseVerifier
 import com.ifmix.api.core.modules.payment.VerifyInput
-import com.ifmix.api.core.dto.iap.SubStatus
-import com.ifmix.api.core.dto.iap.VerifyReq
-import com.ifmix.api.core.dto.iap.VerifyRes
-import com.ifmix.api.core.dto.iap.statusFromExpiry
-import com.ifmix.api.core.dto.iap.tierOf
+import com.ifmix.api.core.dto.payment.SubStatus
+import com.ifmix.api.core.dto.payment.VerifyReq
+import com.ifmix.api.core.dto.payment.VerifyRes
+import com.ifmix.api.core.dto.payment.statusFromExpiry
+import com.ifmix.api.core.dto.payment.tierOf
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
 import com.ifmix.api.core.modules.payment.repo.SubscriptionRepository
 import org.springframework.beans.factory.annotation.Qualifier
@@ -32,7 +32,7 @@ class PaymentInternalService(
         "GOOGLE" to googleVerifier,
     )
 
-    fun verifyPurchase(sc: SvcCtx, req: VerifyReq): VerifyRes {
+    fun verifyIapPurchase(sc: SvcCtx, req: VerifyReq): VerifyRes {
         val ctx = sc.op
         val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 

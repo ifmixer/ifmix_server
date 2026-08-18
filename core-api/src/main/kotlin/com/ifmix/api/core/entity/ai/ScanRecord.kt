@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.scan
+package com.ifmix.api.core.entity.ai
 
 import com.ifmix.api.core.entity.ImageRef
 import java.time.Instant

@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreUserInstallBinding.Companion.CORE_USER_INSTALL_BINDING
 import com.ifmix.api.core.entity.auth.UserInstallBinding
 import org.springframework.stereotype.Repository
@@ -11,7 +12,9 @@ import java.util.UUID
  * UserInstallBinding jOOQ repository.
  */
 @Repository
-class UserInstallBindingRepository {
+class UserInstallBindingRepository(
+    private val crud: CrudRepoOps,
+) {
 
     /**
      * 记录一次登录绑定（幂等 upsert）：
@@ -47,34 +50,7 @@ class UserInstallBindingRepository {
                 createdAt = now,
                 updatedAt = now,
             )
-            ctx.dsl.insertInto(
-                CORE_USER_INSTALL_BINDING,
-                CORE_USER_INSTALL_BINDING.ID,
-                CORE_USER_INSTALL_BINDING.APP_ID,
-                CORE_USER_INSTALL_BINDING.USER_ID,
-                CORE_USER_INSTALL_BINDING.INSTALL_ID,
-                CORE_USER_INSTALL_BINDING.FIRST_SEEN_AT,
-                CORE_USER_INSTALL_BINDING.LAST_SEEN_AT,
-                CORE_USER_INSTALL_BINDING.LOGIN_COUNT,
-                CORE_USER_INSTALL_BINDING.CLIENT_IP,
-                CORE_USER_INSTALL_BINDING.CLIENT_PLATFORM,
-                CORE_USER_INSTALL_BINDING.CREATED_AT,
-                CORE_USER_INSTALL_BINDING.UPDATED_AT,
-            )
-                .values(
-                    entity.id,
-                    entity.appId,
-                    entity.userId,
-                    entity.installId,
-                    entity.firstSeenAt,
-                    entity.lastSeenAt,
-                    entity.loginCount,
-                    entity.clientIp,
-                    entity.clientPlatform,
-                    entity.createdAt,
-                    entity.updatedAt,
-                )
-                .execute()
+            crud.insert(ctx, CORE_USER_INSTALL_BINDING, entity)
         } else {
             ctx.dsl.update(CORE_USER_INSTALL_BINDING)
                 .set(CORE_USER_INSTALL_BINDING.LAST_SEEN_AT, now)

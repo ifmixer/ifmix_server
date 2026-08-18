@@ -126,9 +126,9 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val CORE_TODO: CoreTodo get() = CoreTodo.CORE_TODO
 
     /**
-     * The table <code>public.core_todo_item</code>.
+     * The table <code>public.core_demo_item</code>.
      */
-    val CORE_TODO_ITEM: CoreTodoItem get() = CoreTodoItem.CORE_TODO_ITEM
+    val CORE_demo_ITEM: CoreTodoItem get() = CoreTodoItem.CORE_demo_ITEM
 
     /**
      * The table <code>public.core_upload_record</code>.
@@ -159,7 +159,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         CoreStoreNotification.CORE_STORE_NOTIFICATION,
         CoreSubscription.CORE_SUBSCRIPTION,
         CoreTodo.CORE_TODO,
-        CoreTodoItem.CORE_TODO_ITEM,
+        CoreTodoItem.CORE_demo_ITEM,
         CoreUploadRecord.CORE_UPLOAD_RECORD,
         CoreUserInstallBinding.CORE_USER_INSTALL_BINDING
     )

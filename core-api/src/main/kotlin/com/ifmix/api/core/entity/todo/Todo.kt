@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.todo
+package com.ifmix.api.core.entity.demo
 
 import java.time.Instant
 import java.util.UUID

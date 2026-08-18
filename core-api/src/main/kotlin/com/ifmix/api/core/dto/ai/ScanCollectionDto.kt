@@ -1,4 +1,4 @@
-package com.ifmix.api.core.dto.scan
+package com.ifmix.api.core.dto.ai
 
 import java.util.UUID
 

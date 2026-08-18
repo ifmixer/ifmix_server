@@ -1,4 +1,4 @@
-package com.ifmix.api.core.dto.iap
+package com.ifmix.api.core.dto.payment
 
 import com.ifmix.api.core.entity.shared.Tiers
 import java.time.Instant

@@ -2,6 +2,7 @@ package com.ifmix.api.core.infra.jooq
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import org.jooq.Condition
+import org.jooq.impl.DSL
 import org.jooq.Record
 import org.jooq.Table
 import org.jooq.TableField
@@ -20,6 +21,17 @@ import java.util.UUID
 class CrudRepoOps {
 
     // ===== Query =====
+
+    fun <T : Any> findById(
+        ctx: SvcCtx,
+        table: Table<*>,
+        idField: TableField<*, *>,
+        id: UUID,
+        type: Class<T>,
+        deletedAtField: TableField<*, Instant?>? = null,
+    ): T? = ctx.dsl.selectFrom(table)
+        .where(buildDeletedAtCond(deletedAtField).and((idField as TableField<*, UUID?>).eq(id)))
+        .fetchOneInto(type)
 
     fun <T : Any> findById(
         ctx: SvcCtx,
@@ -184,6 +196,9 @@ class CrudRepoOps {
     }
 
     // ===== Internal =====
+
+    private fun buildDeletedAtCond(deletedAtField: TableField<*, Instant?>?): Condition =
+        if (deletedAtField != null) deletedAtField.isNull else DSL.noCondition()
 
     private fun baseCond(appIdField: TableField<*, *>, appId: UUID, deletedAtField: TableField<*, Instant?>?): Condition {
         var cond: Condition = (appIdField as TableField<*, UUID?>).eq(appId)

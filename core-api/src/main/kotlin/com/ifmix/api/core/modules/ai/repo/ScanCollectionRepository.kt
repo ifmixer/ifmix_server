@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.ai.repo
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanCollection.Companion.CORE_SCAN_COLLECTION
-import com.ifmix.api.core.entity.scan.ScanCollection
+import com.ifmix.api.core.entity.ai.ScanCollection
 import org.springframework.stereotype.Repository
 import java.util.UUID
 

@@ -1,4 +1,4 @@
-package com.ifmix.api.core.dto.iap
+package com.ifmix.api.core.dto.payment
 
 data class VerifyReq(
     val platform: Int,

@@ -6,10 +6,11 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanRecord.Companion.CORE_SCAN_RECORD
 import com.ifmix.api.core.entity.ImageRef
-import com.ifmix.api.core.entity.scan.ScanRecord
+import com.ifmix.api.core.entity.ai.ScanRecord
 import org.jooq.JSONB
 import org.springframework.stereotype.Repository
 import tools.jackson.module.kotlin.jacksonObjectMapper
+import java.time.Instant
 import java.util.UUID
 
 @Repository
@@ -118,7 +119,7 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
         userDisplayName = r.get(CORE_SCAN_RECORD.USER_DISPLAY_NAME),
         userNotes = r.get(CORE_SCAN_RECORD.USER_NOTES),
         collected = r.get(CORE_SCAN_RECORD.COLLECTED) ?: false,
-        createdAt = r.get(CORE_SCAN_RECORD.CREATED_AT) ?: java.time.Instant.now(),
+        createdAt = r.get(CORE_SCAN_RECORD.CREATED_AT) ?: Instant.now(),
         updatedAt = r.get(CORE_SCAN_RECORD.UPDATED_AT),
         deletedAt = r.get(CORE_SCAN_RECORD.DELETED_AT),
     )

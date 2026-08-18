@@ -7,7 +7,7 @@ package com.ifmix.api.core.jooq.tables
 import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.TODO_ITEM_APP_ID_ID_IDX
-import com.ifmix.api.core.jooq.indexes.TODO_ITEM_TODO_ID_IDX
+import com.ifmix.api.core.jooq.indexes.TODO_ITEM_demo_ID_IDX
 import com.ifmix.api.core.jooq.keys.TODO_ITEM_PKEY
 import com.ifmix.api.core.jooq.tables.records.CoreTodoItemRecord
 
@@ -67,9 +67,9 @@ open class CoreTodoItem(
     companion object {
 
         /**
-         * The reference instance of <code>public.core_todo_item</code>
+         * The reference instance of <code>public.core_demo_item</code>
          */
-        val CORE_TODO_ITEM: CoreTodoItem = CoreTodoItem()
+        val CORE_demo_ITEM: CoreTodoItem = CoreTodoItem()
     }
 
     /**
@@ -78,42 +78,42 @@ open class CoreTodoItem(
     override fun getRecordType(): Class<CoreTodoItemRecord> = CoreTodoItemRecord::class.java
 
     /**
-     * The column <code>public.core_todo_item.id</code>.
+     * The column <code>public.core_demo_item.id</code>.
      */
     val ID: TableField<CoreTodoItemRecord, UUID?> = createField(DSL.name("id"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
-     * The column <code>public.core_todo_item.todo_id</code>.
+     * The column <code>public.core_demo_item.todo_id</code>.
      */
     val TODO_ID: TableField<CoreTodoItemRecord, UUID?> = createField(DSL.name("todo_id"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
-     * The column <code>public.core_todo_item.app_id</code>.
+     * The column <code>public.core_demo_item.app_id</code>.
      */
     val APP_ID: TableField<CoreTodoItemRecord, UUID?> = createField(DSL.name("app_id"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
-     * The column <code>public.core_todo_item.content</code>.
+     * The column <code>public.core_demo_item.content</code>.
      */
     val CONTENT: TableField<CoreTodoItemRecord, String?> = createField(DSL.name("content"), SQLDataType.VARCHAR(1000).nullable(false), this, "")
 
     /**
-     * The column <code>public.core_todo_item.done</code>.
+     * The column <code>public.core_demo_item.done</code>.
      */
     val DONE: TableField<CoreTodoItemRecord, Boolean?> = createField(DSL.name("done"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "")
 
     /**
-     * The column <code>public.core_todo_item.created_at</code>.
+     * The column <code>public.core_demo_item.created_at</code>.
      */
     val CREATED_AT: TableField<CoreTodoItemRecord, Instant?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", InstantConverter())
 
     /**
-     * The column <code>public.core_todo_item.updated_at</code>.
+     * The column <code>public.core_demo_item.updated_at</code>.
      */
     val UPDATED_AT: TableField<CoreTodoItemRecord, Instant?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", InstantConverter())
 
     /**
-     * The column <code>public.core_todo_item.deleted_at</code>.
+     * The column <code>public.core_demo_item.deleted_at</code>.
      */
     val DELETED_AT: TableField<CoreTodoItemRecord, Instant?> = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", InstantConverter())
 
@@ -122,21 +122,21 @@ open class CoreTodoItem(
     private constructor(alias: Name, aliased: Table<CoreTodoItemRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
 
     /**
-     * Create an aliased <code>public.core_todo_item</code> table reference
+     * Create an aliased <code>public.core_demo_item</code> table reference
      */
     constructor(alias: String): this(DSL.name(alias))
 
     /**
-     * Create an aliased <code>public.core_todo_item</code> table reference
+     * Create an aliased <code>public.core_demo_item</code> table reference
      */
     constructor(alias: Name): this(alias, null)
 
     /**
-     * Create a <code>public.core_todo_item</code> table reference
+     * Create a <code>public.core_demo_item</code> table reference
      */
-    constructor(): this(DSL.name("core_todo_item"), null)
+    constructor(): this(DSL.name("core_demo_item"), null)
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIndexes(): List<Index> = listOf(TODO_ITEM_APP_ID_ID_IDX, TODO_ITEM_TODO_ID_IDX)
+    override fun getIndexes(): List<Index> = listOf(TODO_ITEM_APP_ID_ID_IDX, TODO_ITEM_demo_ID_IDX)
     override fun getPrimaryKey(): UniqueKey<CoreTodoItemRecord> = TODO_ITEM_PKEY
     override fun `as`(alias: String): CoreTodoItem = CoreTodoItem(DSL.name(alias), this)
     override fun `as`(alias: Name): CoreTodoItem = CoreTodoItem(alias, this)

@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.feedback
+package com.ifmix.api.core.entity.cms
 
 import java.time.Instant
 import java.util.UUID

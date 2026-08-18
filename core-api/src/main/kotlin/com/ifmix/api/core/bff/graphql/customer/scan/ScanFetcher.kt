@@ -10,7 +10,7 @@ import com.ifmix.api.core.generated.types.UpdateScanPayload
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.entity.scan.ScanRecord
+import com.ifmix.api.core.entity.ai.ScanRecord
 import com.ifmix.api.core.modules.ai.service.AiFacadeService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -24,13 +24,13 @@ class ScanFetcher(
     private val scanService: AiFacadeService,
     private val ctxProvider: OperationContextProvider,
 ) {
-    @DgsQuery(field = "query_scan_findScanById")
+    @DgsQuery(field = "query_ai_findScanById")
     fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): ScanRecord {
         val ctx = ctxProvider.fromDfe(dfe)
         return scanService.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
-    @DgsQuery(field = "query_scan_findScansByCursor")
+    @DgsQuery(field = "query_ai_findScansByCursor")
     fun findByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ScanQueryInput?): Page<ScanRecord> {
         val ctx = ctxProvider.fromDfe(dfe)
         val q = input ?: ScanQueryInput()
@@ -38,13 +38,13 @@ class ScanFetcher(
         return Page(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
     }
 
-    @DgsMutation(field = "mutation_scan_createScan")
+    @DgsMutation(field = "mutation_ai_createScan")
     fun newScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: NewScanInput): NewScanPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         return NewScanPayload(scanRecord = scanService.newScan(ctx, input))
     }
 
-    @DgsMutation(field = "mutation_scan_updateScan")
+    @DgsMutation(field = "mutation_ai_updateScan")
     fun updateScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateScanInput): UpdateScanPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val success = scanService.updateScan(ctx, input)
@@ -54,7 +54,7 @@ class ScanFetcher(
         return UpdateScanPayload(success = success, scanRecord = record)
     }
 
-    @DgsMutation(field = "mutation_scan_deleteScan")
+    @DgsMutation(field = "mutation_ai_deleteScan")
     fun deleteScanById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DeleteScanPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val success = scanService.deleteScan(ctx, id)

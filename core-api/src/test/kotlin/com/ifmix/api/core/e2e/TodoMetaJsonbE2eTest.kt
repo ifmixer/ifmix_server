@@ -1,7 +1,7 @@
 package com.ifmix.api.core.e2e
 
 import com.ifmix.api.core.e2e.support.E2eTestBase
-import com.ifmix.api.core.entity.todo.Todo
+import com.ifmix.api.core.entity.demo.Todo
 import com.ifmix.api.core.entity.todo.by
 import com.ifmix.api.core.infra.db.UuidV7
 import org.assertj.core.api.Assertions.assertThat

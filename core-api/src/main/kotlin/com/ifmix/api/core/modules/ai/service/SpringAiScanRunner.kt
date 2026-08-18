@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.ai.service
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.dto.scan.ScanInput
+import com.ifmix.api.core.dto.ai.ScanInput
 import com.ifmix.api.core.modules.ai.ScanRunner
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.messages.SystemMessage

@@ -6,8 +6,8 @@ import com.ifmix.api.core.infra.jooq.TxRunner
 import com.ifmix.api.core.modules.payment.NotificationDecoder
 import com.ifmix.api.core.modules.payment.service.internal.PaymentInternalService
 import com.ifmix.api.core.modules.payment.service.internal.PaymentWebhookHandler
-import com.ifmix.api.core.dto.iap.VerifyReq
-import com.ifmix.api.core.dto.iap.VerifyRes
+import com.ifmix.api.core.dto.payment.VerifyReq
+import com.ifmix.api.core.dto.payment.VerifyRes
 import org.springframework.stereotype.Service
 
 @Service
@@ -17,8 +17,8 @@ class PaymentFacadeService(
     private val webhookHandler: PaymentWebhookHandler,
     private val tx: TxRunner,
 ) {
-    fun verifyPurchase(ctx: OperationContext, req: VerifyReq): VerifyRes =
-        tx.withTx(svcCtxFactory.forApp(ctx)) { sc -> commands.verifyPurchase(sc, req) }
+    fun verifyIapPurchase(ctx: OperationContext, req: VerifyReq): VerifyRes =
+        tx.withTx(svcCtxFactory.forApp(ctx)) { sc -> commands.verifyIapPurchase(sc, req) }
     fun handleAppleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) =
         tx.withTx(svcCtxFactory.forApp(ctx)) { sc -> webhookHandler.handleAppleNotification(sc, rawPayload, decoder) }
     fun handleGoogleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) =

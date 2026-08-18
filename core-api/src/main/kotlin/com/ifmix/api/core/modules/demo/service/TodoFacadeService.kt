@@ -9,8 +9,8 @@ import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jooq.TxRunner
 import com.ifmix.api.core.modules.demo.service.internal.TodoInternalService
 import com.ifmix.api.core.modules.demo.service.internal.TodoItemInternalService
-import com.ifmix.api.core.entity.todo.Todo
-import com.ifmix.api.core.entity.todo.TodoItem
+import com.ifmix.api.core.entity.demo.Todo
+import com.ifmix.api.core.entity.demo.TodoItem
 import org.springframework.stereotype.Service
 import java.util.UUID
 

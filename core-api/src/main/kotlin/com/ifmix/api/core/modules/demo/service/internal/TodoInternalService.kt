@@ -10,8 +10,8 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.service.CrudServiceOps
 import com.ifmix.api.core.infra.service.CrudServiceOpsFactory
-import com.ifmix.api.core.entity.todo.Todo
-import com.ifmix.api.core.entity.todo.TodoItem
+import com.ifmix.api.core.entity.demo.Todo
+import com.ifmix.api.core.entity.demo.TodoItem
 import com.ifmix.api.core.modules.demo.repo.TodoItemRepository
 import com.ifmix.api.core.modules.demo.repo.TodoRepository
 import org.springframework.stereotype.Component

@@ -5,13 +5,13 @@ import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jooq.TxRunner
 import com.ifmix.api.core.modules.ai.service.internal.ScanCollectionInternalService
-import com.ifmix.api.core.entity.scan.ScanCollection
-import com.ifmix.api.core.entity.scan.ScanCollectionItem
-import com.ifmix.api.core.dto.scan.AddItemReq
-import com.ifmix.api.core.dto.scan.AddItemRes
-import com.ifmix.api.core.dto.scan.ListItemsReq
-import com.ifmix.api.core.dto.scan.RemoveItemsReq
-import com.ifmix.api.core.dto.scan.RemoveItemsRes
+import com.ifmix.api.core.entity.ai.ScanCollection
+import com.ifmix.api.core.entity.ai.ScanCollectionItem
+import com.ifmix.api.core.dto.ai.AddItemReq
+import com.ifmix.api.core.dto.ai.AddItemRes
+import com.ifmix.api.core.dto.ai.ListItemsReq
+import com.ifmix.api.core.dto.ai.RemoveItemsReq
+import com.ifmix.api.core.dto.ai.RemoveItemsRes
 import org.springframework.stereotype.Service
 
 @Service

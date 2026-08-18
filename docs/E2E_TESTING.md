@@ -46,7 +46,7 @@
 - [ ] 扫描: createScan → getScanResult → findByCursor
 - [ ] 收藏: getDefault → addItem → listItems → removeItems
 - [ ] 存储: presignUpload (格式校验) → presignDownload
-- [ ] IAP: verifyPurchase (stub verifier)
+- [ ] IAP: verifyIapPurchase (stub verifier)
 
 ### Phase 2 — 边界 & 安全
 - [ ] 无 x-app-id 请求 → 400

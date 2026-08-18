@@ -63,6 +63,7 @@ class ReadWriteRoutingDataSource(
  * 数据源注册：创建 writer/reader HikariDataSource 并提供路由 DataSource。
  */
 @Component
+@org.springframework.boot.context.properties.EnableConfigurationProperties(ClusterProperties::class)
 class DataSourceRegistry(
     private val props: ClusterProperties,
 ) {

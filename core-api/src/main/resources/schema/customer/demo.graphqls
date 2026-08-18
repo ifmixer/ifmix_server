@@ -116,9 +116,9 @@ type DeleteTodoPayload {
 }
 
 extend type Mutation {
-    mutation_todo_createTodo(input: CreateTodoInput!): CreateTodoPayload!
-    mutation_todo_updateTodo(input: UpdateTodoInput!): UpdateTodoPayload!
-    mutation_todoItem_batchUpdateTodoItems(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsPayload!
-    mutation_todo_deleteTodo(id: UUID!): DeleteTodoPayload!
-    mutation_todo_batchDeleteTodos(ids: [UUID!]!): DeleteTodoPayload!
+    mutation_demo_createTodo(input: CreateTodoInput!): CreateTodoPayload!
+    mutation_demo_updateTodo(input: UpdateTodoInput!): UpdateTodoPayload!
+    mutation_demo_batchUpdateTodoItems(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsPayload!
+    mutation_demo_deleteTodo(id: UUID!): DeleteTodoPayload!
+    mutation_demo_batchDeleteTodos(ids: [UUID!]!): DeleteTodoPayload!
 }

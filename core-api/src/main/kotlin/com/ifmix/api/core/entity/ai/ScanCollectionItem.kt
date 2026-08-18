@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.scan
+package com.ifmix.api.core.entity.ai
 
 import java.time.Instant
 import java.util.UUID

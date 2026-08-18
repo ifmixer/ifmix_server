@@ -9,7 +9,6 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
 import com.ifmix.api.core.modules.auth.AuthLoggedInEvent
 import com.ifmix.api.core.modules.auth.ProviderVerifier
@@ -18,7 +17,7 @@ import com.ifmix.api.core.modules.auth.repo.AppUserRepository
 import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretRepository
 import com.ifmix.api.core.modules.auth.repo.AuthIdentityRepository
 import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityRepository
-import com.ifmix.api.core.dto.iap.SubscriptionState
+import com.ifmix.api.core.dto.payment.SubscriptionState
 import com.ifmix.api.core.entity.shared.Tiers
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher

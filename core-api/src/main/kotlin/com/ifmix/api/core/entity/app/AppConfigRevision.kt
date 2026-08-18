@@ -1,6 +1,5 @@
 package com.ifmix.api.core.entity.app
 
-import com.ifmix.api.core.entity.appconfig.ConfigContent
 import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.time.Instant
 import java.util.UUID

@@ -7,10 +7,10 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.entity.ImageRef
-import com.ifmix.api.core.entity.scan.ScanRecord
+import com.ifmix.api.core.entity.ai.ScanRecord
 import com.ifmix.api.core.modules.ai.ScanRunner
-import com.ifmix.api.core.dto.scan.ScanInput
-import com.ifmix.api.core.dto.scan.ScanMediaItem
+import com.ifmix.api.core.dto.ai.ScanInput
+import com.ifmix.api.core.dto.ai.ScanMediaItem
 import com.ifmix.api.core.modules.ai.repo.ScanRecordRepository
 import org.springframework.stereotype.Component
 import java.time.Duration

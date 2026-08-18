@@ -2,8 +2,8 @@ package com.ifmix.api.core.modules.cms.service.internal
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.dto.feedback.SubmitFeedbackReq
-import com.ifmix.api.core.entity.feedback.Feedback
+import com.ifmix.api.core.dto.cms.SubmitFeedbackReq
+import com.ifmix.api.core.entity.cms.Feedback
 import com.ifmix.api.core.modules.cms.repo.FeedbackRepository
 import org.springframework.stereotype.Component
 import java.time.Instant

@@ -2,13 +2,13 @@ package com.ifmix.api.core.modules.ai.service.internal
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.entity.scan.ScanCollection
-import com.ifmix.api.core.entity.scan.ScanCollectionItem
-import com.ifmix.api.core.dto.scan.AddItemReq
-import com.ifmix.api.core.dto.scan.AddItemRes
-import com.ifmix.api.core.dto.scan.ListItemsReq
-import com.ifmix.api.core.dto.scan.RemoveItemsReq
-import com.ifmix.api.core.dto.scan.RemoveItemsRes
+import com.ifmix.api.core.entity.ai.ScanCollection
+import com.ifmix.api.core.entity.ai.ScanCollectionItem
+import com.ifmix.api.core.dto.ai.AddItemReq
+import com.ifmix.api.core.dto.ai.AddItemRes
+import com.ifmix.api.core.dto.ai.RemoveItemsReq
+import com.ifmix.api.core.dto.ai.RemoveItemsRes
+import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.modules.ai.repo.ScanCollectionItemRepository
 import com.ifmix.api.core.modules.ai.repo.ScanCollectionRepository
 import org.springframework.stereotype.Component
@@ -23,7 +23,7 @@ open class ScanCollectionInternalService(
     fun createDefaultCollection(sc: SvcCtx): ScanCollection {
         val ctx = sc.op
         val now = Instant.now()
-        val model = ScanCollection(id = com.ifmix.api.core.infra.db.UuidV7.generate(), appId = sc.appId!!, userId = ctx.userId,
+        val model = ScanCollection(id = UuidV7.generate(), appId = sc.appId!!, userId = ctx.userId,
             installId = ctx.installId, isDefault = true, createdAt = now, updatedAt = now, deletedAt = null)
         collectionRepo.insert(sc, model)
         return model

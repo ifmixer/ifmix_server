@@ -10,11 +10,12 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.entity.scan.ScanCollectionItem
-import com.ifmix.api.core.entity.scan.ScanRecord
-import com.ifmix.api.core.dto.scan.AddItemReq
-import com.ifmix.api.core.dto.scan.ListItemsReq
-import com.ifmix.api.core.dto.scan.RemoveItemsReq
+import com.ifmix.api.core.entity.ai.ScanCollectionItem
+import com.ifmix.api.core.entity.ai.ScanRecord
+import com.ifmix.api.core.dto.ai.AddItemReq
+import com.ifmix.api.core.dto.ai.ListItemsReq
+import com.ifmix.api.core.dto.ai.RemoveItemsReq
+import com.ifmix.api.core.entity.ai.ScanCollection
 import com.ifmix.api.core.modules.ai.repo.ScanRecordRepository
 import com.ifmix.api.core.modules.ai.service.ScanCollectionFacadeService
 import com.netflix.graphql.dgs.DgsComponent
@@ -36,13 +37,13 @@ class CollectionFetcher(
     private val ctxProvider: OperationContextProvider,
 ) {
 
-    @DgsQuery(field = "query_collection_getDefaultCollection")
-    fun getDefault(dfe: DgsDataFetchingEnvironment): com.ifmix.api.core.entity.scan.ScanCollection {
+    @DgsQuery(field = "query_ai_getDefaultCollection")
+    fun getDefault(dfe: DgsDataFetchingEnvironment): ScanCollection {
         val ctx = ctxProvider.fromDfe(dfe)
         return collectionService.getDefault(ctx)
     }
 
-    @DgsQuery(field = "query_collection_findCollectionItemsByCursor")
+    @DgsQuery(field = "query_ai_findCollectionItemsByCursor")
     fun findItemsByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ListScanCollectionItemsInput?): Page<ScanCollectionItem> {
         val ctx = ctxProvider.fromDfe(dfe)
         val req = input?.let { ListItemsReq(cursor = it.cursor, limit = it.limit, collectionId = null) }
@@ -54,14 +55,14 @@ class CollectionFetcher(
         throw ApiError(ErrorCode.NOT_FOUND, "not implemented")
     }
 
-    @DgsMutation(field = "mutation_collection_addCollectionItem")
+    @DgsMutation(field = "mutation_ai_addCollectionItem")
     fun addItem(dfe: DgsDataFetchingEnvironment, @InputArgument input: AddScanCollectionItemInput): AddScanCollectionItemPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val restResult = collectionService.addItem(ctx, AddItemReq(scanRecordId = input.scanRecordId))
         return AddScanCollectionItemPayload(collectionId = restResult.id, alreadyExists = false)
     }
 
-    @DgsMutation(field = "mutation_collection_removeCollectionItems")
+    @DgsMutation(field = "mutation_ai_removeCollectionItems")
     fun removeItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: RemoveScanCollectionItemsInput): RemoveScanCollectionItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val restResult = collectionService.removeItems(ctx, RemoveItemsReq(scanRecordIds = input.scanRecordIds))

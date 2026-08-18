@@ -81,6 +81,7 @@ dependencies {
     // GraphQL (Netflix DGS Framework 12.x)
     implementation(platform("com.netflix.graphql.dgs:graphql-dgs-platform-dependencies:12.0.1"))
     implementation("com.netflix.graphql.dgs:graphql-dgs-spring-graphql-starter")
+    implementation("com.jayway.jsonpath:json-path:3.0.0")  // DGS 12 Jackson3 需要 json-path 3.x
     testImplementation("com.netflix.graphql.dgs:graphql-dgs-client")
 }
 
@@ -126,13 +127,12 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         // Scalars
         "UUID" to "java.util.UUID",
         "DateTime" to "java.time.Instant",
-        "Long" to "kotlin.Long",
         "JSON" to "kotlin.Any",
         // Entity output types → Domain Model data classes
-        "Todo" to "com.ifmix.api.core.entity.todo.Todo",
-        "TodoItem" to "com.ifmix.api.core.entity.todo.TodoItem",
-        "ScanRecord" to "com.ifmix.api.core.entity.scan.ScanRecord",
-        "ScanCollection" to "com.ifmix.api.core.entity.scan.ScanCollection",
+        "Todo" to "com.ifmix.api.core.entity.demo.Todo",
+        "TodoItem" to "com.ifmix.api.core.entity.demo.TodoItem",
+        "ScanRecord" to "com.ifmix.api.core.entity.ai.ScanRecord",
+        "ScanCollection" to "com.ifmix.api.core.entity.ai.ScanCollection",
         "ImageRef" to "com.ifmix.api.core.entity.ImageRef",
         // ScanCollectionItem: 关系表有 scanRecord 引用，保持生成类型
         // OperationResult: 手写类型，不再由 codegen 生成

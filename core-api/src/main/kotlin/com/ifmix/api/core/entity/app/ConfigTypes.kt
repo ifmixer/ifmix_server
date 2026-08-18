@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.appconfig
+package com.ifmix.api.core.entity.app
 
 /** 聚合 JSONB 值对象 */
 data class ConfigContent(

@@ -16,16 +16,13 @@ class AppRefreshTokenRepository(
     private val crud: CrudRepoOps,
 ) {
 
-    fun findValidByHash(ctx: SvcCtx, appId: UUID, tokenHash: String): AppRefreshToken? {
-        val now = Instant.now()
-        val record = ctx.dsl.selectFrom(CORE_APP_REFRESH_TOKEN)
+    fun findValidByHash(ctx: SvcCtx, appId: UUID, tokenHash: String): AppRefreshToken? =
+        ctx.dsl.selectFrom(CORE_APP_REFRESH_TOKEN)
             .where(CORE_APP_REFRESH_TOKEN.APP_ID.eq(appId))
             .and(CORE_APP_REFRESH_TOKEN.TOKEN_HASH.eq(tokenHash))
             .and(CORE_APP_REFRESH_TOKEN.REVOKED_AT.isNull())
-            .and(CORE_APP_REFRESH_TOKEN.EXPIRES_AT.isNull().or(CORE_APP_REFRESH_TOKEN.EXPIRES_AT.gt(now)))
-            .fetchOne()
-        return record?.let { toModel(it) }
-    }
+            .and(CORE_APP_REFRESH_TOKEN.EXPIRES_AT.isNull().or(CORE_APP_REFRESH_TOKEN.EXPIRES_AT.gt(Instant.now())))
+            .fetchOneInto(AppRefreshToken::class.java)
 
     fun revoke(ctx: SvcCtx, id: UUID, replacedBy: UUID? = null) {
         val now = Instant.now()
@@ -48,22 +45,4 @@ class AppRefreshTokenRepository(
     fun insert(ctx: SvcCtx, token: AppRefreshToken) {
         crud.insert(ctx, CORE_APP_REFRESH_TOKEN, token)
     }
-
-    // =========================================================================
-    // Record ↔ model helpers
-    // =========================================================================
-
-    private fun toModel(r: org.jooq.Record): AppRefreshToken = AppRefreshToken(
-        id = r.get(CORE_APP_REFRESH_TOKEN.ID)!!,
-        appId = r.get(CORE_APP_REFRESH_TOKEN.APP_ID)!!,
-        appUserId = r.get(CORE_APP_REFRESH_TOKEN.APP_USER_ID)!!,
-        deviceSecretId = r.get(CORE_APP_REFRESH_TOKEN.DEVICE_SECRET_ID),
-        tokenHash = r.get(CORE_APP_REFRESH_TOKEN.TOKEN_HASH)!!,
-        loginInstallId = r.get(CORE_APP_REFRESH_TOKEN.LOGIN_INSTALL_ID),
-        expiresAt = r.get(CORE_APP_REFRESH_TOKEN.EXPIRES_AT)!!,
-        revokedAt = r.get(CORE_APP_REFRESH_TOKEN.REVOKED_AT),
-        replacedBy = r.get(CORE_APP_REFRESH_TOKEN.REPLACED_BY),
-        createdAt = r.get(CORE_APP_REFRESH_TOKEN.CREATED_AT) ?: Instant.now(),
-        updatedAt = r.get(CORE_APP_REFRESH_TOKEN.UPDATED_AT),
-    )
 }
