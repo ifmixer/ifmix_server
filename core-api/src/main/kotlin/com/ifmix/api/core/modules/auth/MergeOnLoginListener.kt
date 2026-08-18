@@ -1,5 +1,6 @@
 package com.ifmix.api.core.modules.auth
 
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.modules.auth.repo.UserInstallBindingRepository
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
@@ -24,7 +25,7 @@ class MergeOnLoginListener(
             // 记录 user-install 绑定
             if (e.installId != null) {
                 bindingRepo.recordBinding(
-                    ctx = e.ctx.repoCtx,
+                    ctx = SvcCtx(op = e.ctx, dsl = SvcCtx.DEFAULT.dsl),
                     appId = e.appId,
                     userId = e.appUserId,
                     installId = e.installId,

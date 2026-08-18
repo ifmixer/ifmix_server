@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAuthTenant.Companion.CORE_AUTH_TENANT
 import com.ifmix.api.core.model.auth.AuthTenant
@@ -15,7 +15,7 @@ class AuthTenantRepository(
     private val crud: CrudRepoOps,
 ) {
 
-    fun findById(ctx: RepoContext, id: UUID): AuthTenant? {
+    fun findById(ctx: SvcCtx, id: UUID): AuthTenant? {
         val record = ctx.dsl.selectFrom(CORE_AUTH_TENANT)
             .where(CORE_AUTH_TENANT.ID.eq(id))
             .fetchOne()

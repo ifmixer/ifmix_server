@@ -4,6 +4,7 @@ import com.ifmix.api.core.model.scan.ScanRecord
 import com.ifmix.api.core.model.ImageRef
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.UpdateScanInput
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError
@@ -35,7 +36,9 @@ class AntiqueService(
 ) {
     private val ops: CrudServiceOps<ScanRecord> = factory.create(ScanRecord::class.java, "scan") { it.id }
 
-    fun newScan(ctx: OperationContext, input: NewScanInput): ScanRecord = tx.withTx(ctx) { txCtx ->
+    private fun svcCtx(opCtx: OperationContext): SvcCtx = SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl)
+
+    fun newScan(ctx: OperationContext, input: NewScanInput): ScanRecord = tx.withTx(svcCtx(ctx)) { txCtx ->
         val appId = ctx.appId!!
         val now = Instant.now()
         val scanId = UuidV7.generate()
@@ -53,7 +56,7 @@ class AntiqueService(
             country = ctx.country,
             currency = ctx.currency,
         )
-        val result = scanRunner.run(txCtx, scanInput)
+        val result = scanRunner.run(ctx, scanInput)
 
         val record = ScanRecord(
             id = scanId,
@@ -71,25 +74,26 @@ class AntiqueService(
             createdAt = now,
             updatedAt = now,
         )
-        scanRepo.insert(txCtx.repoCtx, record)
+        scanRepo.insert(txCtx, record)
         ops.evict(txCtx, scanId)
         record
     }
 
     fun findById(ctx: OperationContext, id: UUID): ScanRecord? =
-        ops.findById(ctx, id, scanRepo::findById)
+        ops.findById(svcCtx(ctx), id, scanRepo::findById)
 
     fun findByCursor(ctx: OperationContext, cursor: String?, limit: Int?): Page<ScanRecord> =
-        ops.findByCursor(ctx, cursor, limit) { repoCtx, appId, cursorUuid, limitVal ->
-            scanRepo.findByCursor(repoCtx, appId, null, cursorUuid, limitVal)
+        ops.findByCursor(svcCtx(ctx), cursor, limit) { svcCtx, appId, cursorUuid, limitVal ->
+            scanRepo.findByCursor(svcCtx, appId, null, cursorUuid, limitVal)
         }
 
     /** 带 collected 过滤的游标查询，不走缓存。 */
     fun findByCursorFiltered(ctx: OperationContext, cursor: String?, limit: Int?, collected: Boolean?): Page<ScanRecord> {
+        val svcCtx = svcCtx(ctx)
         val appId = ctx.mustGetAppId()
         val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
         val cursorUuid = cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-        val items = scanRepo.findByCursor(ctx.repoCtx, appId, collected, cursorUuid, effectiveLimit + 1)
+        val items = scanRepo.findByCursor(svcCtx, appId, collected, cursorUuid, effectiveLimit + 1)
         val hasMore = items.size > effectiveLimit
         val resultItems = items.take(effectiveLimit)
         return Page(
@@ -99,15 +103,15 @@ class AntiqueService(
         )
     }
 
-    fun updateScan(ctx: OperationContext, input: UpdateScanInput): Boolean = tx.withTx(ctx) { txCtx ->
+    fun updateScan(ctx: OperationContext, input: UpdateScanInput): Boolean = tx.withTx(svcCtx(ctx)) { txCtx ->
         val appId = txCtx.mustGetAppId()
-        if (!scanRepo.exists(txCtx.repoCtx, appId, input.id)) throw ApiError(ErrorCode.NOT_FOUND)
-        scanRepo.partialUpdate(txCtx.repoCtx, appId, input.id, input)
+        if (!scanRepo.exists(txCtx, appId, input.id)) throw ApiError(ErrorCode.NOT_FOUND)
+        scanRepo.partialUpdate(txCtx, appId, input.id, input)
         ops.evict(txCtx, input.id)
         true
     }
 
-    fun deleteScan(ctx: OperationContext, id: UUID): Boolean = tx.withTx(ctx) { txCtx ->
+    fun deleteScan(ctx: OperationContext, id: UUID): Boolean = tx.withTx(svcCtx(ctx)) { txCtx ->
         ops.deleteById(txCtx, id, scanRepo::deleteById)
     }
 

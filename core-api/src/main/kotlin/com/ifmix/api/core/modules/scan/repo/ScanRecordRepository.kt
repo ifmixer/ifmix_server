@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.scan.repo
 
 import com.ifmix.api.core.generated.types.ScanUnsetField
 import com.ifmix.api.core.generated.types.UpdateScanInput
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanRecord.Companion.CORE_SCAN_RECORD
 import com.ifmix.api.core.model.ImageRef
@@ -15,7 +15,7 @@ import java.util.UUID
 @Repository
 class ScanRecordRepository(private val crud: CrudRepoOps) {
 
-    fun findById(ctx: RepoContext, appId: UUID, id: UUID): ScanRecord? {
+    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanRecord? {
         val record = ctx.dsl.selectFrom(CORE_SCAN_RECORD)
             .where(CORE_SCAN_RECORD.APP_ID.eq(appId))
             .and(CORE_SCAN_RECORD.ID.eq(id))
@@ -24,7 +24,7 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
         return record?.let { toModel(it) }
     }
 
-    fun findByIds(ctx: RepoContext, ids: Collection<UUID>): List<ScanRecord> {
+    fun findByIds(ctx: SvcCtx, ids: Collection<UUID>): List<ScanRecord> {
         if (ids.isEmpty()) return emptyList()
         return ctx.dsl.selectFrom(CORE_SCAN_RECORD)
             .where(CORE_SCAN_RECORD.ID.`in`(ids))
@@ -32,7 +32,7 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
             .map { toModel(it) }
     }
 
-    fun findByCursor(ctx: RepoContext, appId: UUID, collected: Boolean?, cursor: UUID?, limit: Int): List<ScanRecord> {
+    fun findByCursor(ctx: SvcCtx, appId: UUID, collected: Boolean?, cursor: UUID?, limit: Int): List<ScanRecord> {
         var cond = CORE_SCAN_RECORD.APP_ID.eq(appId).and(CORE_SCAN_RECORD.DELETED_AT.isNull)
         collected?.let { cond = cond.and(CORE_SCAN_RECORD.COLLECTED.eq(it)) }
         cursor?.let { cond = cond.and(CORE_SCAN_RECORD.ID.lt(it)) }
@@ -44,7 +44,7 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
             .map { toModel(it) }
     }
 
-    fun insert(ctx: RepoContext, record: ScanRecord) {
+    fun insert(ctx: SvcCtx, record: ScanRecord) {
         val imageKeysJsonb = JSONB.jsonb(mapper.writeValueAsString(record.imageKeys))
         val resultJsonb = record.result?.let { JSONB.jsonb(mapper.writeValueAsString(it)) }
         ctx.dsl.insertInto(
@@ -85,7 +85,7 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
             .execute()
     }
 
-    fun partialUpdate(ctx: RepoContext, appId: UUID, id: UUID, req: UpdateScanInput) {
+    fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, req: UpdateScanInput) {
         crud.partialUpdate(ctx, CORE_SCAN_RECORD, CORE_SCAN_RECORD.APP_ID, CORE_SCAN_RECORD.ID, appId, id) {
             req.set?.userDisplayName?.let { set(CORE_SCAN_RECORD.USER_DISPLAY_NAME, it) }
             req.set?.userNotes?.let { set(CORE_SCAN_RECORD.USER_NOTES, it) }
@@ -95,10 +95,10 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
         }
     }
 
-    fun deleteById(ctx: RepoContext, appId: UUID, id: UUID): Boolean =
+    fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean =
         crud.deleteById(ctx, CORE_SCAN_RECORD, CORE_SCAN_RECORD.APP_ID, CORE_SCAN_RECORD.ID, appId, id, CORE_SCAN_RECORD.DELETED_AT)
 
-    fun exists(ctx: RepoContext, appId: UUID, id: UUID): Boolean =
+    fun exists(ctx: SvcCtx, appId: UUID, id: UUID): Boolean =
         crud.exists(ctx, CORE_SCAN_RECORD, CORE_SCAN_RECORD.APP_ID, CORE_SCAN_RECORD.ID, appId, id, CORE_SCAN_RECORD.DELETED_AT)
 
     // =========================================================================

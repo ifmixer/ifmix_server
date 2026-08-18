@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.todo.repo
 
 import com.ifmix.api.core.generated.types.TodoItemUnsetField
 import com.ifmix.api.core.generated.types.UpdateTodoItemInput
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreTodoItem.Companion.CORE_TODO_ITEM
 import com.ifmix.api.core.model.todo.TodoItem
@@ -13,10 +13,10 @@ import java.util.UUID
 @Repository
 class TodoItemRepository(private val crud: CrudRepoOps) {
 
-    fun batchInsert(ctx: RepoContext, items: List<TodoItem>) =
+    fun batchInsert(ctx: SvcCtx, items: List<TodoItem>) =
         crud.batchInsertTyped(ctx, CORE_TODO_ITEM, items)
 
-    fun batchUpdate(ctx: RepoContext, appId: UUID, updates: List<UpdateTodoItemInput>) {
+    fun batchUpdate(ctx: SvcCtx, appId: UUID, updates: List<UpdateTodoItemInput>) {
         if (updates.isEmpty()) return
         val batch = updates.map { u ->
             val stmt = ctx.dsl.update(CORE_TODO_ITEM)
@@ -31,9 +31,9 @@ class TodoItemRepository(private val crud: CrudRepoOps) {
         ctx.dsl.batch(batch).execute()
     }
 
-    fun findByTodoIds(ctx: RepoContext, todoIds: Collection<UUID>): List<TodoItem> =
+    fun findByTodoIds(ctx: SvcCtx, todoIds: Collection<UUID>): List<TodoItem> =
         crud.findByField(ctx, CORE_TODO_ITEM, CORE_TODO_ITEM.TODO_ID, todoIds, TodoItem::class.java, CORE_TODO_ITEM.DELETED_AT)
 
-    fun deleteByIds(ctx: RepoContext, appId: UUID, ids: Collection<UUID>): Int =
+    fun deleteByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): Int =
         crud.deleteByIds(ctx, CORE_TODO_ITEM, CORE_TODO_ITEM.APP_ID, CORE_TODO_ITEM.ID, appId, ids, CORE_TODO_ITEM.DELETED_AT)
 }

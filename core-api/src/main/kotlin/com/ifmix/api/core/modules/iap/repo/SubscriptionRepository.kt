@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.iap.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreSubscription.Companion.CORE_SUBSCRIPTION
 import com.ifmix.api.core.model.iap.Subscription
 import org.jooq.JSONB
@@ -13,7 +13,7 @@ import java.util.UUID
 @Repository
 class SubscriptionRepository {
 
-    fun upsertSubscription(ctx: RepoContext, subscription: Subscription): UUID {
+    fun upsertSubscription(ctx: SvcCtx, subscription: Subscription): UUID {
         val rawJsonb = subscription.rawResponse?.let { JSONB.jsonb(it) }
         val record = ctx.dsl.newRecord(CORE_SUBSCRIPTION, subscription)
         // newRecord from plain data class may not set rawResponse correctly — overwrite
@@ -22,7 +22,7 @@ class SubscriptionRepository {
         return subscription.id
     }
 
-    fun findActiveByPxid(ctx: RepoContext, appId: UUID, pxid: String): Subscription? =
+    fun findActiveByPxid(ctx: SvcCtx, appId: UUID, pxid: String): Subscription? =
         ctx.dsl.selectFrom(CORE_SUBSCRIPTION)
             .where(CORE_SUBSCRIPTION.APP_ID.eq(appId))
             .and(CORE_SUBSCRIPTION.SUBSCRIPTION_PXID.eq(pxid))
@@ -30,7 +30,7 @@ class SubscriptionRepository {
             .and(CORE_SUBSCRIPTION.DELETED_AT.isNull)
             .fetchOne()?.let { mapToModel(it) }
 
-    fun findByPxid(ctx: RepoContext, appId: UUID, pxid: String): Subscription? =
+    fun findByPxid(ctx: SvcCtx, appId: UUID, pxid: String): Subscription? =
         ctx.dsl.selectFrom(CORE_SUBSCRIPTION)
             .where(CORE_SUBSCRIPTION.APP_ID.eq(appId))
             .and(CORE_SUBSCRIPTION.SUBSCRIPTION_PXID.eq(pxid))
@@ -38,7 +38,7 @@ class SubscriptionRepository {
             .fetchOne()?.let { mapToModel(it) }
 
     fun updateByOriginalTxn(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         appId: UUID,
         originalTxnId: String,
         block: (Subscription) -> Subscription,
@@ -65,7 +65,7 @@ class SubscriptionRepository {
         return true
     }
 
-    private fun findByOriginalTxn(ctx: RepoContext, appId: UUID, originalTxnId: String): Subscription? =
+    private fun findByOriginalTxn(ctx: SvcCtx, appId: UUID, originalTxnId: String): Subscription? =
         ctx.dsl.selectFrom(CORE_SUBSCRIPTION)
             .where(CORE_SUBSCRIPTION.APP_ID.eq(appId))
             .and(CORE_SUBSCRIPTION.ORIGINAL_TRANSACTION_ID.eq(originalTxnId))

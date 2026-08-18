@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.jooq
 
-import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import org.springframework.stereotype.Component
 
 /**
@@ -26,37 +26,31 @@ enum class TxPropagation {
 class TxRunner {
 
     fun <R> withTx(
-        ctx: OperationContext,
+        svcCtx: SvcCtx,
         propagation: TxPropagation = TxPropagation.REQUIRED,
-        body: (OperationContext) -> R,
+        body: (SvcCtx) -> R,
     ): R = when (propagation) {
         TxPropagation.REQUIRED -> {
-            if (ctx.repoCtx.inTransaction) body(ctx)
-            else newTx(ctx, body)
+            if (svcCtx.inTransaction) body(svcCtx)
+            else newTx(svcCtx, body)
         }
         TxPropagation.REQUIRES_NEW -> {
-            // 总是开新事务（即使外层已有事务，也在新连接上开独立事务）
-            newTx(ctx.copy(repoCtx = ctx.repoCtx.copy(inTransaction = false)), body)
+            newTx(svcCtx.copy(inTransaction = false), body)
         }
         TxPropagation.SUPPORTS -> {
-            // 有就用，没有就裸跑
-            body(ctx)
+            body(svcCtx)
         }
         TxPropagation.NOT_SUPPORTED -> {
-            // 强制非事务（如果当前在事务中，用原始 dsl 新开非事务上下文）
-            if (ctx.repoCtx.inTransaction) {
-                body(ctx.copy(repoCtx = ctx.repoCtx.copy(inTransaction = false)))
+            if (svcCtx.inTransaction) {
+                body(svcCtx.copy(inTransaction = false))
             } else {
-                body(ctx)
+                body(svcCtx)
             }
         }
     }
 
-    private fun <R> newTx(ctx: OperationContext, body: (OperationContext) -> R): R =
-        ctx.repoCtx.dsl.transactionResult { config ->
-            val txCtx = ctx.copy(
-                repoCtx = ctx.repoCtx.copy(dsl = config.dsl(), inTransaction = true)
-            )
-            body(txCtx)
+    private fun <R> newTx(svcCtx: SvcCtx, body: (SvcCtx) -> R): R =
+        svcCtx.dsl.transactionResult { config ->
+            body(svcCtx.copy(dsl = config.dsl(), inTransaction = true))
         }
 }

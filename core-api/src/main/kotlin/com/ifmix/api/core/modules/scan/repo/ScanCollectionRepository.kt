@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.scan.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanCollection.Companion.CORE_SCAN_COLLECTION
 import com.ifmix.api.core.model.scan.ScanCollection
@@ -10,7 +10,7 @@ import java.util.UUID
 @Repository
 class ScanCollectionRepository(private val crud: CrudRepoOps) {
 
-    fun findDefault(ctx: RepoContext, appId: UUID, installId: UUID?, userId: UUID?): ScanCollection? {
+    fun findDefault(ctx: SvcCtx, appId: UUID, installId: UUID?, userId: UUID?): ScanCollection? {
         // If userId is provided, prefer user-scoped default collection.
         if (userId != null) {
             // Note: userId in DB is VARCHAR (not UUID), so we compare as string.
@@ -35,11 +35,11 @@ class ScanCollectionRepository(private val crud: CrudRepoOps) {
         return null
     }
 
-    fun insert(ctx: RepoContext, collection: ScanCollection) {
+    fun insert(ctx: SvcCtx, collection: ScanCollection) {
         crud.insert(ctx, CORE_SCAN_COLLECTION, collection)
     }
 
-    fun findById(ctx: RepoContext, appId: UUID, id: UUID): ScanCollection? {
+    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanCollection? {
         val record = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION)
             .where(CORE_SCAN_COLLECTION.APP_ID.eq(appId))
             .and(CORE_SCAN_COLLECTION.ID.eq(id))

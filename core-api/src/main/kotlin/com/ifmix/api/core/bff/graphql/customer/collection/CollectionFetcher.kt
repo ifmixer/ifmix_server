@@ -10,7 +10,7 @@ import com.ifmix.api.core.generated.types.ScanCollection as DgsScanCollection
 import com.ifmix.api.core.generated.types.ScanCollectionItem as DgsScanCollectionItem
 import com.ifmix.api.core.generated.types.ScanCollectionItemPage
 import com.ifmix.api.core.generated.types.ScanRecord as DgsScanRecord
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -18,7 +18,7 @@ import com.ifmix.api.core.model.scan.ScanRecord
 import com.ifmix.api.core.modules.scan.dto.AddItemReq
 import com.ifmix.api.core.modules.scan.dto.RemoveItemsReq
 import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
-import com.ifmix.api.core.modules.scan.service.ScanCollectionService
+import com.ifmix.api.core.modules.scan.service.ScanCollectionFacadeService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsData
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -33,7 +33,7 @@ import java.util.concurrent.CompletionStage
 
 @DgsComponent
 class CollectionFetcher(
-    private val collectionService: ScanCollectionService,
+    private val collectionService: ScanCollectionFacadeService,
     private val scanRecordRepo: ScanRecordRepository,
     private val ctxProvider: OperationContextProvider,
 ) {
@@ -85,7 +85,7 @@ class CollectionFetcher(
 @DgsDataLoader(name = ScanRecordsDataLoader.NAME, caching = false)
 class ScanRecordsDataLoader(private val scanRecordRepo: ScanRecordRepository) : MappedBatchLoader<UUID, List<ScanRecord>> {
     override fun load(scanRecordIds: Set<UUID>): CompletionStage<Map<UUID, List<ScanRecord>>> {
-        val records = scanRecordRepo.findByIds(RepoContext.DEFAULT, scanRecordIds)
+        val records = scanRecordRepo.findByIds(SvcCtx.DEFAULT, scanRecordIds)
         val grouped = records.groupBy { it.id }
         val result = scanRecordIds.associateWith { grouped[it] ?: emptyList() }
         return CompletableFuture.completedFuture(result)

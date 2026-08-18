@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAppRefreshToken.Companion.CORE_APP_REFRESH_TOKEN
 import com.ifmix.api.core.model.auth.AppRefreshToken
@@ -16,7 +16,7 @@ class AppRefreshTokenRepository(
     private val crud: CrudRepoOps,
 ) {
 
-    fun findValidByHash(ctx: RepoContext, appId: UUID, tokenHash: String): AppRefreshToken? {
+    fun findValidByHash(ctx: SvcCtx, appId: UUID, tokenHash: String): AppRefreshToken? {
         val now = Instant.now()
         val record = ctx.dsl.selectFrom(CORE_APP_REFRESH_TOKEN)
             .where(CORE_APP_REFRESH_TOKEN.APP_ID.eq(appId))
@@ -27,7 +27,7 @@ class AppRefreshTokenRepository(
         return record?.let { toModel(it) }
     }
 
-    fun revoke(ctx: RepoContext, id: UUID, replacedBy: UUID? = null) {
+    fun revoke(ctx: SvcCtx, id: UUID, replacedBy: UUID? = null) {
         val now = Instant.now()
         if (replacedBy != null) {
             ctx.dsl.update(CORE_APP_REFRESH_TOKEN)
@@ -45,7 +45,7 @@ class AppRefreshTokenRepository(
         }
     }
 
-    fun insert(ctx: RepoContext, token: AppRefreshToken) {
+    fun insert(ctx: SvcCtx, token: AppRefreshToken) {
         crud.insert(ctx, CORE_APP_REFRESH_TOKEN, token)
     }
 

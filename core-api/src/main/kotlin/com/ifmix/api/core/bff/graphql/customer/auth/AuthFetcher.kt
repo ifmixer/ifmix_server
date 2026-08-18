@@ -2,7 +2,7 @@ package com.ifmix.api.core.bff.graphql.customer.auth
 
 import com.ifmix.api.core.generated.types.*
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
-import com.ifmix.api.core.modules.auth.service.AuthService
+import com.ifmix.api.core.modules.auth.service.AuthFacadeService
 import com.ifmix.api.core.modules.auth.service.ExchangeReq
 import com.ifmix.api.core.modules.auth.service.LogoutReq
 import com.ifmix.api.core.modules.auth.service.ProviderLoginReq
@@ -18,7 +18,7 @@ import java.time.Instant
 
 @DgsComponent
 class AuthFetcher(
-    private val authService: AuthService,
+    private val authService: AuthFacadeService,
     private val ctxProvider: OperationContextProvider,
 ) {
 

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.ai.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreAgnesKey.Companion.CORE_AGNES_KEY
 import com.ifmix.api.core.model.ai.AgnesKey
 import org.springframework.stereotype.Repository
@@ -13,13 +13,13 @@ import java.util.UUID
 @Repository
 class AgnesKeyRepository {
 
-    fun findAllEnabled(ctx: RepoContext): List<AgnesKey> =
+    fun findAllEnabled(ctx: SvcCtx): List<AgnesKey> =
         ctx.dsl.selectFrom(CORE_AGNES_KEY)
             .where(CORE_AGNES_KEY.DELETED_AT.isNull)
             .fetch()
             .map { mapToModel(it) }
 
-    fun findAvailable(ctx: RepoContext, appId: UUID): List<AgnesKey> {
+    fun findAvailable(ctx: SvcCtx, appId: UUID): List<AgnesKey> {
         val now = Instant.now()
         return ctx.dsl.selectFrom(CORE_AGNES_KEY)
             .where(CORE_AGNES_KEY.APP_ID.eq(appId))
@@ -32,7 +32,7 @@ class AgnesKeyRepository {
             .map { mapToModel(it) }
     }
 
-    fun markUnavailable(ctx: RepoContext, keyId: UUID, until: Instant) {
+    fun markUnavailable(ctx: SvcCtx, keyId: UUID, until: Instant) {
         val now = Instant.now()
         ctx.dsl.update(CORE_AGNES_KEY)
             .set(CORE_AGNES_KEY.UNAVAILABLE_UNTIL, until)

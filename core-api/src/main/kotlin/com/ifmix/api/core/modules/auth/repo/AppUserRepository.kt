@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAppUser.Companion.CORE_APP_USER
@@ -17,7 +17,7 @@ class AppUserRepository(
     private val crud: CrudRepoOps,
 ) {
 
-    fun findByAppAndIdentity(ctx: RepoContext, appId: UUID, authIdentityId: UUID): AppUser? {
+    fun findByAppAndIdentity(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): AppUser? {
         val record = ctx.dsl.selectFrom(CORE_APP_USER)
             .where(CORE_APP_USER.APP_ID.eq(appId))
             .and(CORE_APP_USER.AUTH_IDENTITY_ID.eq(authIdentityId))
@@ -25,14 +25,14 @@ class AppUserRepository(
         return record?.let { toModel(it) }
     }
 
-    fun insert(ctx: RepoContext, user: AppUser) {
+    fun insert(ctx: SvcCtx, user: AppUser) {
         crud.insert(ctx, CORE_APP_USER, user)
     }
 
     /**
      * Ensure app_user exists for (appId, authIdentityId). Returns appUserId.
      */
-    fun ensure(ctx: RepoContext, appId: UUID, authIdentityId: UUID): UUID {
+    fun ensure(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): UUID {
         val existing = findByAppAndIdentity(ctx, appId, authIdentityId)
         if (existing != null) return existing.id
 

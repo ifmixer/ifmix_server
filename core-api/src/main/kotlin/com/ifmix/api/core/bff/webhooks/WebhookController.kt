@@ -1,6 +1,7 @@
 package com.ifmix.api.core.bff.webhooks
 
 import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
 import com.ifmix.api.core.modules.iap.service.IapService
 import com.ifmix.api.core.modules.iap.NotificationDecoder
@@ -70,7 +71,7 @@ class WebhookController(
 
             // 4. 通过 bundleId 反查 appId
             val appId = if (bundleId != null) {
-                appConfigRepo.findByBundleId(com.ifmix.api.core.infra.db.RepoContext.DEFAULT, bundleId)?.appId
+                appConfigRepo.findByBundleId(com.ifmix.api.core.infra.db.SvcCtx.DEFAULT, bundleId)?.appId
             } else null
 
             if (appId == null) {
@@ -79,7 +80,7 @@ class WebhookController(
             }
 
             // 5. 构建 OperationContext 并处理通知
-            val ctx = OperationContext(appId = appId, userId = SYSTEM_USER_ID)
+            val ctx = OperationContext(req = RequestContext(appId = appId, userId = SYSTEM_USER_ID))
             iapService.handleAppleNotification(ctx, rawPayload, appleDecoder)
             return ResponseEntity.ok("ok")
 
@@ -103,7 +104,7 @@ class WebhookController(
 
             // 2. 通过 packageName 反查 appId
             val appId = if (packageName != null) {
-                appConfigRepo.findByAndroidPackage(com.ifmix.api.core.infra.db.RepoContext.DEFAULT, packageName)?.appId
+                appConfigRepo.findByAndroidPackage(com.ifmix.api.core.infra.db.SvcCtx.DEFAULT, packageName)?.appId
             } else null
 
             if (appId == null) {
@@ -112,7 +113,7 @@ class WebhookController(
             }
 
             // 3. 处理通知
-            val ctx = OperationContext(appId = appId, userId = SYSTEM_USER_ID)
+            val ctx = OperationContext(req = RequestContext(appId = appId, userId = SYSTEM_USER_ID))
             iapService.handleGoogleNotification(ctx, rawPayload, googleDecoder)
             return ResponseEntity.ok("ok")
 

@@ -10,7 +10,7 @@ class AppInfoRepository(private val crud: CrudRepoOps) {
 
     fun findById(id: java.util.UUID): AppInfo? =
         crud.findById(
-            ctx = com.ifmix.api.core.infra.db.RepoContext.DEFAULT,
+            ctx = com.ifmix.api.core.infra.db.SvcCtx.DEFAULT,
             table = CORE_APP_INFO,
             appIdField = CORE_APP_INFO.ID,
             idField = CORE_APP_INFO.ID,
@@ -20,7 +20,7 @@ class AppInfoRepository(private val crud: CrudRepoOps) {
         )
 
     fun findBySlug(slug: String): AppInfo? =
-        com.ifmix.api.core.infra.db.RepoContext.DEFAULT.dsl
+        com.ifmix.api.core.infra.db.SvcCtx.DEFAULT.dsl
             .selectFrom(CORE_APP_INFO)
             .where(CORE_APP_INFO.SLUG.eq(slug))
             .fetchOne()?.let { mapToModel(it) }

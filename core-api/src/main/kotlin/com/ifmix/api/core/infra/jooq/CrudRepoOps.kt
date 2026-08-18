@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.jooq
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import org.jooq.Condition
 import org.jooq.Record
 import org.jooq.Table
@@ -22,7 +22,7 @@ class CrudRepoOps {
     // ===== Query =====
 
     fun <T : Any> findById(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         table: Table<*>,
         appIdField: TableField<*, *>,
         idField: TableField<*, *>,
@@ -35,7 +35,7 @@ class CrudRepoOps {
         .fetchOneInto(type)
 
     fun <T : Any> findByIds(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         table: Table<*>,
         appIdField: TableField<*, *>,
         idField: TableField<*, *>,
@@ -51,7 +51,7 @@ class CrudRepoOps {
     }
 
     fun <T : Any> findByCursor(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         table: Table<*>,
         appIdField: TableField<*, *>,
         idField: TableField<*, *>,
@@ -71,7 +71,7 @@ class CrudRepoOps {
     }
 
     fun <T : Any, V : Any> findByField(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         table: Table<*>,
         field: TableField<*, *>,
         values: Collection<V>,
@@ -87,7 +87,7 @@ class CrudRepoOps {
     }
 
     fun exists(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         table: Table<*>,
         appIdField: TableField<*, *>,
         idField: TableField<*, *>,
@@ -101,12 +101,12 @@ class CrudRepoOps {
 
     // ===== Insert =====
 
-    fun <T : Any> insert(ctx: RepoContext, table: Table<*>, model: T) {
+    fun <T : Any> insert(ctx: SvcCtx, table: Table<*>, model: T) {
         val record = ctx.dsl.newRecord(table, model)
         ctx.dsl.executeInsert(record as org.jooq.TableRecord<*>)
     }
 
-    fun <T : Any> batchInsert(ctx: RepoContext, table: Table<*>, models: List<T>) {
+    fun <T : Any> batchInsert(ctx: SvcCtx, table: Table<*>, models: List<T>) {
         if (models.isEmpty()) return
         val records = models.map { ctx.dsl.newRecord(table, it) as org.jooq.TableRecord<*> }
         records.forEach { ctx.dsl.executeInsert(it) }
@@ -116,7 +116,7 @@ class CrudRepoOps {
      * 真正的 batch insert（单条 SQL: INSERT INTO ... VALUES (...), (...), ...）。
      * 需要传入具体类型的 Table<R>。
      */
-    fun <R : UpdatableRecordImpl<R>, T : Any> batchInsertTyped(ctx: RepoContext, table: Table<R>, models: List<T>) {
+    fun <R : UpdatableRecordImpl<R>, T : Any> batchInsertTyped(ctx: SvcCtx, table: Table<R>, models: List<T>) {
         if (models.isEmpty()) return
         val records = models.map { ctx.dsl.newRecord(table, it) }
         ctx.dsl.batchInsert(records).execute()
@@ -125,7 +125,7 @@ class CrudRepoOps {
     // ===== Partial Update =====
 
     fun <R : Record> partialUpdate(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         table: Table<R>,
         appIdField: TableField<R, *>,
         idField: TableField<R, *>,
@@ -143,7 +143,7 @@ class CrudRepoOps {
     // ===== Delete =====
 
     fun deleteById(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         table: Table<*>,
         appIdField: TableField<*, *>,
         idField: TableField<*, *>,
@@ -162,7 +162,7 @@ class CrudRepoOps {
     }
 
     fun deleteByIds(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         table: Table<*>,
         appIdField: TableField<*, *>,
         idField: TableField<*, *>,

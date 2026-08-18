@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.app.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreAppConfigRevision.Companion.CORE_APP_CONFIG_REVISION
 import com.ifmix.api.core.model.app.AppConfigRevision
 import org.jooq.JSONB
@@ -14,7 +14,7 @@ import java.util.UUID
 class AppConfigRepository {
 
     /** 查询指定 app 下当前生效（enabled=true）的配置版本，按创建时间倒序取最新一条 */
-    fun findActiveByAppId(ctx: RepoContext, appId: UUID): AppConfigRevision? =
+    fun findActiveByAppId(ctx: SvcCtx, appId: UUID): AppConfigRevision? =
         ctx.dsl.selectFrom(CORE_APP_CONFIG_REVISION)
             .where(CORE_APP_CONFIG_REVISION.APP_ID.eq(appId))
             .and(CORE_APP_CONFIG_REVISION.ENABLED.eq(true))
@@ -23,7 +23,7 @@ class AppConfigRepository {
             .fetchOne()?.let { mapToModel(it) }
 
     /** 按 Apple Bundle ID 查询生效的配置版本 */
-    fun findByBundleId(ctx: RepoContext, bundleId: String): AppConfigRevision? =
+    fun findByBundleId(ctx: SvcCtx, bundleId: String): AppConfigRevision? =
         ctx.dsl.selectFrom(CORE_APP_CONFIG_REVISION)
             .where(CORE_APP_CONFIG_REVISION.APPLE_BUNDLE_ID.eq(bundleId))
             .and(CORE_APP_CONFIG_REVISION.ENABLED.eq(true))
@@ -31,7 +31,7 @@ class AppConfigRepository {
             .fetchOne()?.let { mapToModel(it) }
 
     /** 按 Android 包名查询生效的配置版本 */
-    fun findByAndroidPackage(ctx: RepoContext, pkg: String): AppConfigRevision? =
+    fun findByAndroidPackage(ctx: SvcCtx, pkg: String): AppConfigRevision? =
         ctx.dsl.selectFrom(CORE_APP_CONFIG_REVISION)
             .where(CORE_APP_CONFIG_REVISION.ANDROID_PACKAGE_NAME.eq(pkg))
             .and(CORE_APP_CONFIG_REVISION.ENABLED.eq(true))
@@ -39,7 +39,7 @@ class AppConfigRepository {
             .fetchOne()?.let { mapToModel(it) }
 
     /** 将指定 app 下所有生效版本的 enabled 置为 false，返回影响行数 */
-    fun disableCurrentRevisions(ctx: RepoContext, appId: UUID): Int =
+    fun disableCurrentRevisions(ctx: SvcCtx, appId: UUID): Int =
         ctx.dsl.update(CORE_APP_CONFIG_REVISION)
             .set(CORE_APP_CONFIG_REVISION.ENABLED, false)
             .where(CORE_APP_CONFIG_REVISION.APP_ID.eq(appId))
@@ -47,7 +47,7 @@ class AppConfigRepository {
             .execute()
 
     /** 插入新配置版本，返回插入后的模型（含服务端生成的 createdAt） */
-    fun insert(ctx: RepoContext, revision: AppConfigRevision): AppConfigRevision {
+    fun insert(ctx: SvcCtx, revision: AppConfigRevision): AppConfigRevision {
         ctx.dsl.insertInto(
             CORE_APP_CONFIG_REVISION,
             CORE_APP_CONFIG_REVISION.ID,
@@ -79,13 +79,13 @@ class AppConfigRepository {
     }
 
     /** 按 id 查询单条记录（用于插入后回读或 toggle 后回读） */
-    fun findById(ctx: RepoContext, id: UUID): AppConfigRevision? =
+    fun findById(ctx: SvcCtx, id: UUID): AppConfigRevision? =
         ctx.dsl.selectFrom(CORE_APP_CONFIG_REVISION)
             .where(CORE_APP_CONFIG_REVISION.ID.eq(id))
             .fetchOne()?.let { mapToModel(it) }
 
     /** 按 app id 查询当前生效（enabled=true）的配置版本，不存在时抛异常 */
-    fun mustFindCurrentRevision(ctx: RepoContext, appId: UUID): AppConfigRevision =
+    fun mustFindCurrentRevision(ctx: SvcCtx, appId: UUID): AppConfigRevision =
         findActiveByAppId(ctx, appId)
             ?: throw com.ifmix.api.core.infra.http.ApiError(
                 com.ifmix.api.core.infra.http.ErrorCode.APP_CONFIG_MISSING,
@@ -93,7 +93,7 @@ class AppConfigRepository {
             )
 
     /** 更新指定 revision 的 enabled 状态，返回影响行数 */
-    fun updateEnabled(ctx: RepoContext, revisionId: UUID, enabled: Boolean): Int =
+    fun updateEnabled(ctx: SvcCtx, revisionId: UUID, enabled: Boolean): Int =
         ctx.dsl.update(CORE_APP_CONFIG_REVISION)
             .set(CORE_APP_CONFIG_REVISION.ENABLED, enabled)
             .where(CORE_APP_CONFIG_REVISION.ID.eq(revisionId))

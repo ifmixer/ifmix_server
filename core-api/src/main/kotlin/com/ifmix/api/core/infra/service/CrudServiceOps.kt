@@ -1,9 +1,9 @@
 package com.ifmix.api.core.infra.service
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.infra.http.mustGetAppId
+
 import com.ifmix.api.core.infra.redis.CacheAside
 import org.springframework.stereotype.Component
 import java.util.UUID
@@ -34,7 +34,7 @@ class CrudServiceOpsFactory(private val cache: CacheAside?) {
 
 /**
  * 绑定了实体类型 + 缓存配置的通用 CRUD Service 操作。
- * Service 持有一个实例，调用时只传 ctx + 业务参数。
+ * Service 持有一个实例，调用时只传 svcCtx + 业务参数。
  */
 class CrudServiceOps<T : Any>(
     private val cache: CacheAside?,
@@ -46,45 +46,45 @@ class CrudServiceOps<T : Any>(
     // ===== Query =====
 
     fun findById(
-        ctx: OperationContext,
+        svcCtx: SvcCtx,
         id: UUID,
-        loader: (RepoContext, UUID, UUID) -> T?,
+        loader: (SvcCtx, UUID, UUID) -> T?,
     ): T? {
-        val appId = ctx.mustGetAppId()
-        if (cache == null || !ctx.readCache) return loader(ctx.repoCtx, appId, id)
+        val appId = svcCtx.mustGetAppId()
+        if (cache == null || !svcCtx.op.readCache) return loader(svcCtx, appId, id)
         return cache.getOrLoadNullable(cacheKey(appId, id), type) {
-            loader(ctx.repoCtx, appId, id)
+            loader(svcCtx, appId, id)
         }
     }
 
     fun findByIds(
-        ctx: OperationContext,
+        svcCtx: SvcCtx,
         ids: List<UUID>,
-        loader: (RepoContext, UUID, Collection<UUID>) -> List<T>,
+        loader: (SvcCtx, UUID, Collection<UUID>) -> List<T>,
     ): List<T> {
         if (ids.isEmpty()) return emptyList()
-        val appId = ctx.mustGetAppId()
-        if (cache == null || !ctx.readCache) return loader(ctx.repoCtx, appId, ids)
+        val appId = svcCtx.mustGetAppId()
+        if (cache == null || !svcCtx.op.readCache) return loader(svcCtx, appId, ids)
         return cache.loadMany(
             ids = ids.map { it.toString() },
             keyOf = { cacheKey(appId, UUID.fromString(it)) },
             type = type,
             idOf = { idExtractor(it).toString() },
         ) { missIds ->
-            loader(ctx.repoCtx, appId, missIds.map { UUID.fromString(it) })
+            loader(svcCtx, appId, missIds.map { UUID.fromString(it) })
         }
     }
 
     fun findByCursor(
-        ctx: OperationContext,
+        svcCtx: SvcCtx,
         cursor: String?,
         limit: Int?,
-        loader: (RepoContext, UUID, UUID?, Int) -> List<T>,
+        loader: (SvcCtx, UUID, UUID?, Int) -> List<T>,
     ): Page<T> {
-        val appId = ctx.mustGetAppId()
+        val appId = svcCtx.mustGetAppId()
         val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
         val cursorUuid = cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-        val items = loader(ctx.repoCtx, appId, cursorUuid, effectiveLimit + 1)
+        val items = loader(svcCtx, appId, cursorUuid, effectiveLimit + 1)
         val hasMore = items.size > effectiveLimit
         val resultItems = items.take(effectiveLimit)
         return Page(
@@ -97,31 +97,31 @@ class CrudServiceOps<T : Any>(
     // ===== Delete + Evict =====
 
     fun deleteById(
-        ctx: OperationContext,
+        svcCtx: SvcCtx,
         id: UUID,
-        deleter: (RepoContext, UUID, UUID) -> Boolean,
+        deleter: (SvcCtx, UUID, UUID) -> Boolean,
     ): Boolean {
-        val appId = ctx.mustGetAppId()
-        val deleted = deleter(ctx.repoCtx, appId, id)
+        val appId = svcCtx.mustGetAppId()
+        val deleted = deleter(svcCtx, appId, id)
         if (deleted) evict(appId, id)
         return deleted
     }
 
     fun deleteByIds(
-        ctx: OperationContext,
+        svcCtx: SvcCtx,
         ids: Collection<UUID>,
-        deleter: (RepoContext, UUID, Collection<UUID>) -> Int,
+        deleter: (SvcCtx, UUID, Collection<UUID>) -> Int,
     ): Int {
         if (ids.isEmpty()) return 0
-        val appId = ctx.mustGetAppId()
-        val count = deleter(ctx.repoCtx, appId, ids)
+        val appId = svcCtx.mustGetAppId()
+        val count = deleter(svcCtx, appId, ids)
         ids.forEach { evict(appId, it) }
         return count
     }
 
     // ===== Evict =====
 
-    fun evict(ctx: OperationContext, id: UUID) = evict(ctx.mustGetAppId(), id)
+    fun evict(svcCtx: SvcCtx, id: UUID) = evict(svcCtx.mustGetAppId(), id)
 
     private fun evict(appId: UUID, id: UUID) {
         cache?.evict(cacheKey(appId, id))

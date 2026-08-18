@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreUserInstallBinding.Companion.CORE_USER_INSTALL_BINDING
 import com.ifmix.api.core.model.auth.UserInstallBinding
 import org.springframework.stereotype.Repository
@@ -19,7 +19,7 @@ class UserInstallBindingRepository {
      * - 已存在 → 更新 lastSeenAt、loginCount++、clientIp/platform
      */
     fun recordBinding(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         appId: UUID,
         userId: UUID,
         installId: UUID,

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.iap.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreStoreNotification.Companion.CORE_STORE_NOTIFICATION
 import com.ifmix.api.core.model.iap.StoreNotification
 import org.jooq.JSONB
@@ -13,7 +13,7 @@ import java.util.UUID
 @Repository
 class StoreNotificationRepository {
 
-    fun insert(ctx: RepoContext, notification: StoreNotification) {
+    fun insert(ctx: SvcCtx, notification: StoreNotification) {
         val rawJsonb = notification.rawPayload?.let { JSONB.jsonb(it) }
         ctx.dsl.insertInto(
             CORE_STORE_NOTIFICATION,
@@ -47,7 +47,7 @@ class StoreNotificationRepository {
             .execute()
     }
 
-    fun existsByPlatformAndToken(ctx: RepoContext, platform: String, purchaseToken: String): Boolean =
+    fun existsByPlatformAndToken(ctx: SvcCtx, platform: String, purchaseToken: String): Boolean =
         ctx.dsl.fetchExists(
             CORE_STORE_NOTIFICATION,
             CORE_STORE_NOTIFICATION.PLATFORM.eq(platform)

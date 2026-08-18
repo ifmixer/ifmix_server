@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAuthProviderIdentity.Companion.CORE_AUTH_PROVIDER_IDENTITY
 import com.ifmix.api.core.model.auth.AuthProviderIdentity
@@ -22,7 +22,7 @@ class AuthProviderIdentityRepository(
     }
 
     fun findByProviderAndAccountId(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         tenantId: UUID,
         provider: String,
         providerAccountId: String,
@@ -39,7 +39,7 @@ class AuthProviderIdentityRepository(
      * Upsert: if exists, update login metadata; otherwise create new.
      */
     fun upsert(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         tenantId: UUID,
         provider: String,
         providerAccountId: String,

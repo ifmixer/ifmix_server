@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.iap.service
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
@@ -46,8 +46,9 @@ open class IapService(
     )
 
     fun verifyPurchase(ctx: OperationContext, req: VerifyReq): VerifyRes {
-        val rc = ctx.repoCtx
-        val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
+        val svc = SvcCtx(op = ctx, dsl = SvcCtx.DEFAULT.dsl)
+        val rc = svc
+        val appId = svc.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
         val verifier = verifierMap[if (req.platform == Platforms.APPLE) "APPLE" else "GOOGLE"] ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: ${req.platform}")
 
@@ -118,8 +119,8 @@ open class IapService(
             updatedAt = now,
         )
 
-        return tx.withTx(ctx) { txCtx ->
-            subscriptionRepo.upsertSubscription(txCtx.repoCtx, subscription)
+        return tx.withTx(SvcCtx(op = ctx, dsl = SvcCtx.DEFAULT.dsl)) { txCtx ->
+            subscriptionRepo.upsertSubscription(txCtx, subscription)
             VerifyRes(
                 expiresAt = verifyResult.expiryDate?.toEpochMilli(),
                 state = statusFromExpiry(verifyResult.expiryDate),
@@ -138,8 +139,9 @@ open class IapService(
     }
 
     fun handleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder, platform: String) {
-        val rc = ctx.repoCtx
-        val appId = ctx.appId ?: return
+        val svc = SvcCtx(op = ctx, dsl = SvcCtx.DEFAULT.dsl)
+        val rc = svc
+        val appId = svc.appId ?: return
 
         val decodedPlatform = if (platform == "APPLE") Platforms.APPLE else Platforms.GOOGLE
         val decoderResult = decoder.decode(rawPayload, decodedPlatform)
@@ -158,8 +160,8 @@ open class IapService(
         }
 
         if (subscription == null) {
-            tx.withTx(ctx) { txCtx ->
-                createStoreNotification(txCtx.repoCtx, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+            tx.withTx(SvcCtx(op = ctx, dsl = SvcCtx.DEFAULT.dsl)) { txCtx ->
+                createStoreNotification(txCtx, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
             }
             return
         }
@@ -174,8 +176,8 @@ open class IapService(
             else -> {} // no change
         }
 
-        tx.withTx(ctx) { txCtx ->
-            createStoreNotification(txCtx.repoCtx, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+        tx.withTx(SvcCtx(op = ctx, dsl = SvcCtx.DEFAULT.dsl)) { txCtx ->
+            createStoreNotification(txCtx, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
         }
     }
 
@@ -193,11 +195,11 @@ open class IapService(
             expiryDate = expiryDate ?: sub.expiryDate,
             updatedAt = now,
         )
-        subscriptionRepo.upsertSubscription(ctx.repoCtx, updated)
+        subscriptionRepo.upsertSubscription(SvcCtx(op = ctx, dsl = SvcCtx.DEFAULT.dsl), updated)
     }
 
     private fun createStoreNotification(
-        rc: RepoContext,
+        rc: SvcCtx,
         platform: String,
         subscriptionPxid: String,
         rawPayload: String,

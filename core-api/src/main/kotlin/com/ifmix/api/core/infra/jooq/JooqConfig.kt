@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.jooq
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import jakarta.annotation.PostConstruct
 import org.jooq.DSLContext
 import org.jooq.SQLDialect
@@ -18,9 +18,15 @@ class JooqConfig(private val dataSource: DataSource) {
             configuration().set(AuditRecordListener())
         }
 
-    /** 初始化 RepoContext.DEFAULT，供旧代码和默认单集群场景使用 */
+    /** 初始化 SvcCtx.DEFAULT，供旧代码和默认单集群场景使用 */
     @PostConstruct
-    fun initDefaultRepoContext() {
-        RepoContext.DEFAULT = RepoContext(dsl = dslContext(), clusterId = "default")
+    fun initDefaultSvcCtx() {
+        SvcCtx.DEFAULT = SvcCtx(
+            op = com.ifmix.api.core.infra.http.OperationContext(
+                req = com.ifmix.api.core.infra.http.RequestContext()
+            ),
+            dsl = dslContext(),
+            clusterId = "default",
+        )
     }
 }

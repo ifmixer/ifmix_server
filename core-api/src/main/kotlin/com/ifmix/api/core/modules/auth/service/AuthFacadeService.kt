@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.auth.service
 import com.ifmix.api.core.model.shared.Tiers
 import com.ifmix.api.core.infra.auth.AuthJwtService
 import com.ifmix.api.core.infra.auth.Hashing
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -98,7 +98,34 @@ data class DeleteAccountRes(
 )
 
 @Service
-open class AuthService(
+class AuthFacadeService(
+    private val queries: AuthQueries,
+    private val commands: AuthCommands,
+) {
+    fun me(ctx: OperationContext): MeRes = queries.me(ctx)
+    fun loginWithIdToken(ctx: OperationContext, provider: String, req: ProviderLoginReq): LoginRes =
+        commands.loginWithIdToken(ctx, provider, req)
+    fun loginWithCode(ctx: OperationContext, provider: String, req: WechatLoginReq): LoginRes =
+        commands.loginWithCode(ctx, provider, req)
+    fun exchange(ctx: OperationContext, req: ExchangeReq): ExchangeRes = commands.exchange(ctx, req)
+    fun refresh(ctx: OperationContext, req: RefreshReq): RefreshRes = commands.refresh(ctx, req)
+    fun logout(ctx: OperationContext, req: LogoutReq): LogoutRes = commands.logout(ctx, req)
+    fun anonymousLogin(ctx: OperationContext): LoginRes = commands.anonymousLogin(ctx)
+    fun requestAccountDeletion(ctx: OperationContext): DeleteAccountRes = commands.requestAccountDeletion(ctx)
+}
+
+class AuthQueries(
+    private val appConfigRepo: AppConfigRepository,
+) {
+    private fun svcCtx(opCtx: OperationContext): SvcCtx = SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl)
+
+    fun me(ctx: OperationContext): MeRes {
+        val userId = ctx.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+        return MeRes(userId, null)
+    }
+}
+
+class AuthCommands(
     private val appConfigRepo: AppConfigRepository,
     private val verifiers: Map<String, ProviderVerifier>,
     private val jwt: AuthJwtService,
@@ -112,35 +139,37 @@ open class AuthService(
     @Value("\${app.auth.access-ttl-sec:900}")
     private val accessTtlSec: Long,
 ) {
-
     companion object {
         private const val REFRESH_TTL_DAYS = 30L
         private const val DEVICE_SECRET_TTL_DAYS = 365L
     }
 
-    private fun tenantUUID(ctx: OperationContext): UUID =
-        appConfigRepo.mustFindCurrentRevision(ctx.repoCtx, ctx.appId!!).authTenantId
+    private fun svcCtx(opCtx: OperationContext): SvcCtx = SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl)
+
+    private fun tenantUUID(svcCtx: SvcCtx, appId: UUID): UUID =
+        appConfigRepo.mustFindCurrentRevision(svcCtx, appId).authTenantId
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
     fun loginWithIdToken(ctx: OperationContext, provider: String, req: ProviderLoginReq): LoginRes {
-        return tx.withTx(ctx) { txCtx -> loginWithProvider(txCtx, provider, req.idToken, req.deviceSecret) }
+        return tx.withTx(svcCtx(ctx)) { txCtx -> loginWithProvider(txCtx, provider, req.idToken, req.deviceSecret) }
     }
 
     fun loginWithCode(ctx: OperationContext, provider: String, req: WechatLoginReq): LoginRes {
-        return tx.withTx(ctx) { txCtx -> loginWithProvider(txCtx, provider, req.code, req.deviceSecret) }
+        return tx.withTx(svcCtx(ctx)) { txCtx -> loginWithProvider(txCtx, provider, req.code, req.deviceSecret) }
     }
 
-    fun loginWithProvider(ctx: OperationContext, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
-        val rc = ctx.repoCtx
-        val tenantId = tenantUUID(ctx)
+    private fun loginWithProvider(svcCtx: SvcCtx, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
+        val opCtx = svcCtx.op
+        val rc = svcCtx
+        val tenantId = tenantUUID(rc, opCtx.appId!!)
 
         // 1. Verify credential
         val verifier = verifiers[provider] ?: throw ApiError(
             ErrorCode.AUTH_PROVIDER_FAILED,
             "unsupported provider: $provider"
         )
-        val config = appConfigRepo.mustFindCurrentRevision(rc, ctx.appId!!)
-        val verified = verifier.verify(config, ctx.clientPlatform, credential)
+        val config = appConfigRepo.mustFindCurrentRevision(rc, opCtx.appId!!)
+        val verified = verifier.verify(config, opCtx.clientPlatform, credential)
 
         // 2. Find or create AuthIdentity
         val normalizedEmail = verified.email?.lowercase()
@@ -170,13 +199,13 @@ open class AuthService(
             phone = verified.phone,
             userMetadata = verified.userMetadata,
             providerMetadata = null,
-            loginIp = ctx.clientIp,
-            loginInstallId = ctx.installId,
-            loginAppId = ctx.appId,
+            loginIp = opCtx.clientIp,
+            loginInstallId = opCtx.installId,
+            loginAppId = opCtx.appId,
         )
 
         // 4. Ensure AppUser
-        val appUserId = appUserRepo.ensure(rc, ctx.appId!!, identity.id)
+        val appUserId = appUserRepo.ensure(rc, opCtx.appId!!, identity.id)
 
         // 5. Issue device secret
         val now = Instant.now()
@@ -187,7 +216,7 @@ open class AuthService(
             authTenantId = tenantId,
             authIdentityId = identity.id,
             secretHash = deviceSecretHash,
-            loginInstallId = ctx.installId,
+            loginInstallId = opCtx.installId,
             expiresAt = now.plusSeconds(DEVICE_SECRET_TTL_DAYS * 86400),
             revokedAt = null,
             lastUsedAt = now,
@@ -201,11 +230,11 @@ open class AuthService(
         val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         refreshRepo.insert(rc, AppRefreshToken(
             id = UuidV7.generate(),
-            appId = ctx.appId!!,
+            appId = opCtx.appId!!,
             appUserId = appUserId,
             deviceSecretId = null,
             tokenHash = refreshTokenHash,
-            loginInstallId = ctx.installId,
+            loginInstallId = opCtx.installId,
             expiresAt = refreshExpiresAt,
             revokedAt = null,
             replacedBy = null,
@@ -214,17 +243,17 @@ open class AuthService(
         ))
 
         // 7. Sign access token
-        val accessToken = jwt.signAccess(appUserId.toString(), ctx.appId!!.toString())
+        val accessToken = jwt.signAccess(appUserId.toString(), opCtx.appId!!.toString())
 
         // 8. Publish event
         events.publishEvent(AuthLoggedInEvent(
-            appId = ctx.appId!!,
+            appId = opCtx.appId!!,
             authIdentityId = identity.id.toString(),
             appUserId = appUserId,
-            installId = ctx.installId,
-            clientIp = ctx.clientIp,
-            clientPlatform = ctx.clientPlatform?.name,
-            ctx = ctx,
+            installId = opCtx.installId,
+            clientIp = opCtx.clientIp,
+            clientPlatform = opCtx.clientPlatform?.name,
+            ctx = opCtx,
         ))
 
         return LoginRes(
@@ -238,8 +267,8 @@ open class AuthService(
     }
 
     fun exchange(ctx: OperationContext, req: ExchangeReq): ExchangeRes {
-        return tx.withTx(ctx) { txCtx ->
-            val rc = txCtx.repoCtx
+        return tx.withTx(svcCtx(ctx)) { txCtx ->
+            val rc = txCtx
             val appId = txCtx.appId!!
 
             val secretHash = Hashing.sha256Base64Url(req.deviceSecret!!)
@@ -280,8 +309,8 @@ open class AuthService(
     }
 
     fun refresh(ctx: OperationContext, req: RefreshReq): RefreshRes {
-        return tx.withTx(ctx) { txCtx ->
-            val rc = txCtx.repoCtx
+        return tx.withTx(svcCtx(ctx)) { txCtx ->
+            val rc = txCtx
             val appId = txCtx.appId!!
 
             val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
@@ -320,8 +349,8 @@ open class AuthService(
     }
 
     fun logout(ctx: OperationContext, req: LogoutReq): LogoutRes {
-        return tx.withTx(ctx) { txCtx ->
-            val rc = txCtx.repoCtx
+        return tx.withTx(svcCtx(ctx)) { txCtx ->
+            val rc = txCtx
             val appId = txCtx.appId!!
 
             val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
@@ -338,13 +367,8 @@ open class AuthService(
         }
     }
 
-    fun me(ctx: OperationContext): MeRes {
-        val userId = ctx.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
-        return MeRes(userId, null)
-    }
-
     fun anonymousLogin(ctx: OperationContext): LoginRes {
-        return tx.withTx(ctx) { txCtx ->
+        return tx.withTx(svcCtx(ctx)) { txCtx ->
             val installId = txCtx.installId ?: throw ApiError(
                 ErrorCode.INVALID_REQUEST,
                 "x-install-id required for anonymous login"
@@ -364,7 +388,7 @@ open class AuthService(
     // =========================================================================
 
     private fun insertIdentity(
-        rc: RepoContext,
+        rc: SvcCtx,
         tenantId: UUID,
         rawEmail: String?,
         email: String?,

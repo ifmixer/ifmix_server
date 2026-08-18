@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAuthDeviceSecret.Companion.CORE_AUTH_DEVICE_SECRET
 import com.ifmix.api.core.model.auth.AuthDeviceSecret
@@ -16,7 +16,7 @@ class AuthDeviceSecretRepository(
     private val crud: CrudRepoOps,
 ) {
 
-    fun findValidByHash(ctx: RepoContext, secretHash: String): AuthDeviceSecret? {
+    fun findValidByHash(ctx: SvcCtx, secretHash: String): AuthDeviceSecret? {
         val now = Instant.now()
         val record = ctx.dsl.selectFrom(CORE_AUTH_DEVICE_SECRET)
             .where(CORE_AUTH_DEVICE_SECRET.SECRET_HASH.eq(secretHash))
@@ -26,7 +26,7 @@ class AuthDeviceSecretRepository(
         return record?.let { toModel(it) }
     }
 
-    fun touch(ctx: RepoContext, id: UUID) {
+    fun touch(ctx: SvcCtx, id: UUID) {
         val now = Instant.now()
         ctx.dsl.update(CORE_AUTH_DEVICE_SECRET)
             .set(CORE_AUTH_DEVICE_SECRET.LAST_USED_AT, now)
@@ -35,7 +35,7 @@ class AuthDeviceSecretRepository(
             .execute()
     }
 
-    fun revoke(ctx: RepoContext, id: UUID) {
+    fun revoke(ctx: SvcCtx, id: UUID) {
         val now = Instant.now()
         ctx.dsl.update(CORE_AUTH_DEVICE_SECRET)
             .set(CORE_AUTH_DEVICE_SECRET.REVOKED_AT, now)
@@ -44,7 +44,7 @@ class AuthDeviceSecretRepository(
             .execute()
     }
 
-    fun insert(ctx: RepoContext, secret: AuthDeviceSecret) {
+    fun insert(ctx: SvcCtx, secret: AuthDeviceSecret) {
         crud.insert(ctx, CORE_AUTH_DEVICE_SECRET, secret)
     }
 

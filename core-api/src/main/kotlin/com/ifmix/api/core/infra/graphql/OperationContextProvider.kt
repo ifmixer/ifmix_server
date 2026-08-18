@@ -1,12 +1,13 @@
 package com.ifmix.api.core.infra.graphql
 
 import com.ifmix.api.core.infra.auth.AuthInterceptor
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientIpResolver
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.http.RequestContext
 import com.netflix.graphql.dgs.context.DgsContext
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.internal.DgsWebMvcRequestData
@@ -20,7 +21,8 @@ class OperationContextProvider {
 
     /**
      * 从 DGS DataFetchingEnvironment 中提取 OperationContext。
-     * 自动判断 query/mutation，构建 repoCtx（含 DSLContext）。
+     * 自动判断 query/mutation，构建 RequestContext（from headers）。
+     * SvcCtx 由 Service 层根据集群路由自行构建。
      */
     fun fromDfe(dfe: DgsDataFetchingEnvironment): OperationContext {
         val requestData = DgsContext.getRequestData(dfe) as? DgsWebMvcRequestData
@@ -36,10 +38,7 @@ class OperationContextProvider {
         } ?: false
         val opName = dfe.field?.name
 
-        // 将来多集群：根据 appId 从 DataSourceRegistry 解析不同的 DSLContext
-        val repoCtx = RepoContext.DEFAULT
-
-        return OperationContext(
+        val reqCtx = RequestContext(
             appId = parseUuid(servletRequest.getHeader("x-app-id")),
             installId = parseUuid(servletRequest.getHeader("x-install-id")),
             lang = servletRequest.getHeader("x-lang").takeIf { !it.isNullOrBlank() },
@@ -48,10 +47,12 @@ class OperationContextProvider {
             clientPlatform = ClientPlatform.fromHeader(servletRequest.getHeader("x-client-platform")),
             userId = userIdStr?.let { tryParseUuid(it) },
             clientIp = ClientIpResolver.resolve(servletRequest),
-            readFromReplica = !isMutation,
+        )
+
+        return OperationContext(
+            req = reqCtx,
             opName = opName,
             isMutation = isMutation,
-            repoCtx = repoCtx,
         )
     }
 

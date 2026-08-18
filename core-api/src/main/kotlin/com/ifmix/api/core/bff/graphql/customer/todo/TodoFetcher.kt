@@ -9,15 +9,14 @@ import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.generated.types.UpdateTodoItemsPayload
 import com.ifmix.api.core.generated.types.UpdateTodoPayload
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
-import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.model.todo.Todo
 import com.ifmix.api.core.model.todo.TodoItem
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
-import com.ifmix.api.core.modules.todo.service.TodoItemService
-import com.ifmix.api.core.modules.todo.service.TodoService
+import com.ifmix.api.core.modules.todo.service.TodoFacadeService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsData
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -33,13 +32,12 @@ import java.util.concurrent.CompletionStage
 /**
  * Todo GraphQL DataFetcher（jOOQ 版）。
  *
- * Query/Mutation 委托给 TodoJooqService（返回 Domain Model data class）。
+ * Query/Mutation 委托给 TodoFacadeService（返回 Domain Model data class）。
  * 关联字段 items 通过 DataLoader 按需批量加载。
  */
 @DgsComponent
 class TodoFetcher(
-    private val todoService: TodoService,
-    private val todoItemService: TodoItemService,
+    private val todoService: TodoFacadeService,
     private val ctxProvider: OperationContextProvider,
 ) {
 
@@ -103,7 +101,7 @@ class TodoFetcher(
     @DgsMutation(field = "mutation_todoItem_batchUpdateTodoItems")
     fun updateTodoItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoItemsMutationInput): UpdateTodoItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        todoItemService.updateItems(ctx, input)
+        todoService.updateItems(ctx, input)
         return UpdateTodoItemsPayload(success = true)
     }
 
@@ -119,7 +117,7 @@ class TodoFetcher(
     @DgsMutation(field = "mutation_todo_batchDeleteTodos")
     fun deleteTodosByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): DeleteTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        val count = todoService.deleteTodosByIds(ctx, ids)
+        val count = todoService.batchDeleteTodos(ctx, ids)
         return DeleteTodoPayload(success = count == ids.size)
     }
 }
@@ -133,8 +131,8 @@ class TodoItemsDataLoader(private val itemRepo: TodoItemRepository) : MappedBatc
 
     override fun load(todoIds: Set<UUID>): CompletionStage<Map<UUID, List<TodoItem>>> {
         // ponytail: DataLoader 没有 OperationContext，直接用 DEFAULT。
-        // 多集群场景需要从 GraphQLContext 传入 repoCtx。
-        val items = itemRepo.findByTodoIds(RepoContext.DEFAULT, todoIds)
+        // 多集群场景需要从 GraphQLContext 传入 dsl。
+        val items = itemRepo.findByTodoIds(SvcCtx.DEFAULT, todoIds)
         val grouped = items.groupBy { it.todoId }
         val result = todoIds.associateWith { grouped[it] ?: emptyList() }
         return CompletableFuture.completedFuture(result)

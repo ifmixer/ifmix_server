@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.scan.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanCollectionItem.Companion.CORE_SCAN_COLLECTION_ITEM
@@ -12,7 +12,7 @@ import java.util.UUID
 @Repository
 class ScanCollectionItemRepository(private val crud: CrudRepoOps) {
 
-    fun insertIfAbsent(ctx: RepoContext, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
+    fun insertIfAbsent(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
         val existing = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION_ITEM)
             .where(CORE_SCAN_COLLECTION_ITEM.APP_ID.eq(appId))
             .and(CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID.eq(collectionId))
@@ -48,7 +48,7 @@ class ScanCollectionItemRepository(private val crud: CrudRepoOps) {
         return id
     }
 
-    fun softDeleteByScanIds(ctx: RepoContext, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Long {
+    fun softDeleteByScanIds(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Long {
         if (scanRecordIds.isEmpty()) return 0L
         val count = ctx.dsl.update(CORE_SCAN_COLLECTION_ITEM)
             .set(CORE_SCAN_COLLECTION_ITEM.DELETED_AT, Instant.now())
@@ -60,7 +60,7 @@ class ScanCollectionItemRepository(private val crud: CrudRepoOps) {
     }
 
     fun findItemsByCursor(
-        ctx: RepoContext,
+        ctx: SvcCtx,
         appId: UUID,
         collectionId: UUID,
         limit: Int,
@@ -81,7 +81,7 @@ class ScanCollectionItemRepository(private val crud: CrudRepoOps) {
         return Page.of(items, limit) { it.id.toString() }
     }
 
-    fun existsByScanRecordId(ctx: RepoContext, collectionId: UUID, scanRecordId: UUID): Boolean {
+    fun existsByScanRecordId(ctx: SvcCtx, collectionId: UUID, scanRecordId: UUID): Boolean {
         return ctx.dsl.fetchExists(
             CORE_SCAN_COLLECTION_ITEM,
             CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID.eq(collectionId)

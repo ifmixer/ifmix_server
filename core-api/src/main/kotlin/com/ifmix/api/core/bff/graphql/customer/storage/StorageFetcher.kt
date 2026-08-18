@@ -5,9 +5,9 @@ import com.ifmix.api.core.generated.types.PresignDownloadPayload
 import com.ifmix.api.core.generated.types.PresignUploadInput
 import com.ifmix.api.core.generated.types.PresignUploadPayload
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
-import com.ifmix.api.core.infra.http.mustGetAppId
-import com.ifmix.api.core.infra.http.mustGetInstallId
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.model.storage.UploadRecord
 import com.ifmix.api.core.modules.scan.service.AntiqueService
 import com.ifmix.api.core.modules.storage.repo.UploadRecordRepository
@@ -28,8 +28,8 @@ class StorageFetcher(
     @DgsMutation(field = "mutation_storage_presignUpload")
     fun presignUpload(dfe: DgsDataFetchingEnvironment, @InputArgument input: PresignUploadInput): PresignUploadPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        val appId = ctx.mustGetAppId()
-        val installId = ctx.mustGetInstallId()
+        val appId = ctx.appId!!
+        val installId = ctx.installId!!
         val mediaId = UuidV7.generate()
 
         val category = "antique_scan"
@@ -50,7 +50,7 @@ class StorageFetcher(
         val url = antiqueService.presignedUploadUrl(ctx, objectKey, mimeType, Duration.ofSeconds(300))
         val downloadUrl = antiqueService.getPublicUrl(ctx, objectKey)
 
-        uploadRecordRepo.insert(ctx.repoCtx, UploadRecord(
+        uploadRecordRepo.insert(SvcCtx(op = ctx, dsl = SvcCtx.DEFAULT.dsl), UploadRecord(
             id = mediaId,
             appId = appId,
             installId = installId,

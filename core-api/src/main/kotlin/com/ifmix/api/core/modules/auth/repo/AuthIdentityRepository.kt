@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAuthIdentity.Companion.CORE_AUTH_IDENTITY
 import com.ifmix.api.core.model.auth.AuthIdentity
@@ -21,7 +21,7 @@ class AuthIdentityRepository(
         private val mapper = jacksonObjectMapper()
     }
 
-    fun findByTenantAndEmail(ctx: RepoContext, tenantId: UUID, email: String): AuthIdentity? {
+    fun findByTenantAndEmail(ctx: SvcCtx, tenantId: UUID, email: String): AuthIdentity? {
         val record = ctx.dsl.selectFrom(CORE_AUTH_IDENTITY)
             .where(CORE_AUTH_IDENTITY.AUTH_TENANT_ID.eq(tenantId))
             .and(CORE_AUTH_IDENTITY.EMAIL.eq(email))
@@ -29,14 +29,14 @@ class AuthIdentityRepository(
         return record?.let { toModel(it) }
     }
 
-    fun findById(ctx: RepoContext, id: UUID): AuthIdentity? {
+    fun findById(ctx: SvcCtx, id: UUID): AuthIdentity? {
         val record = ctx.dsl.selectFrom(CORE_AUTH_IDENTITY)
             .where(CORE_AUTH_IDENTITY.ID.eq(id))
             .fetchOne()
         return record?.let { toModel(it) }
     }
 
-    fun insert(ctx: RepoContext, identity: AuthIdentity) {
+    fun insert(ctx: SvcCtx, identity: AuthIdentity) {
         crud.insert(ctx, CORE_AUTH_IDENTITY, identity)
     }
 
