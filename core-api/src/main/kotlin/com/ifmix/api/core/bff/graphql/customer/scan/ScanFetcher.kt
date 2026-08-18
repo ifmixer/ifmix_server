@@ -1,11 +1,9 @@
 package com.ifmix.api.core.bff.graphql.customer.scan
 
 import com.ifmix.api.core.generated.types.DeleteScanPayload
-import com.ifmix.api.core.generated.types.ImageRef
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.NewScanPayload
 import com.ifmix.api.core.generated.types.ScanQueryInput
-import com.ifmix.api.core.generated.types.ScanRecord as DgsScanRecord
 import com.ifmix.api.core.generated.types.ScanRecordPage
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.generated.types.UpdateScanPayload
@@ -27,11 +25,9 @@ class ScanFetcher(
     private val ctxProvider: OperationContextProvider,
 ) {
     @DgsQuery(field = "query_scan_findScanById")
-    fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DgsScanRecord {
+    fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): ScanRecord {
         val ctx = ctxProvider.fromDfe(dfe)
-        val model = scanService.findById(ctx, id)
-            ?: throw ApiError(ErrorCode.NOT_FOUND)
-        return toDgs(model)
+        return scanService.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
     @DgsQuery(field = "query_scan_findScansByCursor")
@@ -39,18 +35,13 @@ class ScanFetcher(
         val ctx = ctxProvider.fromDfe(dfe)
         val q = input ?: ScanQueryInput()
         val page = scanService.findByCursorFiltered(ctx, q.cursor, q.limit, q.collected)
-        return ScanRecordPage(
-            items = page.items.map { toDgs(it) },
-            nextCursor = page.nextCursor,
-            hasMore = page.hasMore,
-        )
+        return ScanRecordPage(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
     }
 
     @DgsMutation(field = "mutation_scan_createScan")
     fun newScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: NewScanInput): NewScanPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        val model = scanService.newScan(ctx, input)
-        return NewScanPayload(scanRecord = toDgs(model))
+        return NewScanPayload(scanRecord = scanService.newScan(ctx, input))
     }
 
     @DgsMutation(field = "mutation_scan_updateScan")
@@ -58,7 +49,7 @@ class ScanFetcher(
         val ctx = ctxProvider.fromDfe(dfe)
         val success = scanService.updateScan(ctx, input)
         val record = if (success && dfe.selectionSet.fields.any { it.name == "scanRecord" }) {
-            scanService.findById(ctx, input.id)?.let { toDgs(it) }
+            scanService.findById(ctx, input.id)
         } else null
         return UpdateScanPayload(success = success, scanRecord = record)
     }
@@ -69,20 +60,4 @@ class ScanFetcher(
         val success = scanService.deleteScan(ctx, id)
         return DeleteScanPayload(success = success)
     }
-
-    private fun toDgs(m: ScanRecord): DgsScanRecord = DgsScanRecord(
-        id = m.id,
-        images = m.images.map { ImageRef(key = it.key) },
-        result = m.result,
-        status = m.status,
-        clientIp = m.clientIp,
-        lang = m.lang,
-        country = m.country,
-        currency = m.currency,
-        userDisplayName = m.userDisplayName,
-        userNotes = m.userNotes,
-        collected = m.collected,
-        createdAt = m.createdAt,
-        updatedAt = m.updatedAt,
-    )
 }

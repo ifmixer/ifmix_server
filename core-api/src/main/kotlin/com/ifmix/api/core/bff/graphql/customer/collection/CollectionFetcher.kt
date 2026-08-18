@@ -2,20 +2,19 @@ package com.ifmix.api.core.bff.graphql.customer.collection
 
 import com.ifmix.api.core.generated.types.AddScanCollectionItemInput
 import com.ifmix.api.core.generated.types.AddScanCollectionItemPayload
-import com.ifmix.api.core.generated.types.ImageRef as DgsImageRef
 import com.ifmix.api.core.generated.types.ListScanCollectionItemsInput
 import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsInput
 import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsPayload
-import com.ifmix.api.core.generated.types.ScanCollection as DgsScanCollection
 import com.ifmix.api.core.generated.types.ScanCollectionItem as DgsScanCollectionItem
 import com.ifmix.api.core.generated.types.ScanCollectionItemPage
-import com.ifmix.api.core.generated.types.ScanRecord as DgsScanRecord
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
+import com.ifmix.api.core.model.scan.ScanCollectionItem
 import com.ifmix.api.core.model.scan.ScanRecord
 import com.ifmix.api.core.modules.scan.dto.AddItemReq
+import com.ifmix.api.core.modules.scan.dto.ListItemsReq
 import com.ifmix.api.core.modules.scan.dto.RemoveItemsReq
 import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
 import com.ifmix.api.core.modules.scan.service.ScanCollectionFacadeService
@@ -27,6 +26,7 @@ import com.netflix.graphql.dgs.DgsMutation
 import com.netflix.graphql.dgs.DgsQuery
 import com.netflix.graphql.dgs.InputArgument
 import org.dataloader.MappedBatchLoader
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
@@ -39,21 +39,25 @@ class CollectionFetcher(
 ) {
 
     @DgsQuery(field = "query_collection_getDefaultCollection")
-    fun getDefault(dfe: DgsDataFetchingEnvironment): DgsScanCollection {
+    fun getDefault(dfe: DgsDataFetchingEnvironment): com.ifmix.api.core.model.scan.ScanCollection {
         val ctx = ctxProvider.fromDfe(dfe)
-        val collection = collectionService.getDefault(ctx)
-        return DgsScanCollection(id = collection.id, isDefault = collection.isDefault, createdAt = collection.createdAt)
+        return collectionService.getDefault(ctx)
     }
 
     @DgsQuery(field = "query_collection_findCollectionItemsByCursor")
     fun findItemsByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ListScanCollectionItemsInput?): ScanCollectionItemPage {
         val ctx = ctxProvider.fromDfe(dfe)
-        val page = collectionService.findItemsByCursor(ctx, null)
+        val req = input?.let { ListItemsReq(cursor = it.cursor, limit = it.limit, collectionId = null) }
+        val page = collectionService.findItemsByCursor(ctx, req)
         return ScanCollectionItemPage(
             items = page.items.map { item ->
                 DgsScanCollectionItem(
                     id = item.id,
-                    scanRecord = null as DgsScanRecord,
+                    scanRecord = ScanRecord(
+                        id = item.scanRecordId, appId = ctx.appId!!,
+                        imageKeys = emptyList(), result = null,
+                        status = 0, collected = false, createdAt = Instant.EPOCH, updatedAt = null, deletedAt = null
+                    ),
                     createdAt = item.createdAt,
                 )
             },
@@ -63,7 +67,7 @@ class CollectionFetcher(
     }
 
     @DgsData(parentType = "ScanCollectionItem", field = "scanRecord")
-    fun scanRecord(dfe: DgsDataFetchingEnvironment): CompletableFuture<DgsScanRecord> {
+    fun scanRecord(dfe: DgsDataFetchingEnvironment): CompletableFuture<ScanRecord> {
         throw ApiError(ErrorCode.NOT_FOUND, "not implemented")
     }
 

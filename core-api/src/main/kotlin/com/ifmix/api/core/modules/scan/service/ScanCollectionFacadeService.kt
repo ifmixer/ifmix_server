@@ -1,5 +1,8 @@
 package com.ifmix.api.core.modules.scan.service
 
+import com.ifmix.api.core.generated.types.ListScanCollectionItemsInput
+import com.ifmix.api.core.generated.types.ScanCollectionItem as DgsScanCollectionItem
+import com.ifmix.api.core.generated.types.ScanCollectionItemPage
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.dto.Page
@@ -8,6 +11,7 @@ import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.model.scan.ScanCollection
 import com.ifmix.api.core.model.scan.ScanCollectionItem
+import com.ifmix.api.core.model.scan.ScanRecord
 import com.ifmix.api.core.modules.scan.dto.AddItemReq
 import com.ifmix.api.core.modules.scan.dto.AddItemRes
 import com.ifmix.api.core.modules.scan.dto.ListItemsReq
@@ -65,5 +69,25 @@ open class ScanCollectionFacadeService(
         val limit = req?.limit ?: 20
         val cursor = req?.cursor?.let { try { UUID.fromString(it) } catch (_: Exception) { null } }
         return itemRepo.findItemsByCursor(svc(ctx), appId, collectionId, limit, cursor)
+    }
+
+    fun findItemsByCursorPage(ctx: OperationContext, input: ListScanCollectionItemsInput?): ScanCollectionItemPage {
+        val req = input?.let { ListItemsReq(cursor = it.cursor, limit = it.limit, collectionId = null) }
+        val page = findItemsByCursor(ctx, req)
+        return ScanCollectionItemPage(
+            items = page.items.map { item ->
+                DgsScanCollectionItem(
+                    id = item.id,
+                    scanRecord = ScanRecord(
+                        id = item.scanRecordId, appId = ctx.appId!!,
+                        imageKeys = emptyList(), result = null,
+                        status = 0, collected = false, createdAt = Instant.now(), updatedAt = null, deletedAt = null
+                    ),
+                    createdAt = item.createdAt,
+                )
+            },
+            nextCursor = page.nextCursor,
+            hasMore = page.hasMore,
+        )
     }
 }
