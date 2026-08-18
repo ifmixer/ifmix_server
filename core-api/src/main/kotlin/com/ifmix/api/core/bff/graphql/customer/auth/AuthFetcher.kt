@@ -5,11 +5,11 @@ import com.ifmix.api.core.generated.types.*
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.modules.auth.service.AuthFacadeService
 import com.ifmix.api.core.modules.auth.service.ExchangeReq
+import com.ifmix.api.core.modules.auth.service.LoginRes
 import com.ifmix.api.core.modules.auth.service.LogoutReq
 import com.ifmix.api.core.modules.auth.service.ProviderLoginReq
 import com.ifmix.api.core.modules.auth.service.RefreshReq
 import com.ifmix.api.core.modules.auth.service.WechatLoginReq
-import com.ifmix.api.core.modules.auth.service.LoginRes
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
