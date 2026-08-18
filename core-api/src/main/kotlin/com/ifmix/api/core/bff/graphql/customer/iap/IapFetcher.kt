@@ -1,4 +1,4 @@
-package com.ifmix.api.core.bff.graphql.customer
+package com.ifmix.api.core.bff.graphql.customer.iap
 
 import com.ifmix.api.core.generated.types.VerifyPurchaseInput
 import com.ifmix.api.core.generated.types.VerifyPurchasePayload
@@ -27,7 +27,7 @@ class IapFetcher(
             productId = input.productId,
         ))
         return VerifyPurchasePayload(
-            tier = res.tier.code,
+            tier = res.tier,
             expiresAt = res.expiresAt?.let { Instant.ofEpochMilli(it) },
         )
     }

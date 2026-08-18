@@ -1,6 +1,5 @@
 package com.ifmix.api.core.bff.graphql.customer.feedback
 
-import com.ifmix.api.core.generated.types.FeedbackCategory
 import com.ifmix.api.core.generated.types.SubmitFeedbackInput
 import com.ifmix.api.core.generated.types.SubmitFeedbackPayload
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
@@ -30,15 +29,7 @@ class FeedbackFetcher(
 }
 
 private fun SubmitFeedbackInput.toReq() = com.ifmix.api.core.modules.feedback.dto.SubmitFeedbackReq(
-    category = when (category) {
-        FeedbackCategory.LIKED -> 100
-        FeedbackCategory.PRICE_TOO_HIGH -> 200
-        FeedbackCategory.PRICE_TOO_LOW -> 210
-        FeedbackCategory.PRICE_MISSING -> 220
-        FeedbackCategory.WRONG_IDENTIFICATION -> 300
-        FeedbackCategory.FEATURE_REQUEST -> 400
-        FeedbackCategory.MORE_RECOMMENDATIONS -> 410
-    },
+    category = category,
     comment = comment,
     scanRecordId = scanRecordId,
 )

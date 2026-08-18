@@ -1,4 +1,4 @@
-package com.ifmix.api.core.bff.graphql.customer
+package com.ifmix.api.core.bff.graphql.customer.auth
 
 import com.ifmix.api.core.generated.types.*
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
@@ -28,7 +28,7 @@ class AuthFetcher(
         val res = authService.me(ctx)
         return MePayload(
             user = UserInfo(id = res.id, email = res.email),
-            tier = res.tier.code,
+            tier = res.tier,
             tierActive = res.active,
             tierExpiresAt = res.expiresAt?.let { Instant.ofEpochMilli(it) },
         )

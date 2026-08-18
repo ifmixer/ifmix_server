@@ -1,16 +1,16 @@
 package com.ifmix.api.core.infra.ratelimit
 
-import com.ifmix.api.core.model.enums.Tier
+import com.ifmix.api.core.model.shared.Tiers
 import com.ifmix.api.core.infra.http.OperationContext
 
 /** 将请求上下文映射为一个 Tier。默认实现一律返回 FREE。 */
 interface TierResolver {
-    fun resolve(ctx: OperationContext): Tier
+    fun resolve(ctx: OperationContext): Int
 }
 
 /** 基础实现：所有用户走 FREE 档。后续可按付费等级/白名单等扩展。 */
 class FreeTierResolver : TierResolver {
-    override fun resolve(ctx: OperationContext): Tier = Tier.FREE
+    override fun resolve(ctx: OperationContext): Int = Tiers.FREE
 }
 
 /**

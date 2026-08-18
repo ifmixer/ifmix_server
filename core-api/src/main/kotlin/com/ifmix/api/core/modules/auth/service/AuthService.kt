@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth.service
 
-import com.ifmix.api.core.model.enums.Tier
+import com.ifmix.api.core.model.shared.Tiers
 import com.ifmix.api.core.infra.auth.AuthJwtService
 import com.ifmix.api.core.infra.auth.Hashing
 import com.ifmix.api.core.infra.db.RepoContext
@@ -78,7 +78,7 @@ data class MeRes(
     val id: UUID,
     val email: String?,
     /** 当前订阅档位 */
-    val tier: Tier = Tier.FREE,
+    val tier: Int = Tiers.FREE,
     /** 订阅是否有效 */
     val active: Boolean = false,
     val state: SubscriptionState = SubscriptionState.EXPIRED,

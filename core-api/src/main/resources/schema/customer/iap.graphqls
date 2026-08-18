@@ -1,5 +1,3 @@
-enum Platform { APPLE, GOOGLE }
-
 input VerifyPurchaseInput {
     "购买平台。100=APPLE, 200=GOOGLE"
     platform: Int!

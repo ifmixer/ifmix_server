@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.ratelimit
 
-import com.ifmix.api.core.model.enums.Tier
+import com.ifmix.api.core.model.shared.Tiers
 import org.springframework.boot.context.properties.ConfigurationProperties
 
 /**
@@ -22,9 +22,10 @@ data class RateLimitConfig(
     val pro: Int = 10_000,
     val enterprise: Int = 1_000_000,
 ) {
-    fun limitFor(tier: Tier): Int = when (tier) {
-        Tier.UNKNOWN, Tier.FREE -> free
-        Tier.PRO -> pro
-        Tier.ENTERPRISE -> enterprise
+    fun limitFor(tier: Int): Int = when (tier) {
+        Tiers.FREE -> free
+        Tiers.PRO -> pro
+        Tiers.ENTERPRISE -> enterprise
+        else -> free
     }
 }

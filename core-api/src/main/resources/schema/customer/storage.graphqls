@@ -1,9 +1,8 @@
-enum UploadCategory { ANTIQUE_SCAN }
-enum ContentType { IMAGE_JPEG, IMAGE_PNG, IMAGE_WEBP }
-
 input PresignUploadInput {
-    category: UploadCategory!
-    contentType: ContentType!
+    "上传分类。100=ANTIQUE_SCAN"
+    category: Int!
+    "内容类型。100=IMAGE_JPEG, 200=IMAGE_PNG, 300=IMAGE_WEBP"
+    contentType: Int!
 }
 
 type PresignUploadPayload {

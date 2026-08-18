@@ -92,8 +92,7 @@
 
 - [架构全貌](docs/ARCHITECTURE.md) — **必读**
 - [E2E 测试方案](docs/E2E_TESTING.md)
-- [Operation 重命名计划](docs/superpowers/plans/2026-08-18-operation-rename.md)
-- [Model 重组 + 枚举计划](docs/superpowers/plans/2026-08-18-model-move-and-enum-converter.md)
+- [剩余整理任务](docs/superpowers/plans/2026-08-18-remaining-cleanup.md)
 
 ## 重要设计决策
 

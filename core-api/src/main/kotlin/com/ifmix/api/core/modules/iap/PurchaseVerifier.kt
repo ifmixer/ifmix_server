@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.iap
 
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.model.enums.Platform
+import com.ifmix.api.core.model.shared.Platforms
 
 /**
  * 购买验证接缝：各商店（Apple / Google）的 verifyPurchase 实现不同，
@@ -17,7 +17,7 @@ interface PurchaseVerifier {
 
 /** 传入 [PurchaseVerifier] 的输入。 */
 data class VerifyInput(
-    val platform: Platform,
+    val platform: Int,
     val purchaseToken: String,
     val productId: String,
     val appId: String,
@@ -29,7 +29,7 @@ data class VerifyResult(
     val productId: String,
     val expiryDate: java.time.Instant?,
     val subStatus: SubStatus,
-    val platform: Platform,
+    val platform: Int,
 )
 
 /**

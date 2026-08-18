@@ -20,4 +20,21 @@ data class AgnesKey(
     val createdAt: Instant,
     val updatedAt: Instant? = null,
     val deletedAt: Instant? = null,
-)
+) {
+    /** AI Key 类型编码 */
+    object Type {
+        const val UNKNOWN = 0
+        const val PERSONAL = 100
+        const val ENTERPRISE = 200
+        fun fromCode(code: Int): Int = when (code) {
+            PERSONAL -> PERSONAL
+            ENTERPRISE -> ENTERPRISE
+            else -> UNKNOWN
+        }
+        fun nameOf(code: Int): String = when (code) {
+            PERSONAL -> "PERSONAL"
+            ENTERPRISE -> "ENTERPRISE"
+            else -> "UNKNOWN"
+        }
+    }
+}

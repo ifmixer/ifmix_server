@@ -1,7 +1,8 @@
 package com.ifmix.api.core.modules.iap
 
+import com.ifmix.api.core.model.shared.Tiers
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.model.enums.Platform
+import com.ifmix.api.core.model.shared.Platforms
 
 /**
  * 商店推送通知解码接缝：Apple Server Notifications / Google Play PubSub
@@ -13,7 +14,7 @@ interface NotificationDecoder {
      * @param rawPayload 商店推送的原始 JSON 或 text
      * @param platform 通知来源平台
      */
-    fun decode(rawPayload: String, platform: Platform): DecodedNotification
+    fun decode(rawPayload: String, platform: Int): DecodedNotification
 }
 
 /** 解码后的通知——供 IapService.handleXxxNotification 消费。 */
@@ -47,7 +48,7 @@ enum class NotificationType {
  * 用于开发阶段验证 webhook 路由。
  */
 class StubNotificationDecoder : NotificationDecoder {
-    override fun decode(rawPayload: String, platform: Platform): DecodedNotification {
+    override fun decode(rawPayload: String, platform: Int): DecodedNotification {
         // 简单尝试提取 subscriptionPxid 字段，失败则用 UUID 兜底
         val subPxid = try {
             val json = com.fasterxml.jackson.databind.ObjectMapper().readTree(rawPayload)

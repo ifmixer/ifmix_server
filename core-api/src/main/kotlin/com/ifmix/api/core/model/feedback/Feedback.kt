@@ -16,4 +16,16 @@ data class Feedback(
     val category: Short,
     val comment: String? = null,
     val createdAt: Instant,
-)
+) {
+    /** 反馈分类编码 */
+    object Category {
+        const val UNKNOWN = 0
+        const val LIKED = 100
+        const val PRICE_TOO_HIGH = 200
+        const val PRICE_TOO_LOW = 210
+        const val PRICE_MISSING = 220
+        const val WRONG_IDENTIFICATION = 300
+        const val FEATURE_REQUEST = 400
+        const val MORE_RECOMMENDATIONS = 410
+    }
+}

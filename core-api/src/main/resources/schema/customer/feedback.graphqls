@@ -1,16 +1,7 @@
-enum FeedbackCategory {
-    LIKED
-    PRICE_TOO_HIGH
-    PRICE_TOO_LOW
-    PRICE_MISSING
-    WRONG_IDENTIFICATION
-    FEATURE_REQUEST
-    MORE_RECOMMENDATIONS
-}
-
 input SubmitFeedbackInput {
     scanRecordId: UUID
-    category: FeedbackCategory!
+    "反馈分类。100=LIKED, 200=PRICE_TOO_HIGH, 210=PRICE_TOO_LOW, 220=PRICE_MISSING, 300=WRONG_IDENTIFICATION, 400=FEATURE_REQUEST, 410=MORE_RECOMMENDATIONS"
+    category: Int!
     comment: String
 }
 

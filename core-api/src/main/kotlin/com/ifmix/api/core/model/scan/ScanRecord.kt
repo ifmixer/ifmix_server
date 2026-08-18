@@ -29,4 +29,14 @@ data class ScanRecord(
 ) {
     /** Aliased as [imageKeys] — exposes the same list under the GraphQL field name. */
     val images: List<ImageRef> get() = imageKeys
+
+    /** 扫描状态编码 */
+    object Status {
+        const val UNKNOWN = 0
+        const val PENDING = 100
+        const val PROCESSING = 110
+        const val COMPLETED = 200
+        const val FAILED = 300
+        fun isTerminal(code: Int) = code >= COMPLETED
+    }
 }

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.scan.service
 
-import com.ifmix.api.core.model.enums.ScanStatus
+import com.ifmix.api.core.model.scan.ScanRecord
 import com.ifmix.api.core.model.ImageRef
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.UpdateScanInput
@@ -17,7 +17,6 @@ import com.ifmix.api.core.modules.scan.ScanRunner
 import com.ifmix.api.core.modules.scan.dto.ScanInput
 import com.ifmix.api.core.modules.scan.dto.ScanMediaItem
 import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
-import com.ifmix.api.core.model.scan.ScanRecord
 import org.springframework.stereotype.Service
 import java.time.Duration
 import java.time.Instant
@@ -61,7 +60,7 @@ class AntiqueService(
             appId = appId,
             imageKeys = input.images.map { ImageRef(key = it.imageKey) },
             result = result,
-            status = ScanStatus.COMPLETED.code,
+            status = ScanRecord.Status.COMPLETED,
             clientIp = ctx.clientIp,
             lang = ctx.lang,
             country = ctx.country,

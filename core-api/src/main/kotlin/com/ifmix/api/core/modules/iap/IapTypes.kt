@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.iap
 
-import com.ifmix.api.core.model.enums.Tier
+import com.ifmix.api.core.model.shared.Tiers
 import java.time.Instant
 
 /** App Store / Google Play 返回的原始订阅状态。 */
@@ -34,13 +34,14 @@ fun statusFromExpiry(expiryDate: Instant?, now: Instant = Instant.now()): Subscr
 }
 
 /**
- * 将 product SKU 映射到 Tier 名称，再查 [Tier] 枚举。
+ * 将 product SKU 映射到 Tier 名称，再查 [Tiers] 对象。
  */
-fun tierOf(sku: String, productTierMap: Map<String, Any?>): Tier? {
+fun tierOf(sku: String, productTierMap: Map<String, Any?>): Int? {
     val tierName = (productTierMap[sku] as? String) ?: return null
-    return try {
-        Tier.valueOf(tierName.uppercase())
-    } catch (_: IllegalArgumentException) {
-        null
+    return when (tierName.uppercase()) {
+        "FREE" -> Tiers.FREE
+        "PRO" -> Tiers.PRO
+        "ENTERPRISE" -> Tiers.ENTERPRISE
+        else -> null
     }
 }

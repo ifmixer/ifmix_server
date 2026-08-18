@@ -11,8 +11,8 @@ import com.ifmix.api.core.modules.iap.repo.StoreNotificationRepository
 import com.ifmix.api.core.modules.iap.repo.SubscriptionRepository
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.model.enums.Platform
-import com.ifmix.api.core.model.enums.Tier
+import com.ifmix.api.core.model.shared.Platforms
+import com.ifmix.api.core.model.shared.Tiers
 import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.ifmix.api.core.modules.iap.NotificationType
 import com.ifmix.api.core.modules.iap.PurchaseVerifier
@@ -49,13 +49,12 @@ open class IapService(
         val rc = ctx.repoCtx
         val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
-        val platformEnum = Platform.fromCode(req.platform)
-        val verifier = verifierMap[platformEnum.name] ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: ${req.platform}")
+        val verifier = verifierMap[if (req.platform == Platforms.APPLE) "APPLE" else "GOOGLE"] ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: ${req.platform}")
 
         val purchaseToken = req.purchaseToken ?: req.signedTransaction
             ?: throw ApiError(ErrorCode.INVALID_REQUEST, "purchaseToken or signedTransaction required")
         val input = VerifyInput(
-            platform = platformEnum,
+            platform = req.platform,
             purchaseToken = purchaseToken,
             productId = req.productId,
             appId = appId.toString()
@@ -64,10 +63,10 @@ open class IapService(
 
         val config = appConfigRepo.mustFindCurrentRevision(rc, appId)
         val productTierMap = config.contentConfig.iap.productTierMap
-        val tier = tierOf(req.productId, productTierMap) ?: Tier.FREE
+        val tier = tierOf(req.productId, productTierMap) ?: Tiers.FREE
 
         val subscriptionPxid = verifyResult.originalTransactionId ?: run {
-            "pxid-${platformEnum.name}-${UuidV7.generate()}"
+            "pxid-${req.platform}-${UuidV7.generate()}"
         }
 
         val existingSub = subscriptionRepo.findActiveByPxid(rc, appId, subscriptionPxid)
@@ -142,7 +141,7 @@ open class IapService(
         val rc = ctx.repoCtx
         val appId = ctx.appId ?: return
 
-        val decodedPlatform = if (platform == "APPLE") Platform.APPLE else Platform.GOOGLE
+        val decodedPlatform = if (platform == "APPLE") Platforms.APPLE else Platforms.GOOGLE
         val decoderResult = decoder.decode(rawPayload, decodedPlatform)
 
         if (decoderResult.subscriptionPxid.isNullOrEmpty()) {

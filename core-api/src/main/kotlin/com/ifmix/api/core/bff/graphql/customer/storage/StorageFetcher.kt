@@ -1,6 +1,5 @@
-package com.ifmix.api.core.bff.graphql.customer
+package com.ifmix.api.core.bff.graphql.customer.storage
 
-import com.ifmix.api.core.generated.types.ContentType
 import com.ifmix.api.core.generated.types.PresignDownloadInput
 import com.ifmix.api.core.generated.types.PresignDownloadPayload
 import com.ifmix.api.core.generated.types.PresignUploadInput
@@ -33,16 +32,18 @@ class StorageFetcher(
         val installId = ctx.mustGetInstallId()
         val mediaId = UuidV7.generate()
 
-        val category = input.category.name.lowercase()
+        val category = "antique_scan"
         val ext = when (input.contentType) {
-            ContentType.IMAGE_JPEG -> "jpg"
-            ContentType.IMAGE_PNG -> "png"
-            ContentType.IMAGE_WEBP -> "webp"
+            100 -> "jpg"
+            200 -> "png"
+            300 -> "webp"
+            else -> throw IllegalArgumentException("unsupported contentType: $input.contentType")
         }
         val mimeType = when (input.contentType) {
-            ContentType.IMAGE_JPEG -> "image/jpeg"
-            ContentType.IMAGE_PNG -> "image/png"
-            ContentType.IMAGE_WEBP -> "image/webp"
+            100 -> "image/jpeg"
+            200 -> "image/png"
+            300 -> "image/webp"
+            else -> throw IllegalArgumentException("unsupported contentType: $input.contentType")
         }
 
         val objectKey = "app/$appId/$category/install/$installId/$mediaId.$ext"
