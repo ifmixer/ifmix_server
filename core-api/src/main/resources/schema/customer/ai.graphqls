@@ -121,6 +121,8 @@ type RemoveScanCollectionItemsPayload {
 extend type Query {
     query_ai_findScanById(id: UUID!): ScanRecord!
     query_ai_findScansByCursor(input: ScanQueryInput): ScanRecordPage!
+    "通用动态过滤查询（支持 AND/OR 嵌套条件）"
+    query_ai_findScans(filter: FilterGroup, cursor: String, limit: Int): ScanRecordPage!
     query_ai_getDefaultCollection: ScanCollection!
     query_ai_findCollectionItemsByCursor(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
 }

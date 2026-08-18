@@ -25,6 +25,8 @@ class AppUserRepository(factory: CrudRepoOpsFactory) {
             .and(CORE_APP_USER.AUTH_IDENTITY_ID.eq(authIdentityId))
             .fetchOneInto(AppUser::class.java)
 
+    fun findById(ctx: SvcCtx, id: UUID): AppUser? = crud.findById(ctx, id)
+
     fun insert(ctx: SvcCtx, user: AppUser) = crud.insert(ctx, user)
 
     fun ensure(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): UUID {

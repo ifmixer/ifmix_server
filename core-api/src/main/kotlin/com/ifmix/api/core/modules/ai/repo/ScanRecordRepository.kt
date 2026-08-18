@@ -2,8 +2,10 @@ package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.generated.types.ScanUnsetField
 import com.ifmix.api.core.generated.types.UpdateScanInput
+import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
+import com.ifmix.api.core.infra.jooq.FilterConditionParser
 import com.ifmix.api.core.jooq.tables.CoreScanRecord.Companion.CORE_SCAN_RECORD
 import com.ifmix.api.core.entity.ImageRef
 import com.ifmix.api.core.entity.ai.ScanRecord
@@ -70,6 +72,63 @@ class ScanRecordRepository(factory: CrudRepoOpsFactory) {
 
     fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean = crud.deleteById(ctx, appId, id)
     fun exists(ctx: SvcCtx, appId: UUID, id: UUID): Boolean = crud.exists(ctx, appId, id)
+
+    // ===== 动态 Filter 查询 =====
+
+    private val filterParser = FilterConditionParser(
+        table = CORE_SCAN_RECORD,
+        allowedFields = setOf(
+            "status", "collected", "lang", "country", "currency",
+            "user_display_name", "user_notes", "created_at", "updated_at",
+        ),
+    )
+
+    @Suppress("UNCHECKED_CAST")
+    fun findByFilter(ctx: SvcCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): List<ScanRecord> {
+        val filterMap = filter?.let { convertFilterGroupToMap(it) }
+        val dynamicCond = filterParser.parse(filterMap)
+        var cond = CORE_SCAN_RECORD.APP_ID.eq(appId)
+            .and(CORE_SCAN_RECORD.DELETED_AT.isNull)
+            .and(dynamicCond)
+        cursor?.let { cond = cond.and(CORE_SCAN_RECORD.ID.lt(it)) }
+        return ctx.dsl.selectFrom(CORE_SCAN_RECORD)
+            .where(cond)
+            .orderBy(CORE_SCAN_RECORD.ID.desc())
+            .limit(limit)
+            .fetch()
+            .map { toModel(it) }
+    }
+
+    /**
+     * 将 DGS codegen 生成的 FilterGroup 对象转为 Map 结构（FilterConditionParser 的输入格式）。
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun convertFilterGroupToMap(group: FilterGroup): Map<String, Any?> {
+        val result = mutableMapOf<String, Any?>()
+        group.and?.let { list ->
+            result["and"] = list.map { expr -> convertExprToMap(expr) }
+        }
+        group.or?.let { list ->
+            result["or"] = list.map { expr -> convertExprToMap(expr) }
+        }
+        return result
+    }
+
+    private fun convertExprToMap(expr: com.ifmix.api.core.generated.types.FilterExpr): Map<String, Any?> {
+        val result = mutableMapOf<String, Any?>()
+        expr.field?.let { f ->
+            result["field"] = mapOf(
+                "field" to f.field,
+                "op" to f.op.name,
+                "value" to f.value,
+                "values" to f.values,
+            )
+        }
+        expr.group?.let { g ->
+            result["group"] = convertFilterGroupToMap(g)
+        }
+        return result
+    }
 
     // =========================================================================
     // JSON ↔ model helpers (JSONB fields require manual mapping)

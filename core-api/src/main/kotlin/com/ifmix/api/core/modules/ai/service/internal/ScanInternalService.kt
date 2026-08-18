@@ -2,6 +2,7 @@ package com.ifmix.api.core.modules.ai.service.internal
 
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.UpdateScanInput
+import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
@@ -87,6 +88,20 @@ class ScanInternalService(
         val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
         val cursorUuid = cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
         val items = scanRepo.findByCursor(sc, appId, collected, cursorUuid, effectiveLimit + 1)
+        val hasMore = items.size > effectiveLimit
+        val resultItems = items.take(effectiveLimit)
+        return Page(
+            items = resultItems,
+            nextCursor = resultItems.lastOrNull()?.let { it.id.toString() },
+            hasMore = hasMore,
+        )
+    }
+
+    fun findByFilter(sc: SvcCtx, filter: FilterGroup?, cursor: String?, limit: Int?): Page<ScanRecord> {
+        val appId = sc.op.mustGetAppId()
+        val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
+        val cursorUuid = cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+        val items = scanRepo.findByFilter(sc, appId, filter, cursorUuid, effectiveLimit + 1)
         val hasMore = items.size > effectiveLimit
         val resultItems = items.take(effectiveLimit)
         return Page(

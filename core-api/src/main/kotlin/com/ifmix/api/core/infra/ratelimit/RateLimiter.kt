@@ -34,7 +34,7 @@ class RateLimiter(
             redis.expire(dayKey, ttl, SECONDS)
         }
 
-        return if ((count ?: 0) >= limit) {
+        return if ((count ?: 0) > limit) {
             CheckResult.limited(count ?: 0)
         } else {
             CheckResult.allowed(count ?: 0, limit.toLong())

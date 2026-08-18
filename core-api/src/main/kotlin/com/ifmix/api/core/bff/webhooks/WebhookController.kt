@@ -15,6 +15,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.net.URI
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -37,6 +38,12 @@ class WebhookController(
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val mapper = tools.jackson.databind.json.JsonMapper.builder().build()
+
+    /** 缓存 Apple JWKS，TTL 1 小时。避免每次 webhook 都远程拉取。 */
+    @Volatile private var cachedJwkSet: JWKSet? = null
+    @Volatile private var jwksCachedAt: Instant = Instant.EPOCH
+    private val jwksCacheTtl = java.time.Duration.ofHours(1)
 
     companion object {
         private const val APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
@@ -127,7 +134,6 @@ class WebhookController(
 
     private fun extractSignedPayload(rawPayload: String): String? {
         return try {
-            val mapper = tools.jackson.databind.json.JsonMapper.builder().build()
             val tree = mapper.readTree(rawPayload)
             tree.get("signedPayload")?.asText()
         } catch (_: Exception) {
@@ -144,9 +150,12 @@ class WebhookController(
             val jws = JWSObject.parse(signedPayload)
             val kid = jws.header.keyID ?: return false
 
-            // 获取 Apple 的 JWKS（生产环境应缓存）
-            val jwkSet = JWKSet.load(URI.create(APPLE_JWKS_URL).toURL())
-            val jwk = jwkSet.getKeyByKeyId(kid) ?: return false
+            val jwkSet = getAppleJwks()
+            val jwk = jwkSet.getKeyByKeyId(kid) ?: run {
+                // kid 未命中缓存，强制刷新一次再试
+                val refreshed = refreshAppleJwks()
+                refreshed.getKeyByKeyId(kid) ?: return false
+            }
 
             if (jwk !is ECKey) return false
             val verifier = ECDSAVerifier(jwk.toECPublicKey())
@@ -157,9 +166,23 @@ class WebhookController(
         }
     }
 
+    private fun getAppleJwks(): JWKSet {
+        val cached = cachedJwkSet
+        if (cached != null && Instant.now().isBefore(jwksCachedAt.plus(jwksCacheTtl))) {
+            return cached
+        }
+        return refreshAppleJwks()
+    }
+
+    private fun refreshAppleJwks(): JWKSet {
+        val jwkSet = JWKSet.load(URI.create(APPLE_JWKS_URL).toURL())
+        cachedJwkSet = jwkSet
+        jwksCachedAt = Instant.now()
+        return jwkSet
+    }
+
     private fun extractBundleId(payloadJson: String): String? {
         return try {
-            val mapper = tools.jackson.databind.json.JsonMapper.builder().build()
             val tree = mapper.readTree(payloadJson)
             tree.get("data")?.get("bundleId")?.asText()
         } catch (_: Exception) {
@@ -169,7 +192,6 @@ class WebhookController(
 
     private fun extractGooglePackageName(rawPayload: String): String? {
         return try {
-            val mapper = tools.jackson.databind.json.JsonMapper.builder().build()
             val tree = mapper.readTree(rawPayload)
             // Pub/Sub envelope: { message: { data: "base64..." } }
             val dataBase64 = tree.get("message")?.get("data")?.asText() ?: return null

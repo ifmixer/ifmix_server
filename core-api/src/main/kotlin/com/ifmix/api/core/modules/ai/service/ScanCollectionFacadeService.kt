@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.ai.service
 
 import com.ifmix.api.core.dto.common.Page
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jooq.TxRunner
@@ -25,18 +26,24 @@ open class ScanCollectionFacadeService(
     }
 
     fun addItem(ctx: OperationContext, req: AddItemReq): AddItemRes = tx.withTx(svcCtxFactory.forApp(ctx)) { sc ->
-        val collectionId = req.collectionId ?: getDefault(ctx).id
+        val collectionId = req.collectionId ?: getOrCreateDefault(sc).id
         internalService.addItem(sc, collectionId, req)
     }
 
     fun removeItems(ctx: OperationContext, req: RemoveItemsReq): RemoveItemsRes = tx.withTx(svcCtxFactory.forApp(ctx)) { sc ->
-        val collectionId = req.collectionId ?: getDefault(ctx).id
+        val collectionId = req.collectionId ?: getOrCreateDefault(sc).id
         internalService.removeItems(sc, collectionId, req)
     }
 
     fun findItemsByCursor(ctx: OperationContext, req: ListItemsReq?): Page<ScanCollectionItem> {
-        val collectionId = req?.collectionId ?: getDefault(ctx).id
+        val sc = svcCtxFactory.forApp(ctx)
+        val collectionId = req?.collectionId ?: (internalService.getDefault(sc)?.id
+            ?: return Page(items = emptyList(), nextCursor = null, hasMore = false))
         val limit = req?.limit
-        return internalService.findItemsByCursor(svcCtxFactory.forApp(ctx), collectionId, limit)
+        return internalService.findItemsByCursor(sc, collectionId, limit)
     }
+
+    /** 事务内获取或创建默认收藏夹——复用调用方传入的 SvcCtx，避免开新事务。 */
+    private fun getOrCreateDefault(sc: SvcCtx): ScanCollection =
+        internalService.getDefault(sc) ?: internalService.createDefaultCollection(sc)
 }

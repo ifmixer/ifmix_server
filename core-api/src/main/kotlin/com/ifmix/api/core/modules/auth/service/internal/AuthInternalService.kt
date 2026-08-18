@@ -120,7 +120,10 @@ class AuthInternalService(
 
     fun me(sc: SvcCtx): MeRes {
         val userId = sc.op.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
-        return MeRes(userId, null)
+        val appUser = appUserRepo.findById(sc, userId)
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "user not found")
+        val identity = identityRepo.findById(sc, appUser.authIdentityId)
+        return MeRes(userId, identity?.email)
     }
 
     fun loginWithIdToken(sc: SvcCtx, provider: String, req: ProviderLoginReq): LoginRes {
@@ -322,9 +325,7 @@ class AuthInternalService(
         if (token != null) {
             refreshRepo.revoke(sc, token.id)
             token.deviceSecretId?.let { dsId ->
-                // Look up device secret to revoke it
-                // Note: deviceSecretRepo doesn't have findById; we revoke via hash lookup or skip
-                // The refresh token revocation is the critical security measure.
+                deviceSecretRepo.revoke(sc, dsId)
             }
         }
         return LogoutRes(ok = true)

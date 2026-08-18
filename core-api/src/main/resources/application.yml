@@ -18,9 +18,6 @@ spring:
 dgs:
   graphql:
     path: /customer/core/gql
-    graphiql:
-      enabled: true
-      path: /apidocs/core/customer/gql
   ai:
     openai:
       api-key: ${SPRING_AI_OPENAI_API_KEY:sk-placeholder}

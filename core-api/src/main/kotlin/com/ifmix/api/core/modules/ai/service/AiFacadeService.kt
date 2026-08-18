@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.ai.service
 
 import com.ifmix.api.core.dto.common.Page
+import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jooq.TxRunner
@@ -21,6 +22,8 @@ class AiFacadeService(
         internalService.findByCursorFiltered(svcCtxFactory.forApp(opCtx), cursor, limit, null)
     fun findByCursorFiltered(opCtx: OperationContext, cursor: String?, limit: Int?, collected: Boolean?): Page<ScanRecord> =
         internalService.findByCursorFiltered(svcCtxFactory.forApp(opCtx), cursor, limit, collected)
+    fun findByFilter(opCtx: OperationContext, filter: FilterGroup?, cursor: String?, limit: Int?): Page<ScanRecord> =
+        internalService.findByFilter(svcCtxFactory.forApp(opCtx), filter, cursor, limit)
     fun newScan(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.NewScanInput): ScanRecord =
         tx.withTx(svcCtxFactory.forApp(opCtx)) { sc -> internalService.newScan(sc, input) }
     fun updateScan(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.UpdateScanInput): Boolean =

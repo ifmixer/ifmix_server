@@ -42,14 +42,10 @@ open class ScanCollectionInternalService(
         return RemoveItemsRes(removed = deletedCount.toInt())
     }
 
-    fun getDefault(sc: SvcCtx): ScanCollection {
+    fun getDefault(sc: SvcCtx): ScanCollection? {
         val ctx = sc.op
         val appId = ctx.appId!!
         return collectionRepo.findDefault(sc, appId, ctx.installId, ctx.userId)
-            ?: throw com.ifmix.api.core.infra.http.ApiError(
-                com.ifmix.api.core.infra.http.ErrorCode.NOT_FOUND,
-                "No default collection found"
-            )
     }
 
     fun findItemsByCursor(sc: SvcCtx, collectionId: UUID, limit: Int?): Page<ScanCollectionItem> {
