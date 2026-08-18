@@ -16,9 +16,9 @@ import com.ifmix.api.core.modules.auth.repo.AppUserRepository
 import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretRepository
 import com.ifmix.api.core.modules.auth.repo.AuthIdentityRepository
 import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityRepository
-import com.ifmix.api.core.model.AppRefreshToken
-import com.ifmix.api.core.model.AuthDeviceSecret
-import com.ifmix.api.core.model.AuthIdentity
+import com.ifmix.api.core.model.auth.AppRefreshToken
+import com.ifmix.api.core.model.auth.AuthDeviceSecret
+import com.ifmix.api.core.model.auth.AuthIdentity
 import com.ifmix.api.core.modules.auth.ProviderVerifier
 import com.ifmix.api.core.modules.iap.SubscriptionState
 import org.springframework.beans.factory.annotation.Value

@@ -28,7 +28,7 @@ class AuthFetcher(
         val res = authService.me(ctx)
         return MePayload(
             user = UserInfo(id = res.id, email = res.email),
-            tier = res.tier.name,
+            tier = res.tier.code,
             tierActive = res.active,
             tierExpiresAt = res.expiresAt?.let { Instant.ofEpochMilli(it) },
         )
@@ -58,7 +58,7 @@ class AuthFetcher(
         return authService.anonymousLogin(ctx).toPayload()
     }
 
-    @DgsMutation(field = "mutation_auth_exchange")
+    @DgsMutation(field = "mutation_auth_exchangeToken")
     fun exchange(dfe: DgsDataFetchingEnvironment, @InputArgument input: ExchangeInput): ExchangePayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = authService.exchange(ctx, ExchangeReq(deviceSecret = input.deviceSecret))
@@ -69,7 +69,7 @@ class AuthFetcher(
         )
     }
 
-    @DgsMutation(field = "mutation_auth_refresh")
+    @DgsMutation(field = "mutation_auth_refreshToken")
     fun refresh(dfe: DgsDataFetchingEnvironment, @InputArgument input: RefreshInput): RefreshPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = authService.refresh(ctx, RefreshReq(refreshToken = input.refreshToken))

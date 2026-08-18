@@ -6,7 +6,7 @@ import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanRecord.Companion.CORE_SCAN_RECORD
 import com.ifmix.api.core.model.ImageRef
-import com.ifmix.api.core.model.ScanRecord
+import com.ifmix.api.core.model.scan.ScanRecord
 import org.jooq.JSONB
 import org.springframework.stereotype.Repository
 import tools.jackson.module.kotlin.jacksonObjectMapper
@@ -110,7 +110,7 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
         appId = r.get(CORE_SCAN_RECORD.APP_ID)!!,
         imageKeys = parseImageKeys(r.get(CORE_SCAN_RECORD.IMAGE_KEYS)),
         result = parseResult(r.get(CORE_SCAN_RECORD.RESULT_JSON)),
-        status = r.get(CORE_SCAN_RECORD.STATUS) ?: 100.toShort(),
+        status = r.get(CORE_SCAN_RECORD.STATUS) ?: 100,
         clientIp = r.get(CORE_SCAN_RECORD.CLIENT_IP),
         lang = r.get(CORE_SCAN_RECORD.LANG),
         country = r.get(CORE_SCAN_RECORD.COUNTRY),

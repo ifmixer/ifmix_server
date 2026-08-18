@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.jooq.tables.CoreUserInstallBinding.Companion.CORE_USER_INSTALL_BINDING
-import com.ifmix.api.core.model.UserInstallBinding
+import com.ifmix.api.core.model.auth.UserInstallBinding
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID

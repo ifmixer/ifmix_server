@@ -21,7 +21,7 @@ data class CoreSubscription(
     var subscriptionPxid: String? = null,
     var originalTransactionId: String? = null,
     var productId: String? = null,
-    var platform: Short? = null,
+    var platform: Int? = null,
     var active: Boolean? = null,
     var subStatus: String? = null,
     var expiryDate: Instant? = null,

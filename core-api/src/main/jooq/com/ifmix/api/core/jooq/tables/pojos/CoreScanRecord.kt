@@ -19,7 +19,7 @@ data class CoreScanRecord(
     var id: UUID,
     var appId: UUID,
     var resultJson: JSONB? = null,
-    var status: Short? = null,
+    var status: Int? = null,
     var clientIp: String? = null,
     var createdAt: Instant? = null,
     var updatedAt: Instant? = null,

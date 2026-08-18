@@ -40,9 +40,9 @@ open class CoreSubscriptionRecord private constructor() : UpdatableRecordImpl<Co
         set(value): Unit = set(4, value)
         get(): String? = get(4) as String?
 
-    open var platform: Short?
+    open var platform: Int?
         set(value): Unit = set(5, value)
-        get(): Short? = get(5) as Short?
+        get(): Int? = get(5) as Int?
 
     open var active: Boolean?
         set(value): Unit = set(6, value)
@@ -85,7 +85,7 @@ open class CoreSubscriptionRecord private constructor() : UpdatableRecordImpl<Co
     /**
      * Create a detached, initialised CoreSubscriptionRecord
      */
-    constructor(id: UUID, appId: UUID, subscriptionPxid: String? = null, originalTransactionId: String? = null, productId: String? = null, platform: Short? = null, active: Boolean? = null, subStatus: String? = null, expiryDate: Instant? = null, purchaseToken: String? = null, rawResponse: JSONB? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null): this() {
+    constructor(id: UUID, appId: UUID, subscriptionPxid: String? = null, originalTransactionId: String? = null, productId: String? = null, platform: Int? = null, active: Boolean? = null, subStatus: String? = null, expiryDate: Instant? = null, purchaseToken: String? = null, rawResponse: JSONB? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null): this() {
         this.id = id
         this.appId = appId
         this.subscriptionPxid = subscriptionPxid

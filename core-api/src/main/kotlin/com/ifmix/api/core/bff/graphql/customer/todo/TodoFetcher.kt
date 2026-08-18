@@ -1,4 +1,4 @@
-package com.ifmix.api.core.bff.graphql.customer
+package com.ifmix.api.core.bff.graphql.customer.todo
 
 import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.CreateTodoPayload
@@ -13,8 +13,8 @@ import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.model.Todo
-import com.ifmix.api.core.model.TodoItem
+import com.ifmix.api.core.model.todo.Todo
+import com.ifmix.api.core.model.todo.TodoItem
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 import com.ifmix.api.core.modules.todo.service.TodoItemService
 import com.ifmix.api.core.modules.todo.service.TodoService
@@ -45,21 +45,21 @@ class TodoFetcher(
 
     // ==================== Query ====================
 
-    @DgsQuery(field = "query_todo_findById")
+    @DgsQuery(field = "query_todo_findTodoById")
     fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo {
         val ctx = ctxProvider.fromDfe(dfe)
         return todoService.findById(ctx, id)
             ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
-    @DgsQuery(field = "query_todo_findByCursor")
+    @DgsQuery(field = "query_todo_findTodosByCursor")
     fun findByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: TodoQueryInput?): TodoPage {
         val ctx = ctxProvider.fromDfe(dfe)
         val page = todoService.findByCursor(ctx, input ?: TodoQueryInput())
         return TodoPage(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
     }
 
-    @DgsQuery(field = "query_todo_findByIds")
+    @DgsQuery(field = "query_todo_findTodosByIds")
     fun findByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): List<Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
         return todoService.findByIds(ctx, ids)
@@ -76,7 +76,7 @@ class TodoFetcher(
 
     // ==================== Mutation: Create ====================
 
-    @DgsMutation(field = "mutation_todo_create")
+    @DgsMutation(field = "mutation_todo_createTodo")
     fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val id = todoService.createTodo(ctx, input)
@@ -87,7 +87,7 @@ class TodoFetcher(
 
     // ==================== Mutation: Update Todo ====================
 
-    @DgsMutation(field = "mutation_todo_update")
+    @DgsMutation(field = "mutation_todo_updateTodo")
     fun updateTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoInput): UpdateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val success = todoService.updateTodo(ctx, input)
@@ -100,7 +100,7 @@ class TodoFetcher(
 
     // ==================== Mutation: Update TodoItems ====================
 
-    @DgsMutation(field = "mutation_todoItem_batchUpdate")
+    @DgsMutation(field = "mutation_todoItem_batchUpdateTodoItems")
     fun updateTodoItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoItemsMutationInput): UpdateTodoItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         todoItemService.updateItems(ctx, input)
@@ -109,14 +109,14 @@ class TodoFetcher(
 
     // ==================== Mutation: Delete ====================
 
-    @DgsMutation(field = "mutation_todo_delete")
+    @DgsMutation(field = "mutation_todo_deleteTodo")
     fun deleteTodoById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DeleteTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val success = todoService.deleteTodo(ctx, id)
         return DeleteTodoPayload(success = success)
     }
 
-    @DgsMutation(field = "mutation_todo_batchDelete")
+    @DgsMutation(field = "mutation_todo_batchDeleteTodos")
     fun deleteTodosByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): DeleteTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val count = todoService.deleteTodosByIds(ctx, ids)

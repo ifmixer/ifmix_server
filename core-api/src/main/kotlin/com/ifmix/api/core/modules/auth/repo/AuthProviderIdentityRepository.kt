@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.auth.repo
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAuthProviderIdentity.Companion.CORE_AUTH_PROVIDER_IDENTITY
-import com.ifmix.api.core.model.AuthProviderIdentity
+import com.ifmix.api.core.model.auth.AuthProviderIdentity
 import org.jooq.JSONB
 import org.springframework.stereotype.Repository
 import tools.jackson.module.kotlin.jacksonObjectMapper

@@ -5,6 +5,7 @@ package com.ifmix.api.core.jooq.tables
 
 
 import com.ifmix.api.core.infra.jooq.InstantConverter
+import com.ifmix.api.core.infra.jooq.SmallintToIntConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.SCAN_RECORD_APP_ID_IDX
 import com.ifmix.api.core.jooq.keys.CORE_SCAN_COLLECTION_ITEM__COLLECTION_ITEM_SCAN_RECORD_ID_FKEY
@@ -98,7 +99,7 @@ open class CoreScanRecord(
     /**
      * The column <code>public.core_scan_record.status</code>.
      */
-    val STATUS: TableField<CoreScanRecordRecord, Short?> = createField(DSL.name("status"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.field(DSL.raw("100"), SQLDataType.SMALLINT)), this, "")
+    val STATUS: TableField<CoreScanRecordRecord, Int?> = createField(DSL.name("status"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.field(DSL.raw("100"), SQLDataType.SMALLINT)), this, "", SmallintToIntConverter())
 
     /**
      * The column <code>public.core_scan_record.client_ip</code>.

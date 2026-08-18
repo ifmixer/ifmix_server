@@ -22,8 +22,8 @@ input ListScanCollectionItemsInput {
 }
 
 extend type Query {
-    query_collection_getDefault: ScanCollection!
-    query_collection_findItemsByCursor(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
+    query_collection_getDefaultCollection: ScanCollection!
+    query_collection_findCollectionItemsByCursor(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
 }
 
 input AddScanCollectionItemInput {
@@ -44,6 +44,6 @@ type RemoveScanCollectionItemsPayload {
 }
 
 extend type Mutation {
-    mutation_collection_addItem(input: AddScanCollectionItemInput!): AddScanCollectionItemPayload!
-    mutation_collection_removeItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsPayload!
+    mutation_collection_addCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemPayload!
+    mutation_collection_removeCollectionItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsPayload!
 }

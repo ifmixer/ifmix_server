@@ -5,7 +5,7 @@ import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.jooq.TxRunner
-import com.ifmix.api.core.model.TodoItem
+import com.ifmix.api.core.model.todo.TodoItem
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 import org.springframework.stereotype.Service
 import java.time.Instant

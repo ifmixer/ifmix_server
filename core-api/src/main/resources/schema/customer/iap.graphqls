@@ -1,14 +1,16 @@
 enum Platform { APPLE, GOOGLE }
 
 input VerifyPurchaseInput {
-    platform: Platform!
+    "购买平台。100=APPLE, 200=GOOGLE"
+    platform: Int!
     productId: String!
     signedTransaction: String
     purchaseToken: String
 }
 
 type VerifyPurchasePayload {
-    tier: String!
+    "付费等级。100=FREE, 200=PRO, 300=ENTERPRISE"
+    tier: Int!
     expiresAt: DateTime
 }
 

@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.auth.repo
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAppRefreshToken.Companion.CORE_APP_REFRESH_TOKEN
-import com.ifmix.api.core.model.AppRefreshToken
+import com.ifmix.api.core.model.auth.AppRefreshToken
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID

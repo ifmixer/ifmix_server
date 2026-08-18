@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.iap.repo
 
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.jooq.tables.CoreSubscription.Companion.CORE_SUBSCRIPTION
-import com.ifmix.api.core.model.Subscription
+import com.ifmix.api.core.model.iap.Subscription
 import org.jooq.JSONB
 import org.springframework.stereotype.Repository
 import java.util.UUID

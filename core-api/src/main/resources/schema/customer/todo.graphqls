@@ -31,9 +31,9 @@ type TodoPage {
 }
 
 extend type Query {
-    query_todo_findById(id: UUID!): Todo!
-    query_todo_findByCursor(input: TodoQueryInput): TodoPage!
-    query_todo_findByIds(ids: [UUID!]!): [Todo!]!
+    query_todo_findTodoById(id: UUID!): Todo!
+    query_todo_findTodosByCursor(input: TodoQueryInput): TodoPage!
+    query_todo_findTodosByIds(ids: [UUID!]!): [Todo!]!
 }
 
 # --- Mutation: Create ---
@@ -116,9 +116,9 @@ type DeleteTodoPayload {
 }
 
 extend type Mutation {
-    mutation_todo_create(input: CreateTodoInput!): CreateTodoPayload!
-    mutation_todo_update(input: UpdateTodoInput!): UpdateTodoPayload!
-    mutation_todoItem_batchUpdate(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsPayload!
-    mutation_todo_delete(id: UUID!): DeleteTodoPayload!
-    mutation_todo_batchDelete(ids: [UUID!]!): DeleteTodoPayload!
+    mutation_todo_createTodo(input: CreateTodoInput!): CreateTodoPayload!
+    mutation_todo_updateTodo(input: UpdateTodoInput!): UpdateTodoPayload!
+    mutation_todoItem_batchUpdateTodoItems(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsPayload!
+    mutation_todo_deleteTodo(id: UUID!): DeleteTodoPayload!
+    mutation_todo_batchDeleteTodos(ids: [UUID!]!): DeleteTodoPayload!
 }

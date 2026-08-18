@@ -20,19 +20,14 @@ class IapFetcher(
     @DgsMutation(field = "mutation_iap_verifyPurchase")
     fun verifyPurchase(dfe: DgsDataFetchingEnvironment, @InputArgument input: VerifyPurchaseInput): VerifyPurchasePayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        val platformCode = when (input.platform.name) {
-            "APPLE" -> 100
-            "GOOGLE" -> 200
-            else -> 100
-        }
         val res = iapService.verifyPurchase(ctx, VerifyReq(
-            platform = platformCode,
+            platform = input.platform,
             signedTransaction = input.signedTransaction,
             purchaseToken = input.purchaseToken,
             productId = input.productId,
         ))
         return VerifyPurchasePayload(
-            tier = res.tier.name,
+            tier = res.tier.code,
             expiresAt = res.expiresAt?.let { Instant.ofEpochMilli(it) },
         )
     }

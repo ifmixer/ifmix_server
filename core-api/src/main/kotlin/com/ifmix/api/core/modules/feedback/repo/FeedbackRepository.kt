@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.feedback.repo
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreFeedback.Companion.CORE_FEEDBACK
-import com.ifmix.api.core.model.Feedback
+import com.ifmix.api.core.model.feedback.Feedback
 import org.springframework.stereotype.Repository
 import java.util.UUID
 

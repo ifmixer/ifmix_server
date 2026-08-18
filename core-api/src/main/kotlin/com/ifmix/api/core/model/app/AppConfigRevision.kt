@@ -1,4 +1,4 @@
-package com.ifmix.api.core.model
+package com.ifmix.api.core.model.app
 
 import com.ifmix.api.core.model.appconfig.AppleConfigValue
 import com.ifmix.api.core.model.appconfig.ConfigContent

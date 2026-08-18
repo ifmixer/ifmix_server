@@ -32,9 +32,9 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
         set(value): Unit = set(2, value)
         get(): JSONB? = get(2) as JSONB?
 
-    open var status: Short?
+    open var status: Int?
         set(value): Unit = set(3, value)
-        get(): Short? = get(3) as Short?
+        get(): Int? = get(3) as Int?
 
     open var clientIp: String?
         set(value): Unit = set(4, value)
@@ -89,7 +89,7 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
     /**
      * Create a detached, initialised CoreScanRecordRecord
      */
-    constructor(id: UUID, appId: UUID, resultJson: JSONB? = null, status: Short? = null, clientIp: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null, imageKeys: JSONB? = null, userDisplayName: String? = null, userNotes: String? = null, collected: Boolean? = null, lang: String? = null, country: String? = null, currency: String? = null): this() {
+    constructor(id: UUID, appId: UUID, resultJson: JSONB? = null, status: Int? = null, clientIp: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null, imageKeys: JSONB? = null, userDisplayName: String? = null, userNotes: String? = null, collected: Boolean? = null, lang: String? = null, country: String? = null, currency: String? = null): this() {
         this.id = id
         this.appId = appId
         this.resultJson = resultJson

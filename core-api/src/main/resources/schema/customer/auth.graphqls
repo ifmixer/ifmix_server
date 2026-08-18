@@ -15,7 +15,8 @@ type LoginPayload {
 
 type MePayload {
     user: UserInfo!
-    tier: String!
+    "付费等级。100=FREE, 200=PRO, 300=ENTERPRISE"
+    tier: Int!
     tierActive: Boolean!
     tierExpiresAt: DateTime
 }
@@ -62,8 +63,8 @@ extend type Mutation {
     mutation_auth_loginApple(input: ProviderLoginInput!): LoginPayload!
     mutation_auth_loginWechat(input: WechatLoginInput!): LoginPayload!
     mutation_auth_loginAnonymous: LoginPayload!
-    mutation_auth_exchange(input: ExchangeInput!): ExchangePayload!
-    mutation_auth_refresh(input: RefreshInput!): RefreshPayload!
+    mutation_auth_exchangeToken(input: ExchangeInput!): ExchangePayload!
+    mutation_auth_refreshToken(input: RefreshInput!): RefreshPayload!
     mutation_auth_logout(input: LogoutInput!): OperationResult!
     mutation_auth_deleteAccount: OperationResult!
 }

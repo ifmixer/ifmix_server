@@ -1,4 +1,4 @@
-package com.ifmix.api.core.bff.graphql.customer
+package com.ifmix.api.core.bff.graphql.customer.collection
 
 import com.ifmix.api.core.generated.types.AddScanCollectionItemInput
 import com.ifmix.api.core.generated.types.AddScanCollectionItemPayload
@@ -10,12 +10,11 @@ import com.ifmix.api.core.generated.types.ScanCollection as DgsScanCollection
 import com.ifmix.api.core.generated.types.ScanCollectionItem as DgsScanCollectionItem
 import com.ifmix.api.core.generated.types.ScanCollectionItemPage
 import com.ifmix.api.core.generated.types.ScanRecord as DgsScanRecord
-import com.ifmix.api.core.generated.types.ScanStatus
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.model.ScanRecord
+import com.ifmix.api.core.model.scan.ScanRecord
 import com.ifmix.api.core.modules.scan.dto.AddItemReq
 import com.ifmix.api.core.modules.scan.dto.RemoveItemsReq
 import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
@@ -39,14 +38,14 @@ class CollectionFetcher(
     private val ctxProvider: OperationContextProvider,
 ) {
 
-    @DgsQuery(field = "query_collection_getDefault")
+    @DgsQuery(field = "query_collection_getDefaultCollection")
     fun getDefault(dfe: DgsDataFetchingEnvironment): DgsScanCollection {
         val ctx = ctxProvider.fromDfe(dfe)
         val collection = collectionService.getDefault(ctx)
         return DgsScanCollection(id = collection.id, isDefault = collection.isDefault, createdAt = collection.createdAt)
     }
 
-    @DgsQuery(field = "query_collection_findItemsByCursor")
+    @DgsQuery(field = "query_collection_findCollectionItemsByCursor")
     fun findItemsByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ListScanCollectionItemsInput?): ScanCollectionItemPage {
         val ctx = ctxProvider.fromDfe(dfe)
         val page = collectionService.findItemsByCursor(ctx, null)
@@ -68,14 +67,14 @@ class CollectionFetcher(
         throw ApiError(ErrorCode.NOT_FOUND, "not implemented")
     }
 
-    @DgsMutation(field = "mutation_collection_addItem")
+    @DgsMutation(field = "mutation_collection_addCollectionItem")
     fun addItem(dfe: DgsDataFetchingEnvironment, @InputArgument input: AddScanCollectionItemInput): AddScanCollectionItemPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val restResult = collectionService.addItem(ctx, AddItemReq(scanRecordId = input.scanRecordId))
         return AddScanCollectionItemPayload(collectionId = restResult.id, alreadyExists = false)
     }
 
-    @DgsMutation(field = "mutation_collection_removeItems")
+    @DgsMutation(field = "mutation_collection_removeCollectionItems")
     fun removeItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: RemoveScanCollectionItemsInput): RemoveScanCollectionItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val restResult = collectionService.removeItems(ctx, RemoveItemsReq(scanRecordIds = input.scanRecordIds))

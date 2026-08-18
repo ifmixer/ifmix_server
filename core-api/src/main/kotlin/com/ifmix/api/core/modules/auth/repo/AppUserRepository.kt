@@ -4,7 +4,7 @@ import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAppUser.Companion.CORE_APP_USER
-import com.ifmix.api.core.model.AppUser
+import com.ifmix.api.core.model.auth.AppUser
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID

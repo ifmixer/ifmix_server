@@ -1,4 +1,4 @@
-package com.ifmix.api.core.model
+package com.ifmix.api.core.model.ai
 
 import java.time.Instant
 import java.util.UUID
@@ -12,7 +12,7 @@ data class AgnesKey(
     val appId: UUID,
     val key: String,
     val email: String? = null,
-    val type: Short,
+    val type: Int,
     val rateLimit: Long,
     val windowSec: Long,
     val models: String? = null,

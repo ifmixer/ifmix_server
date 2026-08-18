@@ -12,8 +12,8 @@ import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.jooq.TxRunner
 import com.ifmix.api.core.infra.service.CrudServiceOps
 import com.ifmix.api.core.infra.service.CrudServiceOpsFactory
-import com.ifmix.api.core.model.Todo
-import com.ifmix.api.core.model.TodoItem
+import com.ifmix.api.core.model.todo.Todo
+import com.ifmix.api.core.model.todo.TodoItem
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 import com.ifmix.api.core.modules.todo.repo.TodoRepository
 import org.springframework.stereotype.Service

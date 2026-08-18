@@ -3,7 +3,8 @@ type ScanRecord {
     id: UUID!
     images: [ImageRef!]!
     result: JSON
-    status: ScanStatus!
+    "扫描状态。100=PENDING, 110=PROCESSING, 200=COMPLETED, 300=FAILED"
+    status: Int!
     clientIp: String
     lang: String
     country: String
@@ -19,9 +20,7 @@ type ImageRef {
     key: String!
 }
 
-enum ScanStatus { PENDING, PROCESSING, COMPLETED, FAILED }
-
-# --- Query ---
+# --- Mutation ---
 input ScanQueryInput {
     cursor: String
     limit: Int
@@ -35,8 +34,8 @@ type ScanRecordPage {
 }
 
 extend type Query {
-    query_scan_findById(id: UUID!): ScanRecord!
-    query_scan_findByCursor(input: ScanQueryInput): ScanRecordPage!
+    query_scan_findScanById(id: UUID!): ScanRecord!
+    query_scan_findScansByCursor(input: ScanQueryInput): ScanRecordPage!
 }
 
 # --- Mutation ---
@@ -77,7 +76,7 @@ type DeleteScanPayload {
 }
 
 extend type Mutation {
-    mutation_scan_create(input: NewScanInput!): NewScanPayload!
-    mutation_scan_update(input: UpdateScanInput!): UpdateScanPayload!
-    mutation_scan_delete(id: UUID!): DeleteScanPayload!
+    mutation_scan_createScan(input: NewScanInput!): NewScanPayload!
+    mutation_scan_updateScan(input: UpdateScanInput!): UpdateScanPayload!
+    mutation_scan_deleteScan(id: UUID!): DeleteScanPayload!
 }

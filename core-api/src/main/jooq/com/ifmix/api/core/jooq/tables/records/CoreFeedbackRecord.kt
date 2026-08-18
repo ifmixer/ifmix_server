@@ -39,9 +39,9 @@ open class CoreFeedbackRecord private constructor() : UpdatableRecordImpl<CoreFe
         set(value): Unit = set(4, value)
         get(): UUID? = get(4) as UUID?
 
-    open var category: Short?
+    open var category: Int?
         set(value): Unit = set(5, value)
-        get(): Short? = get(5) as Short?
+        get(): Int? = get(5) as Int?
 
     open var comment: String?
         set(value): Unit = set(6, value)
@@ -60,7 +60,7 @@ open class CoreFeedbackRecord private constructor() : UpdatableRecordImpl<CoreFe
     /**
      * Create a detached, initialised CoreFeedbackRecord
      */
-    constructor(id: UUID, appId: UUID, installId: UUID, userId: UUID? = null, scanRecordId: UUID? = null, category: Short? = null, comment: String? = null, createdAt: Instant): this() {
+    constructor(id: UUID, appId: UUID, installId: UUID, userId: UUID? = null, scanRecordId: UUID? = null, category: Int? = null, comment: String? = null, createdAt: Instant): this() {
         this.id = id
         this.appId = appId
         this.installId = installId

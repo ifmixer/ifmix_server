@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.iap.repo
 
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.jooq.tables.CoreStoreNotification.Companion.CORE_STORE_NOTIFICATION
-import com.ifmix.api.core.model.StoreNotification
+import com.ifmix.api.core.model.iap.StoreNotification
 import org.jooq.JSONB
 import org.springframework.stereotype.Repository
 import java.util.UUID

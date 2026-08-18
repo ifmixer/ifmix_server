@@ -1,4 +1,4 @@
-package com.ifmix.api.core.bff.graphql.customer
+package com.ifmix.api.core.bff.graphql.customer.feedback
 
 import com.ifmix.api.core.generated.types.FeedbackCategory
 import com.ifmix.api.core.generated.types.SubmitFeedbackInput
@@ -21,7 +21,7 @@ class FeedbackFetcher(
     private val ctxProvider: OperationContextProvider,
 ) {
 
-    @DgsMutation(field = "mutation_feedback_submit")
+    @DgsMutation(field = "mutation_feedback_submitFeedback")
     fun submitFeedback(dfe: DgsDataFetchingEnvironment, @InputArgument input: SubmitFeedbackInput): SubmitFeedbackPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val id = feedbackService.submit(ctx, input.toReq()).id

@@ -25,7 +25,7 @@ data class CoreAgnesKey(
     var createdAt: Instant? = null,
     var updatedAt: Instant? = null,
     var deletedAt: Instant? = null,
-    var type: Short? = null
+    var type: Int? = null
 ): Serializable {
 
 

@@ -1,5 +1,6 @@
-package com.ifmix.api.core.model
+package com.ifmix.api.core.model.scan
 
+import com.ifmix.api.core.model.ImageRef
 import java.time.Instant
 import java.util.UUID
 
@@ -14,7 +15,7 @@ data class ScanRecord(
     val appId: UUID,
     val imageKeys: List<ImageRef>,           // DB: IMAGE_KEYS (JSONB)
     val result: Any? = null,             // DB: RESULT_JSON (JSONB)
-    val status: Short,
+    val status: Int,
     val clientIp: String? = null,
     val lang: String? = null,
     val country: String? = null,

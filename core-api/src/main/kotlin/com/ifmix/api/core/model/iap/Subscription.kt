@@ -1,4 +1,4 @@
-package com.ifmix.api.core.model
+package com.ifmix.api.core.model.iap
 
 import java.time.Instant
 import java.util.UUID
@@ -14,7 +14,7 @@ data class Subscription(
     val subscriptionPxid: String,
     val originalTransactionId: String? = null,
     val productId: String? = null,
-    val platform: Short,
+    val platform: Int,
     val active: Boolean,
     val subStatus: String? = null,
     val expiryDate: Instant? = null,

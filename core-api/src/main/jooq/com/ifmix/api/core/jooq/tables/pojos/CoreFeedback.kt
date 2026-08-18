@@ -19,7 +19,7 @@ data class CoreFeedback(
     var installId: UUID,
     var userId: UUID? = null,
     var scanRecordId: UUID? = null,
-    var category: Short? = null,
+    var category: Int? = null,
     var comment: String? = null,
     var createdAt: Instant
 ): Serializable {

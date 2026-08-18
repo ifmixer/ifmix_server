@@ -6,7 +6,7 @@ import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
-import com.ifmix.api.core.model.AppConfigRevision
+import com.ifmix.api.core.model.app.AppConfigRevision
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import tools.jackson.module.kotlin.jacksonObjectMapper

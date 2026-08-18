@@ -5,6 +5,7 @@ package com.ifmix.api.core.jooq.tables
 
 
 import com.ifmix.api.core.infra.jooq.InstantConverter
+import com.ifmix.api.core.infra.jooq.SmallintToIntConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.AGNES_KEY_APP_IDX
 import com.ifmix.api.core.jooq.indexes.AGNES_KEY_UNAVAILABLE_IDX
@@ -136,7 +137,7 @@ open class CoreAgnesKey(
     /**
      * The column <code>public.core_agnes_key.type</code>.
      */
-    val TYPE: TableField<CoreAgnesKeyRecord, Short?> = createField(DSL.name("type"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.field(DSL.raw("100"), SQLDataType.SMALLINT)), this, "")
+    val TYPE: TableField<CoreAgnesKeyRecord, Int?> = createField(DSL.name("type"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.field(DSL.raw("100"), SQLDataType.SMALLINT)), this, "", SmallintToIntConverter())
 
     private constructor(alias: Name, aliased: Table<CoreAgnesKeyRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreAgnesKeyRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

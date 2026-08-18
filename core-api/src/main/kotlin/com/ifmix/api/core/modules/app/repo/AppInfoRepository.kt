@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.app.repo
 
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAppInfo.Companion.CORE_APP_INFO
-import com.ifmix.api.core.model.AppInfo
+import com.ifmix.api.core.model.app.AppInfo
 import org.springframework.stereotype.Repository
 
 @Repository

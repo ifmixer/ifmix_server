@@ -1,5 +1,6 @@
 package com.ifmix.api.core.model.enums
 
+import com.ifmix.api.core.model.enums.CodedEnum
 /**
  * IAP 购买平台。
  *

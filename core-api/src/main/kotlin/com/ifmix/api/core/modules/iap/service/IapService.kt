@@ -5,8 +5,8 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jooq.TxRunner
-import com.ifmix.api.core.model.Subscription
-import com.ifmix.api.core.model.StoreNotification
+import com.ifmix.api.core.model.iap.Subscription
+import com.ifmix.api.core.model.iap.StoreNotification
 import com.ifmix.api.core.modules.iap.repo.StoreNotificationRepository
 import com.ifmix.api.core.modules.iap.repo.SubscriptionRepository
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
@@ -101,7 +101,7 @@ open class IapService(
             subscriptionPxid = subscriptionPxid,
             originalTransactionId = verifyResult.originalTransactionId,
             productId = req.productId,
-            platform = req.platform.toShort(),
+            platform = req.platform,
             active = true,
             subStatus = subStatus,
             expiryDate = verifyResult.expiryDate,

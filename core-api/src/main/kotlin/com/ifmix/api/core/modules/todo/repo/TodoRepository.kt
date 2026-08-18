@@ -5,7 +5,7 @@ import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreTodo.Companion.CORE_TODO
-import com.ifmix.api.core.model.Todo
+import com.ifmix.api.core.model.todo.Todo
 import org.springframework.stereotype.Repository
 import java.util.UUID
 

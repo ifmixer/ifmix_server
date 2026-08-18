@@ -124,8 +124,8 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "Long" to "kotlin.Long",
         "JSON" to "kotlin.Any",
         // Entity output types → Domain Model data classes
-        "Todo" to "com.ifmix.api.core.model.Todo",
-        "TodoItem" to "com.ifmix.api.core.model.TodoItem",
+        "Todo" to "com.ifmix.api.core.model.todo.Todo",
+        "TodoItem" to "com.ifmix.api.core.model.todo.TodoItem",
     )
 }
 
@@ -153,6 +153,12 @@ jooq {
                             userType = "java.time.Instant"
                             converter = "com.ifmix.api.core.infra.jooq.InstantConverter"
                             includeTypes = ".*(?i:timestamp).*"
+                        })
+                        // SMALLINT → Kotlin Int，避免 Short↔Int 转换噪音
+                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
+                            userType = "kotlin.Int"
+                            converter = "com.ifmix.api.core.infra.jooq.SmallintToIntConverter"
+                            includeTypes = "SMALLINT"
                         })
                     }
                     target.apply {

@@ -63,9 +63,9 @@ open class CoreAgnesKeyRecord private constructor() : UpdatableRecordImpl<CoreAg
         set(value): Unit = set(10, value)
         get(): Instant? = get(10) as Instant?
 
-    open var type: Short?
+    open var type: Int?
         set(value): Unit = set(11, value)
-        get(): Short? = get(11) as Short?
+        get(): Int? = get(11) as Int?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -76,7 +76,7 @@ open class CoreAgnesKeyRecord private constructor() : UpdatableRecordImpl<CoreAg
     /**
      * Create a detached, initialised CoreAgnesKeyRecord
      */
-    constructor(id: UUID, appId: UUID, key: String, email: String? = null, rateLimit: Long? = null, windowSec: Long? = null, models: String? = null, unavailableUntil: Instant? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null, type: Short? = null): this() {
+    constructor(id: UUID, appId: UUID, key: String, email: String? = null, rateLimit: Long? = null, windowSec: Long? = null, models: String? = null, unavailableUntil: Instant? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null, type: Int? = null): this() {
         this.id = id
         this.appId = appId
         this.key = key

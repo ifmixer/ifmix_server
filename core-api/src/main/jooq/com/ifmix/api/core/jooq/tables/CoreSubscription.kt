@@ -5,6 +5,7 @@ package com.ifmix.api.core.jooq.tables
 
 
 import com.ifmix.api.core.infra.jooq.InstantConverter
+import com.ifmix.api.core.infra.jooq.SmallintToIntConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.SUBSCRIPTION_APP_ID_IDX
 import com.ifmix.api.core.jooq.indexes.SUBSCRIPTION_ORIGINAL_TXN_IDX
@@ -107,7 +108,7 @@ open class CoreSubscription(
     /**
      * The column <code>public.core_subscription.platform</code>.
      */
-    val PLATFORM: TableField<CoreSubscriptionRecord, Short?> = createField(DSL.name("platform"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.field(DSL.raw("100"), SQLDataType.SMALLINT)), this, "")
+    val PLATFORM: TableField<CoreSubscriptionRecord, Int?> = createField(DSL.name("platform"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.field(DSL.raw("100"), SQLDataType.SMALLINT)), this, "", SmallintToIntConverter())
 
     /**
      * The column <code>public.core_subscription.active</code>.

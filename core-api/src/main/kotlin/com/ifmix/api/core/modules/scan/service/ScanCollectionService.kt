@@ -6,8 +6,8 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
-import com.ifmix.api.core.model.ScanCollection
-import com.ifmix.api.core.model.ScanCollectionItem
+import com.ifmix.api.core.model.scan.ScanCollection
+import com.ifmix.api.core.model.scan.ScanCollectionItem
 import com.ifmix.api.core.modules.scan.dto.AddItemReq
 import com.ifmix.api.core.modules.scan.dto.AddItemRes
 import com.ifmix.api.core.modules.scan.dto.ListItemsReq

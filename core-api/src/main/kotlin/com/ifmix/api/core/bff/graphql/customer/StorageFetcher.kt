@@ -9,7 +9,7 @@ import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.http.mustGetInstallId
-import com.ifmix.api.core.model.UploadRecord
+import com.ifmix.api.core.model.storage.UploadRecord
 import com.ifmix.api.core.modules.scan.service.AntiqueService
 import com.ifmix.api.core.modules.storage.repo.UploadRecordRepository
 import com.netflix.graphql.dgs.DgsComponent

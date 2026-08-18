@@ -1,4 +1,4 @@
-package com.ifmix.api.core.model
+package com.ifmix.api.core.model.storage
 
 import java.time.Instant
 import java.util.UUID
