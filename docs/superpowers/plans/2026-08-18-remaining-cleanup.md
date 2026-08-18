@@ -2,7 +2,6 @@
 
 > 日期: 2026-08-18
 > 状态: **全部完成** ✅
-
 ## 已完成
 
 ### Context 分层重构（提交 `6a816de`）
@@ -39,3 +38,19 @@
 | ScanCollectionItem | generated type（关系表，有 scanRecord 字段） |
 | ScanCollectionItemPage / ScanRecordPage / TodoPage | generated type（分页包装） |
 | OperationResult | generated type（字段与 infra.dto 略有不同） |
+
+
+---
+
+## 追加: 去除 @Transactional
+
+以下文件仍用 `@Transactional`，需要改为 `tx.withTx(svc(opCtx)) { ... }`：
+
+| 文件 | 行 |
+|------|-----|
+| `modules/app/service/AppConfigFacadeService.kt` | line 40, 53 |
+| `modules/scan/service/ScanCollectionFacadeService.kt` | line 30, 46, 53 |
+| `modules/feedback/service/FeedbackFacadeService.kt` | line 20 |
+
+改法：去掉 `@Transactional` 注解，用 `tx.withTx(svc(opCtx)) { sc -> ... }` 包裹。
+注入 `TxRunner`，构建 `svc(opCtx)` 走 `SvcCtx.DEFAULT.dsl`。
