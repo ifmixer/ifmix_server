@@ -2,7 +2,6 @@ package com.ifmix.api.core.infra.jooq
 
 import org.jooq.Condition
 import org.jooq.Field
-import org.jooq.Table
 import org.jooq.TableField
 import org.jooq.impl.DSL
 import java.time.Instant
@@ -11,18 +10,21 @@ import java.time.Instant
  * 通用动态查询条件解析器。
  *
  * 将 GraphQL FilterGroup input 解析为 jOOQ Condition。
- * 每张表注册允许过滤的字段白名单，防止客户端查询任意列。
+ * 通过 fieldMap（Kotlin 属性名 → jOOQ TableField）+ allowedKeys 控制可查字段。
  *
  * 用法：
  * ```
- * val parser = FilterConditionParser(CORE_SCAN_RECORD, setOf("status", "collected", "lang", "created_at"))
+ * val parser = FilterConditionParser(
+ *     fieldMap = ScanRecord.FIELDS,
+ *     allowedKeys = setOf("status", "collected", "lang", "createdAt"),
+ * )
  * val condition = parser.parse(filterGroup)
  * // → 拼接到 .where(baseCond.and(condition))
  * ```
  */
 class FilterConditionParser(
-    private val table: Table<*>,
-    private val allowedFields: Set<String>,
+    private val fieldMap: Map<String, TableField<*, *>>,
+    private val allowedKeys: Set<String> = fieldMap.keys,
 ) {
 
     companion object {
@@ -80,11 +82,9 @@ class FilterConditionParser(
         val opStr = filter["op"] as? String
             ?: throw IllegalArgumentException("FieldFilter.op is required")
 
-        // 白名单校验
-        val snakeName = fieldName.toSnakeCase()
-        require(snakeName in allowedFields) { "Field '$fieldName' is not allowed for filtering" }
+        require(fieldName in allowedKeys) { "Field '$fieldName' is not allowed for filtering" }
 
-        val jooqField = table.field(snakeName)
+        val jooqField = fieldMap[fieldName]
             ?: throw IllegalArgumentException("Unknown field: $fieldName")
 
         val value = filter["value"]
@@ -105,22 +105,27 @@ class FilterConditionParser(
             }
             "GT" -> {
                 requireNotNull(value) { "value required for GT" }
+                @Suppress("UNCHECKED_CAST")
                 (field as Field<Comparable<Any>>).gt(coerce(field, value) as Comparable<Any>)
             }
             "GTE" -> {
                 requireNotNull(value) { "value required for GTE" }
+                @Suppress("UNCHECKED_CAST")
                 (field as Field<Comparable<Any>>).ge(coerce(field, value) as Comparable<Any>)
             }
             "LT" -> {
                 requireNotNull(value) { "value required for LT" }
+                @Suppress("UNCHECKED_CAST")
                 (field as Field<Comparable<Any>>).lt(coerce(field, value) as Comparable<Any>)
             }
             "LTE" -> {
                 requireNotNull(value) { "value required for LTE" }
+                @Suppress("UNCHECKED_CAST")
                 (field as Field<Comparable<Any>>).le(coerce(field, value) as Comparable<Any>)
             }
             "LIKE" -> {
                 requireNotNull(value) { "value required for LIKE" }
+                @Suppress("UNCHECKED_CAST")
                 (field as Field<String>).like(value.toString())
             }
             "IN" -> {
@@ -154,18 +159,8 @@ class FilterConditionParser(
             fieldType == Long::class.java && value is Number -> value.toLong()
             fieldType == Boolean::class.java && value is Boolean -> value
             fieldType == String::class.java -> value.toString()
-            // 数字类型兼容
             Number::class.java.isAssignableFrom(fieldType) && value is Number -> value
             else -> value
         }
-    }
-
-    /**
-     * camelCase / 原始名 → snake_case。
-     * 支持客户端传 "createdAt" 或 "created_at" 两种风格。
-     */
-    private fun String.toSnakeCase(): String {
-        if (this.contains('_')) return this.lowercase()
-        return this.replace(Regex("([a-z])([A-Z])")) { "${it.groupValues[1]}_${it.groupValues[2]}" }.lowercase()
     }
 }

@@ -1,6 +1,8 @@
 package com.ifmix.api.core.entity.ai
 
 import com.ifmix.api.core.entity.ImageRef
+import com.ifmix.api.core.jooq.tables.CoreScanRecord.Companion.CORE_SCAN_RECORD
+import org.jooq.TableField
 import java.time.Instant
 import java.util.UUID
 
@@ -39,5 +41,23 @@ data class ScanRecord(
         const val COMPLETED = 200
         const val FAILED = 300
         fun isTerminal(code: Int) = code >= COMPLETED
+    }
+
+    companion object {
+        /** Kotlin 属性名 → jOOQ TableField。供动态 filter/sort 使用。 */
+        val FIELDS: Map<String, TableField<*, *>> = mapOf(
+            "id" to CORE_SCAN_RECORD.ID,
+            "appId" to CORE_SCAN_RECORD.APP_ID,
+            "status" to CORE_SCAN_RECORD.STATUS,
+            "collected" to CORE_SCAN_RECORD.COLLECTED,
+            "lang" to CORE_SCAN_RECORD.LANG,
+            "country" to CORE_SCAN_RECORD.COUNTRY,
+            "currency" to CORE_SCAN_RECORD.CURRENCY,
+            "userDisplayName" to CORE_SCAN_RECORD.USER_DISPLAY_NAME,
+            "userNotes" to CORE_SCAN_RECORD.USER_NOTES,
+            "clientIp" to CORE_SCAN_RECORD.CLIENT_IP,
+            "createdAt" to CORE_SCAN_RECORD.CREATED_AT,
+            "updatedAt" to CORE_SCAN_RECORD.UPDATED_AT,
+        )
     }
 }

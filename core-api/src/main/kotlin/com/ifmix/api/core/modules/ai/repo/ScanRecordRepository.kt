@@ -76,11 +76,8 @@ class ScanRecordRepository(factory: CrudRepoOpsFactory) {
     // ===== 动态 Filter 查询 =====
 
     private val filterParser = FilterConditionParser(
-        table = CORE_SCAN_RECORD,
-        allowedFields = setOf(
-            "status", "collected", "lang", "country", "currency",
-            "user_display_name", "user_notes", "created_at", "updated_at",
-        ),
+        fieldMap = ScanRecord.FIELDS,
+        allowedKeys = setOf("status", "collected", "lang", "country", "currency", "userDisplayName", "userNotes", "createdAt", "updatedAt"),
     )
 
     @Suppress("UNCHECKED_CAST")
