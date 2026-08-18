@@ -3,7 +3,7 @@ package com.ifmix.api.core.bff.webhooks
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
-import com.ifmix.api.core.modules.iap.service.IapService
+import com.ifmix.api.core.modules.iap.service.IapFacadeService
 import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -28,9 +28,9 @@ import java.util.UUID
  */
 @RestController
 @RequestMapping("/webhooks/iap")
-@ConditionalOnBean(IapService::class)
+@ConditionalOnBean(IapFacadeService::class)
 class WebhookController(
-    private val iapService: IapService,
+    private val iapService: IapFacadeService,
     @Qualifier("appleDecoder") private val appleDecoder: NotificationDecoder,
     @Qualifier("googleDecoder") private val googleDecoder: NotificationDecoder,
     private val appConfigRepo: AppConfigRepository,

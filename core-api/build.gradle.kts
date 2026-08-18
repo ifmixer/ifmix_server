@@ -131,6 +131,7 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         // Entity output types → Domain Model data classes
         "Todo" to "com.ifmix.api.core.model.todo.Todo",
         "TodoItem" to "com.ifmix.api.core.model.todo.TodoItem",
+        "ScanCollection" to "com.ifmix.api.core.model.scan.ScanCollection",
     )
 }
 
