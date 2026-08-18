@@ -1,100 +1,41 @@
 # 剩余整理任务
 
 > 日期: 2026-08-18
-> 状态: Context 分层 + FacadeService 已完成（todo/auth/feedback/app/scanCollection）
+> 状态: **全部完成** ✅
 
-## 1. ScanService → ScanFacadeService + 拆分
+## 已完成
 
-当前 `ScanService.kt`（名为 `AntiqueService`）需要：
-- 重命名为 `ScanFacadeService`
-- 拆分 internal 类：`ScanQueries`, `ScanCommands`
-- presign 方法留在 facade 或移到 `StorageFacadeService`
+### Context 分层重构（提交 `6a816de`）
+- `RequestContext` — per-request，从 HTTP header 解析
+- `OperationContext` — per-operation，由 `OperationContextProvider.fromDfe()` 构建
+- `SvcCtx` — per-service-call，Service 层构建，含 DSL/routing 决策
+- TxRunner、CrudRepoOps、CrudServiceOps 全部适配 SvcCtx
+- 所有 repo 层参数 `RepoContext → SvcCtx`
+- todo/auth/feedback/app/scanCollection 模块完成 FacadeService 拆分
 
-```
-modules/scan/service/
-├── ScanFacadeService.kt          # 对外入口
-├── internal/
-│   ├── ScanQueries.kt            # findById, findByCursor
-│   └── ScanCommands.kt           # create, update, delete
-```
+### FacadeService 拆分 + Storage（提交 `74225f7`）
+- `ScanFacadeService` + `ScanQueries` / `ScanCommands`（替换原 `AntiqueService`）
+- `IapFacadeService` + `IapCommands` / `IapWebhookHandler`
+- `StorageFacadeService` + `StorageCommands`（Fetcher 不再直连 repo）
+- `WebhookController` 改为注入 `IapFacadeService`
+- DGS typeMapping：`Todo`/`TodoItem`/`ScanCollection` 使用 domain model
 
-注意: 当前类名是 `AntiqueService`，统一改为 `ScanFacadeService`。
+### TypeMapping 完善 + Fetcher 清理（提交 `9f72978`）
+- `ScanRecord` → domain model（field alias `images` = `imageKeys`）
+- `ImageRef` → domain model
+- `ScanCollection` → domain model
+- `ScanFetcher` — 去掉 `toDgs()` 转换，直接返回 domain model
+- `CollectionFetcher` — 去掉 `Dgs*` alias，直接使用 domain model
+- `ScanCollectionFacadeService.findItemsByCursorPage` — 用 stub ScanRecord 填充 scanRecord 字段（暂未实现 DataFetcher）
+- `ScanCollectionItem` 保持 generated type（关系表，字段与 domain model 不一致）
 
-## 2. IapService → IapFacadeService + 拆分
-
-```
-modules/iap/service/
-├── IapFacadeService.kt           # 对外入口
-├── internal/
-│   ├── IapCommands.kt            # verifyPurchase
-│   └── IapWebhookHandler.kt     # handleAppleNotification, handleGoogleNotification
-```
-
-## 3. StorageFetcher 改走 FacadeService
-
-当前 `StorageFetcher` 直接注入 `UploadRecordRepository` 并调用 `repo.insert(...)`。需要：
-- 创建 `StorageFacadeService`（或合并到 ScanFacadeService）
-- presignUpload/presignDownload 逻辑移到 service
-- Fetcher 只调 service
-
-```kotlin
-// StorageFacadeService
-@Service
-class StorageFacadeService(
-    private val commands: StorageCommands,
-) {
-    fun presignUpload(opCtx: OperationContext, input: PresignUploadInput): PresignUploadResult = commands.presignUpload(opCtx, input)
-    fun presignDownload(opCtx: OperationContext, input: PresignDownloadInput): PresignDownloadResult = commands.presignDownload(opCtx, input)
-}
-
-// StorageCommands (internal)
-@Component
-class StorageCommands(
-    private val uploadRecordRepo: UploadRecordRepository,
-    private val objectStorage: ObjectStorage,
-    private val tx: TxRunner,
-) {
-    fun presignUpload(opCtx: OperationContext, input: PresignUploadInput): PresignUploadResult {
-        val svc = SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl)
-        // 构建 objectKey, presign, 记录 upload record
-        ...
-    }
-}
-
-// StorageFetcher — 只调 service
-@DgsComponent
-class StorageFetcher(
-    private val storageService: StorageFacadeService,
-    private val ctxProvider: OperationContextProvider,
-) { ... }
-```
-
-## 4. DGS typeMapping + Fetcher 去掉手动转换
-
-**问题**: `CollectionFetcher` 和 `ScanFetcher` 把 domain model 手动转成 DGS 生成的类型（如 `DgsScanCollection(...)`）。加了 typeMapping 后 DGS 不再生成这些类型，fetcher 直接返回 domain model。
-
-**必须同时做**（否则编译不过）：
-1. `build.gradle.kts` typeMapping 加:
-   ```kotlin
-   "ScanRecord" to "com.ifmix.api.core.model.scan.ScanRecord",
-   "ScanCollection" to "com.ifmix.api.core.model.scan.ScanCollection",
-   "ScanCollectionItem" to "com.ifmix.api.core.model.scan.ScanCollectionItem",
-   "ImageRef" to "com.ifmix.api.core.model.ImageRef",
-   "OperationResult" to "com.ifmix.api.core.infra.dto.OperationResult",
-   ```
-2. `CollectionFetcher.kt` — 删除所有 `import com.ifmix.api.core.generated.types.{ScanCollection,ScanCollectionItem,ScanRecord,ImageRef} as Dgs*`，直接返回 domain model（去掉 `DgsScanCollection(...)` 手动构造）
-3. `ScanFetcher.kt` — 同上，`import ...ScanRecord as DgsScanRecord` 删掉，直接返回 domain model
-4. `AuthFetcher.kt` — `OperationResult` import 从 `generated.types` 改为 `infra.dto`
-5. `rm -rf core-api/build/generated/sources/dgs-codegen && ./gradlew :core-api:generateJava`
-6. 编译通过
-
-**注意**: ScanCollectionItemPage/ScanRecordPage/TodoPage 保留 DGS 生成（它们是分页包装类型，domain model 用的是 `Page<T>` 泛型不直接对应）。
-
-## 执行顺序
-
-```
-4 → 5 先做 typeMapping（影响后续编译）
-1 → 2 拆 service
-3 StorageFetcher 改走 service
-最后编译通过
-```
+### TypeMapping 策略总结
+| 类型 | 处理 |
+|------|------|
+| Todo / TodoItem | domain model ✅ |
+| ScanRecord | domain model ✅ |
+| ScanCollection | domain model ✅ |
+| ImageRef | domain model ✅ |
+| ScanCollectionItem | generated type（关系表，有 scanRecord 字段） |
+| ScanCollectionItemPage / ScanRecordPage / TodoPage | generated type（分页包装） |
+| OperationResult | generated type（字段与 infra.dto 略有不同） |
