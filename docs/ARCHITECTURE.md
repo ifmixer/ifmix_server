@@ -365,3 +365,215 @@ DB (via jOOQ)
 - **测试框架**: JUnit 5 + Mockito + assertk
 - **集成测试**: Testcontainers (PostgreSQL + Redis)
 - **E2E**: WebTestClient + Testcontainers
+
+
+---
+
+## Service 分层约定（FacadeService + Internal Service）
+
+### 规则
+
+每个模块的 service 层分为两层：
+
+| 层 | 文件 | 职责 | 注入 |
+|---|---|---|---|
+| **FacadeService** | `XxxFacadeService.kt` | opCtx→svcCtx 转换、开事务、委托 internal | TxRunner + Internal Services + CrudServiceOps(简单查询) |
+| **Internal Service** | `XxxCommands.kt` / `XxxQueries.kt` | 纯业务实现，接收 SvcCtx | Repo |
+
+**约束：**
+- FacadeService 是模块对外唯一入口，DataFetcher 只注入 FacadeService
+- Internal Service **不注入 TxRunner**，**不构建 SvcCtx**，只接收 SvcCtx 参数
+- 所有 mutation 必须在 FacadeService 通过 `tx.withTx(svc(opCtx)) { sc -> ... }` 包裹
+- 简单的单行 repo 查询（如 `findById`）可保留在 FacadeService 直接调 repo/ops
+- 有逻辑的查询或复杂操作必须委托给 Internal Service
+- 全局事务由 DataFetcher 层的 `GlobalTxRunner` 开启，FacadeService 通过 `opCtx.globalTxDsl` 检测并复用
+
+### 目录结构
+
+```
+modules/todo/
+├── repo/
+│   ├── TodoRepository.kt
+│   └── TodoItemRepository.kt
+└── service/
+    ├── TodoFacadeService.kt       # 对外入口
+    ├── TodoQueries.kt             # internal: 查询实现
+    ├── TodoCommands.kt            # internal: 写操作实现
+    └── TodoItemCommands.kt        # internal: 子实体写操作
+```
+
+### 完整 Demo — Todo 模块
+
+```kotlin
+// ======================== FacadeService ========================
+
+@Service
+class TodoFacadeService(
+    private val queries: TodoQueries,
+    private val commands: TodoCommands,
+    private val itemCommands: TodoItemCommands,
+    private val repo: TodoRepository,
+    private val tx: TxRunner,
+    factory: CrudServiceOpsFactory,
+) {
+    private val ops = factory.create(Todo::class.java, "todo") { it.id }
+
+    private fun svc(opCtx: OperationContext) = SvcCtx(
+        op = opCtx,
+        dsl = opCtx.globalTxDsl ?: SvcCtx.DEFAULT.dsl,
+    )
+
+    // --- 简单查询：保留在 facade ---
+    fun findById(opCtx: OperationContext, id: UUID): Todo? =
+        ops.findById(svc(opCtx), id, repo::findById)
+
+    fun findByIds(opCtx: OperationContext, ids: List<UUID>): List<Todo> =
+        ops.findByIds(svc(opCtx), ids, repo::findByIds)
+
+    // --- 有逻辑的查询：走 internal ---
+    fun findByCursor(opCtx: OperationContext, input: TodoQueryInput): Page<Todo> =
+        queries.findByCursor(svc(opCtx), input)
+
+    // --- Mutation：开事务 + 走 internal ---
+    fun createTodo(opCtx: OperationContext, input: CreateTodoInput): UUID =
+        tx.withTx(svc(opCtx)) { sc -> commands.create(sc, input) }
+
+    fun updateTodo(opCtx: OperationContext, input: UpdateTodoInput): Boolean =
+        tx.withTx(svc(opCtx)) { sc -> commands.update(sc, input) }
+
+    fun deleteTodo(opCtx: OperationContext, id: UUID): Boolean =
+        tx.withTx(svc(opCtx)) { sc -> commands.delete(sc, id) }
+
+    fun updateItems(opCtx: OperationContext, input: UpdateTodoItemsMutationInput) =
+        tx.withTx(svc(opCtx)) { sc -> itemCommands.update(sc, input) }
+
+    // --- DataLoader 用 ---
+    fun findItemsByTodoIds(opCtx: OperationContext, todoIds: Collection<UUID>): List<TodoItem> =
+        queries.findItemsByTodoIds(svc(opCtx), todoIds)
+}
+
+// ======================== Internal: Queries ========================
+
+@Component
+class TodoQueries(
+    private val repo: TodoRepository,
+    private val itemRepo: TodoItemRepository,
+    factory: CrudServiceOpsFactory,
+) {
+    private val ops = factory.create(Todo::class.java, "todo") { it.id }
+
+    fun findByCursor(sc: SvcCtx, input: TodoQueryInput): Page<Todo> =
+        ops.findByCursor(sc, input.cursor, input.limit, repo::findByCursor)
+
+    fun findItemsByTodoIds(sc: SvcCtx, todoIds: Collection<UUID>): List<TodoItem> =
+        itemRepo.findByTodoIds(sc, todoIds)
+}
+
+// ======================== Internal: Commands ========================
+
+@Component
+class TodoCommands(
+    private val repo: TodoRepository,
+    private val itemRepo: TodoItemRepository,
+    // 注意：不注入 TxRunner
+) {
+    fun create(sc: SvcCtx, input: CreateTodoInput): UUID {
+        val appId = sc.mustGetAppId()
+        val now = Instant.now()
+        val id = UuidV7.generate()
+        repo.insert(sc, Todo(
+            id = id, appId = appId,
+            installId = sc.installId, userId = sc.userId,
+            title = input.title, done = input.done ?: false,
+            createdAt = now,
+        ))
+        input.items?.takeIf { it.isNotEmpty() }?.let { items ->
+            itemRepo.batchInsert(sc, items.map { i ->
+                TodoItem(
+                    id = UuidV7.generate(), appId = appId, todoId = id,
+                    content = i.content, done = i.done ?: false, createdAt = now,
+                )
+            })
+        }
+        return id
+    }
+
+    fun update(sc: SvcCtx, input: UpdateTodoInput): Boolean {
+        val appId = sc.mustGetAppId()
+        if (!repo.exists(sc, appId, input.id)) throw ApiError(ErrorCode.NOT_FOUND)
+        repo.partialUpdate(sc, appId, input)
+        return true
+    }
+
+    fun delete(sc: SvcCtx, id: UUID): Boolean {
+        val appId = sc.mustGetAppId()
+        return repo.deleteById(sc, appId, id)
+    }
+}
+
+// ======================== Internal: TodoItemCommands ========================
+
+@Component
+class TodoItemCommands(
+    private val repo: TodoItemRepository,
+    // 不注入 TxRunner
+) {
+    fun update(sc: SvcCtx, input: UpdateTodoItemsMutationInput) {
+        val appId = sc.mustGetAppId()
+        val now = Instant.now()
+        input.create?.takeIf { it.isNotEmpty() }?.let { creates ->
+            repo.batchInsert(sc, creates.map { c ->
+                TodoItem(
+                    id = UuidV7.generate(), appId = appId, todoId = c.todoId,
+                    content = c.content, done = c.done ?: false, createdAt = now,
+                )
+            })
+        }
+        input.update?.takeIf { it.isNotEmpty() }?.let { updates ->
+            repo.batchUpdate(sc, appId, updates)
+        }
+        input.delete?.takeIf { it.isNotEmpty() }?.let { ids ->
+            repo.deleteByIds(sc, appId, ids)
+        }
+    }
+}
+```
+
+### DataFetcher（调用方）
+
+```kotlin
+@DgsComponent
+class TodoFetcher(
+    private val todoService: TodoFacadeService,  // 只注入 Facade
+    private val ctxProvider: OperationContextProvider,
+) {
+    @DgsQuery(field = "query_todo_findTodoById")
+    fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo {
+        val opCtx = ctxProvider.fromDfe(dfe)
+        return todoService.findById(opCtx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+    }
+
+    @DgsMutation(field = "mutation_todo_createTodo")
+    fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
+        val opCtx = ctxProvider.fromDfe(dfe)
+        val id = todoService.createTodo(opCtx, input)
+        val todo = todoService.findById(opCtx, id)!!
+        return CreateTodoPayload(todo = todo)
+    }
+}
+```
+
+### 跨模块事务（DataFetcher 层）
+
+```kotlin
+@DgsMutation(field = "mutation_xxx_complexOperation")
+fun complexOp(dfe: DgsDataFetchingEnvironment, ...): ... {
+    val opCtx = ctxProvider.fromDfe(dfe)
+    return globalTx.withTx(opCtx) { txOpCtx ->
+        // 各 FacadeService 检测 txOpCtx.globalTxDsl != null → 复用事务
+        val id = todoService.createTodo(txOpCtx, ...)
+        scanService.bindToTodo(txOpCtx, id)
+        ...
+    }
+}
+```

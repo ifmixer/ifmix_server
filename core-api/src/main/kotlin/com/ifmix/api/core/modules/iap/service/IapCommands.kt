@@ -5,7 +5,6 @@ import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.infra.jooq.TxRunner
 import com.ifmix.api.core.model.iap.Subscription
 import com.ifmix.api.core.model.shared.Platforms
 import com.ifmix.api.core.model.shared.Tiers
@@ -31,15 +30,14 @@ class IapCommands(
     @Qualifier("googleVerifier") private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
     private val appConfigRepo: AppConfigRepository,
-    private val tx: TxRunner,
 ) {
     private val verifierMap: Map<String, PurchaseVerifier> = hashMapOf(
         "APPLE" to appleVerifier,
         "GOOGLE" to googleVerifier,
     )
 
-    fun verifyPurchase(ctx: OperationContext, req: VerifyReq): VerifyRes {
-        val svc = SvcCtx(op = ctx, dsl = SvcCtx.DEFAULT.dsl)
+    fun verifyPurchase(sc: SvcCtx, req: VerifyReq): VerifyRes {
+        val ctx = sc.op
         val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
         val verifier = verifierMap[if (req.platform == Platforms.APPLE) "APPLE" else "GOOGLE"]
@@ -55,7 +53,7 @@ class IapCommands(
         )
         val verifyResult = verifier.verify(input)
 
-        val config = appConfigRepo.mustFindCurrentRevision(svc, appId)
+        val config = appConfigRepo.mustFindCurrentRevision(sc, appId)
         val productTierMap = config.contentConfig.iap.productTierMap
         val tier = tierOf(req.productId, productTierMap) ?: Tiers.FREE
 
@@ -63,7 +61,7 @@ class IapCommands(
             "pxid-${req.platform}-${UuidV7.generate()}"
         }
 
-        val existingSub = subscriptionRepo.findActiveByPxid(svc, appId, subscriptionPxid)
+        val existingSub = subscriptionRepo.findActiveByPxid(sc, appId, subscriptionPxid)
         if (existingSub != null) {
             return VerifyRes(
                 expiresAt = existingSub.expiryDate?.toEpochMilli(),
@@ -112,14 +110,12 @@ class IapCommands(
             updatedAt = now,
         )
 
-        return tx.withTx(SvcCtx(op = ctx, dsl = SvcCtx.DEFAULT.dsl)) { txCtx ->
-            subscriptionRepo.upsertSubscription(txCtx, subscription)
-            VerifyRes(
-                expiresAt = verifyResult.expiryDate?.toEpochMilli(),
-                state = statusFromExpiry(verifyResult.expiryDate),
-                productId = req.productId,
-                tier = tier,
-            )
-        }
+        subscriptionRepo.upsertSubscription(sc, subscription)
+        return VerifyRes(
+            expiresAt = verifyResult.expiryDate?.toEpochMilli(),
+            state = statusFromExpiry(verifyResult.expiryDate),
+            productId = req.productId,
+            tier = tier,
+        )
     }
 }
