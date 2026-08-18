@@ -45,19 +45,19 @@ data class ScanRecord(
 
     companion object {
         /** Kotlin 属性名 → jOOQ TableField。供动态 filter/sort 使用。 */
-        val FIELDS: Map<String, TableField<*, *>> = mapOf(
-            "id" to CORE_SCAN_RECORD.ID,
-            "appId" to CORE_SCAN_RECORD.APP_ID,
-            "status" to CORE_SCAN_RECORD.STATUS,
-            "collected" to CORE_SCAN_RECORD.COLLECTED,
-            "lang" to CORE_SCAN_RECORD.LANG,
-            "country" to CORE_SCAN_RECORD.COUNTRY,
-            "currency" to CORE_SCAN_RECORD.CURRENCY,
-            "userDisplayName" to CORE_SCAN_RECORD.USER_DISPLAY_NAME,
-            "userNotes" to CORE_SCAN_RECORD.USER_NOTES,
-            "clientIp" to CORE_SCAN_RECORD.CLIENT_IP,
-            "createdAt" to CORE_SCAN_RECORD.CREATED_AT,
-            "updatedAt" to CORE_SCAN_RECORD.UPDATED_AT,
+        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
+            ScanRecord::id.name to CORE_SCAN_RECORD.ID,
+            ScanRecord::appId.name to CORE_SCAN_RECORD.APP_ID,
+            ScanRecord::status.name to CORE_SCAN_RECORD.STATUS,
+            ScanRecord::collected.name to CORE_SCAN_RECORD.COLLECTED,
+            ScanRecord::lang.name to CORE_SCAN_RECORD.LANG,
+            ScanRecord::country.name to CORE_SCAN_RECORD.COUNTRY,
+            ScanRecord::currency.name to CORE_SCAN_RECORD.CURRENCY,
+            ScanRecord::userDisplayName.name to CORE_SCAN_RECORD.USER_DISPLAY_NAME,
+            ScanRecord::userNotes.name to CORE_SCAN_RECORD.USER_NOTES,
+            ScanRecord::clientIp.name to CORE_SCAN_RECORD.CLIENT_IP,
+            ScanRecord::createdAt.name to CORE_SCAN_RECORD.CREATED_AT,
+            ScanRecord::updatedAt.name to CORE_SCAN_RECORD.UPDATED_AT,
         )
     }
 }

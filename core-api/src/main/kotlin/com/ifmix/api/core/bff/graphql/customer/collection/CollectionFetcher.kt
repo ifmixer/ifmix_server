@@ -17,7 +17,7 @@ import com.ifmix.api.core.dto.ai.ListItemsReq
 import com.ifmix.api.core.dto.ai.RemoveItemsReq
 import com.ifmix.api.core.entity.ai.ScanCollection
 import com.ifmix.api.core.modules.ai.repo.ScanRecordRepository
-import com.ifmix.api.core.modules.ai.service.ScanCollectionFacadeService
+import com.ifmix.api.core.modules.ai.service.ScanCollectionModuleService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsData
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -32,7 +32,7 @@ import java.util.concurrent.CompletionStage
 
 @DgsComponent
 class CollectionFetcher(
-    private val collectionService: ScanCollectionFacadeService,
+    private val collectionService: ScanCollectionModuleService,
     private val scanRecordRepo: ScanRecordRepository,
     private val ctxProvider: OperationContextProvider,
 ) {

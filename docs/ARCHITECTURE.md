@@ -369,7 +369,7 @@ DB (via jOOQ)
 
 ---
 
-## Service 分层约定（FacadeService + Internal Service）
+## Service 分层约定（ModuleService + Internal Service）
 
 ### 规则
 
@@ -377,17 +377,17 @@ DB (via jOOQ)
 
 | 层 | 文件 | 职责 | 注入 |
 |---|---|---|---|
-| **FacadeService** | `XxxFacadeService.kt` | opCtx→svcCtx 转换、开事务、委托 internal | TxRunner + Internal Services + CrudServiceOps(简单查询) |
-| **Internal Service** | `XxxInternalService.kt` | 纯业务实现，接收 SvcCtx | Repo |
+| **ModuleService** | `XxxModuleService.kt` | opCtx→svcCtx 转换、开事务、委托 internal | TxRunner + Internal Services + CrudServiceOps(简单查询) |
+| **Internal Service** | `XxxEntityService.kt` | 纯业务实现，接收 SvcCtx | Repo |
 
 **约束：**
-- FacadeService 是模块对外唯一入口，DataFetcher 只注入 FacadeService
+- ModuleService 是模块对外唯一入口，DataFetcher 只注入 ModuleService
 - Internal Service **不注入 TxRunner**，**不构建 SvcCtx**，只接收 SvcCtx 参数
-- 所有 mutation 必须在 FacadeService 通过 `tx.withTx(svc(opCtx)) { sc -> ... }` 包裹
-- 简单的单行 repo 查询（如 `findById`）可保留在 FacadeService 直接调 repo/ops
+- 所有 mutation 必须在 ModuleService 通过 `tx.withTx(svc(opCtx)) { sc -> ... }` 包裹
+- 简单的单行 repo 查询（如 `findById`）可保留在 ModuleService 直接调 repo/ops
 - 有逻辑的操作必须委托给 Internal Service
 - Internal Service 按 domain entity 拆文件（纯粹控制文件大小，不是设计分层）
-- 全局事务由 DataFetcher 层的 `GlobalTxRunner` 开启，FacadeService 通过 `opCtx.globalTxDsl` 检测并复用
+- 全局事务由 DataFetcher 层的 `GlobalTxRunner` 开启，ModuleService 通过 `opCtx.globalTxDsl` 检测并复用
 
 ### 目录结构
 
@@ -397,9 +397,9 @@ modules/todo/
 │   ├── TodoRepository.kt
 │   └── TodoItemRepository.kt
 └── service/
-    ├── TodoFacadeService.kt           # 对外入口：事务 + 委托
-    ├── TodoInternalService.kt         # Todo 表的实现
-    └── TodoItemInternalService.kt     # TodoItem 表的实现（文件不大可合并）
+    ├── TodoModuleService.kt           # 对外入口：事务 + 委托
+    ├── TodoEntityService.kt         # Todo 表的实现
+    └── TodoItemEntityService.kt     # TodoItem 表的实现（文件不大可合并）
 ```
 
 简单模块（如 feedback）：
@@ -407,19 +407,19 @@ modules/todo/
 modules/feedback/
 ├── repo/FeedbackRepository.kt
 └── service/
-    ├── FeedbackFacadeService.kt
-    └── FeedbackInternalService.kt
+    ├── FeedbackModuleService.kt
+    └── FeedbackEntityService.kt
 ```
 
 ### 完整 Demo — Todo 模块
 
 ```kotlin
-// ======================== FacadeService ========================
+// ======================== ModuleService ========================
 
 @Service
-class TodoFacadeService(
-    private val todoInternal: TodoInternalService,
-    private val todoItemInternal: TodoItemInternalService,
+class TodoModuleService(
+    private val todoInternal: TodoEntityService,
+    private val todoItemInternal: TodoItemEntityService,
     private val repo: TodoRepository,
     private val tx: TxRunner,
     factory: CrudServiceOpsFactory,
@@ -459,10 +459,10 @@ class TodoFacadeService(
         todoItemInternal.findByTodoIds(svc(opCtx), todoIds)
 }
 
-// ======================== Internal: TodoInternalService ========================
+// ======================== Internal: TodoEntityService ========================
 
 @Component
-class TodoInternalService(
+class TodoEntityService(
     private val repo: TodoRepository,
     private val itemRepo: TodoItemRepository,
     // 不注入 TxRunner
@@ -501,10 +501,10 @@ class TodoInternalService(
     }
 }
 
-// ======================== Internal: TodoItemInternalService ========================
+// ======================== Internal: TodoItemEntityService ========================
 
 @Component
-class TodoItemInternalService(
+class TodoItemEntityService(
     private val repo: TodoItemRepository,
     // 不注入 TxRunner
 ) {
@@ -537,7 +537,7 @@ class TodoItemInternalService(
 ```kotlin
 @DgsComponent
 class TodoFetcher(
-    private val todoService: TodoFacadeService,  // 只注入 Facade
+    private val todoService: TodoModuleService,  // 只注入 Facade
     private val ctxProvider: OperationContextProvider,
 ) {
     @DgsQuery(field = "query_todo_findTodoById")
@@ -563,7 +563,7 @@ class TodoFetcher(
 fun complexOp(dfe: DgsDataFetchingEnvironment, ...): ... {
     val opCtx = ctxProvider.fromDfe(dfe)
     return globalTx.withTx(opCtx) { txOpCtx ->
-        // 各 FacadeService 检测 txOpCtx.globalTxDsl != null → 复用事务
+        // 各 ModuleService 检测 txOpCtx.globalTxDsl != null → 复用事务
         val id = todoService.createTodo(txOpCtx, ...)
         scanService.bindToTodo(txOpCtx, id)
         ...

@@ -11,7 +11,7 @@ import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.util.UUID
 
 @Component
-class AppConfigInternalService(
+class AppConfigEntityService(
     private val revisionRepo: AppConfigRepository,
 ) {
     data class CreateRevisionInput(

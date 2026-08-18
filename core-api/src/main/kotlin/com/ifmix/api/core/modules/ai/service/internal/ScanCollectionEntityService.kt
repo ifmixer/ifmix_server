@@ -16,7 +16,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Component
-open class ScanCollectionInternalService(
+open class ScanCollectionEntityService(
     private val collectionRepo: ScanCollectionRepository,
     private val itemRepo: ScanCollectionItemRepository,
 ) {

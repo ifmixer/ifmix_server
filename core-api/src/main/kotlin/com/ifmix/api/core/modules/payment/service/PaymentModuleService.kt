@@ -4,16 +4,16 @@ import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jooq.TxRunner
 import com.ifmix.api.core.modules.payment.NotificationDecoder
-import com.ifmix.api.core.modules.payment.service.internal.PaymentInternalService
+import com.ifmix.api.core.modules.payment.service.internal.PaymentEntityService
 import com.ifmix.api.core.modules.payment.service.internal.PaymentWebhookHandler
 import com.ifmix.api.core.dto.payment.VerifyReq
 import com.ifmix.api.core.dto.payment.VerifyRes
 import org.springframework.stereotype.Service
 
 @Service
-class PaymentFacadeService(
+class PaymentModuleService(
     private val svcCtxFactory: SvcCtxFactory,
-    private val commands: PaymentInternalService,
+    private val commands: PaymentEntityService,
     private val webhookHandler: PaymentWebhookHandler,
     private val tx: TxRunner,
 ) {

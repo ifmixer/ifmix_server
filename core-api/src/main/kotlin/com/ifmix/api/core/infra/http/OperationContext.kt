@@ -13,7 +13,7 @@ data class OperationContext(
     // ===== 全局事务支持 =====
     /**
      * 全局事务 DSLContext（由 GlobalTxRunner 在 DataFetcher 层设置）。
-     * FacadeService 构建 SvcCtx 时：若已有全局事务则复用，否则使用默认 DSL。
+     * ModuleService 构建 SvcCtx 时：若已有全局事务则复用，否则使用默认 DSL。
      */
     val globalTxDsl: DSLContext? = null,
     val inGlobalTx: Boolean = false,

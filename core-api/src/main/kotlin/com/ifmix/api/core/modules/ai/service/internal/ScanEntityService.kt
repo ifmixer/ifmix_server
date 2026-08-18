@@ -19,7 +19,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Component
-class ScanInternalService(
+class ScanEntityService(
     private val scanRunner: ScanRunner,
     private val objectStorage: ObjectStorage,
     private val scanRepo: ScanRecordRepository,

@@ -14,7 +14,7 @@ import java.time.Duration
 import java.time.Instant
 
 @Component
-class StorageInternalService(
+class StorageEntityService(
     private val uploadRecordRepo: UploadRecordRepository,
     private val objectStorage: ObjectStorage,
 ) {

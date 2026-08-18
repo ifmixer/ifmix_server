@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 
 @Component
-class PaymentInternalService(
+class PaymentEntityService(
     @Qualifier("appleVerifier") private val appleVerifier: PurchaseVerifier,
     @Qualifier("googleVerifier") private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,

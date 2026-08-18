@@ -10,7 +10,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Component
-class FeedbackInternalService(
+class FeedbackEntityService(
     private val feedbackRepo: FeedbackRepository,
 ) {
     fun submit(sc: SvcCtx, req: SubmitFeedbackReq): UUID {

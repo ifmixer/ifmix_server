@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component
 import java.util.*
 
 /**
- * SvcCtx 工厂 — 按场景提供构建方式，替代各 FacadeService 里散落的 private fun svc()。
+ * SvcCtx 工厂 — 按场景提供构建方式，替代各 ModuleService 里散落的 private fun svc()。
  *
  * 核心逻辑：如果 opCtx.globalTxDsl 已存在（DataFetcher 开了全局事务），优先用它；否则走 router。
  */

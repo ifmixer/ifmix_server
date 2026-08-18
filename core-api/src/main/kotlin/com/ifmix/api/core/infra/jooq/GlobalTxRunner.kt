@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 /**
  * 全局事务管理器 — DataFetcher 层使用，用于跨模块编排的事务。
  *
- * 开启全局事务后，FacadeService 中的 SvcCtx 构建会复用此 DSLContext，
+ * 开启全局事务后，ModuleService 中的 SvcCtx 构建会复用此 DSLContext，
  * 不会嵌套开启新的模块事务（TxRunner 检测 inGlobalTx=true → 跳过）。
  *
  * ponytail: 当前单库，globalTxDsl 和模块 dsl 相同。
@@ -18,7 +18,7 @@ class GlobalTxRunner(private val dslContext: DSLContext) {
 
     /**
      * 开启全局事务。
-     * FacadeService 检测到 opCtx.inGlobalTx=true → 复用 DSLContext，不嵌套模块事务。
+     * ModuleService 检测到 opCtx.inGlobalTx=true → 复用 DSLContext，不嵌套模块事务。
      */
     fun <R> withTx(opCtx: OperationContext, body: (OperationContext) -> R): R =
         dslContext.transactionResult { config ->
