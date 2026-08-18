@@ -5,7 +5,6 @@ import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.entity.ImageRef
 import com.ifmix.api.core.entity.scan.ScanRecord
@@ -79,15 +78,14 @@ class ScanInternalService(
         return true
     }
 
-    fun findById(opCtx: OperationContext, id: UUID): ScanRecord? =
-        scanRepo.findById(svc(opCtx), opCtx.mustGetAppId(), id)
+    fun findById(sc: SvcCtx, id: UUID): ScanRecord? =
+        scanRepo.findById(sc, sc.op.mustGetAppId(), id)
 
-    fun findByCursorFiltered(opCtx: OperationContext, cursor: String?, limit: Int?, collected: Boolean?): Page<ScanRecord> {
-        val svcCtx = svc(opCtx)
-        val appId = opCtx.mustGetAppId()
+    fun findByCursorFiltered(sc: SvcCtx, cursor: String?, limit: Int?, collected: Boolean?): Page<ScanRecord> {
+        val appId = sc.op.mustGetAppId()
         val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
         val cursorUuid = cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-        val items = scanRepo.findByCursor(svcCtx, appId, collected, cursorUuid, effectiveLimit + 1)
+        val items = scanRepo.findByCursor(sc, appId, collected, cursorUuid, effectiveLimit + 1)
         val hasMore = items.size > effectiveLimit
         val resultItems = items.take(effectiveLimit)
         return Page(
@@ -97,13 +95,13 @@ class ScanInternalService(
         )
     }
 
-    fun presignedUploadUrl(opCtx: OperationContext, objectKey: String, contentType: String, duration: Duration): String =
+    fun presignedUploadUrl(sc: SvcCtx, objectKey: String, contentType: String, duration: Duration): String =
         objectStorage.presignUpload("ugc", objectKey, contentType, duration)
 
-    fun presignedDownloadUrl(opCtx: OperationContext, objectKey: String, duration: Duration): String =
+    fun presignedDownloadUrl(sc: SvcCtx, objectKey: String, duration: Duration): String =
         objectStorage.presignDownload("ugc", objectKey, duration)
 
-    fun getPublicUrl(opCtx: OperationContext, objectKey: String): String =
+    fun getPublicUrl(sc: SvcCtx, objectKey: String): String =
         objectStorage.getPublicUrl("ugc", objectKey)
 
     private fun guessMediaType(key: String, mediaType: String?): String =
@@ -119,5 +117,4 @@ class ScanInternalService(
             }
         }
 
-    private fun svc(opCtx: OperationContext) = SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl)
 }

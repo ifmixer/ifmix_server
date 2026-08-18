@@ -5,8 +5,7 @@ import com.ifmix.api.core.generated.types.AddScanCollectionItemPayload
 import com.ifmix.api.core.generated.types.ListScanCollectionItemsInput
 import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsInput
 import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsPayload
-import com.ifmix.api.core.generated.types.ScanCollectionItem as DgsScanCollectionItem
-import com.ifmix.api.core.generated.types.ScanCollectionItemPage
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
@@ -26,7 +25,6 @@ import com.netflix.graphql.dgs.DgsMutation
 import com.netflix.graphql.dgs.DgsQuery
 import com.netflix.graphql.dgs.InputArgument
 import org.dataloader.MappedBatchLoader
-import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
@@ -45,25 +43,10 @@ class CollectionFetcher(
     }
 
     @DgsQuery(field = "query_collection_findCollectionItemsByCursor")
-    fun findItemsByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ListScanCollectionItemsInput?): ScanCollectionItemPage {
+    fun findItemsByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ListScanCollectionItemsInput?): Page<ScanCollectionItem> {
         val ctx = ctxProvider.fromDfe(dfe)
         val req = input?.let { ListItemsReq(cursor = it.cursor, limit = it.limit, collectionId = null) }
-        val page = collectionService.findItemsByCursor(ctx, req)
-        return ScanCollectionItemPage(
-            items = page.items.map { item ->
-                DgsScanCollectionItem(
-                    id = item.id,
-                    scanRecord = ScanRecord(
-                        id = item.scanRecordId, appId = ctx.appId!!,
-                        imageKeys = emptyList(), result = null,
-                        status = 0, collected = false, createdAt = Instant.EPOCH, updatedAt = null, deletedAt = null
-                    ),
-                    createdAt = item.createdAt,
-                )
-            },
-            nextCursor = page.nextCursor,
-            hasMore = page.hasMore,
-        )
+        return collectionService.findItemsByCursor(ctx, req)
     }
 
     @DgsData(parentType = "ScanCollectionItem", field = "scanRecord")

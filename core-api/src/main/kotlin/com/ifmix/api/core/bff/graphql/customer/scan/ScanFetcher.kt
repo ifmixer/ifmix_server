@@ -4,7 +4,7 @@ import com.ifmix.api.core.generated.types.DeleteScanPayload
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.NewScanPayload
 import com.ifmix.api.core.generated.types.ScanQueryInput
-import com.ifmix.api.core.generated.types.ScanRecordPage
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.generated.types.UpdateScanPayload
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
@@ -31,11 +31,11 @@ class ScanFetcher(
     }
 
     @DgsQuery(field = "query_scan_findScansByCursor")
-    fun findByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ScanQueryInput?): ScanRecordPage {
+    fun findByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ScanQueryInput?): Page<ScanRecord> {
         val ctx = ctxProvider.fromDfe(dfe)
         val q = input ?: ScanQueryInput()
         val page = scanService.findByCursorFiltered(ctx, q.cursor, q.limit, q.collected)
-        return ScanRecordPage(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
+        return Page(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
     }
 
     @DgsMutation(field = "mutation_scan_createScan")

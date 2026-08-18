@@ -2,7 +2,6 @@ package com.ifmix.api.core.modules.ai.service.internal
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.entity.scan.ScanCollection
 import com.ifmix.api.core.entity.scan.ScanCollectionItem
 import com.ifmix.api.core.dto.scan.AddItemReq
@@ -53,11 +52,10 @@ open class ScanCollectionInternalService(
             )
     }
 
-    fun findItemsByCursor(opCtx: OperationContext, collectionId: UUID, limit: Int?): Page<ScanCollectionItem> {
-        val sc = SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl)
-        val appId = opCtx.appId!!
+    fun findItemsByCursor(sc: SvcCtx, collectionId: UUID, limit: Int?): Page<ScanCollectionItem> {
+        val appId = sc.op.appId!!
         val effectiveLimit = limit ?: 20
-        val cursor = opCtx.installId // placeholder - actual cursor logic stays simple
+        val cursor = sc.op.installId // placeholder - actual cursor logic stays simple
         return itemRepo.findItemsByCursor(sc, appId, collectionId, effectiveLimit, null)
     }
 }

@@ -6,7 +6,6 @@ import com.ifmix.api.core.generated.types.PresignDownloadInput
 import com.ifmix.api.core.generated.types.PresignUploadInput
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.entity.storage.UploadRecord
 import com.ifmix.api.core.modules.storage.repo.UploadRecordRepository
@@ -19,9 +18,9 @@ class StorageInternalService(
     private val uploadRecordRepo: UploadRecordRepository,
     private val objectStorage: ObjectStorage,
 ) {
-    fun presignUpload(opCtx: OperationContext, input: PresignUploadInput): PresignUploadResult {
-        val appId = opCtx.appId!!
-        val installId = opCtx.installId!!
+    fun presignUpload(sc: SvcCtx, input: PresignUploadInput): PresignUploadResult {
+        val appId = sc.op.appId!!
+        val installId = sc.op.installId!!
         val mediaId = UuidV7.generate()
 
         val category = "antique_scan"
@@ -42,15 +41,15 @@ class StorageInternalService(
         val uploadUrl = objectStorage.presignUpload("ugc", objectKey, mimeType, Duration.ofSeconds(300))
         val downloadUrl = objectStorage.getPublicUrl("ugc", objectKey)
 
-        uploadRecordRepo.insert(SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl), UploadRecord(
+        uploadRecordRepo.insert(sc, UploadRecord(
             id = mediaId,
             appId = appId,
             installId = installId,
-            userId = opCtx.userId,
+            userId = sc.op.userId,
             objectKey = objectKey,
             contentType = mimeType,
             category = category,
-            clientIp = opCtx.clientIp,
+            clientIp = sc.op.clientIp,
             createdAt = Instant.now(),
         ))
 
@@ -62,7 +61,7 @@ class StorageInternalService(
         )
     }
 
-    fun presignDownload(opCtx: OperationContext, input: PresignDownloadInput): PresignDownloadResult {
+    fun presignDownload(sc: SvcCtx, input: PresignDownloadInput): PresignDownloadResult {
         val duration = Duration.ofSeconds((input.durationSeconds ?: 3600).toLong())
         val url = objectStorage.presignDownload("ugc", input.imageKey, duration)
         return PresignDownloadResult(url = url)

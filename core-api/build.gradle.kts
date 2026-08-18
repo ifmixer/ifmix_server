@@ -137,6 +137,10 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         // ScanCollectionItem: 关系表有 scanRecord 引用，保持生成类型
         // OperationResult: 手写类型，不再由 codegen 生成
         "OperationResult" to "com.ifmix.api.core.dto.common.OperationResult",
+        // Page types → 通用 Page<T>
+        "TodoPage" to "com.ifmix.api.core.dto.common.Page",
+        "ScanRecordPage" to "com.ifmix.api.core.dto.common.Page",
+        "ScanCollectionItemPage" to "com.ifmix.api.core.dto.common.Page",
     )
 }
 

@@ -31,9 +31,9 @@ type TodoPage {
 }
 
 extend type Query {
-    query_todo_findTodoById(id: UUID!): Todo!
-    query_todo_findTodosByCursor(input: TodoQueryInput): TodoPage!
-    query_todo_findTodosByIds(ids: [UUID!]!): [Todo!]!
+    query_demo_findTodoById(id: UUID!): Todo!
+    query_demo_findTodosByCursor(input: TodoQueryInput): TodoPage!
+    query_demo_findTodosByIds(ids: [UUID!]!): [Todo!]!
 }
 
 # --- Mutation: Create ---

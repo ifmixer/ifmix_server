@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.todo.repo
+package com.ifmix.api.core.modules.demo.repo
 
 import com.ifmix.api.core.generated.types.UpdateTodoItemInput
 import com.ifmix.api.core.infra.db.SvcCtx

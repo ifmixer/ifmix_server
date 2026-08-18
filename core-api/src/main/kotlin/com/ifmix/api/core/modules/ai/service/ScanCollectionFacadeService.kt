@@ -37,6 +37,6 @@ open class ScanCollectionFacadeService(
     fun findItemsByCursor(ctx: OperationContext, req: ListItemsReq?): Page<ScanCollectionItem> {
         val collectionId = req?.collectionId ?: getDefault(ctx).id
         val limit = req?.limit
-        return internalService.findItemsByCursor(ctx, collectionId, limit)
+        return internalService.findItemsByCursor(svcCtxFactory.forApp(ctx), collectionId, limit)
     }
 }

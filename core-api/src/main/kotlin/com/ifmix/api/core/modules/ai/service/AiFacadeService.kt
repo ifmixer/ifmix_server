@@ -16,11 +16,11 @@ class AiFacadeService(
     private val internalService: ScanInternalService,
     private val tx: TxRunner,
 ) {
-    fun findById(opCtx: OperationContext, id: UUID): ScanRecord? = internalService.findById(opCtx, id)
+    fun findById(opCtx: OperationContext, id: UUID): ScanRecord? = internalService.findById(svcCtxFactory.forApp(opCtx), id)
     fun findByCursor(opCtx: OperationContext, cursor: String?, limit: Int?): Page<ScanRecord> =
-        internalService.findByCursorFiltered(opCtx, cursor, limit, null)
+        internalService.findByCursorFiltered(svcCtxFactory.forApp(opCtx), cursor, limit, null)
     fun findByCursorFiltered(opCtx: OperationContext, cursor: String?, limit: Int?, collected: Boolean?): Page<ScanRecord> =
-        internalService.findByCursorFiltered(opCtx, cursor, limit, collected)
+        internalService.findByCursorFiltered(svcCtxFactory.forApp(opCtx), cursor, limit, collected)
     fun newScan(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.NewScanInput): ScanRecord =
         tx.withTx(svcCtxFactory.forApp(opCtx)) { sc -> internalService.newScan(sc, input) }
     fun updateScan(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.UpdateScanInput): Boolean =
@@ -28,9 +28,9 @@ class AiFacadeService(
     fun deleteScan(opCtx: OperationContext, id: UUID): Boolean =
         tx.withTx(svcCtxFactory.forApp(opCtx)) { sc -> internalService.deleteScan(sc, id) }
     fun presignedUploadUrl(opCtx: OperationContext, objectKey: String, contentType: String, duration: Duration): String =
-        internalService.presignedUploadUrl(opCtx, objectKey, contentType, duration)
+        internalService.presignedUploadUrl(svcCtxFactory.forApp(opCtx), objectKey, contentType, duration)
     fun presignedDownloadUrl(opCtx: OperationContext, objectKey: String, duration: Duration): String =
-        internalService.presignedDownloadUrl(opCtx, objectKey, duration)
+        internalService.presignedDownloadUrl(svcCtxFactory.forApp(opCtx), objectKey, duration)
     fun getPublicUrl(opCtx: OperationContext, objectKey: String): String =
-        internalService.getPublicUrl(opCtx, objectKey)
+        internalService.getPublicUrl(svcCtxFactory.forApp(opCtx), objectKey)
 }
