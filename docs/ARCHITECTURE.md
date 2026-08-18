@@ -334,8 +334,7 @@ DB (via jOOQ)
 
 ## 待办
 
-- **Operation 重命名**: `${query|mutation}_${module}_${action}` action 加对象名 — 见 `plans/2026-08-18-operation-rename.md`
-- **Model 按模块组织 + 枚举常量整理** — 见 `plans/2026-08-18-model-move-and-enum-converter.md`
+- **RepoContext 从 OperationContext 剥离**: Service 自己决定集群路由 — 见 `plans/2026-08-18-remaining-cleanup.md`
 - **Admin GraphQL**: `/admin/graphql` endpoint
 - **Federation 预留**: 命名已兼容
 
