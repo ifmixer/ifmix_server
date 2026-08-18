@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.scan.repo
 
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.dto.Page
-import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanCollectionItem.Companion.CORE_SCAN_COLLECTION_ITEM
 import com.ifmix.api.core.model.ScanCollectionItem
 import org.springframework.stereotype.Repository
@@ -10,7 +10,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Repository
-class ScanCollectionItemRepository(private val crud: CrudOps) {
+class ScanCollectionItemRepository(private val crud: CrudRepoOps) {
 
     fun insertIfAbsent(ctx: RepoContext, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
         val existing = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION_ITEM)

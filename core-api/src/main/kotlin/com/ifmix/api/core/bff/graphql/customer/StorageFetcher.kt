@@ -1,0 +1,79 @@
+package com.ifmix.api.core.bff.graphql.customer
+
+import com.ifmix.api.core.generated.types.ContentType
+import com.ifmix.api.core.generated.types.PresignDownloadInput
+import com.ifmix.api.core.generated.types.PresignDownloadPayload
+import com.ifmix.api.core.generated.types.PresignUploadInput
+import com.ifmix.api.core.generated.types.PresignUploadPayload
+import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.graphql.OperationContextProvider
+import com.ifmix.api.core.infra.http.mustGetAppId
+import com.ifmix.api.core.infra.http.mustGetInstallId
+import com.ifmix.api.core.model.UploadRecord
+import com.ifmix.api.core.modules.scan.service.AntiqueService
+import com.ifmix.api.core.modules.storage.repo.UploadRecordRepository
+import com.netflix.graphql.dgs.DgsComponent
+import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
+import com.netflix.graphql.dgs.DgsMutation
+import com.netflix.graphql.dgs.InputArgument
+import java.time.Duration
+import java.time.Instant
+
+@DgsComponent
+class StorageFetcher(
+    private val antiqueService: AntiqueService,
+    private val uploadRecordRepo: UploadRecordRepository,
+    private val ctxProvider: OperationContextProvider,
+) {
+
+    @DgsMutation(field = "mutation_storage_presignUpload")
+    fun presignUpload(dfe: DgsDataFetchingEnvironment, @InputArgument input: PresignUploadInput): PresignUploadPayload {
+        val ctx = ctxProvider.fromDfe(dfe)
+        val appId = ctx.mustGetAppId()
+        val installId = ctx.mustGetInstallId()
+        val mediaId = UuidV7.generate()
+
+        val category = input.category.name.lowercase()
+        val ext = when (input.contentType) {
+            ContentType.IMAGE_JPEG -> "jpg"
+            ContentType.IMAGE_PNG -> "png"
+            ContentType.IMAGE_WEBP -> "webp"
+        }
+        val mimeType = when (input.contentType) {
+            ContentType.IMAGE_JPEG -> "image/jpeg"
+            ContentType.IMAGE_PNG -> "image/png"
+            ContentType.IMAGE_WEBP -> "image/webp"
+        }
+
+        val objectKey = "app/$appId/$category/install/$installId/$mediaId.$ext"
+        val url = antiqueService.presignedUploadUrl(ctx, objectKey, mimeType, Duration.ofSeconds(300))
+        val downloadUrl = antiqueService.getPublicUrl(ctx, objectKey)
+
+        uploadRecordRepo.insert(ctx.repoCtx, UploadRecord(
+            id = mediaId,
+            appId = appId,
+            installId = installId,
+            userId = ctx.userId,
+            objectKey = objectKey,
+            contentType = mimeType,
+            category = category,
+            clientIp = ctx.clientIp,
+            createdAt = Instant.now(),
+        ))
+
+        return PresignUploadPayload(
+            mediaId = mediaId,
+            uploadUrl = url,
+            imageKey = objectKey,
+            downloadUrl = downloadUrl,
+        )
+    }
+
+    @DgsMutation(field = "mutation_storage_presignDownload")
+    fun presignDownload(dfe: DgsDataFetchingEnvironment, @InputArgument input: PresignDownloadInput): PresignDownloadPayload {
+        val ctx = ctxProvider.fromDfe(dfe)
+        val duration = Duration.ofSeconds((input.durationSeconds ?: 3600).toLong())
+        val url = antiqueService.presignedDownloadUrl(ctx, input.imageKey, duration)
+        return PresignDownloadPayload(url = url)
+    }
+}

@@ -1,14 +1,14 @@
 package com.ifmix.api.core.modules.scan.repo
 
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanCollection.Companion.CORE_SCAN_COLLECTION
 import com.ifmix.api.core.model.ScanCollection
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-class ScanCollectionRepository(private val crud: CrudOps) {
+class ScanCollectionRepository(private val crud: CrudRepoOps) {
 
     fun findDefault(ctx: RepoContext, appId: UUID, installId: UUID?, userId: UUID?): ScanCollection? {
         // If userId is provided, prefer user-scoped default collection.

@@ -17,7 +17,7 @@ import java.util.UUID
  */
 @Component
 @Suppress("UNCHECKED_CAST")
-class CrudOps {
+class CrudRepoOps {
 
     // ===== Query =====
 

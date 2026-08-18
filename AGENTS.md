@@ -12,8 +12,7 @@
 - Spring Boot 4.1.0 / jOOQ 3.21.5 / PostgreSQL / Redis
 - GraphQL: Netflix DGS 12.x (DGS codegen 8.6.0)
 - Jackson 3 (`tools.jackson`) / Spring AI 2.0 / EdDSA JWT
-- Gradle 9.6.1 + KSP
-- **迁移中**: Jimmer 0.11.5 仍共存，正在逐步移除
+- Gradle 9.6.1
 
 ## 代码约定
 
@@ -44,7 +43,7 @@
 - 这是有意设计，不要改成阻塞式
 
 ### 数据库
-- 使用 jOOQ (新代码) / Jimmer (旧代码迁移中)
+- 使用 jOOQ（类型安全 SQL DSL + codegen）
 - **所有表名带 `core_` 前缀**（如 `core_todo`, `core_app_user`, `core_scan_record`）
 - UUIDv7 作为主键（时间有序，支持游标分页）
 - **UUID 字符串统一用 22 位 Base58 URL-safe 编码**（不用原始 36 位格式）

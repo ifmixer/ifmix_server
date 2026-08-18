@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAuthTenant.Companion.CORE_AUTH_TENANT
 import com.ifmix.api.core.model.AuthTenant
 import org.springframework.stereotype.Repository
@@ -12,7 +12,7 @@ import java.util.UUID
  */
 @Repository
 class AuthTenantRepository(
-    private val crud: CrudOps,
+    private val crud: CrudRepoOps,
 ) {
 
     fun findById(ctx: RepoContext, id: UUID): AuthTenant? {

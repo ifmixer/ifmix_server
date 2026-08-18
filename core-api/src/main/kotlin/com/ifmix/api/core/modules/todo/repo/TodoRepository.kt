@@ -3,14 +3,14 @@ package com.ifmix.api.core.modules.todo.repo
 import com.ifmix.api.core.generated.types.TodoUnsetField
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreTodo.Companion.CORE_TODO
 import com.ifmix.api.core.model.Todo
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-class TodoRepository(private val crud: CrudOps) {
+class TodoRepository(private val crud: CrudRepoOps) {
 
     fun findById(ctx: RepoContext, appId: UUID, id: UUID): Todo? =
         crud.findById(ctx, CORE_TODO, CORE_TODO.APP_ID, CORE_TODO.ID, appId, id, Todo::class.java, CORE_TODO.DELETED_AT)

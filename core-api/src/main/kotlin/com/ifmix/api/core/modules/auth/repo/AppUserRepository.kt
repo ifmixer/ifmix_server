@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAppUser.Companion.CORE_APP_USER
 import com.ifmix.api.core.model.AppUser
 import org.springframework.stereotype.Repository
@@ -14,7 +14,7 @@ import java.util.UUID
  */
 @Repository
 class AppUserRepository(
-    private val crud: CrudOps,
+    private val crud: CrudRepoOps,
 ) {
 
     fun findByAppAndIdentity(ctx: RepoContext, appId: UUID, authIdentityId: UUID): AppUser? {

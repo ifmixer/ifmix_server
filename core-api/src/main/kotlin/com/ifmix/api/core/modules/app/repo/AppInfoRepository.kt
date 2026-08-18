@@ -1,12 +1,12 @@
 package com.ifmix.api.core.modules.app.repo
 
-import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAppInfo.Companion.CORE_APP_INFO
 import com.ifmix.api.core.model.AppInfo
 import org.springframework.stereotype.Repository
 
 @Repository
-class AppInfoRepository(private val crud: CrudOps) {
+class AppInfoRepository(private val crud: CrudRepoOps) {
 
     fun findById(id: java.util.UUID): AppInfo? =
         crud.findById(

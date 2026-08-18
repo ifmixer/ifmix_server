@@ -1,14 +1,14 @@
 package com.ifmix.api.core.modules.storage.repo
 
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreUploadRecord.Companion.CORE_UPLOAD_RECORD
 import com.ifmix.api.core.model.UploadRecord
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-class UploadRecordRepository(private val crud: CrudOps) {
+class UploadRecordRepository(private val crud: CrudRepoOps) {
 
     fun insert(ctx: RepoContext, record: UploadRecord) {
         crud.insert(ctx, CORE_UPLOAD_RECORD, record)

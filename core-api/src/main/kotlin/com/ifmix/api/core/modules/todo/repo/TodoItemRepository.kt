@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.todo.repo
 import com.ifmix.api.core.generated.types.TodoItemUnsetField
 import com.ifmix.api.core.generated.types.UpdateTodoItemInput
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreTodoItem.Companion.CORE_TODO_ITEM
 import com.ifmix.api.core.model.TodoItem
 import org.springframework.stereotype.Repository
@@ -11,7 +11,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Repository
-class TodoItemRepository(private val crud: CrudOps) {
+class TodoItemRepository(private val crud: CrudRepoOps) {
 
     fun batchInsert(ctx: RepoContext, items: List<TodoItem>) =
         crud.batchInsertTyped(ctx, CORE_TODO_ITEM, items)
