@@ -3,7 +3,6 @@ plugins {
     kotlin("plugin.spring")
     id("org.springframework.boot")
     id("io.spring.dependency-management")
-    id("com.google.devtools.ksp")
     id("com.netflix.dgs.codegen")
     id("nu.studer.jooq")
 }
@@ -52,13 +51,7 @@ dependencies {
     implementation("com.nimbusds:nimbus-jose-jwt:9.40")
     implementation("com.google.crypto.tink:tink:1.15.0")
 
-    // === Jimmer + PostgreSQL ===
-    val jimmerVersion = rootProject.extra["jimmerVersion"] as String
-    implementation("org.babyfish.jimmer:jimmer-spring-boot-starter:$jimmerVersion")
-    implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
-    ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")
-
-    // === jOOQ (coexists with Jimmer during migration) ===
+    // === jOOQ ===
     implementation("org.springframework.boot:spring-boot-starter-jooq")
     jooqGenerator("org.postgresql:postgresql")
 
@@ -105,16 +98,6 @@ tasks.withType<Test> {
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     jvmArgs("--enable-native-access=ALL-UNNAMED", "-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8")
-}
-
-// Jimmer KSP 配置
-ksp {
-    // Jimmer DTO 文件位置（相对于 project root）
-    arg("jimmer.dto.dirs", "src/main/dto")
-    // 生成 Kotlin 代码
-    arg("jimmer.language", "kotlin")
-    // input DTO 中 nullable 属性默认使用 dynamic 修饰（不传=不修改）
-    arg("jimmer.dto.defaultNullableInputModifier", "fuzzy")
 }
 
 // DGS Codegen — 从 .graphqls schema 生成 Kotlin input/payload/enum types

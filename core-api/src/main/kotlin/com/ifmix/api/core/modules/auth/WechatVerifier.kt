@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.ifmix.api.core.entity.appconfig.AppConfigRevision
+import com.ifmix.api.core.model.AppConfigRevision
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -18,7 +18,7 @@ class WechatVerifier(private val restClient: RestClient) : ProviderVerifier {
     override val provider = "wechat"
 
     override fun verify(config: AppConfigRevision, platform: ClientPlatform?, credential: String): VerifiedProvider {
-        val wechat = config.content.wechat
+        val wechat = config.contentConfig.wechat
         val appId = wechat.appId
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING, "wechat appId not configured")
         val appSecret = wechat.appSecret

@@ -1,11 +1,12 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.entity.appconfig.AppConfigRevision
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import com.ifmix.api.core.entity.appconfig.ConfigContent
 import com.ifmix.api.core.entity.appconfig.WechatConfigValue
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
+import com.ifmix.api.core.model.AppConfigRevision
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -21,21 +22,25 @@ import org.springframework.web.client.RestTemplate
 import java.time.Instant
 import java.util.UUID
 
-private fun wechatCfg(appId: String? = "wx_test_id", appSecret: String? = "wx_test_secret") = AppConfigRevision {
-    id = UUID.randomUUID()
-    this.appId = UUID.randomUUID()
-    authTenantId = UUID.randomUUID()
-    appleBundleId = null
-    androidPackageName = null
-    revisionNumber = 1
-    enabled = true
-    slug = "test"
-    note = "test"
-    createdAt = Instant.now()
-    content = ConfigContent(
-        wechat = WechatConfigValue(appId = appId, appSecret = appSecret),
-    )
-}
+private val mapper = jacksonObjectMapper()
+
+private fun wechatCfg(appId: String? = "wx_test_id", appSecret: String? = "wx_test_secret") = AppConfigRevision(
+    id = UUID.randomUUID(),
+    appId = UUID.randomUUID(),
+    authTenantId = UUID.randomUUID(),
+    appleBundleId = null,
+    androidPackageName = null,
+    revisionNumber = 1,
+    enabled = true,
+    slug = "test",
+    note = "test",
+    createdAt = Instant.now(),
+    content = mapper.writeValueAsString(
+        ConfigContent(
+            wechat = WechatConfigValue(appId = appId, appSecret = appSecret),
+        )
+    ),
+)
 
 class WechatVerifierTest {
 

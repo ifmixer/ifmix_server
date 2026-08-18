@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.scan.service
 
-import com.ifmix.api.core.entity.enums.ScanStatus
-import com.ifmix.api.core.entity.scan.ImageRef
+import com.ifmix.api.core.model.enums.ScanStatus
+import com.ifmix.api.core.model.ImageRef
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.infra.db.UuidV7

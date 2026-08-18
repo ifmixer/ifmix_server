@@ -21,7 +21,7 @@ class FeedbackFetcher(
     private val ctxProvider: OperationContextProvider,
 ) {
 
-    @DgsMutation(field = "mutation_submitFeedback")
+    @DgsMutation(field = "mutation_feedback_submit")
     fun submitFeedback(dfe: DgsDataFetchingEnvironment, @InputArgument input: SubmitFeedbackInput): SubmitFeedbackPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val id = feedbackService.submit(ctx, input.toReq()).id

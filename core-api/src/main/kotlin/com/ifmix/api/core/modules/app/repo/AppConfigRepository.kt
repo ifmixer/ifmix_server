@@ -9,9 +9,6 @@ import java.util.UUID
 
 /**
  * App 配置相关 jOOQ 仓库。
- *
- * 注意：保留原有的 Jimmer AppConfigRevisionRepository 不动，
- * 新代码通过此类访问 jOOQ 层。
  */
 @Repository
 class AppConfigRepository {
@@ -86,6 +83,14 @@ class AppConfigRepository {
         ctx.dsl.selectFrom(CORE_APP_CONFIG_REVISION)
             .where(CORE_APP_CONFIG_REVISION.ID.eq(id))
             .fetchOne()?.let { mapToModel(it) }
+
+    /** 按 app id 查询当前生效（enabled=true）的配置版本，不存在时抛异常 */
+    fun mustFindCurrentRevision(ctx: RepoContext, appId: UUID): AppConfigRevision =
+        findActiveByAppId(ctx, appId)
+            ?: throw com.ifmix.api.core.infra.http.ApiError(
+                com.ifmix.api.core.infra.http.ErrorCode.APP_CONFIG_MISSING,
+                "AppConfigRevision not found for appId=$appId"
+            )
 
     /** 更新指定 revision 的 enabled 状态，返回影响行数 */
     fun updateEnabled(ctx: RepoContext, revisionId: UUID, enabled: Boolean): Int =

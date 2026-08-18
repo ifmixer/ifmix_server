@@ -1,5 +1,6 @@
 package com.ifmix.api.core.modules.auth.service
 
+import com.ifmix.api.core.model.enums.Tier
 import com.ifmix.api.core.infra.auth.AuthJwtService
 import com.ifmix.api.core.infra.auth.Hashing
 import com.ifmix.api.core.infra.db.RepoContext
@@ -8,20 +9,8 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jooq.TxRunner
-import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
+import com.ifmix.api.core.modules.app.repo.AppConfigRepository
 import com.ifmix.api.core.modules.auth.AuthLoggedInEvent
-import com.ifmix.api.core.modules.auth.dto.DeleteAccountRes
-import com.ifmix.api.core.modules.auth.dto.ExchangeReq
-import com.ifmix.api.core.modules.auth.dto.ExchangeRes
-import com.ifmix.api.core.modules.auth.dto.LoginRes
-import com.ifmix.api.core.modules.auth.dto.LogoutReq
-import com.ifmix.api.core.modules.auth.dto.LogoutRes
-import com.ifmix.api.core.modules.auth.dto.MeRes
-import com.ifmix.api.core.modules.auth.dto.ProviderLoginReq
-import com.ifmix.api.core.modules.auth.dto.RefreshReq
-import com.ifmix.api.core.modules.auth.dto.RefreshRes
-import com.ifmix.api.core.modules.auth.dto.UserDto
-import com.ifmix.api.core.modules.auth.dto.WechatLoginReq
 import com.ifmix.api.core.modules.auth.repo.AppRefreshTokenRepository
 import com.ifmix.api.core.modules.auth.repo.AppUserRepository
 import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretRepository
@@ -31,15 +20,86 @@ import com.ifmix.api.core.model.AppRefreshToken
 import com.ifmix.api.core.model.AuthDeviceSecret
 import com.ifmix.api.core.model.AuthIdentity
 import com.ifmix.api.core.modules.auth.ProviderVerifier
+import com.ifmix.api.core.modules.iap.SubscriptionState
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
 
+// ============================================================================
+// Internal DTOs
+// ============================================================================
+
+data class UserDto(val id: UUID, val email: String?)
+
+/** Google / Apple 登录请求。idToken 必填。 */
+data class ProviderLoginReq(
+    val idToken: String,
+    val deviceSecret: String? = null,
+)
+
+/** 微信登录请求。code 必填。 */
+data class WechatLoginReq(
+    val code: String,
+    val deviceSecret: String? = null,
+)
+
+data class LoginRes(
+    val accessToken: String,
+    val refreshToken: String,
+    val refreshExpiresAt: Instant,
+    val deviceSecret: String,
+    val expiresIn: Long,
+    val user: UserDto,
+)
+
+data class ExchangeReq(val deviceSecret: String)
+data class ExchangeRes(
+    val accessToken: String,
+    val refreshToken: String,
+    val refreshExpiresAt: Instant,
+    val expiresIn: Long,
+    val user: UserDto,
+)
+
+data class RefreshReq(val refreshToken: String)
+data class RefreshRes(
+    val accessToken: String,
+    val refreshToken: String,
+    val refreshExpiresAt: Instant,
+    val expiresIn: Long,
+)
+
+data class LogoutReq(val refreshToken: String)
+data class LogoutRes(val ok: Boolean)
+
+data class MeRes(
+    val id: UUID,
+    val email: String?,
+    /** 当前订阅档位 */
+    val tier: Tier = Tier.FREE,
+    /** 订阅是否有效 */
+    val active: Boolean = false,
+    val state: SubscriptionState = SubscriptionState.EXPIRED,
+    /** 订阅过期时间（epoch millis），永久权益为 null */
+    val expiresAt: Long? = null,
+    /** 是否为匿名用户。匿名用户 email 为 null、tier 为 FREE。 */
+    val isAnonymous: Boolean = false,
+    /** 账号删除请求的预计处理时间（epoch millis）。未请求删除时为 null。 */
+    val deletionScheduledAt: Long? = null,
+)
+
+data class DeleteAccountRes(
+    /** 删除请求已接受 */
+    val accepted: Boolean = true,
+    /** 预计处理时间（epoch millis） */
+    val scheduledAt: Long,
+)
+
 @Service
 open class AuthService(
-    private val appConfigRepo: AppConfigRevisionRepository,
+    private val appConfigRepo: AppConfigRepository,
     private val verifiers: Map<String, ProviderVerifier>,
     private val jwt: AuthJwtService,
     private val providerIdentityRepo: AuthProviderIdentityRepository,

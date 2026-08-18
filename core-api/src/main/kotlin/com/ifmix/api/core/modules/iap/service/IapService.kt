@@ -9,19 +9,19 @@ import com.ifmix.api.core.model.Subscription
 import com.ifmix.api.core.model.StoreNotification
 import com.ifmix.api.core.modules.iap.repo.StoreNotificationRepository
 import com.ifmix.api.core.modules.iap.repo.SubscriptionRepository
-import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
+import com.ifmix.api.core.modules.app.repo.AppConfigRepository
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.entity.enums.Platform
-import com.ifmix.api.core.entity.enums.Tier
+import com.ifmix.api.core.model.enums.Platform
+import com.ifmix.api.core.model.enums.Tier
 import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.ifmix.api.core.modules.iap.NotificationType
 import com.ifmix.api.core.modules.iap.PurchaseVerifier
 import com.ifmix.api.core.modules.iap.VerifyInput
-import com.ifmix.api.core.modules.iap.dto.SubStatus
-import com.ifmix.api.core.modules.iap.dto.VerifyReq
-import com.ifmix.api.core.modules.iap.dto.VerifyRes
-import com.ifmix.api.core.modules.iap.dto.statusFromExpiry
-import com.ifmix.api.core.modules.iap.dto.tierOf
+import com.ifmix.api.core.modules.iap.SubStatus
+import com.ifmix.api.core.modules.iap.VerifyReq
+import com.ifmix.api.core.modules.iap.VerifyRes
+import com.ifmix.api.core.modules.iap.statusFromExpiry
+import com.ifmix.api.core.modules.iap.tierOf
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -36,7 +36,7 @@ open class IapService(
     private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
     private val storeNotificationRepo: StoreNotificationRepository,
-    private val appConfigRepo: AppConfigRevisionRepository,
+    private val appConfigRepo: AppConfigRepository,
     private val tx: TxRunner,
 ) {
 
@@ -63,7 +63,7 @@ open class IapService(
         val verifyResult = verifier.verify(input)
 
         val config = appConfigRepo.mustFindCurrentRevision(rc, appId)
-        val productTierMap = config.content.iap.productTierMap
+        val productTierMap = config.contentConfig.iap.productTierMap
         val tier = tierOf(req.productId, productTierMap) ?: Tier.FREE
 
         val subscriptionPxid = verifyResult.originalTransactionId ?: run {

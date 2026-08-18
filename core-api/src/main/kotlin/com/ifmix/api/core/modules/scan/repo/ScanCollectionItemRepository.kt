@@ -1,56 +1,62 @@
 package com.ifmix.api.core.modules.scan.repo
 
-import com.ifmix.api.core.entity.scan.ScanCollectionItem
-import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemDto
-import com.ifmix.api.core.entity.scan.appId
-import com.ifmix.api.core.entity.scan.collectionId
-import com.ifmix.api.core.entity.scan.scanRecordId
-import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
-import org.babyfish.jimmer.sql.kt.KSqlClient
-import org.babyfish.jimmer.sql.kt.ast.expression.*
+import com.ifmix.api.core.infra.dto.Page
+import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.jooq.tables.CoreScanCollectionItem.Companion.CORE_SCAN_COLLECTION_ITEM
+import com.ifmix.api.core.model.ScanCollectionItem
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
 @Repository
-class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanCollectionItem>(sql, ScanCollectionItem::class) {
+class ScanCollectionItemRepository(private val crud: CrudOps) {
 
     fun insertIfAbsent(ctx: RepoContext, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
-        val existing = sql.createQuery(ScanCollectionItem::class) {
-            where(table.appId eq appId)
-            where(table.collectionId eq collectionId)
-            where(table.scanRecordId eq scanRecordId)
-            select(table)
-        }.fetchOneOrNull()
+        val existing = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION_ITEM)
+            .where(CORE_SCAN_COLLECTION_ITEM.APP_ID.eq(appId))
+            .and(CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID.eq(collectionId))
+            .and(CORE_SCAN_COLLECTION_ITEM.SCAN_RECORD_ID.eq(scanRecordId))
+            .and(CORE_SCAN_COLLECTION_ITEM.DELETED_AT.isNull)
+            .limit(1)
+            .fetchOne()
 
-        if (existing != null) return existing.id
+        if (existing != null) {
+            return toModel(existing as org.jooq.Record).id
+        }
 
         val now = Instant.now()
-        val item = ScanCollectionItem {
-            id = UuidV7.generate()
-            this.appId = appId
-            collection { id = collectionId }
-            scanRecord { id = scanRecordId }
-            createdAt = now
-            updatedAt = now
-            deletedAt = null
-        }
-        return save(ctx, item).id
+        val id = com.ifmix.api.core.infra.db.UuidV7.generate()
+        ctx.dsl.insertInto(
+            CORE_SCAN_COLLECTION_ITEM,
+            CORE_SCAN_COLLECTION_ITEM.ID,
+            CORE_SCAN_COLLECTION_ITEM.APP_ID,
+            CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID,
+            CORE_SCAN_COLLECTION_ITEM.SCAN_RECORD_ID,
+            CORE_SCAN_COLLECTION_ITEM.CREATED_AT,
+            CORE_SCAN_COLLECTION_ITEM.UPDATED_AT,
+            CORE_SCAN_COLLECTION_ITEM.DELETED_AT,
+        ).values(
+            id,
+            appId,
+            collectionId,
+            scanRecordId,
+            now,
+            now,
+            null,
+        ).execute()
+        return id
     }
 
     fun softDeleteByScanIds(ctx: RepoContext, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Long {
         if (scanRecordIds.isEmpty()) return 0L
-        val items = sql.createQuery(ScanCollectionItem::class) {
-            where(table.appId eq appId)
-            where(table.collectionId eq collectionId)
-            where(table.scanRecordId valueIn scanRecordIds)
-            select(table)
-        }.execute()
-        items.forEach { deleteById(ctx, appId, it.id) }
-        return items.size.toLong()
+        val count = ctx.dsl.update(CORE_SCAN_COLLECTION_ITEM)
+            .set(CORE_SCAN_COLLECTION_ITEM.DELETED_AT, Instant.now())
+            .where(CORE_SCAN_COLLECTION_ITEM.APP_ID.eq(appId))
+            .and(CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID.eq(collectionId))
+            .and(CORE_SCAN_COLLECTION_ITEM.SCAN_RECORD_ID.`in`(scanRecordIds))
+            .execute()
+        return count.toLong()
     }
 
     fun findItemsByCursor(
@@ -59,25 +65,40 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
         collectionId: UUID,
         limit: Int,
         cursor: UUID?,
-    ): Page<ScanCollectionItemDto> {
-        val items = sql.createQuery(ScanCollectionItem::class) {
-            where(table.appId eq appId)
-            where(table.collectionId eq collectionId)
-            if (cursor != null) {
-                where(table.getId<UUID>() lt cursor)
-            }
-            orderBy(table.getId<UUID>().desc())
-            select(table.fetch(ScanCollectionItemDto::class))
-        }.limit(limit + 1).execute()
+    ): Page<ScanCollectionItem> {
+        var cond = CORE_SCAN_COLLECTION_ITEM.APP_ID.eq(appId)
+            .and(CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID.eq(collectionId))
+            .and(CORE_SCAN_COLLECTION_ITEM.DELETED_AT.isNull)
+        cursor?.let { cond = cond.and(CORE_SCAN_COLLECTION_ITEM.ID.lt(it)) }
+
+        val items = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION_ITEM)
+            .where(cond)
+            .orderBy(CORE_SCAN_COLLECTION_ITEM.ID.desc())
+            .limit(limit + 1)
+            .fetch()
+            .map { toModel(it) }
 
         return Page.of(items, limit) { it.id.toString() }
     }
 
     fun existsByScanRecordId(ctx: RepoContext, collectionId: UUID, scanRecordId: UUID): Boolean {
-        return sql.createQuery(ScanCollectionItem::class) {
-            where(table.collectionId eq collectionId)
-            where(table.scanRecordId eq scanRecordId)
-            select(table)
-        }.limit(1).execute().isNotEmpty()
+        return ctx.dsl.fetchExists(
+            CORE_SCAN_COLLECTION_ITEM,
+            CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID.eq(collectionId)
+                .and(CORE_SCAN_COLLECTION_ITEM.SCAN_RECORD_ID.eq(scanRecordId))
+                .and(CORE_SCAN_COLLECTION_ITEM.DELETED_AT.isNull),
+        )
+    }
+
+    companion object {
+        fun toModel(r: org.jooq.Record): ScanCollectionItem = ScanCollectionItem(
+            id = r.get(CORE_SCAN_COLLECTION_ITEM.ID)!!,
+            appId = r.get(CORE_SCAN_COLLECTION_ITEM.APP_ID)!!,
+            collectionId = r.get(CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID)!!,
+            scanRecordId = r.get(CORE_SCAN_COLLECTION_ITEM.SCAN_RECORD_ID)!!,
+            createdAt = r.get(CORE_SCAN_COLLECTION_ITEM.CREATED_AT)!!,
+            updatedAt = r.get(CORE_SCAN_COLLECTION_ITEM.UPDATED_AT),
+            deletedAt = r.get(CORE_SCAN_COLLECTION_ITEM.DELETED_AT),
+        )
     }
 }

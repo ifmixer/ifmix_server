@@ -1,7 +1,0 @@
-export com.ifmix.api.core.entity.auth.AuthIdentity
-AuthIdentityDto {
-    #allScalars
-    authTenant {
-        #allScalars
-    }
-}

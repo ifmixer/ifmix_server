@@ -1,12 +1,13 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.entity.appconfig.AppConfigRevision
+import tools.jackson.module.kotlin.jacksonObjectMapper
+import com.ifmix.api.core.entity.appconfig.AppleConfigValue
 import com.ifmix.api.core.entity.appconfig.ConfigContent
 import com.ifmix.api.core.entity.appconfig.GoogleConfigValue
 import com.ifmix.api.core.entity.appconfig.GoogleClientIdsValue
-import com.ifmix.api.core.entity.appconfig.AppleConfigValue
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
+import com.ifmix.api.core.model.AppConfigRevision
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -15,22 +16,26 @@ import org.springframework.security.oauth2.jwt.JwtDecoder
 import java.time.Instant
 import java.util.UUID
 
-private fun cfg() = AppConfigRevision {
-    id = UUID.randomUUID()
-    appId = UUID.randomUUID()
-    authTenantId = UUID.randomUUID()
-    appleBundleId = "com.x.app"
-    androidPackageName = null
-    revisionNumber = 1
-    enabled = true
-    slug = "test"
-    note = "test"
-    createdAt = Instant.now()
-    content = ConfigContent(
-        apple = AppleConfigValue(servicesId = "com.x.svc"),
-        google = GoogleConfigValue(clientIds = GoogleClientIdsValue(ios = "gid-ios", android = "gid-and", web = "gid-web")),
-    )
-}
+private val mapper = jacksonObjectMapper()
+
+private fun cfg() = AppConfigRevision(
+    id = UUID.randomUUID(),
+    appId = UUID.randomUUID(),
+    authTenantId = UUID.randomUUID(),
+    appleBundleId = "com.x.app",
+    androidPackageName = null,
+    revisionNumber = 1,
+    enabled = true,
+    slug = "test",
+    note = "test",
+    createdAt = Instant.now(),
+    content = mapper.writeValueAsString(
+        ConfigContent(
+            apple = AppleConfigValue(servicesId = "com.x.svc"),
+            google = GoogleConfigValue(clientIds = GoogleClientIdsValue(ios = "gid-ios", android = "gid-and", web = "gid-web")),
+        )
+    ),
+)
 
 private fun jwt(aud: String, sub: String = "sub123") = Jwt.withTokenValue("t")
     .header("alg", "RS256").subject(sub).audience(listOf(aud))

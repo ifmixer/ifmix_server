@@ -23,6 +23,6 @@ type PresignDownloadPayload {
 }
 
 extend type Mutation {
-    mutation_presignUpload(input: PresignUploadInput!): PresignUploadPayload!
-    mutation_presignDownload(input: PresignDownloadInput!): PresignDownloadPayload!
+    mutation_storage_presignUpload(input: PresignUploadInput!): PresignUploadPayload!
+    mutation_storage_presignDownload(input: PresignDownloadInput!): PresignDownloadPayload!
 }

@@ -45,21 +45,21 @@ class TodoFetcher(
 
     // ==================== Query ====================
 
-    @DgsQuery(field = "query_findTodoById")
+    @DgsQuery(field = "query_todo_findById")
     fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo {
         val ctx = ctxProvider.fromDfe(dfe)
         return todoService.findById(ctx, id)
             ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
-    @DgsQuery(field = "query_findTodosByCursor")
+    @DgsQuery(field = "query_todo_findByCursor")
     fun findByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: TodoQueryInput?): TodoPage {
         val ctx = ctxProvider.fromDfe(dfe)
         val page = todoService.findByCursor(ctx, input ?: TodoQueryInput())
         return TodoPage(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
     }
 
-    @DgsQuery(field = "query_findTodosByIds")
+    @DgsQuery(field = "query_todo_findByIds")
     fun findByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): List<Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
         return todoService.findByIds(ctx, ids)
@@ -76,7 +76,7 @@ class TodoFetcher(
 
     // ==================== Mutation: Create ====================
 
-    @DgsMutation(field = "mutation_createTodo")
+    @DgsMutation(field = "mutation_todo_create")
     fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val id = todoService.createTodo(ctx, input)
@@ -87,7 +87,7 @@ class TodoFetcher(
 
     // ==================== Mutation: Update Todo ====================
 
-    @DgsMutation(field = "mutation_updateTodo")
+    @DgsMutation(field = "mutation_todo_update")
     fun updateTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoInput): UpdateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val success = todoService.updateTodo(ctx, input)
@@ -100,7 +100,7 @@ class TodoFetcher(
 
     // ==================== Mutation: Update TodoItems ====================
 
-    @DgsMutation(field = "mutation_updateTodoItems")
+    @DgsMutation(field = "mutation_todoItem_batchUpdate")
     fun updateTodoItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoItemsMutationInput): UpdateTodoItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         todoItemService.updateItems(ctx, input)
@@ -109,14 +109,14 @@ class TodoFetcher(
 
     // ==================== Mutation: Delete ====================
 
-    @DgsMutation(field = "mutation_deleteTodoById")
+    @DgsMutation(field = "mutation_todo_delete")
     fun deleteTodoById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DeleteTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val success = todoService.deleteTodo(ctx, id)
         return DeleteTodoPayload(success = success)
     }
 
-    @DgsMutation(field = "mutation_deleteTodosByIds")
+    @DgsMutation(field = "mutation_todo_batchDelete")
     fun deleteTodosByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): DeleteTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val count = todoService.deleteTodosByIds(ctx, ids)

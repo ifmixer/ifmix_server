@@ -9,9 +9,11 @@
 ## 技术栈速查
 
 - Kotlin 2.3.10 / JDK 25 (Virtual Threads)
-- Spring Boot 4.1.0 / Jimmer 0.11.5 / PostgreSQL / Redis
+- Spring Boot 4.1.0 / jOOQ 3.21.5 / PostgreSQL / Redis
+- GraphQL: Netflix DGS 12.x (DGS codegen 8.6.0)
 - Jackson 3 (`tools.jackson`) / Spring AI 2.0 / EdDSA JWT
 - Gradle 9.6.1 + KSP
+- **迁移中**: Jimmer 0.11.5 仍共存，正在逐步移除
 
 ## 代码约定
 
@@ -19,11 +21,11 @@
 
 | 层 | 包路径 | 注解 | 职责 |
 |----|--------|------|------|
-| Controller | `bff/` | `@RestController` | 路由、参数绑定、DTO 转换 |
-| Service | `service/` | `@Service` | 业务编排、事务边界 |
-| Repository | `repository/` | `@Repository` | 数据访问、SQL 查询 |
+| DataFetcher | `bff/graphql/customer/` | `@DgsComponent` | GraphQL 路由、构造 OperationContext、DataLoader |
+| Service | `modules/*/service/` | `@Service` | 业务编排、TxRunner 事务、CrudServiceOps 缓存 |
+| Repository | `modules/*/repo/` | `@Repository` | 纯数据访问、注入 CrudOps、接收 RepoContext |
+| Model | `model/` | 无 | Domain data class、可加业务方法 |
 | Infra | `infra/` | `@Component`/`@Configuration` | 横切关注点、外部集成 |
-| Entity | `entity/` | Jimmer `@Entity` | 数据模型定义 |
 
 ### DI 风格
 - **组合优于继承**: Service/Repository 使用构造器注入，不用 `@Autowired`
@@ -31,9 +33,9 @@
 - **Service 是 `@Service`，不是 Config 里的 `@Bean`**
 
 ### API 风格
-- 查询端点: `PUT /customer/query/core/{module}/{method}`
-- 修改端点: `POST /customer/mutation/core/{module}/{method}`
-- 所有响应包装为 `Envelope<T>` (`{code, msg, data}`)
+- **GraphQL**: `POST /customer/graphql` (主 API)
+- **Operation 命名**: `${query|mutation}_${module}_${action}`
+- **Webhook (REST)**: `POST /webhooks/iap/*`
 - 请求头必带 `x-app-id` (UUID)
 
 ### 认证
@@ -42,22 +44,25 @@
 - 这是有意设计，不要改成阻塞式
 
 ### 数据库
-- 使用 Jimmer ORM，实体定义在 `entity/` 下
+- 使用 jOOQ (新代码) / Jimmer (旧代码迁移中)
 - **所有表名带 `core_` 前缀**（如 `core_todo`, `core_app_user`, `core_scan_record`）
 - UUIDv7 作为主键（时间有序，支持游标分页）
 - **UUID 字符串统一用 22 位 Base58 URL-safe 编码**（不用原始 36 位格式）
-  - PG/Jimmer 层：原生 UUID 类型
+  - PG/jOOQ 层：原生 UUID 类型
   - REST API / Redis JSON / 前端交互：22 位 Base58
   - Jackson 全局模块自动转换（`JacksonConfig.uuidBase58Module`）
   - 工具类：`infra/codec/Base58.kt`（`uuid.toBase58()` / `str.toUuidFromBase58()`）
 - 游标分页: `WHERE id < cursor ORDER BY id DESC LIMIT n+1`
-- 读写分离: `@Transactional(readOnly=true)` 自动路由到 reader
+- 读写分离: mutation → 主库, query → 从库
 - **枚举字段用 SMALLINT 存数字编码**（不用 VARCHAR、不用 PG ENUM）
   - Kotlin 用 `enum class Xxx(val code: Int)`，手动指定编码
   - 0 保留不用；同组连续（100,110,120）；不同组间隔 100
-  - Jimmer 用 `ValueConverter<Enum, Int>` 做双向转换
   - 对外 API 输出字符串名（`"COMPLETED"`），不暴露数字
-  - 详见 `docs/ARCHITECTURE.md` 的「枚举设计规范」
+
+### 事务管理
+- **TxRunner** 替代 `@Transactional`
+- 事务边界在 Service 层
+- 传播行为: REQUIRED (默认) / REQUIRES_NEW / SUPPORTS / NOT_SUPPORTED
 
 ### 存储上传
 - objectKey 格式: `app_{appId}/i_{installId}/...` 或 `app_{appId}/u_{userId}/...`
@@ -77,6 +82,9 @@
 # 测试
 ./gradlew :core-api:test
 
+# jOOQ codegen (需本地 PG 运行)
+./gradlew :core-api:generateJooq
+
 # 运行 (需要 PostgreSQL + Redis)
 ./gradlew :core-api:bootRun
 ```
@@ -84,21 +92,27 @@
 ## 参考文档
 
 - [架构全貌](docs/ARCHITECTURE.md) — **必读**
-- [Jimmer 迁移设计](docs/superpowers/specs/2026-07-29-jimmer-pg-migration-design.md)
-- [认证设计](docs/superpowers/specs/2026-07-27-auth-social-login-design.md)
-- [基础设计](docs/superpowers/specs/2026-07-26-ifmix-core-foundation-design.md)
-- [迁移状态](migration_status.md)
+- [jOOQ 迁移设计](docs/superpowers/specs/2026-08-18-jooq-migration-design.md)
+- [GraphQL DGS 设计](docs/superpowers/specs/2026-08-17-graphql-dgs-migration-design.md)
+- [模块拆分设计](docs/superpowers/specs/2026-08-13-core-module-split-design.md)
+- [E2E 测试方案](docs/E2E_TESTING.md)
 
 ## 重要设计决策
 
 以下是已确定的设计决策，除非有充分理由否则不要推翻：
 
-1. **API 用 PUT 做查询、POST 做修改** — 已确定的 BFF 风格
-2. **AuthInterceptor 非阻塞** — 支持匿名+认证混合接口
-3. **presignUpload 不要求登录** — 后续通过行为验证增强
-4. **Service 用 @Service + 构造器注入** — 不在 Config 里手动 new
-5. **Repository 用 @Repository** — 启用 Spring 异常翻译
-6. **AI ScanRunner 每个模型遍历所有 key** — 不是只试一个就跳下一个模型
-7. **限流超限不删 Redis key** — 让 key 自然 TTL 过期
-8. **objectKey 强格式校验** — `app_{appId}/(i_|u_)/...`，防路径遍历
-9. **Webhook 必须验签** — Apple JWS / Google 通过 packageName 反查 appId
+1. **GraphQL (DGS) 作为 API 层** — 替代旧 REST BFF
+2. **jOOQ 替代 Jimmer** — 类型安全 SQL + 显式控制
+3. **TxRunner 替代 @Transactional** — 支持多集群动态路由
+4. **AuthInterceptor 非阻塞** — 支持匿名+认证混合接口
+5. **presignUpload 不要求登录** — 后续通过行为验证增强
+6. **Service 用 @Service + 构造器注入** — 不在 Config 里手动 new
+7. **Repository 用 @Repository** — 启用 Spring 异常翻译
+8. **AI ScanRunner 每个模型遍历所有 key** — 不是只试一个就跳下一个模型
+9. **限流超限不删 Redis key** — 让 key 自然 TTL 过期
+10. **objectKey 强格式校验** — `app_{appId}/(i_|u_)/...`，防路径遍历
+11. **Webhook 必须验签** — Apple JWS / Google 通过 packageName 反查 appId
+12. **DataLoader caching=false** — 只 batching，防 mutation 间脏读
+13. **CacheAside 显式调用** — 不用 @Cacheable 魔法
+14. **Domain Model = data class** — 不是 jOOQ codegen POJO
+15. **set/unset Update 语义** — 防 null vs undefined 歧义

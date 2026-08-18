@@ -1,20 +1,20 @@
 package com.ifmix.api.core.modules.scan.service
 
-import com.ifmix.api.core.entity.scan.ScanCollection
-import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemDto
-import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
+import com.ifmix.api.core.model.ScanCollection
+import com.ifmix.api.core.model.ScanCollectionItem
 import com.ifmix.api.core.modules.scan.dto.AddItemReq
 import com.ifmix.api.core.modules.scan.dto.AddItemRes
 import com.ifmix.api.core.modules.scan.dto.ListItemsReq
 import com.ifmix.api.core.modules.scan.dto.RemoveItemsReq
 import com.ifmix.api.core.modules.scan.dto.RemoveItemsRes
-import com.ifmix.api.core.modules.scan.repo.ScanCollectionRepository
 import com.ifmix.api.core.modules.scan.repo.ScanCollectionItemRepository
+import com.ifmix.api.core.modules.scan.repo.ScanCollectionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -43,17 +43,18 @@ open class ScanCollectionService(
         installId: UUID?,
     ): ScanCollection {
         val now = Instant.now()
-        val entity = ScanCollection {
-            id = UuidV7.generate()
-            this.appId = appId
-            this.userId = userId
-            this.installId = installId
-            this.isDefault = true
-            createdAt = now
-            updatedAt = now
-            deletedAt = null
-        }
-        return collectionRepo.save(ctx.repoCtx, entity)
+        val model = ScanCollection(
+            id = UuidV7.generate(),
+            appId = appId,
+            userId = userId,
+            installId = installId,
+            isDefault = true,
+            createdAt = now,
+            updatedAt = now,
+            deletedAt = null,
+        )
+        collectionRepo.insert(ctx.repoCtx, model)
+        return model
     }
 
     @Transactional
@@ -74,7 +75,7 @@ open class ScanCollectionService(
         return RemoveItemsRes(removed = deletedCount.toInt())
     }
 
-    fun findItemsByCursor(ctx: OperationContext, req: ListItemsReq?): Page<ScanCollectionItemDto> {
+    fun findItemsByCursor(ctx: OperationContext, req: ListItemsReq?): Page<ScanCollectionItem> {
         val appId = ctx.mustGetAppId()
         val collectionId = req?.collectionId ?: getDefault(ctx).id
         val limit = req?.limit ?: 20

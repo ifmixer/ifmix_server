@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.webhooks
 
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
+import com.ifmix.api.core.modules.app.repo.AppConfigRepository
 import com.ifmix.api.core.modules.iap.service.IapService
 import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.nimbusds.jose.JWSObject
@@ -32,7 +32,7 @@ class WebhookController(
     private val iapService: IapService,
     @Qualifier("appleDecoder") private val appleDecoder: NotificationDecoder,
     @Qualifier("googleDecoder") private val googleDecoder: NotificationDecoder,
-    private val appConfigRepo: AppConfigRevisionRepository,
+    private val appConfigRepo: AppConfigRepository,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)

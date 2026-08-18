@@ -35,8 +35,8 @@ type ScanRecordPage {
 }
 
 extend type Query {
-    query_findScanById(id: UUID!): ScanRecord!
-    query_findScansByCursor(input: ScanQueryInput): ScanRecordPage!
+    query_scan_findById(id: UUID!): ScanRecord!
+    query_scan_findByCursor(input: ScanQueryInput): ScanRecordPage!
 }
 
 # --- Mutation ---
@@ -77,7 +77,7 @@ type DeleteScanPayload {
 }
 
 extend type Mutation {
-    mutation_newScan(input: NewScanInput!): NewScanPayload!
-    mutation_updateScan(input: UpdateScanInput!): UpdateScanPayload!
-    mutation_deleteScanById(id: UUID!): DeleteScanPayload!
+    mutation_scan_create(input: NewScanInput!): NewScanPayload!
+    mutation_scan_update(input: UpdateScanInput!): UpdateScanPayload!
+    mutation_scan_delete(id: UUID!): DeleteScanPayload!
 }

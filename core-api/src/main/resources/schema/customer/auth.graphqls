@@ -54,16 +54,16 @@ input LogoutInput {
 }
 
 extend type Query {
-    query_me: MePayload!
+    query_auth_me: MePayload!
 }
 
 extend type Mutation {
-    mutation_authGoogle(input: ProviderLoginInput!): LoginPayload!
-    mutation_authApple(input: ProviderLoginInput!): LoginPayload!
-    mutation_authWechat(input: WechatLoginInput!): LoginPayload!
-    mutation_authAnonymous: LoginPayload!
-    mutation_authExchange(input: ExchangeInput!): ExchangePayload!
-    mutation_authRefresh(input: RefreshInput!): RefreshPayload!
-    mutation_authLogout(input: LogoutInput!): OperationResult!
-    mutation_authDeleteAccount: OperationResult!
+    mutation_auth_loginGoogle(input: ProviderLoginInput!): LoginPayload!
+    mutation_auth_loginApple(input: ProviderLoginInput!): LoginPayload!
+    mutation_auth_loginWechat(input: WechatLoginInput!): LoginPayload!
+    mutation_auth_loginAnonymous: LoginPayload!
+    mutation_auth_exchange(input: ExchangeInput!): ExchangePayload!
+    mutation_auth_refresh(input: RefreshInput!): RefreshPayload!
+    mutation_auth_logout(input: LogoutInput!): OperationResult!
+    mutation_auth_deleteAccount: OperationResult!
 }

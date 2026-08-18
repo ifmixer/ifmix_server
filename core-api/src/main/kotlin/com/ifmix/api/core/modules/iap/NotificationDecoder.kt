@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.iap
 
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.entity.enums.Platform
+import com.ifmix.api.core.model.enums.Platform
 
 /**
  * 商店推送通知解码接缝：Apple Server Notifications / Google Play PubSub

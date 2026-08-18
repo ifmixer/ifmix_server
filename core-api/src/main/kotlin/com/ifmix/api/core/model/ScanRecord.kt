@@ -1,6 +1,5 @@
 package com.ifmix.api.core.model
 
-import com.ifmix.api.core.entity.scan.ImageRef
 import java.time.Instant
 import java.util.UUID
 

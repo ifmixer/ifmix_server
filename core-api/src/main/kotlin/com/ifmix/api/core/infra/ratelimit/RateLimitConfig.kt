@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.ratelimit
 
-import com.ifmix.api.core.entity.enums.Tier
+import com.ifmix.api.core.model.enums.Tier
 import org.springframework.boot.context.properties.ConfigurationProperties
 
 /**

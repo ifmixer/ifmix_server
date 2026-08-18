@@ -39,14 +39,14 @@ class CollectionFetcher(
     private val ctxProvider: OperationContextProvider,
 ) {
 
-    @DgsQuery(field = "query_getDefaultScanCollection")
+    @DgsQuery(field = "query_collection_getDefault")
     fun getDefault(dfe: DgsDataFetchingEnvironment): DgsScanCollection {
         val ctx = ctxProvider.fromDfe(dfe)
         val collection = collectionService.getDefault(ctx)
         return DgsScanCollection(id = collection.id, isDefault = collection.isDefault, createdAt = collection.createdAt)
     }
 
-    @DgsQuery(field = "query_findScanCollectionItemsByCursor")
+    @DgsQuery(field = "query_collection_findItemsByCursor")
     fun findItemsByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ListScanCollectionItemsInput?): ScanCollectionItemPage {
         val ctx = ctxProvider.fromDfe(dfe)
         val page = collectionService.findItemsByCursor(ctx, null)
@@ -68,14 +68,14 @@ class CollectionFetcher(
         throw ApiError(ErrorCode.NOT_FOUND, "not implemented")
     }
 
-    @DgsMutation(field = "mutation_addScanCollectionItem")
+    @DgsMutation(field = "mutation_collection_addItem")
     fun addItem(dfe: DgsDataFetchingEnvironment, @InputArgument input: AddScanCollectionItemInput): AddScanCollectionItemPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val restResult = collectionService.addItem(ctx, AddItemReq(scanRecordId = input.scanRecordId))
         return AddScanCollectionItemPayload(collectionId = restResult.id, alreadyExists = false)
     }
 
-    @DgsMutation(field = "mutation_removeScanCollectionItems")
+    @DgsMutation(field = "mutation_collection_removeItems")
     fun removeItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: RemoveScanCollectionItemsInput): RemoveScanCollectionItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val restResult = collectionService.removeItems(ctx, RemoveItemsReq(scanRecordIds = input.scanRecordIds))

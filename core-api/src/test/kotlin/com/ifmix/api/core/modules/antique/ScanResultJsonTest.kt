@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.scan
 
-import com.ifmix.api.core.entity.enums.ScanStatus
+import com.ifmix.api.core.model.enums.ScanStatus
 import com.ifmix.api.core.modules.scan.dto.ScanResult
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test

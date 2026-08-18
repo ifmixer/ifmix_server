@@ -36,7 +36,7 @@ class OperationContextProvider {
         } ?: false
         val opName = dfe.field?.name
 
-        // 将来多集群：根据 appId 从 ClusterRegistry 解析不同的 DSLContext
+        // 将来多集群：根据 appId 从 DataSourceRegistry 解析不同的 DSLContext
         val repoCtx = RepoContext.DEFAULT
 
         return OperationContext(

@@ -5,7 +5,7 @@ import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.jooq.CrudOps
 import com.ifmix.api.core.jooq.tables.CoreScanRecord.Companion.CORE_SCAN_RECORD
-import com.ifmix.api.core.entity.scan.ImageRef
+import com.ifmix.api.core.model.ImageRef
 import com.ifmix.api.core.model.ScanRecord
 import org.jooq.JSONB
 import org.springframework.stereotype.Repository
