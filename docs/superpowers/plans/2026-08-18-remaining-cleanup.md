@@ -29,75 +29,80 @@ bff/graphql/customer/
 
 ## 2. GraphQL enum → Int
 
-`feedback.graphqls` 里 `category` 还用 GraphQL enum，需要改成 `Int!` + schema 注释：
+`feedback.graphqls` 里 `category` 还用 GraphQL enum，需要改成 `Int!` + schema 注释。
 
-```graphql
-# 改前
-category: FeedbackCategory!
-
-# 改后
-"反馈分类。100=LIKED, 200=PRICE_TOO_HIGH, 210=PRICE_TOO_LOW, 220=PRICE_MISSING, 300=WRONG_IDENTIFICATION, 400=FEATURE_REQUEST, 410=MORE_RECOMMENDATIONS"
-category: Int!
-```
-
-同时检查所有 `.graphqls` 里是否还有其他 GraphQL enum 用作 output type，全改 Int。input 里的 enum 也改 Int（灰度安全）。删除对应的 `enum FeedbackCategory { ... }` 定义。
+检查所有 `.graphqls` 里是否还有其他 GraphQL enum 用作 output/input type，全改 Int。删除对应的 enum 定义。
 
 ## 3. 枚举常量改为嵌套 object
 
-当前 `model/enums/` 下是独立 enum class（有 UNKNOWN 兜底）。按约定改为 model class 的嵌套 object 常量：
+当前 `model/enums/` 下是独立 enum class。按约定改为 model class 的嵌套 object 常量。跨模块共享的放 `model/shared/`。
 
+## 4. RepoContext 从 OperationContext 剥离
+
+**目标**: Service 自己决定用哪个集群，DataFetcher 不再构建 repoCtx。
+
+### 改动
+
+**OperationContext** — 去掉 `repoCtx` 字段：
 ```kotlin
-// 改前: model/enums/ScanStatus.kt
-enum class ScanStatus(override val code: Int) : CodedEnum {
-    UNKNOWN(0), PENDING(100), ...
-}
+data class OperationContext(
+    val appId: UUID?, val installId: UUID?, val userId: UUID?,
+    // ... 其他请求信息
+    val isMutation: Boolean, val readCache: Boolean,
+    // 不再有 repoCtx
+)
+```
 
-// 改后: model/scan/ScanRecord.kt 里
-data class ScanRecord(val status: Int, ...) {
-    object Status {
-        const val PENDING = 100
-        const val PROCESSING = 110
-        const val COMPLETED = 200
-        const val FAILED = 300
-        fun isTerminal(code: Int) = code >= 200
+**OperationContextProvider** — 不再构建 repoCtx。
+
+**TxRunner** — 改为接收 `RepoContext` 而非从 `OperationContext` 取：
+```kotlin
+fun <R> withTx(repoCtx: RepoContext, propagation: TxPropagation = REQUIRED, body: (RepoContext) -> R): R
+```
+
+**CrudServiceOps** — factory 接收 `repoCtxProvider: () -> RepoContext`：
+```kotlin
+factory.create(type, "prefix", { it.id }, repoCtxProvider = { RepoContext.DEFAULT })
+```
+内部用 `repoCtxProvider()` 替代 `ctx.repoCtx`。
+
+**每个 Service** — 加一个获取 repoCtx 的方式：
+```kotlin
+@Service
+class TodoService(...) {
+    // 当前单集群，直接用 DEFAULT
+    // 将来: 根据 ctx.appId 从 ClusterRouter 路由
+    private val repoCtx get() = RepoContext.DEFAULT
+
+    fun createTodo(ctx: OperationContext, input: ...) = tx.withTx(repoCtx) { rc ->
+        repo.insert(rc, todo)
+        // rc 是事务内的 RepoContext
     }
 }
 ```
 
-跨模块共享的（如 Platform, Tier）放 `model/shared/`：
-```kotlin
-// model/shared/Platforms.kt
-object Platforms {
-    const val APPLE = 100
-    const val GOOGLE = 200
-}
+注意 `withTx` 的 lambda 参数现在是 `RepoContext`（不是 `OperationContext`），所以 lambda 内访问 `ctx.appId` 等业务字段需从外部闭包捕获。
 
-// model/shared/Tiers.kt
-object Tiers {
-    const val FREE = 100
-    const val PRO = 200
-    const val ENTERPRISE = 300
-}
-```
+**StorageFetcher** — 也需要 repoCtx（它直接调 repo）。改为注入 service 而非直接调 repo，或用 `RepoContext.DEFAULT`。
 
-步骤：
-1. 在 model class 里加嵌套 object
-2. 共享的放 `model/shared/`
-3. 全局替换引用（`ScanStatus.COMPLETED.code` → `ScanRecord.Status.COMPLETED`）
-4. 删除 `model/enums/` 目录
-5. 删除 `CodedEnum` 接口
-6. 编译通过
+### 注意事项
 
-## 4. 清理 AuthFetcher 的 exchange/refresh field 名
+- **AuthService 最复杂** — 它的 `withTx` lambda 里同时用 `ctx`（业务字段）和 `ctx.repoCtx`（数据访问）。改后 lambda 参数是 `rc: RepoContext`，业务字段通过闭包从外层 `ctx` 取。
+- **MergeOnLoginListener** — 也引用 `ctx.repoCtx`，需要改。
+- 改完后全部 `ctx.repoCtx` 引用应该消失。
 
-当前 fetcher annotation 里的 field 要和 schema 对齐：
-- `mutation_auth_exchangeToken`
-- `mutation_auth_refreshToken`
-
-检查 `AuthFetcher.kt` 的 `@DgsMutation(field=...)` 是否已匹配 schema。
+### 步骤
+1. 改 `OperationContext` 去掉 `repoCtx`
+2. 改 `OperationContextProvider` 去掉 repoCtx 构建
+3. 改 `TxRunner` 签名
+4. 改 `CrudServiceOps` + factory
+5. 逐个改 service（TodoService → ScanService → AuthService → IapService → 其他）
+6. 改 StorageFetcher
+7. 编译通过
 
 ---
 
 ## 执行顺序
 
-1 → 2 → 3 → 4，串行（每步都改 import，并行会冲突）
+1 → 2 → 3 → 4，串行
+
