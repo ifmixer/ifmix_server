@@ -13,24 +13,23 @@ class ScanCollectionRepository(private val crud: CrudRepoOps) {
     fun findDefault(ctx: SvcCtx, appId: UUID, installId: UUID?, userId: UUID?): ScanCollection? {
         // If userId is provided, prefer user-scoped default collection.
         if (userId != null) {
-            // Note: userId in DB is VARCHAR (not UUID), so we compare as string.
-            val record = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION)
+            val result = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION)
                 .where(CORE_SCAN_COLLECTION.APP_ID.eq(appId))
                 .and(CORE_SCAN_COLLECTION.IS_DEFAULT.eq(true))
                 .and(CORE_SCAN_COLLECTION.USER_ID.eq(userId.toString()))
                 .and(CORE_SCAN_COLLECTION.DELETED_AT.isNull)
-                .fetchOne()
-            if (record != null) return toModel(record as org.jooq.Record)
+                .fetchOneInto(ScanCollection::class.java)
+            if (result != null) return result
         }
         // Fall back to install-scoped default collection.
         if (installId != null) {
-            val record = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION)
+            val result = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION)
                 .where(CORE_SCAN_COLLECTION.APP_ID.eq(appId))
                 .and(CORE_SCAN_COLLECTION.IS_DEFAULT.eq(true))
                 .and(CORE_SCAN_COLLECTION.INSTALL_ID.eq(installId))
                 .and(CORE_SCAN_COLLECTION.DELETED_AT.isNull)
-                .fetchOne()
-            if (record != null) return toModel(record as org.jooq.Record)
+                .fetchOneInto(ScanCollection::class.java)
+            if (result != null) return result
         }
         return null
     }
@@ -39,25 +38,10 @@ class ScanCollectionRepository(private val crud: CrudRepoOps) {
         crud.insert(ctx, CORE_SCAN_COLLECTION, collection)
     }
 
-    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanCollection? {
-        val record = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION)
+    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanCollection? =
+        ctx.dsl.selectFrom(CORE_SCAN_COLLECTION)
             .where(CORE_SCAN_COLLECTION.APP_ID.eq(appId))
             .and(CORE_SCAN_COLLECTION.ID.eq(id))
             .and(CORE_SCAN_COLLECTION.DELETED_AT.isNull)
-            .fetchOne()
-        return record?.let { toModel(it as org.jooq.Record) }
-    }
-
-    companion object {
-        fun toModel(r: org.jooq.Record): ScanCollection = ScanCollection(
-            id = r.get(CORE_SCAN_COLLECTION.ID)!!,
-            appId = r.get(CORE_SCAN_COLLECTION.APP_ID)!!,
-            installId = r.get(CORE_SCAN_COLLECTION.INSTALL_ID),
-            userId = r.get(CORE_SCAN_COLLECTION.USER_ID)?.let { runCatching { UUID.fromString(it) }.getOrNull() },
-            isDefault = r.get(CORE_SCAN_COLLECTION.IS_DEFAULT) ?: false,
-            createdAt = r.get(CORE_SCAN_COLLECTION.CREATED_AT)!!,
-            updatedAt = r.get(CORE_SCAN_COLLECTION.UPDATED_AT),
-            deletedAt = r.get(CORE_SCAN_COLLECTION.DELETED_AT),
-        )
-    }
+            .fetchOneInto(ScanCollection::class.java)
 }

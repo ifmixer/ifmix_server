@@ -48,32 +48,9 @@ class AppConfigRepository {
 
     /** 插入新配置版本，返回插入后的模型（含服务端生成的 createdAt） */
     fun insert(ctx: SvcCtx, revision: AppConfigRevision): AppConfigRevision {
-        ctx.dsl.insertInto(
-            CORE_APP_CONFIG_REVISION,
-            CORE_APP_CONFIG_REVISION.ID,
-            CORE_APP_CONFIG_REVISION.APP_ID,
-            CORE_APP_CONFIG_REVISION.AUTH_TENANT_ID,
-            CORE_APP_CONFIG_REVISION.APPLE_BUNDLE_ID,
-            CORE_APP_CONFIG_REVISION.ANDROID_PACKAGE_NAME,
-            CORE_APP_CONFIG_REVISION.REVISION_NUMBER,
-            CORE_APP_CONFIG_REVISION.ENABLED,
-            CORE_APP_CONFIG_REVISION.SLUG,
-            CORE_APP_CONFIG_REVISION.CONTENT,
-            CORE_APP_CONFIG_REVISION.NOTE,
-        )
-            .values(
-                revision.id,
-                revision.appId,
-                revision.authTenantId,
-                revision.appleBundleId,
-                revision.androidPackageName,
-                revision.revisionNumber,
-                revision.enabled,
-                revision.slug,
-                JSONB.jsonb(revision.content),
-                revision.note,
-            )
-            .execute()
+        val record = ctx.dsl.newRecord(CORE_APP_CONFIG_REVISION, revision)
+        record.content = JSONB.jsonb(revision.content)
+        ctx.dsl.executeInsert(record)
         return findById(ctx, revision.id)
             ?: throw RuntimeException("failed to read newly inserted revision: ${revision.id}")
     }
@@ -99,9 +76,8 @@ class AppConfigRepository {
             .where(CORE_APP_CONFIG_REVISION.ID.eq(revisionId))
             .execute()
 
-    /** 将 jOOQ CoreAppConfigRevisionRecord 转换为领域模型，处理 JSONB → String 映射 */
+    /** JSONB→String 映射需要手动处理 */
     private fun mapToModel(record: com.ifmix.api.core.jooq.tables.records.CoreAppConfigRevisionRecord): AppConfigRevision {
-        // jOOQ JSONB.toString() 返回 JSON 字符串（不含外层引号），可直接用于 Jackson 反序列化
         val contentStr = record.content?.toString() ?: "{}"
         return AppConfigRevision(
             id = record.id!!,

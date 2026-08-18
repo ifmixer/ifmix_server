@@ -16,8 +16,7 @@ class AgnesKeyRepository {
     fun findAllEnabled(ctx: SvcCtx): List<AgnesKey> =
         ctx.dsl.selectFrom(CORE_AGNES_KEY)
             .where(CORE_AGNES_KEY.DELETED_AT.isNull)
-            .fetch()
-            .map { mapToModel(it) }
+            .fetchInto(AgnesKey::class.java)
 
     fun findAvailable(ctx: SvcCtx, appId: UUID): List<AgnesKey> {
         val now = Instant.now()
@@ -28,8 +27,7 @@ class AgnesKeyRepository {
                     .or(CORE_AGNES_KEY.UNAVAILABLE_UNTIL.lt(now))
             )
             .and(CORE_AGNES_KEY.DELETED_AT.isNull)
-            .fetch()
-            .map { mapToModel(it) }
+            .fetchInto(AgnesKey::class.java)
     }
 
     fun markUnavailable(ctx: SvcCtx, keyId: UUID, until: Instant) {
@@ -39,22 +37,5 @@ class AgnesKeyRepository {
             .set(CORE_AGNES_KEY.UPDATED_AT, now)
             .where(CORE_AGNES_KEY.ID.eq(keyId))
             .execute()
-    }
-
-    private fun mapToModel(record: com.ifmix.api.core.jooq.tables.records.CoreAgnesKeyRecord): AgnesKey {
-        return AgnesKey(
-            id = record.id!!,
-            appId = record.appId!!,
-            key = record.key,
-            email = record.email,
-            type = record.type ?: 0,
-            rateLimit = record.rateLimit ?: 0L,
-            windowSec = record.windowSec ?: 0L,
-            models = record.models,
-            unavailableUntil = record.unavailableUntil,
-            createdAt = record.createdAt ?: java.time.Instant.now(),
-            updatedAt = record.updatedAt,
-            deletedAt = record.deletedAt,
-        )
     }
 }

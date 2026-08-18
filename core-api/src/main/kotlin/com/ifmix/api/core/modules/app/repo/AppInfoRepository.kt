@@ -1,16 +1,18 @@
 package com.ifmix.api.core.modules.app.repo
 
+import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAppInfo.Companion.CORE_APP_INFO
 import com.ifmix.api.core.entity.app.AppInfo
 import org.springframework.stereotype.Repository
+import java.util.UUID
 
 @Repository
 class AppInfoRepository(private val crud: CrudRepoOps) {
 
-    fun findById(id: java.util.UUID): AppInfo? =
+    fun findById(id: UUID): AppInfo? =
         crud.findById(
-            ctx = com.ifmix.api.core.infra.db.SvcCtx.DEFAULT,
+            ctx = SvcCtx.DEFAULT,
             table = CORE_APP_INFO,
             appIdField = CORE_APP_INFO.ID,
             idField = CORE_APP_INFO.ID,
@@ -20,18 +22,8 @@ class AppInfoRepository(private val crud: CrudRepoOps) {
         )
 
     fun findBySlug(slug: String): AppInfo? =
-        com.ifmix.api.core.infra.db.SvcCtx.DEFAULT.dsl
+        SvcCtx.DEFAULT.dsl
             .selectFrom(CORE_APP_INFO)
             .where(CORE_APP_INFO.SLUG.eq(slug))
-            .fetchOne()?.let { mapToModel(it) }
-
-    private fun mapToModel(record: com.ifmix.api.core.jooq.tables.records.CoreAppInfoRecord): AppInfo =
-        AppInfo(
-            id = record.id!!,
-            name = record.name,
-            description = record.description,
-            slug = record.slug ?: "",
-            createdAt = record.createdAt ?: java.time.Instant.now(),
-            updatedAt = record.updatedAt ?: java.time.Instant.now(),
-        )
+            .fetchOneInto(AppInfo::class.java)
 }

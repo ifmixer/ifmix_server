@@ -10,20 +10,17 @@ import com.ifmix.api.core.entity.ai.ScanRecord
 import org.jooq.JSONB
 import org.springframework.stereotype.Repository
 import tools.jackson.module.kotlin.jacksonObjectMapper
-import java.time.Instant
 import java.util.UUID
 
 @Repository
 class ScanRecordRepository(private val crud: CrudRepoOps) {
 
-    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanRecord? {
-        val record = ctx.dsl.selectFrom(CORE_SCAN_RECORD)
+    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanRecord? =
+        ctx.dsl.selectFrom(CORE_SCAN_RECORD)
             .where(CORE_SCAN_RECORD.APP_ID.eq(appId))
             .and(CORE_SCAN_RECORD.ID.eq(id))
             .and(CORE_SCAN_RECORD.DELETED_AT.isNull)
-            .fetchOne()
-        return record?.let { toModel(it) }
-    }
+            .fetchOne()?.let { toModel(it) }
 
     fun findByIds(ctx: SvcCtx, ids: Collection<UUID>): List<ScanRecord> {
         if (ids.isEmpty()) return emptyList()
@@ -45,45 +42,11 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
             .map { toModel(it) }
     }
 
-    fun insert(ctx: SvcCtx, record: ScanRecord) {
-        val imageKeysJsonb = JSONB.jsonb(mapper.writeValueAsString(record.imageKeys))
-        val resultJsonb = record.result?.let { JSONB.jsonb(mapper.writeValueAsString(it)) }
-        ctx.dsl.insertInto(
-            CORE_SCAN_RECORD,
-            CORE_SCAN_RECORD.ID,
-            CORE_SCAN_RECORD.APP_ID,
-            CORE_SCAN_RECORD.IMAGE_KEYS,
-            CORE_SCAN_RECORD.RESULT_JSON,
-            CORE_SCAN_RECORD.STATUS,
-            CORE_SCAN_RECORD.CLIENT_IP,
-            CORE_SCAN_RECORD.LANG,
-            CORE_SCAN_RECORD.COUNTRY,
-            CORE_SCAN_RECORD.CURRENCY,
-            CORE_SCAN_RECORD.USER_DISPLAY_NAME,
-            CORE_SCAN_RECORD.USER_NOTES,
-            CORE_SCAN_RECORD.COLLECTED,
-            CORE_SCAN_RECORD.CREATED_AT,
-            CORE_SCAN_RECORD.UPDATED_AT,
-            CORE_SCAN_RECORD.DELETED_AT,
-        )
-            .values(
-                record.id,
-                record.appId,
-                imageKeysJsonb,
-                resultJsonb,
-                record.status,
-                record.clientIp,
-                record.lang,
-                record.country,
-                record.currency,
-                record.userDisplayName,
-                record.userNotes,
-                record.collected,
-                record.createdAt,
-                record.updatedAt,
-                record.deletedAt,
-            )
-            .execute()
+    fun insert(ctx: SvcCtx, entity: ScanRecord) {
+        val record = ctx.dsl.newRecord(CORE_SCAN_RECORD, entity)
+        record.imageKeys = JSONB.jsonb(mapper.writeValueAsString(entity.imageKeys))
+        record.resultJson = entity.result?.let { JSONB.jsonb(mapper.writeValueAsString(it)) }
+        ctx.dsl.executeInsert(record)
     }
 
     fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, req: UpdateScanInput) {
@@ -103,7 +66,7 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
         crud.exists(ctx, CORE_SCAN_RECORD, CORE_SCAN_RECORD.APP_ID, CORE_SCAN_RECORD.ID, appId, id, CORE_SCAN_RECORD.DELETED_AT)
 
     // =========================================================================
-    // JSON ↔ model helpers
+    // JSON ↔ model helpers (JSONB fields require manual mapping)
     // =========================================================================
 
     private fun toModel(r: org.jooq.Record): ScanRecord = ScanRecord(
@@ -119,7 +82,7 @@ class ScanRecordRepository(private val crud: CrudRepoOps) {
         userDisplayName = r.get(CORE_SCAN_RECORD.USER_DISPLAY_NAME),
         userNotes = r.get(CORE_SCAN_RECORD.USER_NOTES),
         collected = r.get(CORE_SCAN_RECORD.COLLECTED) ?: false,
-        createdAt = r.get(CORE_SCAN_RECORD.CREATED_AT) ?: Instant.now(),
+        createdAt = r.get(CORE_SCAN_RECORD.CREATED_AT)!!,
         updatedAt = r.get(CORE_SCAN_RECORD.UPDATED_AT),
         deletedAt = r.get(CORE_SCAN_RECORD.DELETED_AT),
     )
