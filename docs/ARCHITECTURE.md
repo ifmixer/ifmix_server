@@ -100,7 +100,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   ├── db/                     # UuidV7, RepoContext, Ownership
 │   ├── dto/                    # CursorQueryInput, Page, CommonDto
 │   └── config/                 # WebConfig, JacksonConfig, TransactionConfig
-└── src/main/jooq/              # jOOQ codegen 生成代码 (提交 git)
+└── src/generated/jooq/          # jOOQ codegen 生成代码 (提交 git，不与手写混)
     └── com/ifmix/api/core/jooq/
 
 resources/
@@ -212,9 +212,9 @@ data class OperationContext(
 ```bash
 ./gradlew :core-api:generateJooq   # 手动触发，连本地 DB
 ```
-- 生成到 `src/main/jooq/`，提交 git
+- 生成到 `src/generated/jooq/`（不与手写源码混），提交 git
 - `generateSchemaSourceOnCompilation = false`
-- forcedType: TIMESTAMP → Instant (InstantConverter)
+- forcedType: TIMESTAMP → Instant (InstantConverter), SMALLINT → Int (SmallintToIntConverter)
 - 生成 POJO 作参考，不直接当 model
 
 ### 审计字段
@@ -299,12 +299,17 @@ DB (via jOOQ)
 
 ### 枚举
 
-- **PG**: SMALLINT
-- **Kotlin**: `enum class Xxx(val code: Int)` + Jimmer `@EnumItem(ordinal=N)` (迁移后改 jOOQ converter)
-- **API 输出**: 字符串名 (`"COMPLETED"`)
-- **编码规则**: 0 保留不用，同组连续十位(100,110,120)，不同组间隔 100
+**全链路 Int 透传 + 内部常量辅助。**
 
-**已定义编码表:**
+- **GraphQL**: input/output 全部 `Int`，schema 注释写含义
+- **PG**: SMALLINT（jOOQ forcedType 自动转 Int）
+- **Kotlin Model**: `val status: Int`
+- **Kotlin 内部辅助**: 常量放 model class 的嵌套 object（如 `ScanRecord.Status.COMPLETED`）
+- **跨模块共享**: 放 `model/shared/`
+
+**编码规则（新增）：** 0 保留不用，从 10 开始步长 10
+
+**已有编码保持不变：**
 
 | 枚举 | 值 | 编码 |
 |------|-----|------|
@@ -327,16 +332,10 @@ DB (via jOOQ)
 
 ## 迁移状态 (2026-08-18)
 
-### 正在进行: Jimmer → jOOQ 清理
+## 待办
 
-另一个 agent 正在执行 `docs/superpowers/plans/2026-08-18-full-jooq-cleanup.md`:
-- 将所有 modules/*/repo 从 Jimmer `KSqlClient` 改为 jOOQ `CrudOps`
-- 将 modules/*/service 接入 `CrudServiceOps` + `TxRunner`
-- 完成后删除 Jimmer 依赖和 `entity/` 目录
-
-### 计划中 (未执行)
-
-- **模块拆分**: `core-common` + `core-api` + `core-admin-api` — 见 `specs/2026-08-13-core-module-split-design.md`
+- **Operation 重命名**: `${query|mutation}_${module}_${action}` action 加对象名 — 见 `plans/2026-08-18-operation-rename.md`
+- **Model 按模块组织 + 枚举常量整理** — 见 `plans/2026-08-18-model-move-and-enum-converter.md`
 - **Admin GraphQL**: `/admin/graphql` endpoint
 - **Federation 预留**: 命名已兼容
 

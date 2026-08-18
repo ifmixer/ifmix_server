@@ -91,10 +91,9 @@
 ## 参考文档
 
 - [架构全貌](docs/ARCHITECTURE.md) — **必读**
-- [jOOQ 迁移设计](docs/superpowers/specs/2026-08-18-jooq-migration-design.md)
-- [GraphQL DGS 设计](docs/superpowers/specs/2026-08-17-graphql-dgs-migration-design.md)
-- [模块拆分设计](docs/superpowers/specs/2026-08-13-core-module-split-design.md)
 - [E2E 测试方案](docs/E2E_TESTING.md)
+- [Operation 重命名计划](docs/superpowers/plans/2026-08-18-operation-rename.md)
+- [Model 重组 + 枚举计划](docs/superpowers/plans/2026-08-18-model-move-and-enum-converter.md)
 
 ## 重要设计决策
 
@@ -115,3 +114,11 @@
 13. **CacheAside 显式调用** — 不用 @Cacheable 魔法
 14. **Domain Model = data class** — 不是 jOOQ codegen POJO
 15. **set/unset Update 语义** — 防 null vs undefined 歧义
+16. **枚举全链路 Int 透传** — GraphQL 不用 enum，灰度/多版本安全
+17. **枚举常量放 model class 嵌套 object** — 就近原则，跨模块的放 model/shared/
+18. **codegen 输出不与手写混** — jOOQ 生成到 src/generated/jooq/，DGS 在 build/generated/
+19. **Operation 命名含对象** — `query_todo_findTodoById` 而非 `query_todo_findById`
+
+## 工作方式
+
+- **写计划 vs 直接做**: 如果直接做 token 消耗更少（改动明确、文件数少、不需要跨模块协调），优先直接做。不确定时问用户。

@@ -89,6 +89,11 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xjsr305=strict")
     }
+    sourceSets {
+        main {
+            kotlin.srcDir("src/generated/jooq")
+        }
+    }
 }
 
 tasks.withType<Test> {
@@ -163,7 +168,7 @@ jooq {
                     }
                     target.apply {
                         packageName = "com.ifmix.api.core.jooq"
-                        directory = "src/main/jooq"
+                        directory = "src/generated/jooq"
                     }
                     generate.apply {
                         isKotlinNotNullPojoAttributes = true
