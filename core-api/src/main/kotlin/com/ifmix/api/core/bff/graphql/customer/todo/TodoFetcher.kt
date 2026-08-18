@@ -14,10 +14,10 @@ import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.jooq.GlobalTxRunner
-import com.ifmix.api.core.model.todo.Todo
-import com.ifmix.api.core.model.todo.TodoItem
+import com.ifmix.api.core.entity.todo.Todo
+import com.ifmix.api.core.entity.todo.TodoItem
 import com.ifmix.api.core.dto.scan.AddItemReq
-import com.ifmix.api.core.modules.scan.service.ScanCollectionFacadeService
+import com.ifmix.api.core.modules.ai.service.ScanCollectionFacadeService
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 import com.ifmix.api.core.modules.todo.service.TodoFacadeService
 import com.netflix.graphql.dgs.DgsComponent

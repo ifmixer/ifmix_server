@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.auth.repo
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreAuthTenant.Companion.CORE_AUTH_TENANT
-import com.ifmix.api.core.model.auth.AuthTenant
+import com.ifmix.api.core.entity.auth.AuthTenant
 import org.springframework.stereotype.Repository
 import java.util.UUID
 

@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreAgnesKey.Companion.CORE_AGNES_KEY
-import com.ifmix.api.core.model.ai.AgnesKey
+import com.ifmix.api.core.entity.ai.AgnesKey
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID

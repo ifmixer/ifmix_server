@@ -9,11 +9,11 @@ import org.springframework.stereotype.Service
 
 @Service
 class StorageFacadeService(
-    private val commands: StorageCommands,
+    private val internalService: StorageInternalService,
 ) {
     fun presignUpload(opCtx: OperationContext, input: PresignUploadInput): PresignUploadResult =
-        commands.presignUpload(opCtx, input)
+        internalService.presignUpload(opCtx, input)
 
     fun presignDownload(opCtx: OperationContext, input: PresignDownloadInput): PresignDownloadResult =
-        commands.presignDownload(opCtx, input)
+        internalService.presignDownload(opCtx, input)
 }

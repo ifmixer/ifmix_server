@@ -1,6 +1,6 @@
 package com.ifmix.api.core.dto.iap
 
-import com.ifmix.api.core.model.shared.Tiers
+import com.ifmix.api.core.entity.shared.Tiers
 import java.time.Instant
 
 /** App Store / Google Play 返回的原始订阅状态。 */

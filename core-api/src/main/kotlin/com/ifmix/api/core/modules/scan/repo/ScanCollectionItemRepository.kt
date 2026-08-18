@@ -4,7 +4,7 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanCollectionItem.Companion.CORE_SCAN_COLLECTION_ITEM
-import com.ifmix.api.core.model.scan.ScanCollectionItem
+import com.ifmix.api.core.entity.scan.ScanCollectionItem
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID

@@ -4,7 +4,7 @@ import com.ifmix.api.core.generated.types.SubmitFeedbackInput
 import com.ifmix.api.core.generated.types.SubmitFeedbackPayload
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.dto.feedback.SubmitFeedbackReq
-import com.ifmix.api.core.modules.feedback.service.FeedbackFacadeService
+import com.ifmix.api.core.modules.cms.service.CmsFacadeService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
@@ -16,7 +16,7 @@ import com.netflix.graphql.dgs.InputArgument
  */
 @DgsComponent
 class FeedbackFetcher(
-    private val feedbackService: FeedbackFacadeService,
+    private val feedbackService: CmsFacadeService,
     private val ctxProvider: OperationContextProvider,
 ) {
 

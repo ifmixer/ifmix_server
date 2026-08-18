@@ -1,7 +1,5 @@
 package com.ifmix.api.core.dto.iap
 
-import com.ifmix.api.core.model.shared.Tiers
-
 data class VerifyReq(
     val platform: Int,
     val signedTransaction: String? = null,

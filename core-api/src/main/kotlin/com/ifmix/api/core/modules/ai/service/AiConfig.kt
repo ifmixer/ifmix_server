@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.ai.service
 
-import com.ifmix.api.core.model.ai.AgnesKey
+import com.ifmix.api.core.entity.ai.AgnesKey
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.modules.ai.repo.AgnesKeyRepository
 import org.springframework.beans.factory.annotation.Value

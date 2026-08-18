@@ -11,13 +11,13 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.model.scan.ScanCollectionItem
-import com.ifmix.api.core.model.scan.ScanRecord
+import com.ifmix.api.core.entity.scan.ScanCollectionItem
+import com.ifmix.api.core.entity.scan.ScanRecord
 import com.ifmix.api.core.dto.scan.AddItemReq
 import com.ifmix.api.core.dto.scan.ListItemsReq
 import com.ifmix.api.core.dto.scan.RemoveItemsReq
-import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
-import com.ifmix.api.core.modules.scan.service.ScanCollectionFacadeService
+import com.ifmix.api.core.modules.ai.repo.ScanRecordRepository
+import com.ifmix.api.core.modules.ai.service.ScanCollectionFacadeService
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsData
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -39,7 +39,7 @@ class CollectionFetcher(
 ) {
 
     @DgsQuery(field = "query_collection_getDefaultCollection")
-    fun getDefault(dfe: DgsDataFetchingEnvironment): com.ifmix.api.core.model.scan.ScanCollection {
+    fun getDefault(dfe: DgsDataFetchingEnvironment): com.ifmix.api.core.entity.scan.ScanCollection {
         val ctx = ctxProvider.fromDfe(dfe)
         return collectionService.getDefault(ctx)
     }

@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.app.repo
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreAppConfigRevision.Companion.CORE_APP_CONFIG_REVISION
-import com.ifmix.api.core.model.app.AppConfigRevision
+import com.ifmix.api.core.entity.app.AppConfigRevision
 import org.jooq.JSONB
 import org.springframework.stereotype.Repository
 import java.util.UUID

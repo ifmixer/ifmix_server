@@ -5,8 +5,8 @@ import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOps
 import com.ifmix.api.core.jooq.tables.CoreScanRecord.Companion.CORE_SCAN_RECORD
-import com.ifmix.api.core.model.ImageRef
-import com.ifmix.api.core.model.scan.ScanRecord
+import com.ifmix.api.core.entity.ImageRef
+import com.ifmix.api.core.entity.scan.ScanRecord
 import org.jooq.JSONB
 import org.springframework.stereotype.Repository
 import tools.jackson.module.kotlin.jacksonObjectMapper

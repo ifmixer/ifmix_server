@@ -6,7 +6,7 @@ import com.ifmix.api.core.entity.appconfig.WechatConfigValue
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.model.AppConfigRevision
+import com.ifmix.api.core.entity.app.AppConfigRevision
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test

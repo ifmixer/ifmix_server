@@ -1,0 +1,28 @@
+package com.ifmix.api.core.modules.payment
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+
+/**
+ * IAP 模块 bean 装配。
+ */
+@Configuration
+class PaymentConfig {
+
+    @Bean
+    @ConditionalOnMissingBean(name = arrayOf("appleVerifier"))
+    fun appleVerifier(): PurchaseVerifier = StubPurchaseVerifier()
+
+    @Bean
+    @ConditionalOnMissingBean(name = arrayOf("googleVerifier"))
+    fun googleVerifier(): PurchaseVerifier = StubPurchaseVerifier()
+
+    @Bean
+    @ConditionalOnMissingBean(name = arrayOf("appleDecoder"))
+    fun appleDecoder(): NotificationDecoder = StubNotificationDecoder()
+
+    @Bean
+    @ConditionalOnMissingBean(name = arrayOf("googleDecoder"))
+    fun googleDecoder(): NotificationDecoder = StubNotificationDecoder()
+}

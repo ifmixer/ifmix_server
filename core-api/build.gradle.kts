@@ -129,11 +129,11 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "Long" to "kotlin.Long",
         "JSON" to "kotlin.Any",
         // Entity output types → Domain Model data classes
-        "Todo" to "com.ifmix.api.core.model.todo.Todo",
-        "TodoItem" to "com.ifmix.api.core.model.todo.TodoItem",
-        "ScanRecord" to "com.ifmix.api.core.model.scan.ScanRecord",
-        "ScanCollection" to "com.ifmix.api.core.model.scan.ScanCollection",
-        "ImageRef" to "com.ifmix.api.core.model.ImageRef",
+        "Todo" to "com.ifmix.api.core.entity.todo.Todo",
+        "TodoItem" to "com.ifmix.api.core.entity.todo.TodoItem",
+        "ScanRecord" to "com.ifmix.api.core.entity.scan.ScanRecord",
+        "ScanCollection" to "com.ifmix.api.core.entity.scan.ScanCollection",
+        "ImageRef" to "com.ifmix.api.core.entity.ImageRef",
         // ScanCollectionItem: 关系表有 scanRecord 引用，保持生成类型
         // OperationResult: 手写类型，不再由 codegen 生成
         "OperationResult" to "com.ifmix.api.core.dto.common.OperationResult",
