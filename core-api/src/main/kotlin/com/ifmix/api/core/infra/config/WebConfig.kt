@@ -2,9 +2,7 @@ package com.ifmix.api.core.infra.config
 
 import com.ifmix.api.core.infra.auth.AuthInterceptor
 import com.ifmix.api.core.infra.http.HeaderValidationInterceptor
-import com.ifmix.api.core.infra.http.OperationContextArgumentResolver
 import org.springframework.context.annotation.Configuration
-import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
@@ -40,9 +38,5 @@ class WebConfig(
             .addPathPatterns("/customer/graphql")
         registry.addInterceptor(authInterceptor)
             .addPathPatterns("/customer/graphql")
-    }
-
-    override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
-        resolvers.add(OperationContextArgumentResolver())
     }
 }

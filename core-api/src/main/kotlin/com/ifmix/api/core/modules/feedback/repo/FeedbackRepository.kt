@@ -1,37 +1,21 @@
 package com.ifmix.api.core.modules.feedback.repo
 
-import com.ifmix.api.core.entity.feedback.Feedback
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
-import org.babyfish.jimmer.sql.ast.mutation.SaveMode
-import org.babyfish.jimmer.sql.kt.KSqlClient
+import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.jooq.tables.CoreFeedback.Companion.CORE_FEEDBACK
+import com.ifmix.api.core.model.Feedback
 import org.springframework.stereotype.Repository
-import java.time.Instant
 import java.util.UUID
 
+/**
+ * Feedback repository.
+ */
 @Repository
-class FeedbackRepository(sql: KSqlClient) : BaseAppCrudRepository<Feedback>(sql, Feedback::class) {
+class FeedbackRepository(private val crud: CrudOps) {
 
-    fun create(
-        ctx: RepoContext,
-        appId: UUID,
-        installId: UUID,
-        userId: UUID?,
-        category: Int,
-        comment: String?,
-        scanRecordId: UUID?,
-    ): UUID {
-        val entity = Feedback {
-            id = UuidV7.generate()
-            this.appId = appId
-            this.installId = installId
-            this.userId = userId
-            this.scanRecordId = scanRecordId
-            this.category = category
-            this.comment = comment
-            createdAt = Instant.now()
-        }
-        return sql.entities.save(entity) { setMode(SaveMode.INSERT_ONLY) }.modifiedEntity.id
-    }
+    fun insert(ctx: RepoContext, feedback: Feedback) =
+        crud.insert(ctx, CORE_FEEDBACK, feedback)
+
+    fun findById(ctx: RepoContext, appId: UUID, id: UUID): Feedback? =
+        crud.findById(ctx, CORE_FEEDBACK, CORE_FEEDBACK.APP_ID, CORE_FEEDBACK.ID, appId, id, Feedback::class.java)
 }

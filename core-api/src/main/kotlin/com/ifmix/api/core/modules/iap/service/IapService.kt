@@ -7,8 +7,8 @@ import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jooq.TxRunner
 import com.ifmix.api.core.model.Subscription
 import com.ifmix.api.core.model.StoreNotification
-import com.ifmix.api.core.modules.iap.repo.StoreNotificationJooqRepository
-import com.ifmix.api.core.modules.iap.repo.SubscriptionJooqRepository
+import com.ifmix.api.core.modules.iap.repo.StoreNotificationRepository
+import com.ifmix.api.core.modules.iap.repo.SubscriptionRepository
 import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.entity.enums.Platform
@@ -34,8 +34,8 @@ open class IapService(
     private val appleVerifier: PurchaseVerifier,
     @Qualifier("googleVerifier")
     private val googleVerifier: PurchaseVerifier,
-    private val subscriptionRepo: SubscriptionJooqRepository,
-    private val storeNotificationRepo: StoreNotificationJooqRepository,
+    private val subscriptionRepo: SubscriptionRepository,
+    private val storeNotificationRepo: StoreNotificationRepository,
     private val appConfigRepo: AppConfigRevisionRepository,
     private val tx: TxRunner,
 ) {

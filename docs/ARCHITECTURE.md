@@ -315,3 +315,209 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 3. Apple JWKS 在 WebhookController 中每次请求加载（生产应缓存）
 4. Google Webhook 缺少 OAuth bearer token 验证（目前仅解析 packageName）
 5. 缺少全局 CORS 配置（移动端不需要，Web 端需补充）
+
+---
+
+## 架构设计约束（2026-08-18）
+
+> 本节记录从 REST+Jimmer 迁移到 GraphQL(DGS)+jOOQ 后的最终架构规范。
+
+### 技术栈（目标态）
+
+| 层级 | 选型 | 说明 |
+|------|------|------|
+| API 传输 | GraphQL (Netflix DGS 12.x) | endpoint: `/customer/graphql` |
+| SQL 访问 | jOOQ 3.21.5 | 类型安全 DSL + codegen |
+| 类型生成 | DGS codegen 8.6.0 | input/payload/enum 从 schema 生成 |
+| 事务 | TxRunner (jOOQ native) | 替代 @Transactional |
+| 缓存 | CacheAside (显式 Redis) | 替代 @Cacheable |
+| 其他 | Kotlin 2.3.10 / Spring Boot 4.1 / JDK 25 / PostgreSQL / Redis / Jackson 3 | 不变 |
+
+### 分层规则
+
+| 层 | 包路径 | 职责 | 不做 |
+|----|--------|------|------|
+| DataFetcher | `bff/graphql/customer/` | GraphQL 路由、构造 OperationContext、DataLoader | 业务逻辑、SQL、缓存 |
+| Service | `modules/*/service/` | 业务编排、事务边界(TxRunner)、缓存决策(CrudServiceOps) | 直接 DSLContext |
+| Repository | `modules/*/repo/` | 纯数据访问（注入 CrudOps）、方法接收 RepoContext | 事务、缓存、业务 |
+| Model | `model/` | Domain data class、可加业务方法 | 框架注解 |
+| Infra | `infra/` | 横切：jOOQ/缓存/事务/GraphQL scalars/异常处理 | 业务逻辑 |
+
+### GraphQL 约束
+
+- **Endpoint**: `/customer/graphql`（将来 `/admin/graphql`）
+- **Operation 命名**: `${query|mutation}_${module}_${action}`
+  - 示例: `query_todo_findById`, `mutation_scan_create`, `mutation_auth_loginGoogle`
+  - **不加 `core_` 前缀**（Federation 时 subgraph 本身已隔离）
+- **Schema 目录**: `resources/schema/common/` + `resources/schema/customer/`
+- **DGS codegen**: 从 `.graphqls` 生成 input/payload/enum，不手写
+- **typeMapping**: GraphQL output type → `model/` 下的 data class
+- **DataLoader**: `caching = false`（只 batching，防 mutation document 内脏读）
+- **不做**: persisted query
+
+### Update Input (set/unset 防呆)
+
+```graphql
+input UpdateXxxInput {
+    id: UUID!
+    set: UpdateXxxSetInput    # 要赋值的字段（没传 = 不动）
+    unset: [XxxUnsetField!]   # 要清空为 null 的字段
+}
+```
+
+- `set.field` 有值 → SET col = value
+- `unset` 列出 → SET col = NULL
+- 两者都没 → 不动
+- 冲突 → `unset` 优先
+
+### Mutation Payload
+
+```graphql
+type UpdateXxxPayload {
+    success: Boolean!
+    xxx: Xxx          # 客户端 select 了才回查
+}
+```
+
+### 数据访问 — 组合优于继承
+
+- **CrudOps** (infra bean): 通用 repo 操作工具，所有 repo 注入使用
+  - `findById`, `findByIds`, `findByCursor`, `exists`
+  - `insert` (newRecord 自动映射)、`batchInsert`、`batchInsertTyped`
+  - `partialUpdate` (lambda 构建 SET)
+  - `deleteById`, `deleteByIds` (软删除可选)
+- **CrudServiceOps<T>** (实例级配置): 通用 service 操作
+  - 工厂创建: `factory.create(Type::class.java, "cachePrefix") { it.id }`
+  - `findById`、`findByIds`、`findByCursor`、`deleteById`、`deleteByIds`、`evict`
+  - 自动处理 readCache 判断 + cache evict
+  - 不需要缓存: `factory.createNoCache(Type::class.java) { it.id }`
+- **Repo 不继承基类**, 只注入 CrudOps 委托调用
+- **一个 repo 一张表**
+
+### 事务管理 — TxRunner
+
+```kotlin
+fun createTodo(ctx, input) = tx.withTx(ctx) { txCtx ->
+    repo.insert(txCtx.repoCtx, todo)
+    itemRepo.batchInsert(txCtx.repoCtx, items)
+    id
+}
+```
+
+- **不用 `@Transactional`**: DSLContext 按 ctx 动态路由，Spring 注解绑固定 DataSource
+- **传播行为**: `REQUIRED`(默认，复用外层) / `REQUIRES_NEW` / `SUPPORTS` / `NOT_SUPPORTED`
+- **事务复用**: `RepoContext.inTransaction` 标记，REQUIRED 检测到则跳过
+- **事务边界在 Service**: 非 GraphQL 入口也能正确走事务
+- **跨 service 调用**: 自动复用（REQUIRED 语义）
+
+### OperationContext
+
+```kotlin
+data class OperationContext(
+    // per-request (HTTP header)
+    appId, installId, userId, lang, currency, country, clientPlatform, clientIp,
+    // per-operation (GraphQL execution)
+    opName: String?,          // e.g. "query_todo_findById"
+    isMutation: Boolean,
+    readFromReplica: Boolean = !isMutation,   // mutation → 主库
+    readCache: Boolean = !isMutation,          // mutation → 跳过缓存
+    // repo 上下文
+    repoCtx: RepoContext,    // DSLContext + clusterId + inTransaction
+)
+```
+
+由 `OperationContextProvider.fromDfe()` 自动构建。
+
+### RepoContext
+
+```kotlin
+data class RepoContext(
+    val dsl: DSLContext,
+    val clusterId: String = "default",
+    val inTransaction: Boolean = false,
+)
+```
+
+- 由 OperationContextProvider 构建，放入 OperationContext.repoCtx
+- Repo 方法第一个参数都是 RepoContext
+- 多集群：根据 appId 解析不同 DSLContext
+- TxRunner 替换为事务内 DSLContext + inTransaction=true
+
+### Domain Model 规范
+
+- 普通 Kotlin `data class`，放 `model/`
+- 字段名与 DB column camelCase 对齐（支持 `newRecord(table, model)` 自动映射）
+- 时间统一 `Instant`（jOOQ forcedType + InstantConverter）
+- 可加业务方法
+- 不依赖框架注解
+- 不是 jOOQ codegen POJO（那个只做参考）
+
+### jOOQ Codegen
+
+- **手动触发**: `./gradlew :core-api:generateJooq`
+- **生成目录**: `src/main/jooq/`（提交 git）
+- **forcedType**: 所有 TIMESTAMP → Instant
+- **生成 POJO**: 参考用，不直接当 model
+- **不自动触发**: `generateSchemaSourceOnCompilation = false`
+
+### 缓存分层
+
+```
+DataLoader (per-request, batching only, caching=false)
+  → 关联字段 N+1 批量加载
+Redis CacheAside (跨 request, TTL 分钟级)
+  → 热点标量数据
+  → query: readCache=true → 走 cache
+  → mutation: readCache=false → 跳过
+  → 写后: ops.evict()
+DB (via jOOQ)
+  → query: readFromReplica=true → 从库
+  → mutation: readFromReplica=false → 主库
+```
+
+### 多集群路由（设计预留）
+
+- OperationContextProvider 根据 appId 从 ClusterRegistry 解析 DSLContext
+- 放入 OperationContext.repoCtx
+- Repo 透明使用 ctx.dsl
+- TxRunner 在对应集群的 DSLContext 上开事务
+- 当前单集群: RepoContext.DEFAULT
+
+### Federation 预留
+
+- 命名 `query_todo_findById` 在 Federation 中天然不冲突
+- 每个 subgraph 的 module 前缀不同
+- Entity 跨 subgraph: `@key(fields: "id")` + `__resolveReference`
+- 不需要 `core_` namespace
+
+### 保留的 REST 端点
+
+| 端点 | 原因 |
+|------|------|
+| `POST /webhooks/iap/*` | Apple/Google 回调格式固定 |
+| `GET /.well-known/jwks` | 标准 JWKS |
+
+### 已确定设计决策
+
+| # | 决策 | 理由 |
+|---|------|------|
+| 1 | jOOQ codegen 手动执行 | 不依赖 DB 来编译 |
+| 2 | 软删除在 CrudOps 可选 (deletedAtField) | 有的需要有的不需要 |
+| 3 | 审计字段 RecordListener 自动填充 | 不手写 |
+| 4 | id 调用方可传, 不传则 UuidV7 | 测试/幂等 |
+| 5 | DataLoader caching=false | 防 mutation 脏读 |
+| 6 | OperationContext 扩展字段不新建类 | 单一入参 |
+| 7 | mutation 时 readCache=false + readFromReplica=false | 写后读一致 |
+| 8 | 关联字段走 DataLoader, service 只管标量 | 关注点分离 |
+| 9 | DGS codegen 生成 input/payload/enum | Schema 单源 |
+| 10 | Domain Model = data class (不是 codegen POJO) | 可加方法 |
+| 11 | 组合优于继承 (CrudOps/CrudServiceOps/TxRunner) | 灵活可测 |
+| 12 | TxRunner 替代 @Transactional | 多集群路由 |
+| 13 | Operation 命名: ${query|mutation}_${module}_${action} | 清晰 + Federation 友好 |
+| 14 | 不加 core_ 前缀 | subgraph 隔离已足够 |
+| 15 | set/unset 防呆 (不用 updateMask/fieldMask) | 不冗余、语义清晰 |
+| 16 | AuthInterceptor 非阻塞 | 支持匿名+认证混合 |
+| 17 | presignUpload 不要求登录 | 已确定 |
+| 18 | 限流超限不删 Redis key | 自然 TTL 过期 |
+| 19 | Instant 统一时间类型 (不用 OffsetDateTime) | 语义精确 |
+| 20 | Repo 按表拆分, Service 按领域拆分 | 职责清晰 |

@@ -1,40 +1,28 @@
 package com.ifmix.api.core.modules.storage.repo
 
-import com.ifmix.api.core.entity.storage.UploadRecord
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
-import org.babyfish.jimmer.sql.ast.mutation.SaveMode
-import org.babyfish.jimmer.sql.kt.KSqlClient
+import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.jooq.tables.CoreUploadRecord.Companion.CORE_UPLOAD_RECORD
+import com.ifmix.api.core.model.UploadRecord
 import org.springframework.stereotype.Repository
-import java.time.Instant
 import java.util.UUID
 
 @Repository
-class _UploadRecordRepository_old(sql: KSqlClient) : BaseAppCrudRepository<UploadRecord>(sql, UploadRecord::class) {
+class UploadRecordRepository(private val crud: CrudOps) {
 
-    fun create(
-        ctx: RepoContext,
-        id: UUID,
-        appId: UUID,
-        installId: UUID?,
-        userId: UUID?,
-        objectKey: String,
-        contentType: String,
-        category: String,
-        clientIp: String?,
-    ): UploadRecord {
-        val entity = UploadRecord {
-            this.id = id
-            this.appId = appId
-            this.installId = installId
-            this.userId = userId
-            this.objectKey = objectKey
-            this.contentType = contentType
-            this.category = category
-            this.clientIp = clientIp
-            createdAt = Instant.now()
-        }
-        return sql.entities.save(entity) { setMode(SaveMode.INSERT_ONLY) }.modifiedEntity
+    fun insert(ctx: RepoContext, record: UploadRecord) {
+        crud.insert(ctx, CORE_UPLOAD_RECORD, record)
+    }
+
+    fun findById(ctx: RepoContext, appId: UUID, id: UUID): UploadRecord? {
+        return crud.findById(
+            ctx,
+            CORE_UPLOAD_RECORD,
+            CORE_UPLOAD_RECORD.APP_ID,
+            CORE_UPLOAD_RECORD.ID,
+            appId,
+            id,
+            UploadRecord::class.java,
+        )
     }
 }

@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.ai.service
 
 import com.ifmix.api.core.entity.enums.AgnesKeyType
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.modules.ai.repo.AgnesKeyJooqRepository
+import com.ifmix.api.core.modules.ai.repo.AgnesKeyRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -20,7 +20,7 @@ class AiConfig {
     @Bean
     fun agnesKeyStore(
         redis: StringRedisTemplate,
-        agnesKeyRepo: AgnesKeyJooqRepository,
+        agnesKeyRepo: AgnesKeyRepository,
     ): AgnesKeyStore {
         return AgnesKeyStore(
             redis = redis,

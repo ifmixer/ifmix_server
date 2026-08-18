@@ -1,8 +1,6 @@
 package com.ifmix.api.core.modules.scan.dto
 
-import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDate
-import java.util.UUID
 
 /**
  * 扫描输入中的单个媒体项。
@@ -28,52 +26,4 @@ data class ScanInput(
     val currency: String? = null,
     /** 当前日期，用于年代分类阈值计算 */
     val date: LocalDate = LocalDate.now(),
-)
-
-data class NewScanImageInput(
-    /** 已上传的对象键（必填，以 / 开头） */
-    @Schema(description = "已上传文件的 objectKey，以 / 开头。")
-    val imageKey: String,
-    /** MIME 类型（可选，不传时根据 imageKey 后缀自动推断） */
-    @Schema(description = "MIME 类型，如 image/jpeg。不传时自动推断。")
-    val mediaType: String? = null,
-) {
-    fun resolvedMediaType(): String = mediaType ?: guessMediaType(imageKey)
-
-    companion object {
-        private fun guessMediaType(key: String): String {
-            val ext = key.substringAfterLast('.', "").lowercase()
-            return when (ext) {
-                "jpg", "jpeg" -> "image/jpeg"
-                "png" -> "image/png"
-                "webp" -> "image/webp"
-                "gif" -> "image/gif"
-                "heic" -> "image/heic"
-                else -> "application/octet-stream"
-            }
-        }
-    }
-}
-
-data class NewScanReq(val images: List<NewScanImageInput>)
-
-data class UpdateScanReq(
-    @Schema(description = "记录 ID（UUIDv7）")
-    val id: UUID,
-    @Schema(description = "新名称。不传=不修改；传 null=清空（回退到 result.name 快照）；传字符串=设为用户自定义名称。")
-    val name: String? = null,
-    @Schema(description = "用户备注。不传=不修改；传 null=清空；传字符串=设为用户备注。")
-    val userNotes: String? = null,
-    @Schema(description = "是否收藏。不传=不修改。")
-    val collected: Boolean? = null,
-)
-
-/** 扫描记录分页查询请求体 */
-data class ScanQueryInput(
-    @Schema(description = "上一页返回的 nextCursor，首次请求不传")
-    val cursor: String? = null,
-    @Schema(description = "每页条数，默认 20，上限 100", minimum = "1", maximum = "100")
-    val limit: Int = 20,
-    @Schema(description = "按收藏状态过滤。不传=不过滤；true=只看已收藏；false=只看未收藏。")
-    val collected: Boolean? = null,
 )

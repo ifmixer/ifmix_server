@@ -22,11 +22,11 @@ import com.ifmix.api.core.modules.auth.dto.RefreshReq
 import com.ifmix.api.core.modules.auth.dto.RefreshRes
 import com.ifmix.api.core.modules.auth.dto.UserDto
 import com.ifmix.api.core.modules.auth.dto.WechatLoginReq
-import com.ifmix.api.core.modules.auth.repo.AppRefreshTokenJooqRepository
-import com.ifmix.api.core.modules.auth.repo.AppUserJooqRepository
-import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretJooqRepository
-import com.ifmix.api.core.modules.auth.repo.AuthIdentityJooqRepository
-import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityJooqRepository
+import com.ifmix.api.core.modules.auth.repo.AppRefreshTokenRepository
+import com.ifmix.api.core.modules.auth.repo.AppUserRepository
+import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretRepository
+import com.ifmix.api.core.modules.auth.repo.AuthIdentityRepository
+import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityRepository
 import com.ifmix.api.core.model.AppRefreshToken
 import com.ifmix.api.core.model.AuthDeviceSecret
 import com.ifmix.api.core.model.AuthIdentity
@@ -42,11 +42,11 @@ open class AuthService(
     private val appConfigRepo: AppConfigRevisionRepository,
     private val verifiers: Map<String, ProviderVerifier>,
     private val jwt: AuthJwtService,
-    private val providerIdentityRepo: AuthProviderIdentityJooqRepository,
-    private val appUserRepo: AppUserJooqRepository,
-    private val deviceSecretRepo: AuthDeviceSecretJooqRepository,
-    private val refreshRepo: AppRefreshTokenJooqRepository,
-    private val identityRepo: AuthIdentityJooqRepository,
+    private val providerIdentityRepo: AuthProviderIdentityRepository,
+    private val appUserRepo: AppUserRepository,
+    private val deviceSecretRepo: AuthDeviceSecretRepository,
+    private val refreshRepo: AppRefreshTokenRepository,
+    private val identityRepo: AuthIdentityRepository,
     private val tx: TxRunner,
     private val events: ApplicationEventPublisher,
     @Value("\${app.auth.access-ttl-sec:900}")

@@ -1,56 +1,67 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.entity.auth.AuthDeviceSecret
-import com.ifmix.api.core.entity.auth.expiresAt
-import com.ifmix.api.core.entity.auth.id
-import com.ifmix.api.core.entity.auth.lastUsedAt
-import com.ifmix.api.core.entity.auth.revokedAt
-import com.ifmix.api.core.entity.auth.secretHash
-import com.ifmix.api.core.entity.auth.updatedAt
 import com.ifmix.api.core.infra.db.RepoContext
-import com.ifmix.api.core.infra.repo.BaseCrudRepository
-import org.babyfish.jimmer.sql.kt.KSqlClient
-import org.babyfish.jimmer.sql.kt.ast.expression.*
+import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.jooq.tables.CoreAuthDeviceSecret.Companion.CORE_AUTH_DEVICE_SECRET
+import com.ifmix.api.core.model.AuthDeviceSecret
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
-/** Device secret repository with custom queries */
+/**
+ * AuthDeviceSecret jOOQ repository.
+ */
 @Repository
-class AuthDeviceSecretRepository(sql: KSqlClient,) : BaseCrudRepository<AuthDeviceSecret>(sql, AuthDeviceSecret::class) {
+class AuthDeviceSecretRepository(
+    private val crud: CrudOps,
+) {
 
-    /**
-     * Find a valid (not expired, not revoked) device secret by its hash.
-     */
     fun findValidByHash(ctx: RepoContext, secretHash: String): AuthDeviceSecret? {
         val now = Instant.now()
-        return sql.createQuery(AuthDeviceSecret::class) {
-            where(table.secretHash eq secretHash)
-            where(table.revokedAt.isNull())
-            where(or(table.expiresAt.isNull(), table.expiresAt gt now))
-            select(table)
-        }.fetchOneOrNull()
+        val record = ctx.dsl.selectFrom(CORE_AUTH_DEVICE_SECRET)
+            .where(CORE_AUTH_DEVICE_SECRET.SECRET_HASH.eq(secretHash))
+            .and(CORE_AUTH_DEVICE_SECRET.REVOKED_AT.isNull())
+            .and(CORE_AUTH_DEVICE_SECRET.EXPIRES_AT.isNull().or(CORE_AUTH_DEVICE_SECRET.EXPIRES_AT.greaterThan(now)))
+            .fetchOne()
+        return record?.let { toModel(it) }
     }
 
-    /**
-     * Touch: update lastUsedAt to now.
-     */
     fun touch(ctx: RepoContext, id: UUID) {
-        sql.createUpdate(AuthDeviceSecret::class) {
-            set(table.lastUsedAt, Instant.now())
-            set(table.updatedAt, Instant.now())
-            where(table.id eq id)
-        }.execute()
+        val now = Instant.now()
+        ctx.dsl.update(CORE_AUTH_DEVICE_SECRET)
+            .set(CORE_AUTH_DEVICE_SECRET.LAST_USED_AT, now)
+            .set(CORE_AUTH_DEVICE_SECRET.UPDATED_AT, now)
+            .where(CORE_AUTH_DEVICE_SECRET.ID.eq(id))
+            .execute()
     }
 
-    /**
-     * Revoke a device secret by setting revokedAt.
-     */
     fun revoke(ctx: RepoContext, id: UUID) {
-        sql.createUpdate(AuthDeviceSecret::class) {
-            set(table.revokedAt, Instant.now())
-            set(table.updatedAt, Instant.now())
-            where(table.id eq id)
-        }.execute()
+        val now = Instant.now()
+        ctx.dsl.update(CORE_AUTH_DEVICE_SECRET)
+            .set(CORE_AUTH_DEVICE_SECRET.REVOKED_AT, now)
+            .set(CORE_AUTH_DEVICE_SECRET.UPDATED_AT, now)
+            .where(CORE_AUTH_DEVICE_SECRET.ID.eq(id))
+            .execute()
     }
+
+    fun insert(ctx: RepoContext, secret: AuthDeviceSecret) {
+        crud.insert(ctx, CORE_AUTH_DEVICE_SECRET, secret)
+    }
+
+    // =========================================================================
+    // Record ↔ model helpers
+    // =========================================================================
+
+    private fun toModel(r: org.jooq.Record): AuthDeviceSecret = AuthDeviceSecret(
+        id = r.get(CORE_AUTH_DEVICE_SECRET.ID)!!,
+        authTenantId = r.get(CORE_AUTH_DEVICE_SECRET.AUTH_TENANT_ID)!!,
+        authIdentityId = r.get(CORE_AUTH_DEVICE_SECRET.AUTH_IDENTITY_ID)!!,
+        secretHash = r.get(CORE_AUTH_DEVICE_SECRET.SECRET_HASH)!!,
+        loginInstallId = r.get(CORE_AUTH_DEVICE_SECRET.LOGIN_INSTALL_ID),
+        expiresAt = r.get(CORE_AUTH_DEVICE_SECRET.EXPIRES_AT)!!,
+        revokedAt = r.get(CORE_AUTH_DEVICE_SECRET.REVOKED_AT),
+        lastUsedAt = r.get(CORE_AUTH_DEVICE_SECRET.LAST_USED_AT),
+        createdAt = r.get(CORE_AUTH_DEVICE_SECRET.CREATED_AT) ?: Instant.now(),
+        updatedAt = r.get(CORE_AUTH_DEVICE_SECRET.UPDATED_AT),
+    )
 }

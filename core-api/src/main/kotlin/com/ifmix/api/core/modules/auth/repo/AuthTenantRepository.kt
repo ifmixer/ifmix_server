@@ -1,10 +1,36 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.repo.BaseCrudRepository
-import com.ifmix.api.core.entity.auth.AuthTenant
-import org.babyfish.jimmer.sql.kt.KSqlClient
+import com.ifmix.api.core.infra.db.RepoContext
+import com.ifmix.api.core.infra.jooq.CrudOps
+import com.ifmix.api.core.jooq.tables.CoreAuthTenant.Companion.CORE_AUTH_TENANT
+import com.ifmix.api.core.model.AuthTenant
 import org.springframework.stereotype.Repository
+import java.util.UUID
 
-/** AuthTenant repository */
+/**
+ * AuthTenant jOOQ repository.
+ */
 @Repository
-class AuthTenantRepository(sql: KSqlClient,) : BaseCrudRepository<AuthTenant>(sql, AuthTenant::class)
+class AuthTenantRepository(
+    private val crud: CrudOps,
+) {
+
+    fun findById(ctx: RepoContext, id: UUID): AuthTenant? {
+        val record = ctx.dsl.selectFrom(CORE_AUTH_TENANT)
+            .where(CORE_AUTH_TENANT.ID.eq(id))
+            .fetchOne()
+        return record?.let { toModel(it) }
+    }
+
+    // =========================================================================
+    // Record ↔ model helpers
+    // =========================================================================
+
+    private fun toModel(r: org.jooq.Record): AuthTenant = AuthTenant(
+        id = r.get(CORE_AUTH_TENANT.ID)!!,
+        jwtPrivateKeyPem = r.get(CORE_AUTH_TENANT.JWT_PRIVATE_KEY_PEM),
+        jwtIssuer = r.get(CORE_AUTH_TENANT.JWT_ISSUER),
+        createdAt = r.get(CORE_AUTH_TENANT.CREATED_AT)!!,
+        updatedAt = r.get(CORE_AUTH_TENANT.UPDATED_AT),
+    )
+}
