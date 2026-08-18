@@ -13,8 +13,11 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
+import com.ifmix.api.core.infra.jooq.GlobalTxRunner
 import com.ifmix.api.core.model.todo.Todo
 import com.ifmix.api.core.model.todo.TodoItem
+import com.ifmix.api.core.modules.scan.dto.AddItemReq
+import com.ifmix.api.core.modules.scan.service.ScanCollectionFacadeService
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 import com.ifmix.api.core.modules.todo.service.TodoFacadeService
 import com.netflix.graphql.dgs.DgsComponent
@@ -38,7 +41,9 @@ import java.util.concurrent.CompletionStage
 @DgsComponent
 class TodoFetcher(
     private val todoService: TodoFacadeService,
+    private val scanCollectionService: ScanCollectionFacadeService,
     private val ctxProvider: OperationContextProvider,
+    private val globalTx: GlobalTxRunner,
 ) {
 
     // ==================== Query ====================
@@ -119,6 +124,21 @@ class TodoFetcher(
         val ctx = ctxProvider.fromDfe(dfe)
         val count = todoService.batchDeleteTodos(ctx, ids)
         return DeleteTodoPayload(success = count == ids.size)
+    }
+
+    // ==================== 跨模块事务示例 ====================
+    // 使用 GlobalTxRunner 同时操作 todo 和 scan collection
+    @DgsMutation(field = "mutation_todo_createTodoAndCollect")
+    fun createTodoAndCollect(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
+        val opCtx = ctxProvider.fromDfe(dfe)
+        return globalTx.withTx(opCtx) { txOpCtx ->
+            val id = todoService.createTodo(txOpCtx, input)
+            // 跨模块操作共享同一事务：todoService 和 scanCollectionService 的 SvcCtx
+            // 都会自动复用 txOpCtx.globalTxDsl，不嵌套开新事务
+            val todo = todoService.findById(txOpCtx, id)
+                ?: throw ApiError(ErrorCode.INTERNAL, "Failed to read back created todo")
+            CreateTodoPayload(todo = todo)
+        }
     }
 }
 

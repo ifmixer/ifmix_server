@@ -47,7 +47,7 @@ class TodoQueries(
     factory: CrudServiceOpsFactory,
 ) {
     private val ops: CrudServiceOps<Todo> = factory.create(Todo::class.java, "todo") { it.id }
-    private fun svc(opCtx: OperationContext) = SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl)
+    private fun svc(opCtx: OperationContext) = SvcCtx(op = opCtx, dsl = opCtx.globalTxDsl ?: SvcCtx.DEFAULT.dsl)
     fun findById(opCtx: OperationContext, id: UUID): Todo? = ops.findById(svc(opCtx), id, repo::findById)
     fun findByIds(opCtx: OperationContext, ids: List<UUID>): List<Todo> = ops.findByIds(svc(opCtx), ids, repo::findByIds)
     fun findByCursor(opCtx: OperationContext, input: TodoQueryInput): Page<Todo> = ops.findByCursor(svc(opCtx), input.cursor, input.limit, repo::findByCursor)
@@ -62,7 +62,7 @@ class TodoCommands(
     factory: CrudServiceOpsFactory,
 ) {
     private val ops: CrudServiceOps<Todo> = factory.create(Todo::class.java, "todo") { it.id }
-    private fun svc(opCtx: OperationContext) = SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl)
+    private fun svc(opCtx: OperationContext) = SvcCtx(op = opCtx, dsl = opCtx.globalTxDsl ?: SvcCtx.DEFAULT.dsl)
 
     fun create(opCtx: OperationContext, input: CreateTodoInput): UUID = tx.withTx(svc(opCtx)) { ctx ->
         val appId = ctx.appId!!
@@ -101,7 +101,7 @@ class TodoItemCommands(
     private val repo: TodoItemRepository,
     private val tx: TxRunner,
 ) {
-    private fun svc(opCtx: OperationContext) = SvcCtx(op = opCtx, dsl = SvcCtx.DEFAULT.dsl)
+    private fun svc(opCtx: OperationContext) = SvcCtx(op = opCtx, dsl = opCtx.globalTxDsl ?: SvcCtx.DEFAULT.dsl)
 
     fun update(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput) = tx.withTx(svc(opCtx)) { ctx ->
         val appId = ctx.appId!!
