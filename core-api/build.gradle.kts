@@ -4,7 +4,7 @@ plugins {
     id("org.springframework.boot")
     id("io.spring.dependency-management")
     id("com.netflix.dgs.codegen")
-    id("nu.studer.jooq")
+    id("com.google.devtools.ksp")
 }
 
 dependencies {
@@ -51,9 +51,11 @@ dependencies {
     implementation("com.nimbusds:nimbus-jose-jwt:9.40")
     implementation("com.google.crypto.tink:tink:1.15.0")
 
-    // === jOOQ ===
-    implementation("org.springframework.boot:spring-boot-starter-jooq")
-    jooqGenerator("org.postgresql:postgresql")
+    // === Jimmer + PostgreSQL ===
+    val jimmerVersion = rootProject.extra["jimmerVersion"] as String
+    implementation("org.babyfish.jimmer:jimmer-spring-boot-starter:$jimmerVersion")
+    implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
+    ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")
 
     // UUIDv7 generator (cursor pagination requires time-ordered IDs)
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
@@ -89,11 +91,6 @@ kotlin {
     jvmToolchain(25)
     compilerOptions {
         freeCompilerArgs.add("-Xjsr305=strict")
-    }
-    sourceSets {
-        main {
-            kotlin.srcDir("src/generated/jooq")
-        }
     }
 }
 
@@ -144,75 +141,8 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
     )
 }
 
-// jOOQ codegen — 手动触发: ./gradlew :core-api:generateJooq
-jooq {
-    version.set("3.21.5")  // 对齐 Spring Boot dependency management 解析的 jOOQ 版本
-    configurations {
-        create("main") {
-            generateSchemaSourceOnCompilation.set(false) // 不自动在 compileKotlin 时触发 codegen
-
-            jooqConfiguration.apply {
-                jdbc.apply {
-                    driver = "org.postgresql.Driver"
-                    url = "jdbc:postgresql://localhost:5432/ifmix_core_local"
-                    user = "postgres"
-                    password = "postgres"
-                }
-                generator.apply {
-                    name = "org.jooq.codegen.KotlinGenerator"
-                    database.apply {
-                        inputSchema = "public"
-                        includes = "core_.*"
-                        excludes = "flyway_.*"
-                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
-                            userType = "java.time.Instant"
-                            converter = "com.ifmix.api.core.infra.jooq.InstantConverter"
-                            includeTypes = ".*(?i:timestamp).*"
-                        })
-                        // SMALLINT → Kotlin Int，避免 Short↔Int 转换噪音
-                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
-                            userType = "kotlin.Int"
-                            converter = "com.ifmix.api.core.infra.jooq.SmallintToIntConverter"
-                            includeTypes = "SMALLINT"
-                        })
-                        // === JSONB 列 → 领域类型 ===
-                        // core_app_config_revision.content → ConfigContent
-                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
-                            userType = "com.ifmix.api.core.entity.app.ConfigContent"
-                            converter = "com.ifmix.api.core.infra.jooq.ConfigContentConverter"
-                            includeExpression = "core_app_config_revision\\.content"
-                        })
-                        // core_scan_record.image_keys → List<ImageRef>
-                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
-                            userType = "kotlin.collections.List<com.ifmix.api.core.entity.ImageRef>"
-                            converter = "com.ifmix.api.core.infra.jooq.ImageRefListConverter"
-                            includeExpression = "core_scan_record\\.image_keys"
-                        })
-                        // core_scan_record.basic_result / premium_result → Map<String, Any?>
-                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
-                            userType = "kotlin.collections.Map<kotlin.String, kotlin.Any?>"
-                            converter = "com.ifmix.api.core.infra.jooq.JsonMapConverter"
-                            includeExpression = "core_scan_record\\.(basic_result|premium_result)"
-                        })
-                        // 其余 JSONB 列 → String（raw_payload, raw_response 等）
-                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
-                            userType = "java.lang.String"
-                            converter = "com.ifmix.api.core.infra.jooq.JsonStringConverter"
-                            includeTypes = "JSONB"
-                        })
-                    }
-                    target.apply {
-                        packageName = "com.ifmix.api.core.jooq"
-                        directory = "src/generated/jooq"
-                    }
-                    generate.apply {
-                        isKotlinNotNullPojoAttributes = true
-                        isKotlinNotNullRecordAttributes = true
-                        isPojos = true
-                        isPojosAsKotlinDataClasses = true
-                    }
-                }
-            }
-        }
-    }
+// Jimmer KSP 配置
+ksp {
+    arg("jimmer.language", "kotlin")
 }
+
