@@ -5,7 +5,7 @@ import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.modules.demo.service.DemoModuleService
-import com.ifmix.api.core.generated.mybatis.model.CoreTodo
+import com.ifmix.api.core.entity.demo.Todo
 import com.ifmix.api.core.dto.common.Page
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -24,18 +24,18 @@ class DemoFetcher(
 ) {
 
     @DgsQuery(field = "query_demo_findTodoById")
-    fun findTodoById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): CoreTodo =
+    fun findTodoById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo =
         demoService.findById(ctxProvider.fromDfe(dfe), id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "Todo not found: $id")
 
     @DgsQuery(field = "query_demo_findTodosByCursor")
-    fun findTodosByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: TodoQueryInput?): Page<CoreTodo> {
+    fun findTodosByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: TodoQueryInput?): Page<Todo> {
         val opCtx = ctxProvider.fromDfe(dfe)
         return demoService.findTodosByCursor(opCtx, input ?: TodoQueryInput())
     }
 
     @DgsQuery(field = "query_demo_findTodosByIds")
-    fun findTodosByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): List<CoreTodo> =
+    fun findTodosByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): List<Todo> =
         demoService.findTodosByIds(ctxProvider.fromDfe(dfe), ids)
 
     @DgsMutation(field = "mutation_demo_createTodo")

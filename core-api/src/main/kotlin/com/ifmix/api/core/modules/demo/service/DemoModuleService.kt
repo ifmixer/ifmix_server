@@ -9,15 +9,15 @@ import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.mybatis.MyBatisTxRunner
 import com.ifmix.api.core.modules.demo.repo.TodoItemRepository
 import com.ifmix.api.core.modules.demo.repo.TodoRepository
-import com.ifmix.api.core.generated.mybatis.model.CoreTodo
-import com.ifmix.api.core.generated.mybatis.model.CoreTodoItem
+import com.ifmix.api.core.entity.demo.Todo
+import com.ifmix.api.core.entity.demo.TodoItem
 import com.ifmix.api.core.dto.common.Page
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
 
 /**
- * Demo 模块服务 — 直接使用 MBG 生成的 CoreTodo / CoreTodoItem 作为领域模型。
+ * Demo 模块服务 — 使用手写 Todo / TodoItem 实体作为领域模型（MP 注解驱动）。
  */
 @Service
 class DemoModuleService(
@@ -27,12 +27,12 @@ class DemoModuleService(
     private val tx: MyBatisTxRunner,
 ) {
 
-    fun findById(opCtx: OperationContext, id: UUID): CoreTodo? =
+    fun findById(opCtx: OperationContext, id: UUID): Todo? =
         svcCtxFactory.forApp(opCtx).use { ctx ->
             todoRepo.findById(ctx, opCtx.mustGetAppId(), id)
         }
 
-    fun findTodosByCursor(opCtx: OperationContext, input: TodoQueryInput): Page<CoreTodo> =
+    fun findTodosByCursor(opCtx: OperationContext, input: TodoQueryInput): Page<Todo> =
         svcCtxFactory.forApp(opCtx).use { ctx ->
             val limit = (input.limit ?: 20).coerceIn(1, 100)
             val cursor = input.cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
@@ -40,17 +40,17 @@ class DemoModuleService(
             Page.of(rawItems, limit) { it.id.toString() }
         }
 
-    fun findTodosByIds(opCtx: OperationContext, ids: Collection<UUID>): List<CoreTodo> =
+    fun findTodosByIds(opCtx: OperationContext, ids: Collection<UUID>): List<Todo> =
         svcCtxFactory.forApp(opCtx).use { ctx ->
             todoRepo.findByIds(ctx, opCtx.mustGetAppId(), ids)
         }
 
-    fun createTodo(opCtx: OperationContext, input: CreateTodoInput): CoreTodo =
+    fun createTodo(opCtx: OperationContext, input: CreateTodoInput): Todo =
         svcCtxFactory.forApp(opCtx).use { ctx ->
             tx.withTx(ctx) { txCtx ->
                 val appId = opCtx.mustGetAppId()
                 val now = Instant.now()
-                val todo = CoreTodo(
+                val todo = Todo(
                     id = UuidV7.generate(),
                     appId = appId,
                     installId = opCtx.installId,
@@ -63,7 +63,7 @@ class DemoModuleService(
                 todoRepo.insert(txCtx, todo)
 
                 input.items?.forEach { itemInput ->
-                    val item = CoreTodoItem(
+                    val item = TodoItem(
                         id = UuidV7.generate(),
                         appId = appId,
                         todoId = todo.id,
@@ -116,7 +116,7 @@ class DemoModuleService(
                 val now = Instant.now()
 
                 input.create?.forEach { itemInput ->
-                    val item = CoreTodoItem(
+                    val item = TodoItem(
                         id = UuidV7.generate(),
                         appId = appId,
                         todoId = itemInput.todoId,

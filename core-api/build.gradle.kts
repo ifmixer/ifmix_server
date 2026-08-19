@@ -55,16 +55,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-jooq")
     jooqGenerator("org.postgresql:postgresql")
 
-    // === MyBatis (demo 模块专用，手动构建 SqlSessionFactory，不走 auto-config) ===
-    implementation("org.mybatis:mybatis:3.5.16")
-    implementation("org.mybatis.dynamic-sql:mybatis-dynamic-sql:2.0.0")
-
-    // MyBatis Generator (codegen only)
-    val mybatisGenerator by configurations.creating
-    mybatisGenerator("org.mybatis.generator:mybatis-generator-core:2.0.0")
-    mybatisGenerator("org.postgresql:postgresql")
-    mybatisGenerator("org.jetbrains.kotlin:kotlin-stdlib")
-    compileOnly("org.mybatis.generator:mybatis-generator-core:2.0.0") // for PgTypeResolver
+    // === MyBatis Plus (demo 模块专用) ===
+    implementation("com.baomidou:mybatis-plus-spring-boot4-starter:3.5.17")
 
     // UUIDv7 generator (cursor pagination requires time-ordered IDs)
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
@@ -104,7 +96,6 @@ kotlin {
     sourceSets {
         main {
             kotlin.srcDir("src/generated/jooq")
-            kotlin.srcDir("src/generated/mybatis")
         }
     }
 }
@@ -141,8 +132,8 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "DateTime" to "java.time.Instant",
         "JSON" to "kotlin.Any",
         // Entity output types → Domain Model data classes
-        "Todo" to "com.ifmix.api.core.generated.mybatis.model.CoreTodo",
-        "TodoItem" to "com.ifmix.api.core.generated.mybatis.model.CoreTodoItem",
+        "Todo" to "com.ifmix.api.core.entity.demo.Todo",
+        "TodoItem" to "com.ifmix.api.core.entity.demo.TodoItem",
         "ScanRecord" to "com.ifmix.api.core.entity.ai.ScanRecord",
         "ScanCollection" to "com.ifmix.api.core.entity.ai.ScanCollection",
         "ImageRef" to "com.ifmix.api.core.entity.ImageRef",
@@ -229,14 +220,3 @@ jooq {
     }
 }
 
-// MyBatis Generator — 手动触发: ./gradlew :core-api:generateMybatis
-// 前提: 先确保项目能编译（PgTypeResolver 在 classpath 上）
-// 首次: 先注释掉 src/generated/mybatis 的 srcDir，编译 PgTypeResolver，再跑 generator
-tasks.register("generateMybatis", JavaExec::class) {
-    group = "mybatis"
-    description = "Run MyBatis Generator to generate Kotlin Dynamic SQL support classes"
-    mainClass.set("org.mybatis.generator.api.ShellRunner")
-    classpath = configurations["mybatisGenerator"] + files("${layout.buildDirectory.get()}/classes/kotlin/main")
-    args = listOf("-configfile", "${projectDir}/src/main/resources/mybatis-generator-config.xml", "-overwrite")
-    workingDir = projectDir
-}

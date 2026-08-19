@@ -11,6 +11,7 @@ import org.springframework.boot.runApplication
         org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration::class,
         org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration::class,
         org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration::class,
+        com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration::class,
     ],
 )
 class CoreApplication

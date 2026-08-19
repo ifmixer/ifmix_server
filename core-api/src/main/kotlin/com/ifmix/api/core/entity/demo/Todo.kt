@@ -1,9 +1,14 @@
 package com.ifmix.api.core.entity.demo
 
 import com.baomidou.mybatisplus.annotation.*
+import com.ifmix.api.core.infra.mybatis.MetaTypeHandler
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * Todo 实体 — 手写 data class，兼作领域模型与 ORM 映射。
+ * JSONB meta 列通过 MetaTypeHandler 自动序列化/反序列化。
+ */
 @TableName("core_todo")
 data class Todo(
     @TableId(type = IdType.ASSIGN_UUID)

@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.annotation.*
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * TodoItem 实体 — 手写 data class，兼作领域模型与 ORM 映射。
+ */
 @TableName("core_todo_item")
 data class TodoItem(
     @TableId(type = IdType.ASSIGN_UUID)
