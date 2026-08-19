@@ -26,11 +26,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
 
     open fun findByIds(ctx: SvcCtx, appId: UUID, ids: List<UUID>): List<E> {
         if (ids.isEmpty()) return emptyList()
-        return sql.createQuery(entityType) {
-            where(table.get<UUID>("appId") eq appId)
-            where(table.getId<UUID>() in ids)
-            select(table)
-        }.execute()
+        return ids.mapNotNull { id -> findById(ctx, appId, id) }
     }
 
     open fun save(ctx: SvcCtx, entity: E): E =

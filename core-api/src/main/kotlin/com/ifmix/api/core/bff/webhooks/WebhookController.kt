@@ -4,6 +4,7 @@ import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
 import com.ifmix.api.core.modules.payment.service.PaymentModuleService
+import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.modules.payment.NotificationDecoder
 import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -47,6 +48,12 @@ class WebhookController(
     private val jwksCacheTtl = java.time.Duration.ofHours(1)
 
     companion object {
+        private fun buildCtx() = svcCtxFactory.default(
+            com.ifmix.api.core.infra.http.OperationContext(
+                req = com.ifmix.api.core.infra.http.RequestContext()
+            )
+        )
+
         private const val APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
         private val SYSTEM_USER_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
     }
