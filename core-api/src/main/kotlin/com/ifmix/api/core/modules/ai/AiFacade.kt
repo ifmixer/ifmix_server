@@ -1,4 +1,5 @@
 package com.ifmix.api.core.modules.ai
+import org.springframework.stereotype.Service
 
 import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.db.CursorQueryInput
@@ -38,6 +39,7 @@ import java.util.UUID
  *
  * CollectionMembership 可选注入，未注入时 scanned 结果中 collected 恒为 false。
  */
+@Service
 class AiFacade(
     private val scanRunner: ScanRunner,
     private val objectStorage: ObjectStorage,

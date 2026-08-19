@@ -1,4 +1,5 @@
 package com.ifmix.api.core.modules.ai.handler
+import org.springframework.stereotype.Component
 
 import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.http.RequestContext
@@ -12,6 +13,7 @@ import com.ifmix.api.core.modules.ai.entity.ScanRecordEntity
  * 封装所有针对 collection_item 集合的操作（含 join scan_record 的复合查询），
  * 供 [AiFacade] 调用。
  */
+@Component
 class CollectionItemEntityHandler(private val facade: AiFacade) {
 
     /** 添加收藏条目（幂等插入）。 */

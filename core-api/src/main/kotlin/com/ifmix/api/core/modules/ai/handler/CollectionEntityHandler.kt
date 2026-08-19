@@ -1,4 +1,5 @@
 package com.ifmix.api.core.modules.ai.handler
+import org.springframework.stereotype.Component
 
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.modules.ai.AiFacade
@@ -9,6 +10,7 @@ import com.ifmix.api.core.modules.ai.entity.CollectionEntity
  *
  * 封装所有针对 collection 集合的 CRUD 操作，供 [AiFacade] 调用。
  */
+@Component
 class CollectionEntityHandler(private val facade: AiFacade) {
 
     /** 获取（或创建）默认收藏夹。 */

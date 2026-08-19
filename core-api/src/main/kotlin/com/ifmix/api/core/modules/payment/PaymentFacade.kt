@@ -1,4 +1,5 @@
 package com.ifmix.api.core.modules.payment
+import org.springframework.stereotype.Service
 
 import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ErrorCode
@@ -15,6 +16,7 @@ import com.ifmix.api.core.modules.payment.repo.SubscriptionRepo
  * 3. upsert 订阅记录
  * 4. 返回验证结果
  */
+@Service
 class PaymentFacade(
     private val appleVerifier: PurchaseVerifier,
     private val googleVerifier: PurchaseVerifier,

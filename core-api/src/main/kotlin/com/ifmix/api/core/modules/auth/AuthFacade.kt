@@ -1,4 +1,5 @@
 package com.ifmix.api.core.modules.auth
+import org.springframework.stereotype.Service
 
 import com.ifmix.api.core.common.auth.AuthJwtService
 import com.ifmix.api.core.common.http.ApiError
@@ -26,6 +27,7 @@ import java.time.Instant
  * 4. logout — 吊销 refresh + device_secret
  * 5. me — 返回当前已认证用户信息
  */
+@Service
 class AuthFacade(
     private val appConfigRepo: AppConfigRepo,
     private val verifiers: Map<String, ProviderVerifier>,

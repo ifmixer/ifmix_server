@@ -1,4 +1,5 @@
 package com.ifmix.api.core.modules.demo
+import org.springframework.stereotype.Service
 
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.graphql.generated.types.FilterGroup
@@ -17,6 +18,7 @@ import org.bson.types.ObjectId
 /**
  * Demo 模块门面，编排 Todo 和 TodoItem 业务操作。
  */
+@Service
 class DemoFacade(
     private val todoHandler: TodoEntityHandler,
     private val todoItemHandler: TodoItemEntityHandler,

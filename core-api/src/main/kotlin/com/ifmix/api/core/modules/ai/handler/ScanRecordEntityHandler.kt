@@ -1,4 +1,5 @@
 package com.ifmix.api.core.modules.ai.handler
+import org.springframework.stereotype.Component
 
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.modules.ai.AiFacade
@@ -9,6 +10,7 @@ import com.ifmix.api.core.modules.ai.entity.ScanRecordEntity
  *
  * 封装所有针对 scan_records 集合的 CRUD 操作，供 [AiFacade] 调用。
  */
+@Component
 class ScanRecordEntityHandler(private val facade: AiFacade) {
 
     /** 按 id 获取扫描记录（未命中抛 NOT_FOUND）。 */
