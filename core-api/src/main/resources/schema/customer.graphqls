@@ -2,11 +2,11 @@ type Query {
     todo_get(id: ID!): Todo
     todo_list(cursor: String, limit: Int, userId: String): TodoConnection!
 
-    scan_get(id: ID!): ScanRecord
-    scan_list(cursor: String, limit: Int, collected: Boolean): ScanConnection!
-    collection_getDefault: Collection!
-    collectionItem_list(collectionId: ID, cursor: String, limit: Int): CollectionItemConnection!
-    appConfig_getCurrent: AppConfigRevision
+    query_ai_findScanById(id: ID!): ScanRecord
+    query_ai_listScans(cursor: String, limit: Int, collected: Boolean): ScanConnection!
+    query_ai_getDefaultCollection: Collection!
+    query_ai_listCollectionItems(collectionId: ID, cursor: String, limit: Int): CollectionItemConnection!
+    query_app_getCurrentConfig: AppConfigRevision
 
     # Auth
     query_auth_me: AuthUser!
@@ -22,17 +22,17 @@ type Mutation {
     todoItem_delete(id: ID!): Boolean! @requirePermission(permission: "todo:write")
 
     # Scan
-    scan_create(input: NewScanInput!): ScanRecord! @requirePermission(permission: "scan:write")
-    scan_update(id: ID!, collected: Boolean): ScanRecord! @requirePermission(permission: "scan:write")
-    scan_delete(id: ID!): Boolean! @requirePermission(permission: "scan:write")
+    mutation_ai_createScan(input: NewScanInput!): ScanRecord! @requirePermission(permission: "scan:write")
+    mutation_ai_updateScan(id: ID!, collected: Boolean): ScanRecord! @requirePermission(permission: "scan:write")
+    mutation_ai_deleteScan(id: ID!): Boolean! @requirePermission(permission: "scan:write")
 
     # Storage
     mutation_storage_presignUpload(input: PresignUploadInput!): PresignUploadResult! @requirePermission(permission: "storage:write")
     mutation_storage_presignDownload(input: PresignDownloadInput!): PresignDownloadResult! @requirePermission(permission: "storage:read")
 
     # Collection
-    collectionItem_add(collectionId: ID, scanRecordId: ID!): ID! @requirePermission(permission: "collection:write")
-    collectionItem_remove(collectionId: ID, scanRecordIds: [ID!]!): Int! @requirePermission(permission: "collection:write")
+    mutation_ai_addCollectionItem(collectionId: ID, scanRecordId: ID!): ID! @requirePermission(permission: "collection:write")
+    mutation_ai_removeCollectionItems(collectionId: ID, scanRecordIds: [ID!]!): Int! @requirePermission(permission: "collection:write")
 
     # CMS (Feedback)
     mutation_cms_submitFeedback(input: SubmitFeedbackInput!): ID! @requirePermission(permission: "feedback:write")

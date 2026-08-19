@@ -4,9 +4,10 @@ import com.ifmix.api.core.common.auth.AuthJwtService
 import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ClientIpResolver
 import com.ifmix.api.core.common.http.ErrorCode
+import com.ifmix.api.core.common.http.OperationContext
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.appconfig.repo.AppConfigRepo
+import com.ifmix.api.core.modules.app.repo.AppConfigRepo
 import jakarta.servlet.http.HttpServletRequest
 import org.bson.types.ObjectId
 import org.springframework.context.ApplicationEventPublisher
@@ -62,13 +63,13 @@ class AuthService(
         val verifier = verifiers[provider] ?: throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unknown provider")
         val v = verifier.verify(cfg, ctx.clientPlatform, req.idToken!!)
 
-        data class Issued(val identityId: String, val appUserId: String, val deviceSecret: String, val refresh: RefreshIssued, val access: String)
-        val issued = txRunner.withTx(ctx) {
-            val identityId = providerIdentityRepo.upsert(
+        data class Issued(val identityId: ObjectId, val appUserId: String, val deviceSecret: String, val refresh: RefreshIssued, val access: String)
+        val issued = txRunner.withTx(OperationContext.from(ctx)) {
+            val identityId = ObjectId(providerIdentityRepo.upsert(
                 tid,
                 UpsertInput(provider, v.accountId, v.email, v.emailVerified, v.phone, v.userMetadata,
                     null, ctx.installId, ctx.appId),
-            )
+            ))
             val appUserId = appUserRepo.ensure(ctx.appId, identityId)
             val existing = req.deviceSecret?.let { deviceSecretRepo.findValid(tid, it) }
             val (dsId, dsPlain) = if (existing != null && existing.authIdentityId == identityId) {
@@ -85,7 +86,7 @@ class AuthService(
         val clientPlatform = ctx.clientPlatform?.name
         events.publishEvent(AuthLoggedInEvent(
             appId = ctx.appId,
-            authIdentityId = issued.identityId,
+            authIdentityId = issued.identityId.toHexString(),
             appUserId = issued.appUserId,
             installId = ctx.installId,
             clientIp = clientIp,
@@ -100,7 +101,7 @@ class AuthService(
         val tid = tenantId(ctx)
         val ds = deviceSecretRepo.findValid(tid, req.deviceSecret!!) ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         if (ds.authTenantId != tid) throw ApiError(ErrorCode.UNAUTHORIZED)
-        return txRunner.withTx(ctx) {
+        return txRunner.withTx(OperationContext.from(ctx)) {
             val appUserId = appUserRepo.ensure(ctx.appId, ds.authIdentityId!!)
             deviceSecretRepo.touch(ds.id.toHexString())
             val refresh = refreshRepo.issue(ctx.appId, appUserId, ds.id.toHexString(), null)
@@ -112,28 +113,28 @@ class AuthService(
     fun refresh(ctx: RequestContext, req: RefreshReq): RefreshRes {
         val row = refreshRepo.findByHash(ctx.appId, req.refreshToken!!) ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         if (row.revokedAt != null) {                       // 重放：撤销该用户全部 refresh
-            refreshRepo.revokeByAppUser(ctx.appId, row.appUserId!!)
+            refreshRepo.revokeByAppUser(ctx.appId, row.appUserId!!.toHexString())
             throw ApiError(ErrorCode.UNAUTHORIZED)
         }
         if (row.expiresAt?.isBefore(Instant.now()) != false) throw ApiError(ErrorCode.UNAUTHORIZED)
         val newId = ObjectId().toHexString()
         val won = refreshRepo.tryRotate(ctx.appId, row.tokenHash!!, newId)
         if (!won) throw ApiError(ErrorCode.UNAUTHORIZED)    // 并发失败方
-        val refresh = refreshRepo.issue(ctx.appId, row.appUserId!!, row.deviceSecretId!!, row.loginInstallId, id = newId)
-        return RefreshRes(jwt.signAccess(row.appUserId!!, ctx.appId), refresh.token, refresh.expiresAt, accessTtlSec)
+        val refresh = refreshRepo.issue(ctx.appId, row.appUserId!!.toHexString(), row.deviceSecretId!!.toHexString(), row.loginInstallId, id = newId)
+        return RefreshRes(jwt.signAccess(row.appUserId!!.toHexString(), ctx.appId), refresh.token, refresh.expiresAt, accessTtlSec)
     }
 
     fun logout(ctx: RequestContext, req: LogoutReq): LogoutRes {
         val row = refreshRepo.findByHash(ctx.appId, req.refreshToken!!)
         row?.deviceSecretId?.let {
-            deviceSecretRepo.revoke(it)
-            refreshRepo.revokeByDeviceSecret(it)   // 跨该设备所有 app
+            deviceSecretRepo.revoke(it.toHexString())
+            refreshRepo.revokeByDeviceSecret(it.toHexString())   // 跨该设备所有 app
         }
         return LogoutRes(true)
     }
 
     fun me(ctx: RequestContext): MeRes {
         val userId = ctx.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
-        return MeRes(userId, null)   // v1 只回 id；email 需要时经 app_user→auth_identity 反查
+        return MeRes(userId, null)   // v1 只回 id；email 需要时经 app_user->auth_identity 反查
     }
 }

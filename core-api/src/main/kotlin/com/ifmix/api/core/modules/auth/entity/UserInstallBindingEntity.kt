@@ -14,7 +14,7 @@ import java.time.Instant
 @Document(collection = "core_user_install_binding")
 class UserInstallBindingEntity : BaseAppEntity() {
 
-    var userId: String? = null
+    var userId: ObjectId? = null
 
     var installId: String? = null
 

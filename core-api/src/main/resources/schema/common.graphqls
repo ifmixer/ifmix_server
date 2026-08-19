@@ -1,6 +1,7 @@
 scalar DateTime
 scalar JSON
 scalar Long
+scalar ObjectId
 
 directive @requirePermission(permission: String!) on FIELD_DEFINITION
 
@@ -143,3 +144,30 @@ input SubmitFeedbackInput { category: String! comment: String scanRecordId: ID }
 input VerifyPurchaseInput { platform: String! purchaseToken: String productId: String! }
 
 input CreateAppConfigRevisionInput { content: JSON! revisionNumber: Int! enabled: Boolean! slug: String! note: String! authTenantId: ID appleBundleId: String androidPackageName: String }
+
+# ---- Auth ----
+type AuthResult {
+    accessToken: String!
+    refreshToken: String!
+    refreshExpiresAt: DateTime!
+    deviceSecret: String!
+    expiresIn: Long!
+    user: AuthUser!
+}
+type AuthUser {
+    id: ID!
+    email: String
+}
+input LoginInput {
+    idToken: String!
+    deviceSecret: String
+}
+input ExchangeInput {
+    deviceSecret: String!
+}
+input RefreshInput {
+    refreshToken: String!
+}
+input LogoutInput {
+    refreshToken: String!
+}

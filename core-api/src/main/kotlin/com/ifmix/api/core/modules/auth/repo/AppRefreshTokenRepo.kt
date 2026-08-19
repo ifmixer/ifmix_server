@@ -31,7 +31,7 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         val exp = now.plus(ttl)
         val doc = AppRefreshTokenEntity().apply {
             if (id != null) this.id = ObjectId(id)
-            this.appId = ObjectId(appId); this.appUserId = appUserId; this.deviceSecretId = deviceSecretId
+            this.appId = ObjectId(appId); this.appUserId = ObjectId(appUserId); this.deviceSecretId = ObjectId(deviceSecretId)
             tokenHash = Hashing.sha256Base64Url(token); this.loginInstallId = loginInstallId
             expiresAt = exp; createdAt = now; updatedAt = now
         }
@@ -69,7 +69,7 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         mongo.updateMulti(
             Query(Criteria().andOperator(
                 AppRefreshTokenEntity::appId isEqualTo ObjectId(appId),
-                AppRefreshTokenEntity::appUserId isEqualTo appUserId,
+                AppRefreshTokenEntity::appUserId isEqualTo ObjectId(appUserId),
                 AppRefreshTokenEntity::revokedAt isEqualTo null,
             )),
             Update().set(AppRefreshTokenEntity::revokedAt, now).set(BaseEntity::updatedAt, now),
@@ -82,7 +82,7 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         val now = Instant.now()
         mongo.updateMulti(
             Query(Criteria().andOperator(
-                AppRefreshTokenEntity::deviceSecretId isEqualTo deviceSecretId,
+                AppRefreshTokenEntity::deviceSecretId isEqualTo ObjectId(deviceSecretId),
                 AppRefreshTokenEntity::revokedAt isEqualTo null,
             )),
             Update().set(AppRefreshTokenEntity::revokedAt, now).set(BaseEntity::updatedAt, now),

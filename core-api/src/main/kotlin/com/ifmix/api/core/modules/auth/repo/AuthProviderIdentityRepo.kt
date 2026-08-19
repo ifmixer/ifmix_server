@@ -2,6 +2,7 @@ package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.common.auth.EmailNormalize
 import com.ifmix.api.core.common.db.BaseEntity
+import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -28,13 +29,13 @@ data class UpsertInput(
 
 /**
  * provider_identity upsert：根据 (authTenantId, provider, providerAccountId) 查找，
- * 不存在则创建 provider_identity + auth_identity，返回 authIdentityId。
+ * 不存在则创建 provider_identity + auth_identity，返回 authIdentityId（hex string）。
  */
 @Component
 class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
 
     /**
-     * 返回 authIdentityId。已存在 provider 账号 → 复用其 identity 并更新登录元信息；
+     * 返回 authIdentityId（hex string）。已存在 provider 账号 -> 复用其 identity 并更新登录元信息；
      * 否则新建 identity + provider_identity。
      */
     fun upsert(tenantId: String, input: UpsertInput): String {
@@ -60,7 +61,7 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
                     .set(BaseEntity::updatedAt, now),
                 AuthProviderIdentityEntity::class.java,
             )
-            return existing.authIdentityId!!
+            return existing.authIdentityId!!.toHexString()
         }
         // 新建 identity（v1：每次新 provider 账号 = 新 identity，不按 email 合并）
         val identity = AuthIdentityEntity().apply {
@@ -76,7 +77,7 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
         mongo.insert(identity)
         val pi = AuthProviderIdentityEntity().apply {
             authTenantId = tenantId
-            authIdentityId = identity.id.toHexString()
+            authIdentityId = identity.id
             provider = input.provider
             providerAccountId = input.accountId
             email = input.email

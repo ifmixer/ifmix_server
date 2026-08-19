@@ -13,6 +13,6 @@ import org.springframework.data.mongodb.core.mapping.Document
 @CompoundIndex(name = "app_user_uq", def = "{'appId': 1, 'authIdentityId': 1}", unique = true)
 class AppUserEntity : BaseEntity(), AppScoped {
     override lateinit var appId: ObjectId
-    var authIdentityId: String? = null
+    var authIdentityId: ObjectId? = null
     var metadata: Map<String, Any?>? = null
 }

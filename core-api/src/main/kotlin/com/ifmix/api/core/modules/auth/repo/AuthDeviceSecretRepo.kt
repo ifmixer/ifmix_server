@@ -22,7 +22,7 @@ class AuthDeviceSecretRepo(private val mongo: MongoTemplate) {
     private val idleTtl = Duration.ofDays(90)
 
     /** mint 新 device_secret，返回 (id, 明文 secret)。明文只此一次可见。 */
-    fun issue(tenantId: String, authIdentityId: String, loginInstallId: String?): Pair<String, String> {
+    fun issue(tenantId: String, authIdentityId: ObjectId, loginInstallId: String?): Pair<String, String> {
         val secret = Hashing.randomTokenBase64Url()
         val now = Instant.now()
         val doc = AuthDeviceSecretEntity().apply {

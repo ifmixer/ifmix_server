@@ -1,7 +1,7 @@
 package com.ifmix.api.core.common.ai
 
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.antique.ScanResult
+import com.ifmix.api.core.modules.ai.ScanResult
 import com.ifmix.api.core.modules.antique.ScanRunner
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.client.ChatClient

@@ -34,4 +34,8 @@ data class OperationContext(
 
     /** TxRunner uses this to return a new OpCtx carrying the session. */
     fun withTx(session: ClientSession) = copy(txSession = session, inTransaction = true)
+
+    companion object {
+        fun from(req: RequestContext, isMutation: Boolean = false) = OperationContext(req = req, isMutation = isMutation)
+    }
 }

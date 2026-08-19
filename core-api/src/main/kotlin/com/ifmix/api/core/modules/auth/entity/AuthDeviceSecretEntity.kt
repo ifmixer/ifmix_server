@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.auth.entity
 
 import com.ifmix.api.core.common.db.BaseEntity
+import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
 import org.springframework.data.mongodb.core.mapping.Document
@@ -16,7 +17,7 @@ import java.time.Instant
 )
 class AuthDeviceSecretEntity : BaseEntity() {
     var authTenantId: String? = null
-    var authIdentityId: String? = null
+    var authIdentityId: ObjectId? = null
     var secretHash: String? = null
     var loginInstallId: String? = null
     var expiresAt: Instant? = null

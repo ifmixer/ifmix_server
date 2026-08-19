@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.auth.entity
 
 import com.ifmix.api.core.common.db.BaseEntity
+import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
 import org.springframework.data.mongodb.core.mapping.Document
@@ -19,7 +20,7 @@ import org.springframework.data.mongodb.core.mapping.Document
 )
 class AuthProviderIdentityEntity : BaseEntity() {
     var authTenantId: String? = null
-    var authIdentityId: String? = null
+    var authIdentityId: ObjectId? = null
     var provider: String? = null              // "google" | "apple"
     var providerAccountId: String? = null     // oauth sub
     var email: String? = null

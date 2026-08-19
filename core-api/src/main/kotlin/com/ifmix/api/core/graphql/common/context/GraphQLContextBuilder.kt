@@ -3,15 +3,17 @@ package com.ifmix.api.core.graphql.common.context
 import com.ifmix.api.core.common.http.ActorType
 import com.ifmix.api.core.common.http.Bff
 import com.ifmix.api.core.common.http.ClientPlatform
+import com.ifmix.api.core.common.http.OperationContext
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.http.RequestHeaders
 import com.netflix.graphql.dgs.context.DgsCustomContextBuilder
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.context.annotation.Bean
 import org.springframework.stereotype.Component
 
 /**
- * GraphQL 请求上下文构建器。
- * 从 HTTP headers 构造 RequestContext（含 bff / permissions / actorType），存入 DGS custom context。
+ * GraphQL 请求上下文构建器 — 返回 RequestContext（与现有 fetcher 兼容）。
+ * 另见 [operationContextBuilder]，同时构建 OperationContext 并存入 DGS custom context。
  */
 @Component
 class DgsCustomContextBuilderImpl(
@@ -72,6 +74,29 @@ class DgsCustomContextBuilderImpl(
                 "iap:write",
                 "appconfig:write",
             ),
+        )
+    }
+}
+
+/**
+ * OperationContext 构建器。与 DgsCustomContextBuilderImpl 并行注册，
+ * 使 DataFetcher 可通过 DgsContext.getCustomContext<OperationContext>(dfe) 获取。
+ *
+ * OperationContext 是 RequestContext 的增强版本，携带事务状态等运行时信息。
+ * DataFetcher 应优先使用 OperationContext，仅在需要兼容旧代码时退回到 RequestContext。
+ */
+@Component
+class OperationContextBuilder(
+    private val request: HttpServletRequest,
+) : DgsCustomContextBuilder<OperationContext> {
+
+    override fun build(): OperationContext {
+        val req = DgsCustomContextBuilderImpl(request).build()
+        val isMutation = request.requestURI.contains("mutation", ignoreCase = true)
+            || request.method.equals("POST", ignoreCase = true)
+        return OperationContext(
+            req = req,
+            isMutation = isMutation,
         )
     }
 }

@@ -19,8 +19,8 @@ import com.ifmix.api.core.modules.auth.repo.AppUserRepo
 @Component
 class AppUserRepo(private val mongo: MongoTemplate) {
 
-    /** 为 (appId, authIdentityId) 建/取 app_user，返回 appUserId。 */
-    fun ensure(appId: String, authIdentityId: String): String {
+    /** 为 (appId, authIdentityId) 建/取 app_user，返回 appUserId（hex string）。 */
+    fun ensure(appId: String, authIdentityId: ObjectId): String {
         findId(appId, authIdentityId)?.let { return it }
         val now = Instant.now()
         val doc = AppUserEntity().apply {
@@ -33,7 +33,7 @@ class AppUserRepo(private val mongo: MongoTemplate) {
         }
     }
 
-    private fun findId(appId: String, authIdentityId: String): String? = mongo.findOne(
+    private fun findId(appId: String, authIdentityId: ObjectId): String? = mongo.findOne(
         Query(Criteria().andOperator(
             AppUserEntity::appId isEqualTo ObjectId(appId),
             AppUserEntity::authIdentityId isEqualTo authIdentityId,

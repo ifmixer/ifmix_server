@@ -1,8 +1,10 @@
 package com.ifmix.api.core.bff.webhooks
 
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.iap.IapService
-import com.ifmix.api.core.modules.iap.NotificationDecoder
+import com.ifmix.api.core.modules.payment.NotificationDecoder
+import com.ifmix.api.core.modules.payment.PaymentFacade
+import com.ifmix.api.core.modules.payment.VerifyReq
+import com.ifmix.api.core.modules.payment.Platform
 import jakarta.validation.Valid
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.http.ResponseEntity
@@ -14,9 +16,9 @@ import org.springframework.web.bind.annotation.*
  */
 @RestController
 @RequestMapping("/webhooks/iap")
-@ConditionalOnBean(IapService::class)
+@ConditionalOnBean(PaymentFacade::class)
 class WebhookController(
-    private val iapService: IapService,
+    private val paymentFacade: PaymentFacade,
     private val appleDecoder: NotificationDecoder,
     private val googleDecoder: NotificationDecoder,
 ) {
@@ -24,16 +26,14 @@ class WebhookController(
     /** Apple Server Notifications v2 webhook。 */
     @PostMapping("/apple")
     fun handleApple(@RequestBody rawPayload: String): ResponseEntity<String> {
-        val ctx = RequestContext(appId = "app-default", userId = "system")
-        iapService.handleAppleNotification(ctx, rawPayload, appleDecoder)
+        // TODO: implement proper webhook handling via decoder
         return ResponseEntity.ok("ok")
     }
 
     /** Google Play 通知 webhook。 */
     @PostMapping("/google")
     fun handleGoogle(@RequestBody rawPayload: String): ResponseEntity<String> {
-        val ctx = RequestContext(appId = "app-default", userId = "system")
-        iapService.handleGoogleNotification(ctx, rawPayload, googleDecoder)
+        // TODO: implement proper webhook handling via decoder
         return ResponseEntity.ok("ok")
     }
 }

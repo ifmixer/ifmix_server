@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.auth
 import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ClientPlatform
 import com.ifmix.api.core.common.http.ErrorCode
-import com.ifmix.api.core.modules.appconfig.AppConfigView
+import com.ifmix.api.core.modules.app.AppConfigView
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtDecoder
 

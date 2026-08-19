@@ -5,6 +5,6 @@ extend type Mutation {
     todoItem_batchDelete(ids: [ID!]!): OperationResult! @requirePermission(permission: "todo:batch")
 
     # AppConfig
-    appConfig_createRevision(input: CreateAppConfigRevisionInput!): AppConfigRevision! @requirePermission(permission: "appconfig:write")
-    appConfig_toggleRevision(id: ID!, enabled: Boolean!): AppConfigRevision! @requirePermission(permission: "appconfig:write")
+    mutation_app_createConfigRevision(input: CreateAppConfigRevisionInput!): AppConfigRevision! @requirePermission(permission: "appconfig:write")
+    mutation_app_toggleConfigRevision(id: ID!, enabled: Boolean!): AppConfigRevision! @requirePermission(permission: "appconfig:write")
 }

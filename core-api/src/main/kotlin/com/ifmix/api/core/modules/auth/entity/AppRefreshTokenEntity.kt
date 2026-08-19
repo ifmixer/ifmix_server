@@ -20,8 +20,8 @@ import java.time.Instant
 )
 class AppRefreshTokenEntity : BaseEntity(), AppScoped {
     override lateinit var appId: ObjectId
-    var appUserId: String? = null
-    var deviceSecretId: String? = null
+    var appUserId: ObjectId? = null
+    var deviceSecretId: ObjectId? = null
     var tokenHash: String? = null
     var loginInstallId: String? = null
     var expiresAt: Instant? = null

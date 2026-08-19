@@ -16,7 +16,7 @@ import com.ifmix.api.core.modules.auth.repo.UserInstallBindingRepo
 /**
  * 设备绑定仓储。
  *
- * 按 (appId, userId, installId) 做 upsert：
+ * 按 (appId, installId) 做 upsert（userId 仅写入，不参与查询匹配）：
  * - 不存在则插入新记录（loginCount=1）
  * - 已存在则递增 loginCount、刷新 lastSeenAt 及客户端信息
  */
@@ -27,14 +27,14 @@ class UserInstallBindingRepo(private val mongo: MongoTemplate) {
      * upsert 设备绑定记录。
      *
      * @param ctx            请求上下文（含 appId）
-     * @param userId         用户 ID（可为 null，匿名绑定）
+     * @param userId         用户 ID ObjectId（可为 null，匿名绑定）
      * @param installId      安装 ID
      * @param clientIp       客户端 IP
      * @param clientPlatform 客户端平台（如 "ANDROID"、"IOS"、"WEB"）
      */
     fun upsert(
         ctx: RequestContext,
-        userId: String?,
+        userId: ObjectId?,
         installId: String,
         clientIp: String?,
         clientPlatform: String?,
@@ -45,10 +45,6 @@ class UserInstallBindingRepo(private val mongo: MongoTemplate) {
                 UserInstallBindingEntity::installId isEqualTo installId,
             ),
         )
-        // 如果 userId 非空，也按 userId 精确匹配；否则只按 installId
-        if (userId != null) {
-            query.addCriteria(UserInstallBindingEntity::userId isEqualTo userId)
-        }
 
         val existing = mongo.findOne(query, UserInstallBindingEntity::class.java)
         val now = Instant.now()

@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.auth.entity
 
 import com.ifmix.api.core.common.db.BaseEntity
+import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
 

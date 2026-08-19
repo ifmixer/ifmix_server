@@ -1,10 +1,11 @@
 package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.db.BaseEntity
+import com.ifmix.api.core.common.http.OperationContext
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
-import com.ifmix.api.core.modules.iap.entity.SubscriptionEntity
+import com.ifmix.api.core.modules.ai.entity.ScanRecordEntity
+import com.ifmix.api.core.modules.payment.entity.SubscriptionEntity
 import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
@@ -56,7 +57,7 @@ class MergeOnLoginListener(
 
         // 归并匿名 scan_record / subscription 到已登录用户
         try {
-            txRunner.withTx(RequestContext(appId = e.appId, installId = installId)) {
+            txRunner.withTx(OperationContext.from(RequestContext(appId = e.appId, installId = installId))) {
                 val q = Query(
                     Criteria().andOperator(
                         ScanRecordEntity::appId isEqualTo ObjectId(e.appId),

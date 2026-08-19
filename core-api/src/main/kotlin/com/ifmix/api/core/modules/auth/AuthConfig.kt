@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.auth
 import com.ifmix.api.core.common.auth.AuthJwtKeys
 import com.ifmix.api.core.common.auth.AuthJwtService
 import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.appconfig.repo.AppConfigRepo
+import com.ifmix.api.core.modules.app.repo.AppConfigRepo
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
