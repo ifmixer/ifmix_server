@@ -1,26 +1,34 @@
 package com.ifmix.api.core.entity.iap
 
+import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.entity.SoftDeletableProps
+import org.babyfish.jimmer.sql.*
 import java.time.Instant
 import java.util.UUID
 
-/**
- * IAP 订阅记录领域模型。
- * 字段名与 DB 列 camelCase 对齐，支持 jOOQ newRecord(TABLE, model) 自动映射。
- * rawResponse 为 JSONB 列的 JSON 字符串表示。
- */
-data class Subscription(
-    val id: UUID,
-    val appId: UUID,
-    val subscriptionPxid: String,
-    val originalTransactionId: String? = null,
-    val productId: String? = null,
-    val platform: Int,
-    val active: Boolean,
-    val subStatus: String? = null,
-    val expiryDate: Instant? = null,
-    val purchaseToken: String? = null,
-    val rawResponse: String? = null,  // JSON string
-    val createdAt: Instant,
-    val updatedAt: Instant? = null,
-    val deletedAt: Instant? = null,
-)
+@Entity
+@Table(name = "core_subscription")
+interface Subscription : AppScopedProps, SoftDeletableProps {
+
+    @Id
+    val id: UUID
+
+    override val appId: UUID
+
+    @Key
+    val subscriptionPxid: String
+
+    val originalTransactionId: String?
+    val productId: String?
+
+    /** 购买平台编码。0=UNKNOWN, 100=APPLE, 200=GOOGLE */
+    val platform: Int
+
+    val active: Boolean
+    val subStatus: String?
+    val expiryDate: Instant?
+    val purchaseToken: String?
+
+    @Serialized
+    val rawResponse: Map<String, Any?>?
+}

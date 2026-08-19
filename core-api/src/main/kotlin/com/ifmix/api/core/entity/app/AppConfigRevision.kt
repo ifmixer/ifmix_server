@@ -1,27 +1,37 @@
 package com.ifmix.api.core.entity.app
 
-import tools.jackson.module.kotlin.jacksonObjectMapper
-import java.time.Instant
+import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.entity.CreatedAtProps
+import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 /**
- * App 配置版本领域模型。
- * content 字段为 JSON 字符串，对应 DB JSONB 列。
+ * per-app 配置版本。追加式；enabled=true 的为当前生效版本。
  */
-data class AppConfigRevision(
-    val id: UUID,
-    val appId: UUID,
-    val authTenantId: UUID? = null,
-    val appleBundleId: String? = null,
-    val androidPackageName: String? = null,
-    val revisionNumber: Int,
-    val createdAt: Instant,
-    val enabled: Boolean,
-    val slug: String,
-    val content: ConfigContent = ConfigContent(),
-    val note: String,
-) {
-    companion object {
+@Entity
+@Table(name = "core_app_config_revision")
+interface AppConfigRevision : AppScopedProps, CreatedAtProps {
+    @Id
+    val id: UUID
 
-    }
+    override val appId: UUID
+
+    val authTenantId: UUID?
+    val appleBundleId: String?
+    val androidPackageName: String?
+
+    /** JSONB, 整个字段替换 — 所有平台配置聚合 */
+    @Serialized
+    val content: ConfigContent
+
+    val revisionNumber: Int
+
+    /** 是否为当前生效版本 */
+    val enabled: Boolean
+
+    /** 配置标识符 */
+    val slug: String
+
+    /** 版本备注，创建时必填 */
+    val note: String
 }

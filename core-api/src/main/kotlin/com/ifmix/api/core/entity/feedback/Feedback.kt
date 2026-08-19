@@ -1,31 +1,31 @@
-package com.ifmix.api.core.entity.cms
+package com.ifmix.api.core.entity.feedback
 
-import java.time.Instant
+import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.entity.CreatedAtProps
+import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 /**
- * Feedback domain model。
- * 字段名与 DB 列 camelCase 对齐，支持 jOOQ newRecord(TABLE, model) 自动映射。
+ * Feedback 实体。追加式写入，不软删（无 @LogicalDeleted）。
  */
-data class Feedback(
-    val id: UUID,
-    val appId: UUID,
-    val installId: UUID,
-    val userId: UUID? = null,
-    val scanRecordId: UUID? = null,
-    val category: Short,
-    val comment: String? = null,
-    val createdAt: Instant,
-) {
-    /** 反馈分类编码 */
-    object Category {
-        const val UNKNOWN = 0
-        const val LIKED = 100
-        const val PRICE_TOO_HIGH = 200
-        const val PRICE_TOO_LOW = 210
-        const val PRICE_MISSING = 220
-        const val WRONG_IDENTIFICATION = 300
-        const val FEATURE_REQUEST = 400
-        const val MORE_RECOMMENDATIONS = 410
-    }
+@Entity
+@Table(name = "core_feedback")
+interface Feedback : AppScopedProps, CreatedAtProps {
+
+    @Id
+    val id: UUID
+
+    override val appId: UUID
+
+    val installId: UUID
+
+    @Column(name = "user_id")
+    val userId: UUID?
+
+    val scanRecordId: UUID?
+
+    /** 反馈分类编码。0=UNKNOWN, 100=LIKED, 200=PRICE_TOO_HIGH, 210=PRICE_TOO_LOW, 220=PRICE_MISSING, 300=WRONG_IDENTIFICATION, 400=FEATURE_REQUEST, 410=MORE_RECOMMENDATIONS */
+    val category: Int
+
+    val comment: String?
 }

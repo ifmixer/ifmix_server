@@ -1,17 +1,19 @@
 package com.ifmix.api.core.entity.app
 
-import java.time.Instant
+import com.ifmix.api.core.entity.MutableProps
+import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 /**
- * App 信息领域模型。
- * 字段名与 DB 列 camelCase 对齐，支持 jOOQ newRecord(TABLE, model) 自动映射。
+ * 全局应用注册表（不按 appId 分片，id 即 appId）。
  */
-data class AppInfo(
-    val id: UUID,
-    val name: String?,
-    val description: String?,
-    val slug: String,
-    val createdAt: Instant,
-    val updatedAt: Instant,
-)
+@Entity
+@Table(name = "core_app_info")
+interface AppInfo : MutableProps {
+    @Id
+    val id: UUID
+
+    val name: String?
+    val description: String?
+    val slug: String
+}

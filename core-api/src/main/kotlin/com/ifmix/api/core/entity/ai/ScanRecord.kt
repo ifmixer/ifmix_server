@@ -1,43 +1,37 @@
 package com.ifmix.api.core.entity.ai
 
+import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.ImageRef
+import com.ifmix.api.core.entity.SoftDeletableProps
+import org.babyfish.jimmer.sql.*
 import java.time.Instant
 import java.util.UUID
 
-/**
- * Scan 领域模型。
- * 字段名与 DB 列 camelCase 对齐，支持 jOOQ newRecord(TABLE, model) 自动映射：
- *   imageKeys -> IMAGE_KEYS (JSONB)
- *   resultJson -> RESULT_JSON (JSONB)
- */
-data class ScanRecord(
-    val id: UUID,
-    val appId: UUID,
-    val imageKeys: List<ImageRef>,           // DB: IMAGE_KEYS (JSONB)
-    val basicResult: Map<String, Any?>? = null,    // DB: BASIC_RESULT (JSONB)
-    val premiumResult: Map<String, Any?>? = null,  // DB: PREMIUM_RESULT (JSONB)
-    val status: Int,
-    val clientIp: String? = null,
-    val lang: String? = null,
-    val country: String? = null,
-    val currency: String? = null,
-    val userDisplayName: String? = null,
-    val userNotes: String? = null,
-    val collected: Boolean,
-    val createdAt: Instant,
-    val updatedAt: Instant? = null,
-    val deletedAt: Instant? = null,
-) {
-    /** Aliased as [imageKeys] — exposes the same list under the GraphQL field name. */
-    val images: List<ImageRef> get() = imageKeys
+@Entity
+@Table(name = "core_scan_record")
+interface ScanRecord : AppScopedProps, SoftDeletableProps {
+    @Id
+    val id: UUID
+    override val appId: UUID
 
-    /** 扫描状态编码 */
-    object Status {
-        const val UNKNOWN = 0
-        const val PENDING = 100
-        const val PROCESSING = 110
-        const val COMPLETED = 200
-        const val FAILED = 300
-        fun isTerminal(code: Int) = code >= COMPLETED
-    }
+    @Serialized
+    @Column(name = "image_keys")
+    val imageKeys: List<ImageRef>
+
+    @Serialized
+    @Column(name = "basic_result")
+    val basicResult: Map<String, Any?>?
+
+    @Serialized
+    @Column(name = "premium_result")
+    val premiumResult: Map<String, Any?>?
+
+    val status: Int
+    val clientIp: String?
+    val lang: String?
+    val country: String?
+    val currency: String?
+    val userDisplayName: String?
+    val userNotes: String?
+    val collected: Boolean
 }

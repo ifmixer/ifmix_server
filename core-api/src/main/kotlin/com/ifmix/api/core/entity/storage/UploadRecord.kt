@@ -1,20 +1,32 @@
 package com.ifmix.api.core.entity.storage
 
-import java.time.Instant
+import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.entity.CreatedAtProps
+import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 /**
- * UploadRecord domain model for jOOQ repository.
- * 字段名与 DB 列 camelCase 对齐，支持 jOOQ newRecord(TABLE, model) 自动映射。
+ * 上传记录 — 每次 presignUpload 写入一条，用于后续校验/清理/统计。
  */
-data class UploadRecord(
-    val id: UUID,
-    val appId: UUID,
-    val installId: UUID? = null,
-    val userId: UUID? = null,
-    val objectKey: String,
-    val contentType: String,
-    val category: String,
-    val clientIp: String? = null,
-    val createdAt: Instant? = null,
-)
+@Entity
+@Table(name = "core_upload_record")
+interface UploadRecord : AppScopedProps, CreatedAtProps {
+
+    @Id
+    val id: UUID
+
+    override val appId: UUID
+
+    val installId: UUID?
+
+    @Column(name = "user_id")
+    val userId: UUID?
+
+    val objectKey: String
+
+    val contentType: String
+
+    val category: String
+
+    val clientIp: String?
+}

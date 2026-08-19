@@ -3,6 +3,7 @@ package com.ifmix.api.core.infra.tx
 import com.ifmix.api.core.infra.http.OperationContext
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.springframework.stereotype.Component
+import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 
 /**
@@ -15,21 +16,20 @@ import org.springframework.transaction.support.TransactionTemplate
  * 将来拆分后改为 saga/补偿。此函数是切换点。
  */
 @Component
-class GlobalTxRunner(private val sqlClient: KSqlClient) {
+class GlobalTxRunner(
+    private val sqlClient: KSqlClient,
+    private val txManager: PlatformTransactionManager,
+) {
 
     /**
      * 开启全局事务。
      * ModuleService 检测到 opCtx.inGlobalTx=true → 复用 KSqlClient，不嵌套模块事务。
      */
     fun <R> withTx(opCtx: OperationContext, body: (OperationContext) -> R): R {
-        val template = TransactionTemplate(org.springframework.transaction.support.DefaultTransactionDefinition().apply {
+        val txCtx = opCtx.copy(globalTxSql = sqlClient, inGlobalTx = true)
+        val template = TransactionTemplate(txManager).apply {
             propagationBehavior = org.springframework.transaction.Propagation.REQUIRED
-        }).apply { transactionManager = null } // will be injected
-        // Use a simple approach: rely on Spring's thread-bound transaction
-        val result = kotlin.runCatching {
-            // Execute within a Spring-managed transaction context
-            body(opCtx.copy(globalTxSql = sqlClient, inGlobalTx = true))
         }
-        return result.getOrThrow()
+        return template.execute { body(txCtx) }!!
     }
 }
