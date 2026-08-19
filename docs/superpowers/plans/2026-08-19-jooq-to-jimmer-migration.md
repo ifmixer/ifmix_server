@@ -463,3 +463,135 @@ fun findByFilter(sc: SvcCtx, filter: FilterGroup?, cursor: String?, limit: Int?)
 ## 验收标准
 
 `./gradlew :core-api:compileKotlin` 零错误通过。
+
+---
+
+## 补充修复（2026-08-19 22:00 更新）
+
+### 根因已确认并解决
+
+#### 问题 A: `AppScopedProps` 的 `@MappedSuperclass` + 子类 override 冲突
+
+**根因**: Jimmer 规则 — `@MappedSuperclass` 的属性由 KSP 自动继承，子 entity **不允许** `override`。
+
+**已完成修复**:
+1. `AppScopedProps.kt` 已加上 `@MappedSuperclass`
+2. 所有 12 个子 entity 中的 `override val appId: UUID` 行已删除
+3. KSP (`./gradlew :core-api:kspKotlin`) 已成功通过
+
+---
+
+#### 问题 B: [36 个] `'val' cannot be reassigned` — Draft DSL 里属性名与方法参数名冲突
+
+**根因**: 当 Jimmer Draft DSL block `Entity { ... }` 里有一个属性名（如 `provider`）和外层方法参数名相同时，Kotlin 编译器把左侧解析为外层 val 参数，而不是 Draft 的 setter。
+
+**修复**: 在 Draft block 里给**所有属性赋值加 `this.` 前缀**。
+
+```kotlin
+// ❌ 报错 'val' cannot be reassigned — provider 是外层函数参数
+val entity = AuthProviderIdentity {
+    id = id                          // id 也是外层 val
+    provider = provider              // 编译器认为是 val provider = provider
+    email = email
+    ...
+}
+
+// ✅ 正确 — this. 明确指向 Draft 属性
+val entity = AuthProviderIdentity {
+    this.id = id
+    this.provider = provider
+    this.email = email
+    this.emailVerified = emailVerified
+    this.phone = phone
+    this.userMetadata = userMetadata
+    this.providerMetadata = providerMetadata
+    this.loginIp = loginIp
+    this.loginInstallId = loginInstallId
+    this.loginAppId = loginAppId
+    this.createdAt = existing?.createdAt ?: now
+    this.updatedAt = now
+}
+```
+
+**影响文件（需全量加 `this.`）**:
+- `modules/auth/repo/AuthProviderIdentityRepository.kt` — upsert 方法
+- `modules/auth/repo/AppUserRepository.kt` — ensure 方法
+- `modules/auth/service/internal/AuthEntityService.kt` — 多个 Draft block
+- `modules/cms/service/internal/CmsEntityService.kt` — submit 方法
+- `modules/payment/service/internal/PaymentEntityService.kt` — verifyIapPurchase
+- `modules/payment/service/internal/PaymentWebhookHandler.kt` — updateSubscription + createStoreNotification
+
+**规则**: **在所有 `Entity { ... }` DSL block 中，属性赋值一律使用 `this.xxx = value`**，避免与外层变量歧义。这是 Jimmer 项目的最佳实践。
+
+---
+
+#### 问题 C: 其余 22 个编译错误
+
+| 错误 | 修复 |
+|------|------|
+| `Unresolved reference 'authTenantId'` | 在 Query DSL 中用 `table.authTenantId` — KSP 已生成 `@IdView` 扩展。如果仍不行用 `table.authTenant.id` |
+| `Unresolved reference 'getAuthIdentityId'` | Jimmer 不生成 getter 方法。直接 `entity.authIdentityId`（KSP 生成的属性）或 `entity.authIdentity.id` |
+| `Unresolved reference 'appUserId'` | 改为 `entity.appUser.id` 或用生成的 `entity.appUserId`（@IdView） |
+| `Unresolved reference 'deviceSecretId'` | 改为 `entity.deviceSecret?.id`（nullable @ManyToOne） |
+| `Unresolved reference 'userId'` in SubscriptionRepository | Subscription entity 没有 userId 字段，检查原 schema |
+| `Unresolved reference 'images'` | ScanRecord 已改名为 `imageKeys`，Service 需同步 |
+| `Unresolved reference 'result'` | ScanRecord 已改名为 `basicResult`/`premiumResult`，Service 需同步 |
+| `Unresolved reference 'AgnesKeyType'` | 确认 import 路径: `com.ifmix.api.core.entity.ai.AgnesKeyType` |
+| `No value passed for parameter 'id'` | AppConfigEntityService 里构造实体时缺少 id |
+| `Cannot infer type` | AppUserRepository 里嵌套 Draft 需要完整类型（见下） |
+| `None of the following candidates` | ScanCollectionItemRepository 的 insertIfAbsent 里 Draft 构造语法错 |
+| `Argument type mismatch: AppConfigRevision?` | 加 `?: throw ApiError(...)` null 检查 |
+| `Assignment type mismatch: String vs NotificationType` | `notificationType = notificationType.name` 改为 `this.notificationType = notificationType` (entity 字段如果是 String 则 `.name` 是对的，检查 entity 定义) |
+
+---
+
+#### 问题 D: AppUserRepository.ensure() 里的 Draft 嵌套
+
+CC 尝试用 `AppUserDraft` / `AuthIdentityDraft` 但这不是正确的方式。正确做法：
+
+```kotlin
+fun ensure(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): UUID {
+    val existing = findByAppAndIdentity(ctx, appId, authIdentityId)
+    if (existing != null) return existing.id
+    
+    val id = UuidV7.generate()
+    val entity = AppUser {
+        this.id = id
+        // appId 继承自 @MappedSuperclass，在 Draft 里直接赋值
+        this.appId = appId
+        // @ManyToOne 关联 — 只设置 id 用 makeIdOnly
+        this.authIdentity = makeIdOnly(AuthIdentity::class, authIdentityId)
+        this.metadata = null
+    }
+    save(ctx, entity)
+    return id
+}
+```
+
+或者更简单的写法（Jimmer 0.11.5 支持）：
+```kotlin
+val entity = AppUser {
+    this.id = id
+    this.appId = appId
+    this.authIdentityId = authIdentityId  // KSP @IdView 生成的 shortcut
+    this.metadata = null
+}
+```
+
+如果 `authIdentityId` 不可用（KSP 没生成 @IdView），可以在 entity 里显式声明：
+```kotlin
+// entity/auth/AppUser.kt
+@IdView("authIdentity")
+val authIdentityId: UUID
+```
+
+---
+
+## 执行步骤（CC 请按此顺序）
+
+1. ✅ `AppScopedProps` 已加 `@MappedSuperclass`（已完成）
+2. ✅ 所有子 entity 的 `override val appId` 已删除（已完成）
+3. ✅ KSP 已通过（已完成）
+4. **所有 `Entity { ... }` DSL block 内属性赋值加 `this.`** — 修 36 个 val 错误
+5. 修剩余 22 个 unresolved/type 错误（参考上表）
+6. `./gradlew :core-api:compileKotlin` 零错误
