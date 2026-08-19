@@ -47,8 +47,8 @@ class ScanEntityService(
         val record = ScanRecord {
             id = scanId
             this.appId = appId
-            this.images = input.images.map { ImageRef(key = it.imageKey) }
-            this.result = result
+            this.imageKeys = input.images.map { ImageRef(key = it.imageKey) }
+            this.basicResult = result
             this.status = 200
             this.clientIp = sc.op.clientIp
             this.lang = sc.op.lang

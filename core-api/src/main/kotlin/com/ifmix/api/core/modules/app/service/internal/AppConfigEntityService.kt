@@ -49,12 +49,12 @@ class AppConfigEntityService(
 
     fun toggleRevision(sc: SvcCtx, revisionId: UUID, enabled: Boolean): AppConfigRevision {
         val appId = sc.appId!!
-        val existing = revisionRepo.findById(sc, revisionId)
+        val existing = revisionRepo.findById(sc, appId, revisionId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "revision not found")
         if (existing.appId != appId) throw ApiError(ErrorCode.NOT_FOUND, "revision not found")
         if (enabled) revisionRepo.disableCurrentRevisions(sc, appId)
         revisionRepo.updateEnabled(sc, revisionId, enabled)
-        val updated = revisionRepo.findById(sc, revisionId)
+        val updated = revisionRepo.findById(sc, appId, revisionId)
             ?: throw ApiError(ErrorCode.INTERNAL, "failed to read revision after toggle")
         return updated
     }

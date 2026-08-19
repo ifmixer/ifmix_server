@@ -29,11 +29,11 @@ class AppUserRepository(sql: KSqlClient) : BaseAppCrudRepository<AppUser>(sql, A
         val now = Instant.now()
         val id = UuidV7.generate()
         val entity = AppUser {
-            id = id
-            appId = appId
-            authIdentityId = authIdentityId
-            createdAt = now
-            updatedAt = now
+            this.id = id
+            this.appId = appId
+            this.authIdentityId = authIdentityId
+            this.createdAt = now
+            this.updatedAt = now
         }
         save(ctx, entity)
         return id

@@ -84,16 +84,16 @@ class PaymentEntityService(
 
         val now = Instant.now()
         val subscription = Subscription {
-            id = UuidV7.generate()
-            appId = appId
-            subscriptionPxid = subscriptionPxid
-            originalTransactionId = verifyResult.originalTransactionId
-            productId = req.productId
-            platform = req.platform
-            active = true
-            subStatus = subStatus
-            expiryDate = verifyResult.expiryDate
-            purchaseToken = purchaseToken
+            this.id = UuidV7.generate()
+            this.appId = appId
+            this.subscriptionPxid = subscriptionPxid
+            this.originalTransactionId = verifyResult.originalTransactionId
+            this.productId = req.productId
+            this.platform = req.platform
+            this.active = true
+            this.subStatus = subStatus
+            this.expiryDate = verifyResult.expiryDate
+            this.purchaseToken = purchaseToken
             rawResponse = mapOf(
                 "original_transaction_id" to verifyResult.originalTransactionId,
                 "product_id" to req.productId,
@@ -101,8 +101,8 @@ class PaymentEntityService(
                 "sub_status" to verifyResult.subStatus.name,
                 "platform" to req.platform,
             )
-            createdAt = now
-            updatedAt = now
+            this.createdAt = now
+            this.updatedAt = now
         }
 
         subscriptionRepo.upsertSubscription(sc, subscription)

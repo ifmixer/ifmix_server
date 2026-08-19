@@ -67,10 +67,10 @@ class PaymentWebhookHandler(
     ) {
         val now = Instant.now()
         val updated = com.ifmix.api.core.entity.iap.Subscription(sub) {
-            active = active ?: sub.active
-            subStatus = subStatus ?: sub.subStatus
-            expiryDate = expiryDate ?: sub.expiryDate
-            updatedAt = now
+            this.active = active ?: sub.active
+            this.subStatus = subStatus ?: sub.subStatus
+            this.expiryDate = expiryDate ?: sub.expiryDate
+            this.updatedAt = now
         }
         subscriptionRepo.upsertSubscription(sc, updated)
     }
@@ -86,17 +86,17 @@ class PaymentWebhookHandler(
     ) {
         val now = Instant.now()
         val notif = com.ifmix.api.core.entity.iap.StoreNotification {
-            id = UuidV7.generate()
-            appId = appId
-            platform = platform
-            subscriptionPxid = subscriptionPxid
-            purchaseToken = subscriptionPxid
-            notificationType = notificationType.name
-            rawPayload = rawPayload
-            processed = processed
-            processedAt = if (processed) now else null
-            createdAt = now
-            updatedAt = now
+            this.id = UuidV7.generate()
+            this.appId = appId
+            this.platform = platform
+            this.subscriptionPxid = subscriptionPxid
+            this.purchaseToken = subscriptionPxid
+            this.notificationType = notificationType.name
+            this.rawPayload = mapOf("payload" to rawPayload)
+            this.processed = processed
+            this.processedAt = if (processed) now else null
+            this.createdAt = now
+            this.updatedAt = now
         }
         storeNotificationRepo.save(sc, notif)
     }

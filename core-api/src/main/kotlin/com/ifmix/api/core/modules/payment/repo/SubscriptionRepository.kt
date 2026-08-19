@@ -11,7 +11,6 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.util.UUID
-import com.ifmix.api.core.entity.iap.userId
 import com.ifmix.api.core.entity.iap.id
 
 @Repository

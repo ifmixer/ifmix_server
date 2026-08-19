@@ -16,14 +16,14 @@ class FeedbackEntityService(
     fun submit(sc: SvcCtx, req: SubmitFeedbackReq): UUID {
         val id = UuidV7.generate()
         val feedback = Feedback {
-            id = id
-            appId = sc.op.appId!!
-            installId = sc.op.installId!!
-            userId = sc.op.userId
-            category = req.category
-            comment = req.comment
-            scanRecordId = req.scanRecordId
-            createdAt = Instant.now()
+            this.id = id
+            this.appId = sc.op.appId!!
+            this.installId = sc.op.installId!!
+            this.userId = sc.op.userId
+            this.category = req.category
+            this.comment = req.comment
+            this.scanRecordId = req.scanRecordId
+            this.createdAt = Instant.now()
         }
         feedbackRepo.save(sc, feedback)
         return id

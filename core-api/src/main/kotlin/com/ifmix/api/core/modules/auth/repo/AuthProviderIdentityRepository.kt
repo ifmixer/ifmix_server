@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 import com.ifmix.api.core.entity.auth.authIdentityId
+import com.ifmix.api.core.entity.auth.authTenantId
 
 @Repository
 class AuthProviderIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {
@@ -37,21 +38,21 @@ class AuthProviderIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthP
         val id = existing?.id ?: UuidV7.generate()
 
         val entity = AuthProviderIdentity {
-            id = id
-            authTenant { id = tenantId }
-            authIdentity { id = identityId }
-            provider = provider
-            providerAccountId = providerAccountId
-            email = email
-            emailVerified = emailVerified
-            phone = phone
-            userMetadata = userMetadata
-            providerMetadata = providerMetadata
-            loginIp = loginIp
-            loginInstallId = loginInstallId
-            loginAppId = loginAppId
-            createdAt = existing?.createdAt ?: now
-            updatedAt = now
+            this.id = id
+            this.authTenant { this.id = tenantId }
+            this.authIdentity { this.id = identityId }
+            this.provider = provider
+            this.providerAccountId = providerAccountId
+            this.email = email
+            this.emailVerified = emailVerified
+            this.phone = phone
+            this.userMetadata = userMetadata
+            this.providerMetadata = providerMetadata
+            this.loginIp = loginIp
+            this.loginInstallId = loginInstallId
+            this.loginAppId = loginAppId
+            this.createdAt = existing?.createdAt ?: now
+            this.updatedAt = now
         }
         save(ctx, entity)
         return id

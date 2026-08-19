@@ -52,7 +52,6 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
             where(table.get<UUID>("appId") eq appId)
             where(table.get<UUID>("collectionId") eq collectionId)
             where(table.get<UUID>("scanRecordId") valueIn scanRecordIds)
-            set(table.get<Instant?>("deletedAt"), Instant.now())
         }.execute()
     }
 

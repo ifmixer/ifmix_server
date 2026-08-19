@@ -9,6 +9,9 @@ import org.springframework.stereotype.Repository
 import java.util.UUID
 import com.ifmix.api.core.entity.demo.appId
 import com.ifmix.api.core.entity.demo.id
+import com.ifmix.api.core.entity.demo.title
+import com.ifmix.api.core.entity.demo.done
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::class) {
@@ -26,8 +29,8 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         ctx.sql.createUpdate(Todo::class) {
             where(table.appId eq appId)
             where(table.getId<UUID>() eq id)
-            title?.let { set(table.get<String>("title"), it) }
-            done?.let { set(table.get<Boolean>("done"), it) }
+            title?.let { set(table.title, it) }
+            done?.let { set(table.done, it) }
         }.execute()
     }
 }
