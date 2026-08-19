@@ -17,7 +17,6 @@ interface UserInstallBinding : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
-    val appId: UUID
 
     val userId: UUID
 

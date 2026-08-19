@@ -15,7 +15,7 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
 
     fun findByCursor(ctx: SvcCtx, appId: UUID, cursor: UUID?, limit: Int): List<Todo> {
         return ctx.sql.createQuery(Todo::class) {
-            where(table.get<UUID>("appId") eq appId)
+            where(table.appId eq appId)
             cursor?.let { where(table.getId<UUID>() lt it) }
             orderBy(table.getId<UUID>().desc())
             select(table)
@@ -24,7 +24,7 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
 
     fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, title: String?, done: Boolean?) {
         ctx.sql.createUpdate(Todo::class) {
-            where(table.get<UUID>("appId") eq appId)
+            where(table.appId eq appId)
             where(table.getId<UUID>() eq id)
             title?.let { set(table.get<String>("title"), it) }
             done?.let { set(table.get<Boolean>("done"), it) }

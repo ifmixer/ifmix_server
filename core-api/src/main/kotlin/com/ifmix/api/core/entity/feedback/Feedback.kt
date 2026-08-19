@@ -15,7 +15,6 @@ interface Feedback : AppScopedProps, CreatedAtProps {
     @Id
     val id: UUID
 
-    val appId: UUID
 
     val installId: UUID
 

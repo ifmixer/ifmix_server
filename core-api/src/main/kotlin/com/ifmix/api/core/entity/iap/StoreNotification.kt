@@ -13,7 +13,6 @@ interface StoreNotification : AppScopedProps, SoftDeletableProps {
     @Id
     val id: UUID
 
-    val appId: UUID
 
     val platform: String?
     val subscriptionPxid: String?

@@ -13,7 +13,6 @@ interface Subscription : AppScopedProps, SoftDeletableProps {
     @Id
     val id: UUID
 
-    val appId: UUID
 
     @Key
     val subscriptionPxid: String

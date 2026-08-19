@@ -15,7 +15,6 @@ interface AppRefreshToken : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
-    val appId: UUID
 
     @ManyToOne
     @JoinColumn(name = "app_user_id")

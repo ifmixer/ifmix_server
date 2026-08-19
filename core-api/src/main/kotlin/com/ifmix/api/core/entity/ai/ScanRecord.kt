@@ -15,7 +15,6 @@ interface ScanRecord : AppScopedProps, SoftDeletableProps {
     @Id
     val id: UUID
 
-    val appId: UUID
 
     /** 图片列表（JSONB 对象数组） */
     @Serialized

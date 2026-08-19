@@ -5,6 +5,7 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.desc
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import org.springframework.stereotype.Repository

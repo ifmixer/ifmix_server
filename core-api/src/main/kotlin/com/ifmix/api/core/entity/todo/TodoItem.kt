@@ -12,7 +12,6 @@ interface TodoItem : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
-    val appId: UUID
 
     val todoId: UUID
     val content: String

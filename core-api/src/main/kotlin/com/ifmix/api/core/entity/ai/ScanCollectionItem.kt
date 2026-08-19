@@ -13,7 +13,6 @@ interface ScanCollectionItem : AppScopedProps, SoftDeletableProps {
     @Id
     val id: UUID
 
-    val appId: UUID
 
     @ManyToOne
     @JoinColumn(name = "collection_id")
