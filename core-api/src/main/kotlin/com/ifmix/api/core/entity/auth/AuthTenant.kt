@@ -1,15 +1,18 @@
 package com.ifmix.api.core.entity.auth
 
-import java.time.Instant
+import com.ifmix.api.core.entity.MutableProps
+import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 /**
- * 认证租户模型，对应 core_auth_tenant 表。
+ * 认证租户（全局，不按 appId 分片）。
  */
-data class AuthTenant(
-    val id: UUID,
-    val jwtPrivateKeyPem: String? = null,
-    val jwtIssuer: String? = null,
-    val createdAt: Instant,
-    val updatedAt: Instant? = null,
-)
+@Entity
+@Table(name = "core_auth_tenant")
+interface AuthTenant : MutableProps {
+    @Id
+    val id: UUID
+
+    val jwtPrivateKeyPem: String?
+    val jwtIssuer: String?
+}

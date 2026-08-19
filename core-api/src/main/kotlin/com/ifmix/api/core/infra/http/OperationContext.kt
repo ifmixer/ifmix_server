@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.http
 
-import org.jooq.DSLContext
+import org.babyfish.jimmer.sql.kt.KSqlClient
 
 /**
  * 操作上下文 — per-operation，由 OperationContextProvider 从 DFE 构建。
@@ -12,10 +12,10 @@ data class OperationContext(
     val isMutation: Boolean = false,
     // ===== 全局事务支持 =====
     /**
-     * 全局事务 DSLContext（由 GlobalTxRunner 在 DataFetcher 层设置）。
-     * ModuleService 构建 SvcCtx 时：若已有全局事务则复用，否则使用默认 DSL。
+     * 全局事务 KSqlClient（由 GlobalTxRunner 在 DataFetcher 层设置）。
+     * ModuleService 构建 SvcCtx 时：若已有全局事务则复用，否则使用默认 sql。
      */
-    val globalTxDsl: DSLContext? = null,
+    val globalTxSql: KSqlClient? = null,
     val inGlobalTx: Boolean = false,
 ) {
     // ===== 便捷委托 =====

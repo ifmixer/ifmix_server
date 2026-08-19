@@ -1,20 +1,29 @@
 package com.ifmix.api.core.entity.auth
 
-import java.time.Instant
+import com.ifmix.api.core.entity.MutableProps
+import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 /**
- * 设备密钥模型，对应 core_auth_device_secret 表。
+ * 设备密钥。
  */
-data class AuthDeviceSecret(
-    val id: UUID,
-    val authTenantId: UUID,
-    val authIdentityId: UUID,
-    val secretHash: String,
-    val loginInstallId: UUID? = null,
-    val expiresAt: Instant,
-    val revokedAt: Instant? = null,
-    val lastUsedAt: Instant? = null,
-    val createdAt: Instant,
-    val updatedAt: Instant? = null,
-)
+@Entity
+@Table(name = "core_auth_device_secret")
+interface AuthDeviceSecret : MutableProps {
+    @Id
+    val id: UUID
+
+    @ManyToOne
+    @JoinColumn(name = "auth_tenant_id")
+    val authTenant: AuthTenant
+
+    @ManyToOne
+    @JoinColumn(name = "auth_identity_id")
+    val authIdentity: AuthIdentity
+
+    val secretHash: String
+    val loginInstallId: UUID?
+    val expiresAt: Instant?
+    val revokedAt: Instant?
+    val lastUsedAt: Instant?
+}
