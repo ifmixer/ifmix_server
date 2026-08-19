@@ -25,7 +25,7 @@ import javax.sql.DataSource
 class ClusterRegistry(
     private val props: ClusterProperties,
     private val draftInterceptors: List<DraftInterceptor<*, *>>,
-    @Value("${app.show-sql:false}") private val showSql: Boolean,
+    @Value("\${app.show-sql:false}") private val showSql: Boolean,
 ) {
     private val log = LoggerFactory.getLogger(ClusterRegistry::class.java)
     val writerDataSource: HikariDataSource by lazy { createDataSource(props.writer, "pg-writer") }
