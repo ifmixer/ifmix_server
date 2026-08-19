@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.feedback
 
-import com.ifmix.api.core.common.db.CRUDRepository
+import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.db.MongoClusterResolver
 import com.ifmix.api.core.common.service.CRUDService
 import org.springframework.context.annotation.Bean
@@ -12,11 +12,11 @@ import com.ifmix.api.core.modules.feedback.entity.FeedbackEntity
 class FeedbackConfig {
 
     @Bean
-    fun feedbackRepository(clusterResolver: MongoClusterResolver): CRUDRepository<FeedbackEntity> =
-        CRUDRepository(clusterResolver.primary(), FeedbackEntity::class.java)
+    fun feedbackRepository(clusterResolver: MongoClusterResolver): CRUDOps<FeedbackEntity> =
+        CRUDOps(clusterResolver.primary(), FeedbackEntity::class.java)
 
     @Bean
-    fun feedbackCrudService(feedbackRepository: CRUDRepository<FeedbackEntity>): CRUDService<FeedbackEntity> =
+    fun feedbackCrudService(feedbackRepository: CRUDOps<FeedbackEntity>): CRUDService<FeedbackEntity> =
         CRUDService(feedbackRepository)
 
     @Bean

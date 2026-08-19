@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.todo
 
-import com.ifmix.api.core.common.db.CRUDRepository
+import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.db.MongoClusterResolver
 import com.ifmix.api.core.common.redis.CacheAside
 import com.ifmix.api.core.common.service.CRUDService
@@ -15,11 +15,11 @@ import com.ifmix.api.core.modules.todo.entity.TodoEntity
 class TodoConfig {
 
     @Bean
-    fun todoRepository(clusterResolver: MongoClusterResolver): CRUDRepository<TodoEntity> =
-        CRUDRepository(clusterResolver.primary(), TodoEntity::class.java)
+    fun todoRepository(clusterResolver: MongoClusterResolver): CRUDOps<TodoEntity> =
+        CRUDOps(clusterResolver.primary(), TodoEntity::class.java)
 
     @Bean
-    fun todoCrudService(todoRepository: CRUDRepository<TodoEntity>): CRUDService<TodoEntity> =
+    fun todoCrudService(todoRepository: CRUDOps<TodoEntity>): CRUDService<TodoEntity> =
         CRUDService(todoRepository)
 
     @Bean

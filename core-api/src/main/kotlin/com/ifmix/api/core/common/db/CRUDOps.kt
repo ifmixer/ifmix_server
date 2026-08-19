@@ -1,7 +1,6 @@
 package com.ifmix.api.core.common.db
 
-import com.ifmix.api.core.common.http.ApiError
-import com.ifmix.api.core.common.http.ErrorCode
+import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.http.RequestContext
 import com.mongodb.ReadPreference
 import org.bson.types.ObjectId
@@ -14,18 +13,17 @@ import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.data.mongodb.core.query.inValues
 import org.springframework.data.mongodb.core.query.lt
 import org.springframework.data.mongodb.core.query.gt
-import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Instant
 import java.util.Base64
 import kotlin.reflect.full.memberProperties
 
 /**
  * 基于 MongoTemplate 的通用 CRUD。构造时反射 [type] 探测能力：
- * - 实现 [AppScoped] → 自动注入 appId=ctx.appId 过滤（列表 + by-id，分片键定向）。
+ * - 实现 [AppScoped] → 自动注入 appId 过滤（列表 + by-id，分片键定向）。
  * - 实现 [SoftDeletable] → 删除走 deletedAt 标记，读写自动过滤 deletedAt=null。
  * 另保留 extraCriteria/extraIdCriteria 两个钩子，供模块附加自定义过滤（如 collection 按 collectionId）。
  */
-open class CRUDRepository<T : BaseEntity>(
+class CRUDOps<T : BaseEntity>(
     protected val mongo: MongoTemplate,
     protected val type: Class<T>,
 ) {
@@ -33,41 +31,37 @@ open class CRUDRepository<T : BaseEntity>(
     protected val softDeletable: Boolean = SoftDeletable::class.java.isAssignableFrom(type)
 
     /** 附加列表过滤钩子（保留）：模块覆写注入自定义过滤。默认无。 */
-    protected open fun extraCriteria(ctx: RequestContext): Criteria? = null
+    protected open fun extraCriteria(ctx: RepoCtx): Criteria? = null
 
     /** 附加 by-id 过滤钩子（保留）：模块覆写注入自定义 by-id 过滤。默认无。 */
-    protected open fun extraIdCriteria(ctx: RequestContext): Criteria? = null
+    protected open fun extraIdCriteria(ctx: RepoCtx): Criteria? = null
 
-    /** 自动租户过滤：AppScoped 文档按 appId（分片键）。非 app 文档返回 null。 */
-    private fun tenantCriteria(ctx: RequestContext): Criteria? =
-        if (appScoped) Criteria.where("appId").`is`(ctx.appId) else null
-
-    fun insertOne(ctx: RequestContext, entity: T) {
+    fun insertOne(ctx: RepoCtx, appId: String, entity: T) {
         mongo.insert(entity)
     }
 
-    fun insertMany(ctx: RequestContext, entities: Collection<T>) {
+    fun insertMany(ctx: RepoCtx, appId: String, entities: Collection<T>) {
         if (entities.isNotEmpty()) mongo.insert(entities, type)
     }
 
-    /** 未命中/非法 id 返回 null，绝不抛。读偏好取 ctx.readPreference（事务内强制主库）。 */
-    fun findById(ctx: RequestContext, id: String): T? {
+    /** 未命中/非法 id 返回 null，绝不抛。读偏好取 ctx.readPreference。 */
+    fun findById(ctx: RepoCtx, appId: String, id: String): T? {
         if (invalidId(id)) return null
-        val query = idQuery(ctx, id)
+        val query = idQuery(ctx, appId, id)
         applyReadPreference(query, ctx)
         return mongo.findOne(query, type)
     }
 
     /** 未命中抛 NOT_FOUND，返回非空。 */
-    fun getById(ctx: RequestContext, id: String): T =
-        findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+    fun getById(ctx: RepoCtx, appId: String, id: String): T =
+        findById(ctx, appId, id) ?: throw com.ifmix.api.core.common.http.ApiError(com.ifmix.api.core.common.http.ErrorCode.NOT_FOUND)
 
     /**
      * 部分更新：自动从 [patch] 生成 Mongo `$set`——非空属性逐个 set。
      * patch 为任意对象（反射非空属性，属性名即字段名）或 `Map<String, Any?>`（键即字段名）。
      * 空 patch 时不写，仅返回是否存在。总会刷新 updatedAt。
      */
-    fun updateById(ctx: RequestContext, id: String, patch: Any): Boolean {
+    fun updateById(ctx: RepoCtx, appId: String, id: String, patch: Any): Boolean {
         if (invalidId(id)) return false
         val sets: Map<String, Any?> = when (patch) {
             is Map<*, *> -> patch.entries.filter { it.value != null }.associate { it.key.toString() to it.value }
@@ -75,9 +69,9 @@ open class CRUDRepository<T : BaseEntity>(
                 .mapNotNull { p -> p.getter.call(patch)?.let { p.name to it } }
                 .toMap()
         }
-        if (sets.isEmpty()) return findById(ctx, id) != null
+        if (sets.isEmpty()) return findById(ctx, appId, id) != null
 
-        val query = idQuery(ctx, id)
+        val query = idQuery(ctx, appId, id)
         val update = Update()
         sets.forEach { (field, value) -> update.set(field, value) }
         update.set(BaseEntity::updatedAt, Instant.now())
@@ -88,7 +82,7 @@ open class CRUDRepository<T : BaseEntity>(
      * 部分更新 + $unset：自动从 [patch] 生成 Mongo `$set`，并额外对 [unsetFields] 执行 `$unset`。
      * unsetFields 为空列表时退化为普通 updateById。
      */
-    fun updateByIdWithUnset(ctx: RequestContext, id: String, patch: Any, unsetFields: List<String>? = null): Boolean {
+    fun updateByIdWithUnset(ctx: RepoCtx, appId: String, id: String, patch: Any, unsetFields: List<String>? = null): Boolean {
         if (invalidId(id)) return false
         val sets: Map<String, Any?> = when (patch) {
             is Map<*, *> -> patch.entries.filter { it.value != null }.associate { it.key.toString() to it.value }
@@ -96,9 +90,9 @@ open class CRUDRepository<T : BaseEntity>(
                 .mapNotNull { p -> p.getter.call(patch)?.let { p.name to it } }
                 .toMap()
         }
-        if (sets.isEmpty() && (unsetFields.isNullOrEmpty())) return findById(ctx, id) != null
+        if (sets.isEmpty() && (unsetFields.isNullOrEmpty())) return findById(ctx, appId, id) != null
 
-        val query = idQuery(ctx, id)
+        val query = idQuery(ctx, appId, id)
         val update = Update()
         sets.forEach { (field, value) -> update.set(field, value) }
         unsetFields?.forEach { field -> update.unset(field) }
@@ -106,9 +100,9 @@ open class CRUDRepository<T : BaseEntity>(
         return mongo.updateFirst(query, update, type).modifiedCount > 0
     }
 
-    fun deleteById(ctx: RequestContext, id: String): Boolean {
+    fun deleteById(ctx: RepoCtx, appId: String, id: String): Boolean {
         if (invalidId(id)) return false
-        val query = idQuery(ctx, id)
+        val query = idQuery(ctx, appId, id)
         return if (softDeletable) {
             val update = Update().set(SoftDeletable::deletedAt, Instant.now()).set(BaseEntity::updatedAt, Instant.now())
             mongo.updateFirst(query, update, type).modifiedCount > 0
@@ -118,10 +112,10 @@ open class CRUDRepository<T : BaseEntity>(
     }
 
     /** 批量按 id 查询：命中则返回，未命中跳过。 */
-    fun findByIds(ctx: RequestContext, ids: List<String>): List<T> {
+    fun findByIds(ctx: RepoCtx, appId: String, ids: List<String>): List<T> {
         if (ids.isEmpty()) return emptyList()
         val query = Query()
-        tenantCriteria(ctx)?.let { query.addCriteria(it) }
+        if (appScoped) query.addCriteria(Criteria.where("appId").`is`(ObjectId(appId)))
         extraCriteria(ctx)?.let { query.addCriteria(it) }
         if (softDeletable) query.addCriteria(SoftDeletable::deletedAt isEqualTo null)
         query.addCriteria(BaseEntity::id inValues ids.mapNotNull { id -> if (invalidId(id)) null else ObjectId(id) })
@@ -132,10 +126,10 @@ open class CRUDRepository<T : BaseEntity>(
     /**
      * 批量部分更新：遍历 ids 逐个执行 updateById，返回实际修改条数。
      */
-    fun updateByIds(ctx: RequestContext, patches: Map<String, Any>): Int {
+    fun updateByIds(ctx: RepoCtx, appId: String, patches: Map<String, Any>): Int {
         var count = 0
         patches.forEach { (id, patch) ->
-            if (updateById(ctx, id, patch)) count++
+            if (updateById(ctx, appId, id, patch)) count++
         }
         return count
     }
@@ -143,10 +137,10 @@ open class CRUDRepository<T : BaseEntity>(
     /**
      * 批量删除：遍历 ids 逐个执行 deleteById，返回实际删除条数。
      */
-    fun deleteByIds(ctx: RequestContext, ids: List<String>): Int {
+    fun deleteByIds(ctx: RepoCtx, appId: String, ids: List<String>): Int {
         var count = 0
         ids.forEach { id ->
-            if (deleteById(ctx, id)) count++
+            if (deleteById(ctx, appId, id)) count++
         }
         return count
     }
@@ -155,13 +149,13 @@ open class CRUDRepository<T : BaseEntity>(
      * 游标分页。自建查询：注入租户 appId（若 AppScoped）+ extraCriteria + 软删过滤（若 SoftDeletable），
      * 接管排序、游标 keyset、limit 上限与读偏好。支持按任意 [CursorQueryInput.sortBy] 排序（默认 _id）。
      */
-    fun findByCursor(ctx: RequestContext, input: CursorQueryInput = CursorQueryInput()): Page<T> {
+    fun findByCursor(ctx: RepoCtx, appId: String, input: CursorQueryInput = CursorQueryInput()): Page<T> {
         val limit = input.effectiveLimit()
         val desc = input.order == CursorQueryInput.Order.DESC
         val sortField = mongoField(input.sortBy)
 
         val query = Query()
-        tenantCriteria(ctx)?.let { query.addCriteria(it) }
+        if (appScoped) query.addCriteria(Criteria.where("appId").`is`(ObjectId(appId)))
         extraCriteria(ctx)?.let { query.addCriteria(it) }
         if (softDeletable) query.addCriteria(SoftDeletable::deletedAt isEqualTo null)
         val cursor = input.cursor
@@ -207,27 +201,22 @@ open class CRUDRepository<T : BaseEntity>(
 
     // ---- helpers ----
 
-    private fun applyReadPreference(query: Query, ctx: RequestContext) {
-        val pref = if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            ReadPreference.primary()
-        } else {
-            ctx.readPreference
-        }
-        query.withReadPreference(pref)
+    private fun applyReadPreference(query: Query, ctx: RepoCtx) {
+        query.withReadPreference(ctx.readPreference)
     }
 
-    /** 按 id 定位条件：tenantCriteria（appId 分片键）+ extraIdCriteria + _id。不含软删过滤。 */
-    private fun idCriteria(ctx: RequestContext, id: String): MutableList<Criteria> {
+    /** 按 id 定位条件：appId 分片键 + extraIdCriteria + _id。不含软删过滤。 */
+    private fun idCriteria(ctx: RepoCtx, appId: String, id: String): MutableList<Criteria> {
         val list = mutableListOf<Criteria>()
-        tenantCriteria(ctx)?.let { list.add(it) }
+        if (appScoped) list.add(Criteria.where("appId").`is`(ObjectId(appId)))
         extraIdCriteria(ctx)?.let { list.add(it) }
         list.add(Criteria().andOperator(BaseEntity::id isEqualTo ObjectId(id)))
         return list
     }
 
     /** by-id 操作查询：idCriteria + 软删过滤（若 SoftDeletable）。 */
-    private fun idQuery(ctx: RequestContext, id: String): Query {
-        val criteria = idCriteria(ctx, id)
+    private fun idQuery(ctx: RepoCtx, appId: String, id: String): Query {
+        val criteria = idCriteria(ctx, appId, id)
         if (softDeletable) criteria.add(SoftDeletable::deletedAt isEqualTo null)
         return buildQuery(criteria)
     }

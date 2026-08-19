@@ -15,7 +15,7 @@ import com.ifmix.api.core.modules.iap.repo.SubscriptionRepo
 
 /**
  * subscriptions 集合的读写操作。
- * 不继承 CRUDRepository——订阅有自定义的上插/查询逻辑，不走通用 by-id 模式。
+ * 不继承 CRUDOps——订阅有自定义的上插/查询逻辑，不走通用 by-id 模式。
  */
 @Component
 class SubscriptionRepo(

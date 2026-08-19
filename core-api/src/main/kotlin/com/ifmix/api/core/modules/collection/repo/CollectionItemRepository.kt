@@ -19,7 +19,7 @@ import com.ifmix.api.core.modules.collection.repo.CollectionItemRepository
 /**
  * collection_item 自定义仓储：幂等插入、批量软删、join scan_record 列表查询。
  *
- * 不使用 CRUDRepository（collectionId 为运行时参数，非 ctx 属性），直接持 MongoTemplate。
+ * 不使用 CRUDOps（collectionId 为运行时参数，非 ctx 属性），直接持 MongoTemplate。
  */
 class CollectionItemRepository(private val mongo: MongoTemplate) {
 

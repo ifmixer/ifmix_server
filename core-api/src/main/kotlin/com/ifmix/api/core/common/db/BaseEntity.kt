@@ -13,12 +13,12 @@ abstract class BaseEntity {
     lateinit var updatedAt: Instant
 }
 
-/** 能力：多租户，按 appId 分片。实现后 CRUDRepository 自动注入 appId 过滤与创建盖章。 */
+/** 能力：多租户，按 appId 分片。实现后 CRUDOps 自动注入 appId 过滤与创建盖章。 */
 interface AppScoped {
     var appId: ObjectId
 }
 
-/** 能力：软删。实现后 CRUDRepository 的删除走 deletedAt 标记，读写自动过滤 deletedAt=null。 */
+/** 能力：软删。实现后 CRUDOps 的删除走 deletedAt 标记，读写自动过滤 deletedAt=null。 */
 interface SoftDeletable {
     var deletedAt: Instant?
 }

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.collection
 
-import com.ifmix.api.core.common.db.CRUDRepository
+import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.db.MongoClusterResolver
 import com.ifmix.api.core.common.service.CRUDService
 import com.ifmix.api.core.modules.antique.AntiqueService
@@ -33,18 +33,18 @@ class CollectionConfig {
         return CollectionItemRepository(clusterResolver.primary())
     }
 
-    // 注意：勿加 @ConditionalOnMissingBean(CRUDRepository/CRUDService)——它们按擦除后的原始类型匹配，
+    // 注意：勿加 @ConditionalOnMissingBean(CRUDOps/CRUDService)——它们按擦除后的原始类型匹配，
     // 会与 todo/feedback 等模块的同类 bean 冲突导致本模块 bean 被跳过。各模块各自定义自己的泛型 bean，
     // Spring 按泛型参数（CollectionEntity）区分注入。
     @Bean
     fun collectionCrudRepository(
         clusterResolver: MongoClusterResolver,
-    ): CRUDRepository<CollectionEntity> {
-        return CRUDRepository(clusterResolver.primary(), CollectionEntity::class.java)
+    ): CRUDOps<CollectionEntity> {
+        return CRUDOps(clusterResolver.primary(), CollectionEntity::class.java)
     }
 
     @Bean
-    fun collectionCrudService(repo: CRUDRepository<CollectionEntity>): CRUDService<CollectionEntity> {
+    fun collectionCrudService(repo: CRUDOps<CollectionEntity>): CRUDService<CollectionEntity> {
         return CRUDService(repo)
     }
 
