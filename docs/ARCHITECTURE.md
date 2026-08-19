@@ -16,6 +16,7 @@
 | 框架 | Spring Boot | 4.1.0 |
 | API | GraphQL (Netflix DGS) | 12.0.1 |
 | SQL (新) | jOOQ | 3.21.5 |
+| SQL (demo) | MyBatis Dynamic SQL | 3.5.16 / 2.0.0 |
 | ORM (旧，迁移中) | Jimmer | 0.11.5 |
 | 数据库 | PostgreSQL (读写分离) | — |
 | 缓存 | Redis + CacheAside | — |
@@ -88,6 +89,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 ├── entity/                     # Jimmer 实体 (迁移中，逐步删除)
 ├── infra/
 │   ├── jooq/                   # CrudOps, TxRunner, AuditRecordListener, JooqConfig, InstantConverter
+│   ├── mybatis/                # MyBatisSessionFactories, TypeHandlers, MyBatisTxRunner, SvcCtx extension
 │   ├── jimmer/                 # ClusterRegistry, ReadWriteRouting (迁移完后删除)
 │   ├── graphql/                # OperationContextProvider, scalars, ExceptionHandler, EndpointConfig
 │   ├── repo/                   # BaseCrudRepository, BaseAppCrudRepository (jOOQ 基类)
@@ -182,6 +184,13 @@ fun createXxx(ctx, input) = tx.withTx(ctx) { txCtx ->
 - 不用 `@Transactional`（DSLContext 动态路由，Spring 注解绑固定 DataSource）
 - 传播行为: REQUIRED / REQUIRES_NEW / SUPPORTS / NOT_SUPPORTED
 - 事务边界在 Service 层
+
+### MyBatis 共存方案（demo 模块专用）
+
+- MyBatis **手动构建** `SqlSessionFactory`（writer + reader），不走 Spring auto-config
+- `SvcCtx` 扩展持有 `SqlSession?`，通过 `ctx.mapper<TodoMapper>()` 获取 Mapper
+- `MyBatisTxRunner` 提供事务边界（对标 jOOQ 的 `TxRunner`）
+- 适用场景：demo 模块（core_todo / core_todo_item），其他模块仍使用 jOOQ
 
 ### RepoContext
 

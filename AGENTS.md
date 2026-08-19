@@ -43,7 +43,11 @@
 - 这是有意设计，不要改成阻塞式
 
 ### 数据库
-- 使用 jOOQ（类型安全 SQL DSL + codegen）
+- **jOOQ** 是主要 SQL DSL（类型安全 + codegen），用于 auth、ai、payment 等业务模块
+- **MyBatis** 用于 demo 模块（core_todo / core_todo_item），两套 ORM 共存：
+  - MyBatis 手动构建 `SqlSessionFactory`（writer + reader），不走 Spring auto-config
+  - SvcCtx 扩展持有 `SqlSession?`，通过 `ctx.mapper<TodoMapper>()` 获取 Mapper
+  - `MyBatisTxRunner` 提供事务边界（对标 jOOQ 的 `TxRunner`）
 - **所有表名带 `core_` 前缀**（如 `core_todo`, `core_app_user`, `core_scan_record`）
 - UUIDv7 作为主键（时间有序，支持游标分页）
 - **UUID 字符串统一用 22 位 Base58 URL-safe 编码**（不用原始 36 位格式）
