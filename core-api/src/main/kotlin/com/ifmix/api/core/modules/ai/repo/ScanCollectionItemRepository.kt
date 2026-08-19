@@ -29,7 +29,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
 
         val id = UuidV7.generate()
         val entity = ScanCollectionItem {
-            id = id
+            this.id = id
             this.appId = appId
             this.collectionId = collectionId
             this.scanRecordId = scanRecordId
