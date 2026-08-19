@@ -15,7 +15,7 @@
                         userId="postgres"
                         password="postgres"/>
 
-        <!-- 自定义类型解析：uuid→UUID, timestamptz→Instant, jsonb→String -->
+        <!-- 自定义类型解析：uuid→UUID, timestamptz→Instant, jsonb→String（默认） -->
         <javaTypeResolver type="com.ifmix.api.core.infra.mybatis.PgTypeResolver"/>
 
         <!-- Kotlin model -->
@@ -26,8 +26,13 @@
         <clientGenerator targetPackage="com.ifmix.api.core.generated.mybatis.mapper"
                          targetProject="src/generated/mybatis"/>
 
-        <!-- 表定义 — 干净，无需 columnOverride -->
-        <table tableName="core_todo" domainObjectName="CoreTodo"/>
+        <!-- core_todo: meta 列映射到领域对象 Meta -->
+        <table tableName="core_todo" domainObjectName="CoreTodo">
+            <columnOverride column="meta" javaType="com.ifmix.api.core.entity.demo.Meta"
+                           typeHandler="com.ifmix.api.core.infra.mybatis.MetaTypeHandler"/>
+        </table>
+
+        <!-- core_todo_item: 无特殊列覆盖 -->
         <table tableName="core_todo_item" domainObjectName="CoreTodoItem"/>
     </context>
 </generatorConfiguration>

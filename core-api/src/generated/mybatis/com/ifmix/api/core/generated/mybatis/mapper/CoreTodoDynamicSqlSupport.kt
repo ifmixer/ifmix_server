@@ -1,5 +1,6 @@
 package com.ifmix.api.core.generated.mybatis.mapper
 
+import com.ifmix.api.core.entity.demo.Meta
 import java.sql.JDBCType
 import java.time.Instant
 import java.util.UUID
@@ -50,7 +51,7 @@ object CoreTodoDynamicSqlSupport {
 
         val userId = column<UUID>(name = "user_id", jdbcType = JDBCType.OTHER, javaProperty = "userId")
 
-        val meta = column<String>(name = "meta", jdbcType = JDBCType.OTHER, javaProperty = "meta")
+        val meta = column<Meta>(name = "meta", jdbcType = JDBCType.OTHER, typeHandler = "com.ifmix.api.core.infra.mybatis.MetaTypeHandler", javaProperty = "meta")
 
         val note = column<String>(name = "note", jdbcType = JDBCType.VARCHAR, javaProperty = "note")
     }

@@ -1,5 +1,6 @@
 package com.ifmix.api.core.generated.mybatis.model
 
+import com.ifmix.api.core.entity.demo.Meta
 import java.time.Instant
 import java.util.UUID
 
@@ -13,6 +14,6 @@ data class CoreTodo(
     val deletedAt: Instant? = null,
     val installId: UUID? = null,
     val userId: UUID? = null,
-    val meta: String? = null,
+    val meta: Meta? = null,
     val note: String? = null
 )

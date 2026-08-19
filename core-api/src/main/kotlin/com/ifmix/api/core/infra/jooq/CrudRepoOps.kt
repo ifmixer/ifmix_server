@@ -42,7 +42,8 @@ class CrudRepoOps<T : Any>(
     fun findById(ctx: SvcCtx, id: UUID): T? {
         require(appIdField == null) { "findById without appId is only for tables without appIdField" }
         return ctx.dsl.selectFrom(table)
-            .where(buildDeletedAtCond(deletedAtField).and((idField as TableField<*, UUID?>).eq(id)))
+            .where(buildDeletedAtCond(deletedAtField).
+            and((idField as TableField<*, UUID?>).eq(id)))
             .fetchOneInto(type)
     }
 

@@ -1,5 +1,6 @@
 package com.ifmix.api.core.generated.mybatis.mapper
 
+import com.ifmix.api.core.entity.demo.Meta
 import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.appId
 import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.coreTodo
 import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.createdAt
@@ -13,6 +14,7 @@ import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.tit
 import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.updatedAt
 import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.userId
 import com.ifmix.api.core.generated.mybatis.model.CoreTodo
+import com.ifmix.api.core.infra.mybatis.MetaTypeHandler
 import java.time.Instant
 import java.util.UUID
 import org.apache.ibatis.annotations.Arg
@@ -53,7 +55,7 @@ interface CoreTodoMapper : CommonCountMapper, CommonDeleteMapper, CommonInsertMa
     @Arg(column="deleted_at", jdbcType=JdbcType.OTHER, javaType=Instant::class)
     @Arg(column="install_id", jdbcType=JdbcType.OTHER, javaType=UUID::class)
     @Arg(column="user_id", jdbcType=JdbcType.OTHER, javaType=UUID::class)
-    @Arg(column="meta", jdbcType=JdbcType.OTHER, javaType=String::class)
+    @Arg(column="meta", typeHandler=MetaTypeHandler::class, jdbcType=JdbcType.OTHER, javaType=Meta::class)
     @Arg(column="note", jdbcType=JdbcType.VARCHAR, javaType=String::class)
     fun selectMany(selectStatement: SelectStatementProvider): List<CoreTodo>
 
