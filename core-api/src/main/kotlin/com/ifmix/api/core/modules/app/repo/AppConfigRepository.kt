@@ -1,6 +1,12 @@
 package com.ifmix.api.core.modules.app.repo
 
 import com.ifmix.api.core.entity.app.AppConfigRevision
+import com.ifmix.api.core.entity.app.appId
+import com.ifmix.api.core.entity.app.appleBundleId
+import com.ifmix.api.core.entity.app.androidPackageName
+import com.ifmix.api.core.entity.app.id
+import com.ifmix.api.core.entity.app.createdAt
+import com.ifmix.api.core.entity.app.enabled
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient

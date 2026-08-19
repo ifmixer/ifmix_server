@@ -1,6 +1,9 @@
 package com.ifmix.api.core.modules.payment.repo
 
 import com.ifmix.api.core.entity.iap.StoreNotification
+import com.ifmix.api.core.entity.iap.platform
+import com.ifmix.api.core.entity.iap.purchaseToken
+import com.ifmix.api.core.entity.iap.processed
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient

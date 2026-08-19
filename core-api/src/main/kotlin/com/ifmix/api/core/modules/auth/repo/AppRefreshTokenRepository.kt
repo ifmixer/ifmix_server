@@ -1,6 +1,13 @@
 package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.entity.auth.AppRefreshToken
+import com.ifmix.api.core.entity.auth.appId
+import com.ifmix.api.core.entity.auth.id
+import com.ifmix.api.core.entity.auth.updatedAt
+import com.ifmix.api.core.entity.auth.revokedAt
+import com.ifmix.api.core.entity.auth.tokenHash
+import com.ifmix.api.core.entity.auth.expiresAt
+import com.ifmix.api.core.entity.auth.replacedBy
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient

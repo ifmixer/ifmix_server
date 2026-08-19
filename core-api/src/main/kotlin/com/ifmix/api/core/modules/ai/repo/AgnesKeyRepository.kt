@@ -1,6 +1,10 @@
 package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.entity.ai.AgnesKey
+import com.ifmix.api.core.entity.ai.appId
+import com.ifmix.api.core.entity.ai.updatedAt
+import com.ifmix.api.core.entity.ai.unavailableUntil
+import com.ifmix.api.core.entity.ai.id
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -23,7 +27,7 @@ class AgnesKeyRepository(sql: KSqlClient) : BaseAppCrudRepository<AgnesKey>(sql,
         val now = Instant.now()
         return sql.createQuery(AgnesKey::class) {
             where(table.appId eq appId)
-            where(table.unavailableUntil.isNull || table.unavailableUntil lt now)
+            where(table.unavailableUntil.isNull().or(table.unavailableUntil lt now))
             select(table)
         }.execute()
     }

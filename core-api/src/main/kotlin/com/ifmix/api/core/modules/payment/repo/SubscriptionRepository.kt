@@ -1,6 +1,10 @@
 package com.ifmix.api.core.modules.payment.repo
 
 import com.ifmix.api.core.entity.iap.Subscription
+import com.ifmix.api.core.entity.iap.appId
+import com.ifmix.api.core.entity.iap.subscriptionPxid
+import com.ifmix.api.core.entity.iap.originalTransactionId
+import com.ifmix.api.core.entity.iap.active
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient

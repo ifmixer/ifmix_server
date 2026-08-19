@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.entity.ai.ScanCollectionItem
+import com.ifmix.api.core.entity.ai.scanRecordId
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 

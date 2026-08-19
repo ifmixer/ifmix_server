@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.app.repo
 
 import com.ifmix.api.core.entity.app.AppInfo
+import com.ifmix.api.core.entity.app.slug
 import com.ifmix.api.core.infra.repo.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq

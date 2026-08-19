@@ -1,6 +1,9 @@
 package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.entity.auth.AuthProviderIdentity
+import com.ifmix.api.core.entity.auth.authTenant
+import com.ifmix.api.core.entity.auth.provider
+import com.ifmix.api.core.entity.auth.providerAccountId
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.repo.BaseCrudRepository

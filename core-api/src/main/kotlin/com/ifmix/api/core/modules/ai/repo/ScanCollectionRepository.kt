@@ -1,6 +1,10 @@
 package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.entity.ai.ScanCollection
+import com.ifmix.api.core.entity.ai.appId
+import com.ifmix.api.core.entity.ai.isDefault
+import com.ifmix.api.core.entity.ai.userId
+import com.ifmix.api.core.entity.ai.installId
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient

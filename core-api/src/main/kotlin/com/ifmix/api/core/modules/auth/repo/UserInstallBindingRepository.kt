@@ -1,6 +1,15 @@
 package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.entity.auth.UserInstallBinding
+import com.ifmix.api.core.entity.auth.appId
+import com.ifmix.api.core.entity.auth.lastSeenAt
+import com.ifmix.api.core.entity.auth.id
+import com.ifmix.api.core.entity.auth.updatedAt
+import com.ifmix.api.core.entity.auth.clientPlatform
+import com.ifmix.api.core.entity.auth.clientIp
+import com.ifmix.api.core.entity.auth.userId
+import com.ifmix.api.core.entity.auth.installId
+import com.ifmix.api.core.entity.auth.loginCount
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient

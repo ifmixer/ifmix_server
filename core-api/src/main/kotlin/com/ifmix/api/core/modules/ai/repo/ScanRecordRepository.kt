@@ -1,6 +1,11 @@
 package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.entity.ai.ScanRecord
+import com.ifmix.api.core.entity.ai.appId
+import com.ifmix.api.core.entity.ai.userDisplayName
+import com.ifmix.api.core.entity.ai.collected
+import com.ifmix.api.core.entity.ai.id
+import com.ifmix.api.core.entity.ai.userNotes
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import com.ifmix.api.core.generated.types.UpdateScanInput
