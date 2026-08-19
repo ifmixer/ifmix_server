@@ -1,8 +1,8 @@
 extend type Mutation {
     # Admin batch
-    todo_batchDelete(ids: [ID!]!): OperationResult! @requirePermission(permission: "todo:batch")
-    todo_batchUpdate(patches: [BatchUpdateTodoInput!]!): OperationResult! @requirePermission(permission: "todo:batch")
-    todoItem_batchDelete(ids: [ID!]!): OperationResult! @requirePermission(permission: "todo:batch")
+    mutation_demo_batchDeleteTodos(ids: [ID!]!): OperationResult! @requirePermission(permission: "todo:batch")
+    mutation_demo_batchUpdateTodos(patches: [BatchUpdateTodoInput!]!): OperationResult! @requirePermission(permission: "todo:batch")
+    mutation_demo_batchDeleteTodoItems(ids: [ID!]!): OperationResult! @requirePermission(permission: "todo:batch")
 
     # AppConfig
     mutation_app_createConfigRevision(input: CreateAppConfigRevisionInput!): AppConfigRevision! @requirePermission(permission: "appconfig:write")

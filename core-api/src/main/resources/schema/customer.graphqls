@@ -1,6 +1,6 @@
 type Query {
-    todo_get(id: ID!): Todo
-    todo_list(cursor: String, limit: Int, userId: String): TodoConnection!
+    query_demo_findTodoById(id: ID!): Todo
+    query_demo_listTodos(cursor: String, limit: Int, userId: String): TodoConnection!
 
     query_ai_findScanById(id: ID!): ScanRecord
     query_ai_listScans(cursor: String, limit: Int, collected: Boolean): ScanConnection!
@@ -13,13 +13,13 @@ type Query {
 }
 
 type Mutation {
-    # Customer
-    todo_create(input: CreateTodoInput!): Todo! @requirePermission(permission: "todo:write")
-    todo_update(id: ID!, input: UpdateTodoInput!): Todo! @requirePermission(permission: "todo:write")
-    todo_delete(id: ID!): Boolean! @requirePermission(permission: "todo:write")
-    todoItem_create(todoId: ID!, input: CreateTodoItemInput!): TodoItem! @requirePermission(permission: "todo:write")
-    todoItem_update(id: ID!, input: UpdateTodoItemInput!): TodoItem! @requirePermission(permission: "todo:write")
-    todoItem_delete(id: ID!): Boolean! @requirePermission(permission: "todo:write")
+    # Demo (Todo)
+    mutation_demo_createTodo(input: CreateTodoInput!): Todo! @requirePermission(permission: "todo:write")
+    mutation_demo_updateTodo(id: ID!, input: UpdateTodoInput!): Todo! @requirePermission(permission: "todo:write")
+    mutation_demo_deleteTodo(id: ID!): Boolean! @requirePermission(permission: "todo:write")
+    mutation_demo_createTodoItem(todoId: ID!, input: CreateTodoItemInput!): TodoItem! @requirePermission(permission: "todo:write")
+    mutation_demo_updateTodoItem(id: ID!, input: UpdateTodoItemInput!): TodoItem! @requirePermission(permission: "todo:write")
+    mutation_demo_deleteTodoItem(id: ID!): Boolean! @requirePermission(permission: "todo:write")
 
     # Scan
     mutation_ai_createScan(input: NewScanInput!): ScanRecord! @requirePermission(permission: "scan:write")
