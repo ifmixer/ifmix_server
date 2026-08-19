@@ -9,6 +9,7 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.isNull
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
+import org.babyfish.jimmer.sql.kt.ast.expression.valueIn
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
@@ -44,7 +45,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
         return sql.createUpdate(ScanCollectionItem::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.get<UUID>("collectionId") eq collectionId)
-            where(table.get<UUID>("scanRecordId") valueIn scanRecordIds)
+            where(table.get<UUID>("scanRecordId") valueIn(table.get<UUID>("scanRecordId"), scanRecordIds))
             set(table.get<Instant?>("deletedAt"), Instant.now())
         }.execute()
     }

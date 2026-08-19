@@ -6,6 +6,8 @@ import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.isNull
+import org.babyfish.jimmer.sql.kt.ast.expression.or
+import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
@@ -22,7 +24,8 @@ class AgnesKeyRepository(sql: KSqlClient) : BaseAppCrudRepository<AgnesKey>(sql,
         val now = Instant.now()
         return sql.createQuery(AgnesKey::class) {
             where(table.get<UUID>("appId") eq appId)
-            where(table.get<Instant?>("unavailableUntil").isNull().or(
+            where(or(
+                isNull(table.get<Instant?>("unavailableUntil")),
                 table.get<Instant>("unavailableUntil") lt now
             ))
             select(table)
