@@ -38,18 +38,18 @@ class AuthProviderIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthP
 
         val entity = AuthProviderIdentity {
             id = id
-            this.authTenant { id = tenantId }
-            this.authIdentity { id = identityId }
-            this.provider = provider
-            this.providerAccountId = providerAccountId
-            this.email = email
-            this.emailVerified = emailVerified
-            this.phone = phone
-            this.userMetadata = userMetadata
-            this.providerMetadata = providerMetadata
-            this.loginIp = loginIp
-            this.loginInstallId = loginInstallId
-            this.loginAppId = loginAppId
+            authTenant { id = tenantId }
+            authIdentity { id = identityId }
+            provider = provider
+            providerAccountId = providerAccountId
+            email = email
+            emailVerified = emailVerified
+            phone = phone
+            userMetadata = userMetadata
+            providerMetadata = providerMetadata
+            loginIp = loginIp
+            loginInstallId = loginInstallId
+            loginAppId = loginAppId
             createdAt = existing?.createdAt ?: now
             updatedAt = now
         }

@@ -30,10 +30,10 @@ class AppUserRepository(sql: KSqlClient) : BaseAppCrudRepository<AppUser>(sql, A
         val id = UuidV7.generate()
         val entity = AppUser {
             id = id
-            this.appId = appId
-            this.authIdentityId = authIdentityId
-            this.createdAt = now
-            this.updatedAt = now
+            appId = appId
+            authIdentityId = authIdentityId
+            createdAt = now
+            updatedAt = now
         }
         save(ctx, entity)
         return id

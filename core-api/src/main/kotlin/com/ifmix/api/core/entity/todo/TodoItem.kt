@@ -3,7 +3,6 @@ package com.ifmix.api.core.entity.demo
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.MutableProps
 import org.babyfish.jimmer.sql.*
-import java.time.Instant
 import java.util.UUID
 
 @Entity
@@ -12,6 +11,7 @@ interface TodoItem : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
+    override val appId: UUID
 
     val todoId: UUID
     val content: String

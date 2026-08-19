@@ -67,10 +67,10 @@ class PaymentWebhookHandler(
     ) {
         val now = Instant.now()
         val updated = com.ifmix.api.core.entity.iap.Subscription(sub) {
-            this.active = active ?: sub.active
-            this.subStatus = subStatus ?: sub.subStatus
-            this.expiryDate = expiryDate ?: sub.expiryDate
-            this.updatedAt = now
+            active = active ?: sub.active
+            subStatus = subStatus ?: sub.subStatus
+            expiryDate = expiryDate ?: sub.expiryDate
+            updatedAt = now
         }
         subscriptionRepo.upsertSubscription(sc, updated)
     }

@@ -15,6 +15,8 @@ interface AgnesKey : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
+    override val appId: UUID
+
     val key: String
     val email: String?
     val type: Int
@@ -22,17 +24,4 @@ interface AgnesKey : AppScopedProps, MutableProps {
     val windowSec: Long
     val models: String?
     val unavailableUntil: Instant?
-}
-
-/** AI Key 类型编码 */
-object AgnesKeyType {
-    const val UNKNOWN = 0
-    const val PERSONAL = 100
-    const val ENTERPRISE = 200
-
-    fun fromCode(code: Int): String = when (code) {
-        PERSONAL -> "PERSONAL"
-        ENTERPRISE -> "ENTERPRISE"
-        else -> "UNKNOWN"
-    }
 }

@@ -120,7 +120,7 @@ class AuthEntityService(
 
     fun me(sc: SvcCtx): MeRes {
         val userId = sc.op.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
-        val appUser = appUserRepo.findById(sc, appId, userId)
+        val appUser = appUserRepo.findById(sc, sc.appId!!, userId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "user not found")
         val identity = identityRepo.findById(sc, appUser.getAuthIdentityId())
         return MeRes(userId, identity?.email)
@@ -156,7 +156,7 @@ class AuthEntityService(
                 sc, tenantId, provider, verified.accountId
             )
             if (existingProvider != null) {
-                identityRepo.findById(sc, existingProvider.authIdentityId)!!
+                identityRepo.findById(sc, existingProvider.getAuthIdentityId())!!
             } else {
                 insertIdentity(sc, tenantId, null, null, verified.phone, verified.userMetadata)
             }
