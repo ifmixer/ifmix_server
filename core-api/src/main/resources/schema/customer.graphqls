@@ -7,6 +7,9 @@ type Query {
     collection_getDefault: Collection!
     collectionItem_list(collectionId: ID, cursor: String, limit: Int): CollectionItemConnection!
     appConfig_getCurrent: AppConfigRevision
+
+    # Auth
+    query_auth_me: AuthUser!
 }
 
 type Mutation {
@@ -24,16 +27,23 @@ type Mutation {
     scan_delete(id: ID!): Boolean! @requirePermission(permission: "scan:write")
 
     # Storage
-    storage_presignUpload(input: PresignUploadInput!): PresignUploadResult! @requirePermission(permission: "storage:write")
-    storage_presignDownload(input: PresignDownloadInput!): PresignDownloadResult! @requirePermission(permission: "storage:read")
+    mutation_storage_presignUpload(input: PresignUploadInput!): PresignUploadResult! @requirePermission(permission: "storage:write")
+    mutation_storage_presignDownload(input: PresignDownloadInput!): PresignDownloadResult! @requirePermission(permission: "storage:read")
 
     # Collection
     collectionItem_add(collectionId: ID, scanRecordId: ID!): ID! @requirePermission(permission: "collection:write")
     collectionItem_remove(collectionId: ID, scanRecordIds: [ID!]!): Int! @requirePermission(permission: "collection:write")
 
-    # Feedback
-    feedback_submit(input: SubmitFeedbackInput!): ID! @requirePermission(permission: "feedback:write")
+    # CMS (Feedback)
+    mutation_cms_submitFeedback(input: SubmitFeedbackInput!): ID! @requirePermission(permission: "feedback:write")
 
     # IAP
-    iap_verifyPurchase(input: VerifyPurchaseInput!): VerifyPurchaseResult! @requirePermission(permission: "iap:write")
+    mutation_payment_verifyPurchase(input: VerifyPurchaseInput!): VerifyPurchaseResult! @requirePermission(permission: "iap:write")
+
+    # Auth
+    mutation_auth_loginGoogle(input: LoginInput!): AuthResult!
+    mutation_auth_loginApple(input: LoginInput!): AuthResult!
+    mutation_auth_exchange(input: ExchangeInput!): AuthResult!
+    mutation_auth_refresh(input: RefreshInput!): AuthResult!
+    mutation_auth_logout(input: LogoutInput!): Boolean!
 }

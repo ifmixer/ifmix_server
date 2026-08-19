@@ -2,26 +2,18 @@ package com.ifmix.api.core.graphql.customer
 
 import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.graphql.generated.types.PresignDownloadResult
-import com.ifmix.api.core.graphql.generated.types.PresignUploadResult
 import com.ifmix.api.core.graphql.generated.types.ScanConnection
 import com.ifmix.api.core.graphql.generated.types.ScanRecord
 import com.ifmix.api.core.modules.antique.AntiqueService
 import com.ifmix.api.core.modules.antique.CreateScanRequest
 import com.ifmix.api.core.modules.antique.toScanRecord
-import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
 import com.ifmix.api.core.modules.antique.repo.ScanRecordRepository
-import com.ifmix.api.core.modules.storage.entity.UploadRecordEntity
-import com.ifmix.api.core.modules.storage.repo.UploadRecordRepo
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
 import com.netflix.graphql.dgs.DgsQuery
 import com.netflix.graphql.dgs.InputArgument
 import com.netflix.graphql.dgs.context.DgsContext
-import org.springframework.data.mongodb.core.MongoTemplate
-import java.time.Duration
-import java.util.UUID
 
 /** Map field from GraphQL input to ScanRecordEntity patch. */
 private fun mapCollectedPatch(collected: Boolean): Map<String, Any?> =
@@ -31,7 +23,6 @@ private fun mapCollectedPatch(collected: Boolean): Map<String, Any?> =
 class CustomerScanFetcher(
     private val antiqueService: AntiqueService,
     private val scanRecordRepo: ScanRecordRepository,
-    private val uploadRecordRepo: UploadRecordRepo,
 ) {
 
     @DgsQuery(field = "scan_get")
@@ -86,65 +77,6 @@ class CustomerScanFetcher(
     fun deleteScan(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): Boolean {
         val ctx = getContext(dfe)
         return scanRecordRepo.deleteById(ctx, id)
-    }
-
-    @DgsMutation(field = "storage_presignUpload")
-    fun presignUpload(
-        @InputArgument input: Map<String, Any?>,
-        dfe: DgsDataFetchingEnvironment,
-    ): PresignUploadResult {
-        val ctx = getContext(dfe)
-        val category = input["category"] as String
-        val contentType = input["contentType"] as String
-        val objectKey = "${category}/${UUID.randomUUID()}.png"
-        val uploadUrl = antiqueService.presignedUploadUrl(objectKey, contentType, Duration.ofMinutes(5))
-        val downloadUrl = when {
-            category == "scan" -> uploadUrl
-            else -> antiqueService.presignedDownloadUrl(objectKey, Duration.ofHours(1))
-        }
-        recordUpload(ctx, objectKey, contentType, category)
-        return PresignUploadResult(
-            mediaId = objectKey,
-            uploadUrl = uploadUrl,
-            imageKey = objectKey,
-            downloadUrl = downloadUrl,
-        )
-    }
-
-    @DgsMutation(field = "storage_presignDownload")
-    fun presignDownload(
-        @InputArgument input: Map<String, Any?>,
-        dfe: DgsDataFetchingEnvironment,
-    ): PresignDownloadResult {
-        val ctx = getContext(dfe)
-        val imageKey = input["imageKey"] as String
-        val durationSeconds = input["durationSeconds"] as? Int ?: 3600
-        val downloadUrl =
-            antiqueService.presignedDownloadUrl(imageKey, Duration.ofSeconds(durationSeconds.toLong()))
-        return PresignDownloadResult(downloadUrl = downloadUrl)
-    }
-
-    private fun recordUpload(
-        ctx: RequestContext,
-        objectKey: String,
-        contentType: String,
-        category: String,
-    ) {
-        try {
-            val doc = UploadRecordEntity().apply {
-                this.appId = ctx.appId
-                this.installId = ctx.installId
-                this.userId = ctx.userId
-                this.objectKey = objectKey
-                this.contentType = contentType
-                this.category = category
-                createdAt = java.time.Instant.now()
-                updatedAt = java.time.Instant.now()
-            }
-            uploadRecordRepo.insert(ctx, doc)
-        } catch (_: Exception) {
-            // best-effort
-        }
     }
 
     private fun getContext(dfe: DgsDataFetchingEnvironment): RequestContext =

@@ -119,20 +119,6 @@ class AntiqueService(
     }
 
     /**
-     * 生成预签名上传 URL。
-     */
-    fun presignedUploadUrl(objectKey: String, contentType: String, duration: Duration): String {
-        return objectStorage.presignUpload(objectKey, contentType, duration)
-    }
-
-    /**
-     * 生成预签名下载 URL。
-     */
-    fun presignedDownloadUrl(objectKey: String, duration: Duration): String {
-        return objectStorage.presignDownload(objectKey, duration)
-    }
-
-    /**
      * 将扫描记录标记为已收藏（或取消收藏）。
      *
      * best-effort 语义：异常时静默忽略，不影响主流程。
