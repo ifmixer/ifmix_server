@@ -34,7 +34,7 @@ class DemoFetcher(
     fun findTodoById(@InputArgument id: String, dfe: DgsDataFetchingEnvironment): Todo? {
         val ctx = getContext(dfe)
         val doc = demoFacade.findTodoById(ctx, id) ?: return null
-        if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, doc.userId, doc.installId)) {
+        if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, doc.userId?.toHexString(), doc.installId?.toHexString())) {
             throw ApiError(ErrorCode.FORBIDDEN)
         }
         return doc.toTodo()
@@ -76,11 +76,11 @@ class DemoFetcher(
         val ctx = getContext(dfe)
         val doc = demoFacade.findTodoById(ctx, id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "todo not found")
-        if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, doc.userId, doc.installId)) {
+        if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, doc.userId?.toHexString(), doc.installId?.toHexString())) {
             throw ApiError(ErrorCode.FORBIDDEN)
         }
         demoFacade.updateTodo(ctx, id, input)
-        return demoFacade.findTodoById(ctx, id, useCache = false)?.toTodo()
+        return demoFacade.findTodoById(ctx, id)?.toTodo()
             ?: throw IllegalStateException("Failed to read updated todo")
     }
 
@@ -89,7 +89,7 @@ class DemoFetcher(
         val ctx = getContext(dfe)
         val doc = demoFacade.findTodoById(ctx, id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "todo not found")
-        if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, doc.userId, doc.installId)) {
+        if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, doc.userId?.toHexString(), doc.installId?.toHexString())) {
             throw ApiError(ErrorCode.FORBIDDEN)
         }
         return demoFacade.deleteTodo(ctx, id)
@@ -104,7 +104,7 @@ class DemoFetcher(
         val ctx = getContext(dfe)
         val todo = demoFacade.findTodoById(ctx, todoId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "todo not found")
-        if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, todo.userId, todo.installId)) {
+        if (ctx.bff == Bff.CUSTOMER && !ownsRow(ctx, todo.userId?.toHexString(), todo.installId?.toHexString())) {
             throw ApiError(ErrorCode.FORBIDDEN)
         }
         val itemId = demoFacade.createTodoItem(ctx, todoId, input)

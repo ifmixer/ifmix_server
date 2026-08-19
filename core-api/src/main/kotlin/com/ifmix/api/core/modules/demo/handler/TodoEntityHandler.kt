@@ -7,7 +7,7 @@ import com.ifmix.api.core.common.redis.CacheAside
 import com.ifmix.api.core.graphql.generated.types.CreateTodoInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
-import com.ifmix.api.core.modules.demo.repo.TodoRepositoryImpl
+import com.ifmix.api.core.modules.demo.repo.TodoRepository
 import org.bson.types.ObjectId
 import org.springframework.stereotype.Component
 import java.time.Instant
@@ -17,7 +17,7 @@ import java.time.Instant
  */
 @Component
 class TodoEntityHandler(
-    private val repo: TodoRepositoryImpl,
+    private val repo: TodoRepository,
     private val cache: CacheAside,
 ) {
     private fun cacheKey(appId: ObjectId, id: ObjectId) = "todo:${appId}:${id}"

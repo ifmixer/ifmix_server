@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.db.MongoClusterResolver
-import com.ifmix.api.core.common.db.RepoCtx
+import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.http.RequestContext
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria

@@ -1,31 +1,18 @@
 package com.ifmix.api.core.modules.demo.repo
 
 import com.ifmix.api.core.common.db.CRUDOps
-import com.ifmix.api.core.common.db.MongoClusterResolver
 import com.ifmix.api.core.common.db.RepoCtx
 import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
 import org.bson.types.ObjectId
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
+import org.springframework.stereotype.Component
 
 /**
  * Todo 仓储。持有 CRUDOps 实例获得基础 CRUD + 游标分页。
  */
-@Configuration
-class TodoRepository {
-
-    @Bean
-    fun crudOps(clusterResolver: MongoClusterResolver): CRUDOps<TodoEntity> =
-        CRUDOps(clusterResolver.primary(), TodoEntity::class.java)
-
-    @Bean
-    fun todoRepository(crudOps: CRUDOps<TodoEntity>): TodoRepositoryImpl =
-        TodoRepositoryImpl(crudOps)
-}
-
-class TodoRepositoryImpl(
+@Component
+class TodoRepository(
     private val crudOps: CRUDOps<TodoEntity>,
 ) {
     fun findById(ctx: RepoCtx, appId: ObjectId, id: ObjectId): TodoEntity? =

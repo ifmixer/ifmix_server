@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.ai.entity
 
 import com.ifmix.api.core.common.db.BaseAppEntity
+import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
 import org.springframework.data.mongodb.core.mapping.Document
@@ -35,7 +36,7 @@ fun CollectionItemEntity.toCollectionItemType(
     scanRecord: com.ifmix.api.core.graphql.generated.types.ScanRecord? = null,
 ): com.ifmix.api.core.graphql.generated.types.CollectionItemType =
     com.ifmix.api.core.graphql.generated.types.CollectionItemType(
-        id = this.id?.toHexString() ?: "",
+        id = this.id.toHexString(),
         collectionId = this.collectionId ?: "",
         scanRecordId = this.scanRecordId?.toHexString() ?: "",
         scanRecord = scanRecord,

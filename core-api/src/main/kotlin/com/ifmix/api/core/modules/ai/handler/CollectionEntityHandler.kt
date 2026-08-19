@@ -1,7 +1,5 @@
 package com.ifmix.api.core.modules.ai.handler
 
-import com.ifmix.api.core.common.db.BaseAppEntity
-import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.modules.ai.AiFacade
 import com.ifmix.api.core.modules.ai.entity.CollectionEntity
@@ -15,8 +13,4 @@ class CollectionEntityHandler(private val facade: AiFacade) {
 
     /** 获取（或创建）默认收藏夹。 */
     fun getDefault(ctx: RequestContext): CollectionEntity = facade.getDefaultCollection(ctx)
-
-    /** 按 id 获取收藏夹。 */
-    fun findById(ctx: RequestContext, id: String): CollectionEntity? =
-        facade.collectionCrud.findById(ctx, id)
 }

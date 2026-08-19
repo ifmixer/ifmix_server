@@ -1,9 +1,9 @@
 package com.ifmix.api.core.modules.auth.handler
 
 import com.ifmix.api.core.common.http.OperationContext
-import com.ifmix.api.core.modules.auth.UpsertInput
 import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityRepo
 import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretRepo
+import com.ifmix.api.core.modules.auth.repo.UpsertInput
 import org.bson.types.ObjectId
 import org.springframework.stereotype.Component
 

@@ -2,8 +2,8 @@ package com.ifmix.api.core.graphql.common.dataloader
 
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.graphql.generated.types.TodoItem
-import com.ifmix.api.core.modules.todo.mapper.toTodoItem
-import com.ifmix.api.core.modules.todo.service.TodoItemService
+import com.ifmix.api.core.modules.demo.toTodoItem
+import com.ifmix.api.core.modules.demo.service.TodoItemService
 import com.netflix.graphql.dgs.DgsDataLoader
 import com.netflix.graphql.dgs.context.DgsContext
 import org.dataloader.BatchLoaderEnvironment
@@ -28,7 +28,6 @@ class TodoItemDataLoader(
             // 从 DGS context 获取 RequestContext（含 appId 等租户信息）
             @Suppress("UNCHECKED_CAST")
             val ctx = DgsContext.getCustomContext<RequestContext>(environment)
-            
 
             todoItemService.findByTodoIds(ctx, keys.toList())
                 .map { it.toTodoItem() }

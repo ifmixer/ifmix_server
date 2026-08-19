@@ -75,7 +75,7 @@ class AiFetcher(
         val (items, scanMap, hasMore) = aiFacade.listItemsWithRecords(ctx, collectionId, cursor, effectiveLimit)
 
         return CollectionItemConnection(
-            items = items.map { item ->
+            items = items.map { item: CollectionItemEntity ->
                 val scanRecord = item.scanRecordId?.toHexString()?.let { scanMap[it] }?.toScanRecord()
                 item.toCollectionItemType(scanRecord)
             },

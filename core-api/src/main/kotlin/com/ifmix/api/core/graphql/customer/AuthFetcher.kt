@@ -87,7 +87,7 @@ class AuthFetcher(private val authFacade: AuthFacade) {
     private fun toAuthResult(result: AuthLoginResult): AuthResult = AuthResult(
         accessToken = result.accessToken,
         refreshToken = result.refreshToken,
-        refreshExpiresAt = result.refreshExpiresAt.toEpochSecond(),
+        refreshExpiresAt = result.refreshExpiresAt,
         deviceSecret = result.deviceSecret,
         expiresIn = result.expiresIn,
         user = AuthUser(id = result.user.id, email = result.user.email),
@@ -96,8 +96,8 @@ class AuthFetcher(private val authFacade: AuthFacade) {
     private fun toAuthResult(result: AuthExchangeResult): AuthResult = AuthResult(
         accessToken = result.accessToken,
         refreshToken = result.refreshToken,
-        refreshExpiresAt = result.refreshExpiresAt.toEpochSecond(),
-        deviceSecret = "",  // exchange does not issue new device secret
+        refreshExpiresAt = result.refreshExpiresAt,
+        deviceSecret = "",
         expiresIn = result.expiresIn,
         user = AuthUser(id = result.user.id, email = result.user.email),
     )
@@ -105,9 +105,9 @@ class AuthFetcher(private val authFacade: AuthFacade) {
     private fun toAuthResult(result: AuthRefreshResult): AuthResult = AuthResult(
         accessToken = result.accessToken,
         refreshToken = result.refreshToken,
-        refreshExpiresAt = result.refreshExpiresAt.toEpochSecond(),
-        deviceSecret = "",  // refresh does not issue new device secret
+        refreshExpiresAt = result.refreshExpiresAt,
+        deviceSecret = "",
         expiresIn = result.expiresIn,
-        user = AuthUser(id = "", email = null),  // refresh does not return user
+        user = AuthUser(id = "", email = null),
     )
 }

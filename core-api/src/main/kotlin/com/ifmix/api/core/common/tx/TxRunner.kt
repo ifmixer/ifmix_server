@@ -3,6 +3,7 @@ package com.ifmix.api.core.common.tx
 import com.ifmix.api.core.common.http.OperationContext
 import com.mongodb.client.ClientSession
 import com.mongodb.client.MongoClient
+import com.mongodb.client.TransactionBody
 import org.springframework.stereotype.Component
 
 /**
@@ -12,9 +13,14 @@ import org.springframework.stereotype.Component
 @Component
 class TxRunner(private val mongoClient: MongoClient) {
 
-    fun <R> withTx(opCtx: OperationContext, body: (OperationContext) -> R): R {
-        mongoClient.startSession().use { session ->
-            return session.withTransaction { body(opCtx.withTx(session)) }
+    fun <R : Any> withTx(opCtx: OperationContext, body: (OperationContext) -> R): R {
+        val session = mongoClient.startSession()
+        return try {
+            session.withTransaction(object : TransactionBody<R> {
+                override fun execute(): R = body(opCtx.withTx(session))
+            })
+        } finally {
+            session.close()
         }
     }
 }

@@ -4,8 +4,9 @@ import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
-import com.ifmix.api.core.common.db.RepoCtx
+import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.modules.ai.entity.ScanRecordEntity
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
@@ -13,8 +14,6 @@ import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.data.mongodb.core.query.isEqualTo
 import java.time.Instant
-import com.ifmix.api.core.modules.ai.entity.ScanRecordEntity
-import com.ifmix.api.core.modules.ai.repo.ScanRecordRepository
 
 /**
  * 扫描记录仓储。
@@ -27,7 +26,7 @@ class ScanRecordRepository(
 ) {
     /** 按 id 查询（不软删过滤）。 */
     fun findById(id: String): ScanRecordEntity? =
-        crudOps.mongo.findOne(
+        mongo.findOne(
             Query(Criteria().andOperator(ScanRecordEntity::id isEqualTo ObjectId(id))),
             ScanRecordEntity::class.java,
         )

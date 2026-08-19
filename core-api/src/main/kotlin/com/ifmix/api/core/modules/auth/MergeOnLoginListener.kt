@@ -46,7 +46,7 @@ class MergeOnLoginListener(
             )
             bindingRepo.upsert(
                 ctx = ctx,
-                userId = e.appUserId,
+                userId = org.bson.types.ObjectId(e.appUserId),
                 installId = installId,
                 clientIp = e.clientIp,
                 clientPlatform = e.clientPlatform,

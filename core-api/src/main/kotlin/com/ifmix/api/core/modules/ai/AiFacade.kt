@@ -6,6 +6,7 @@ import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.common.db.ownsRow
 import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ErrorCode
+import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.ratelimit.RateLimiter
 import com.ifmix.api.core.common.storage.ObjectStorage
@@ -140,7 +141,7 @@ class AiFacade(
             isDefault = true
         }
         return try {
-            collectionCrudOps.insertOne(com.ifmix.api.core.common.db.RepoCtx(), ctx.appId, doc)
+            collectionCrudOps.insertOne(com.ifmix.api.core.common.http.RepoCtx(), ctx.appId, doc)
             doc
         } catch (e: org.springframework.dao.DuplicateKeyException) {
             collectionRepo.findDefault(ctx)
@@ -152,7 +153,7 @@ class AiFacade(
     private fun resolveCollectionId(ctx: RequestContext, collectionId: String?): String {
         if (collectionId == null) return getDefaultCollection(ctx).id!!.toHexString()
         val coll = collectionCrudOps.findById(
-            com.ifmix.api.core.common.db.RepoCtx(), ctx.appId, collectionId,
+            com.ifmix.api.core.common.http.RepoCtx(), ctx.appId, collectionId,
         ) ?: throw ApiError(ErrorCode.NOT_FOUND, "collection not found")
         if (!ownsRow(ctx, coll.userId, coll.installId)) {
             throw ApiError(ErrorCode.NOT_FOUND, "collection not found")

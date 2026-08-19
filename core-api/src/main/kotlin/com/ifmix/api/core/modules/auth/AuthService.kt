@@ -19,6 +19,8 @@ import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityRepo
 import com.ifmix.api.core.modules.auth.repo.AppUserRepo
 import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretRepo
 import com.ifmix.api.core.modules.auth.repo.AuthTenantRepo
+import com.ifmix.api.core.modules.auth.repo.RefreshIssued
+import com.ifmix.api.core.modules.auth.repo.UpsertInput
 
 /**
  * 认证业务编排（组合非继承）。

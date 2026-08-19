@@ -3,6 +3,10 @@ package com.ifmix.api.core.modules.auth
 import jakarta.validation.constraints.NotBlank
 import java.time.Instant
 
+/**
+ * Auth DTOs shared between AuthService (legacy REST) and AuthFacade (new GraphQL).
+ * Retained to avoid breaking AuthService which may still be used elsewhere.
+ */
 data class UserDto(val id: String?, val email: String?)
 
 data class LoginReq(

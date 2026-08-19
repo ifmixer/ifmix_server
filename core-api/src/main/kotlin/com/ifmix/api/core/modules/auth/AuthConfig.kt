@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.scheduling.annotation.EnableAsync
+import com.ifmix.api.core.modules.auth.handler.AuthEntityHandler
 import com.ifmix.api.core.modules.auth.repo.AppRefreshTokenRepo
 import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityRepo
 import com.ifmix.api.core.modules.auth.repo.AppUserRepo
@@ -66,6 +67,27 @@ class AuthConfig {
     ): AuthService = AuthService(
         appConfigRepo, providerVerifiers, authJwtService, providerIdentityRepo, appUserRepo,
         deviceSecretRepo, refreshRepo, txRunner, events, accessTtlSec,
+    )
+
+    @Bean
+    fun authEntityHandler(
+        providerIdentityRepo: AuthProviderIdentityRepo,
+        deviceSecretRepo: AuthDeviceSecretRepo,
+    ) = AuthEntityHandler(providerIdentityRepo, deviceSecretRepo)
+
+    @Bean
+    fun authFacade(
+        appConfigRepo: AppConfigRepo,
+        providerVerifiers: Map<String, ProviderVerifier>,
+        authJwtService: AuthJwtService,
+        appUserRepo: AppUserRepo,
+        refreshRepo: AppRefreshTokenRepo,
+        entityHandler: AuthEntityHandler,
+        txRunner: TxRunner,
+        events: ApplicationEventPublisher,
+    ): AuthFacade = AuthFacade(
+        appConfigRepo, providerVerifiers, authJwtService, appUserRepo, refreshRepo,
+        entityHandler, txRunner, events, accessTtlSec,
     )
 
     @Bean
