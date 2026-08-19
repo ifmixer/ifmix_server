@@ -40,6 +40,25 @@ class ScanRecordRepository(
             ScanRecordEntity::class.java,
         )
 
+    /** 插入扫描记录（用于创建任务）。 */
+    fun insert(ctx: RequestContext, record: ScanRecordEntity): String {
+        mongo.insert(record)
+        return record.id!!.toHexString()
+    }
+
+    /** 标记扫描记录为已收藏（或取消收藏），best-effort。 */
+    fun markCollected(ctx: RequestContext, scanRecordId: String, collected: Boolean) {
+        val update = Update().set(ScanRecordEntity::collected, collected).set(ScanRecordEntity::updatedAt, Instant.now())
+        mongo.updateFirst(
+            Query(Criteria().andOperator(
+                ScanRecordEntity::id isEqualTo ObjectId(scanRecordId),
+                ScanRecordEntity::appId isEqualTo ctx.appId,
+            )),
+            update,
+            ScanRecordEntity::class.java,
+        )
+    }
+
     /** 按 id 列表批量查询（带 appId 过滤和软删）。 */
     fun findByIds(ctx: RequestContext, ids: List<String>): List<ScanRecordEntity> =
         crudOps.findByIds(RepoCtx(), ctx.appId, ids)

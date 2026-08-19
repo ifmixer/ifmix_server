@@ -19,7 +19,6 @@ import com.ifmix.api.core.modules.ai.repo.CollectionItemRepository
 import com.ifmix.api.core.modules.ai.repo.CollectionRepository
 import com.ifmix.api.core.modules.ai.repo.ScanRecordRepository
 import org.bson.types.ObjectId
-import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
@@ -44,7 +43,6 @@ class AiFacade(
     private val scanRunner: ScanRunner,
     private val objectStorage: ObjectStorage,
     private val rateLimiter: RateLimiter,
-    private val mongo: MongoTemplate,
     private val scanRecordRepo: ScanRecordRepository,
     private val collectionCrudOps: CRUDOps<CollectionEntity>,
     private val collectionRepo: CollectionRepository,
@@ -77,7 +75,7 @@ class AiFacade(
             tier = "FREE"
             relatedId = request.relatedId
         }
-        mongo.insert(record)
+        scanRecordRepo.insert(ctx, record)
         return record.id!!.toHexString()
     }
 
@@ -107,15 +105,7 @@ class AiFacade(
 
     /** 标记扫描记录为已收藏（或取消收藏），best-effort。 */
     fun markCollected(ctx: RequestContext, scanRecordId: String, collected: Boolean) {
-        val update = Update().set(ScanRecordEntity::collected, collected).set(ScanRecordEntity::updatedAt, Instant.now())
-        mongo.updateFirst(
-            Query(Criteria().andOperator(
-                ScanRecordEntity::id isEqualTo ObjectId(scanRecordId),
-                ScanRecordEntity::appId isEqualTo ctx.appId,
-            )),
-            update,
-            ScanRecordEntity::class.java,
-        )
+        try { scanRecordRepo.markCollected(ctx, scanRecordId, collected) } catch (_: Exception) { }
     }
 
     /** 按 id 列表批量查询扫描记录。 */
