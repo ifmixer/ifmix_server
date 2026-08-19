@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.ai.repo
 import com.ifmix.api.core.entity.ai.ScanCollectionItem
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.dto.Page
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
