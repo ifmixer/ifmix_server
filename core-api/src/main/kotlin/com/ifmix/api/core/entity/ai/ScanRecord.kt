@@ -13,6 +13,8 @@ interface ScanRecord : AppScopedProps, SoftDeletableProps {
     @Id
     val id: UUID
 
+    override val appId: UUID
+
     @Serialized
     @Column(name = "image_keys")
     val imageKeys: List<ImageRef>

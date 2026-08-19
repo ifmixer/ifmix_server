@@ -12,6 +12,8 @@ interface ScanCollectionItem : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
+    override val appId: UUID
+
     val collectionId: UUID
     val scanRecordId: UUID
 }
