@@ -4,7 +4,7 @@ import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.infra.jooq.TxRunner
+import com.ifmix.api.core.infra.tx.TxRunner
 import com.ifmix.api.core.modules.ai.service.internal.ScanCollectionEntityService
 import com.ifmix.api.core.entity.ai.ScanCollection
 import com.ifmix.api.core.entity.ai.ScanCollectionItem

@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.app.service
 import com.ifmix.api.core.entity.app.AppConfigRevision
 import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.infra.jooq.TxRunner
+import com.ifmix.api.core.infra.tx.TxRunner
 import com.ifmix.api.core.modules.app.service.internal.AppConfigEntityService
 import org.springframework.stereotype.Service
 import java.util.UUID

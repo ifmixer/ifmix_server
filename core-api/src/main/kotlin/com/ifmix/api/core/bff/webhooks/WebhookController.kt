@@ -78,7 +78,7 @@ class WebhookController(
 
             // 4. 通过 bundleId 反查 appId
             val appId = if (bundleId != null) {
-                appConfigRepo.findByBundleId(com.ifmix.api.core.infra.db.SvcCtx.DEFAULT, bundleId)?.appId
+                appConfigRepo.findByBundleId(buildCtx(), bundleId)?.appId
             } else null
 
             if (appId == null) {
@@ -111,7 +111,7 @@ class WebhookController(
 
             // 2. 通过 packageName 反查 appId
             val appId = if (packageName != null) {
-                appConfigRepo.findByAndroidPackage(com.ifmix.api.core.infra.db.SvcCtx.DEFAULT, packageName)?.appId
+                appConfigRepo.findByAndroidPackage(buildCtx(), packageName)?.appId
             } else null
 
             if (appId == null) {

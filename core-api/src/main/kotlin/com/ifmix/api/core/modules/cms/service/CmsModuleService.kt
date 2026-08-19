@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.cms.service
 import com.ifmix.api.core.dto.common.CreateOneRes
 import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.infra.jooq.TxRunner
+import com.ifmix.api.core.infra.tx.TxRunner
 import com.ifmix.api.core.dto.cms.SubmitFeedbackReq
 import com.ifmix.api.core.modules.cms.service.internal.FeedbackEntityService
 import org.springframework.stereotype.Service

@@ -3,6 +3,7 @@ plugins {
     kotlin("plugin.spring")
     id("org.springframework.boot")
     id("io.spring.dependency-management")
+    id("com.netflix.dgs.codegen")
     id("com.google.devtools.ksp")
 }
 
@@ -79,6 +80,12 @@ dependencies {
 
     // H2 for routing tests (needed in task 3)
     testImplementation("com.h2database:h2")
+
+    // GraphQL (Netflix DGS Framework 12.x)
+    implementation(platform("com.netflix.graphql.dgs:graphql-dgs-platform-dependencies:12.0.1"))
+    implementation("com.netflix.graphql.dgs:graphql-dgs-spring-graphql-starter")
+    implementation("com.jayway.jsonpath:json-path:3.0.0")  // DGS 12 Jackson3 需要 json-path 3.x
+    testImplementation("com.netflix.graphql.dgs:graphql-dgs-client")
 }
 
 kotlin {
@@ -105,4 +112,38 @@ ksp {
     arg("jimmer.language", "kotlin")
     // input DTO 中 nullable 属性默认使用 dynamic 修饰（不传=不修改）
     arg("jimmer.dto.defaultNullableInputModifier", "fuzzy")
+}
+
+// DGS Codegen — 从 .graphqls schema 生成 Kotlin input/payload/enum types
+tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
+    // 生成代码的包名
+    packageName = "com.ifmix.api.core.generated"
+    language = "kotlin"
+    generateClient = true       // 生成类型安全 client（测试用）
+    generateDataTypes = true    // 生成 input/type data classes
+    snakeCaseConstantNames = true
+
+    // schema 文件位置（包含 common + customer 目录）
+    schemaPaths = mutableListOf(
+        "${projectDir}/src/main/resources/schema/common",
+        "${projectDir}/src/main/resources/schema/customer",
+    )
+
+    // 类型映射：GraphQL output type → Domain Model data class（不生成 data class）
+    // input types / payload types / enums 不在此映射，由 codegen 生成
+    typeMapping = mutableMapOf(
+        // Scalars
+        "UUID" to "java.util.UUID",
+        "DateTime" to "java.time.Instant",
+        "JSON" to "kotlin.Any",
+        // Entity output types → Domain Model data classes
+        "ScanRecord" to "com.ifmix.api.core.entity.ai.ScanRecord",
+        "ScanCollection" to "com.ifmix.api.core.entity.ai.ScanCollection",
+        "ImageRef" to "com.ifmix.api.core.entity.scan.ImageRef",
+        // OperationResult: 手写类型，不再由 codegen 生成
+        "OperationResult" to "com.ifmix.api.core.dto.common.OperationResult",
+        // Page types → 通用 Page<T>
+        "ScanRecordPage" to "com.ifmix.api.core.dto.common.Page",
+        "ScanCollectionItemPage" to "com.ifmix.api.core.dto.common.Page",
+    )
 }

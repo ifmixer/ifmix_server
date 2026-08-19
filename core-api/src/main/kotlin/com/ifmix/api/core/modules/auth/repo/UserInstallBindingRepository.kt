@@ -1,48 +1,17 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
-import com.ifmix.api.core.jooq.tables.CoreUserInstallBinding.Companion.CORE_USER_INSTALL_BINDING
 import com.ifmix.api.core.entity.auth.UserInstallBinding
-import org.jooq.TableField
+import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
+import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
-/**
- * UserInstallBinding jOOQ repository.
- */
 @Repository
-class UserInstallBindingRepository(factory: CrudRepoOpsFactory) {
+class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<UserInstallBinding>(sql, UserInstallBinding::class) {
 
-    companion object {
-        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
-            UserInstallBinding::id.name to CORE_USER_INSTALL_BINDING.ID,
-            UserInstallBinding::appId.name to CORE_USER_INSTALL_BINDING.APP_ID,
-            UserInstallBinding::userId.name to CORE_USER_INSTALL_BINDING.USER_ID,
-            UserInstallBinding::installId.name to CORE_USER_INSTALL_BINDING.INSTALL_ID,
-            UserInstallBinding::firstSeenAt.name to CORE_USER_INSTALL_BINDING.FIRST_SEEN_AT,
-            UserInstallBinding::lastSeenAt.name to CORE_USER_INSTALL_BINDING.LAST_SEEN_AT,
-            UserInstallBinding::loginCount.name to CORE_USER_INSTALL_BINDING.LOGIN_COUNT,
-            UserInstallBinding::clientIp.name to CORE_USER_INSTALL_BINDING.CLIENT_IP,
-            UserInstallBinding::clientPlatform.name to CORE_USER_INSTALL_BINDING.CLIENT_PLATFORM,
-            UserInstallBinding::createdAt.name to CORE_USER_INSTALL_BINDING.CREATED_AT,
-            UserInstallBinding::updatedAt.name to CORE_USER_INSTALL_BINDING.UPDATED_AT,
-        )
-    }
-
-    private val crud = factory.create(
-        table = CORE_USER_INSTALL_BINDING,
-        idField = CORE_USER_INSTALL_BINDING.ID,
-        appIdField = CORE_USER_INSTALL_BINDING.APP_ID,
-        type = UserInstallBinding::class.java,
-    )
-
-    /**
-     * 记录一次登录绑定（幂等 upsert）：
-     * - 不存在 → 插入，loginCount=1
-     * - 已存在 → 更新 lastSeenAt、loginCount++、clientIp/platform
-     */
     fun recordBinding(
         ctx: SvcCtx,
         appId: UUID,
@@ -51,39 +20,39 @@ class UserInstallBindingRepository(factory: CrudRepoOpsFactory) {
         clientIp: String?,
         clientPlatform: String?,
     ) {
-        val now = Instant.now()
-        val existing = ctx.dsl.selectFrom(CORE_USER_INSTALL_BINDING)
-            .where(CORE_USER_INSTALL_BINDING.APP_ID.eq(appId))
-            .and(CORE_USER_INSTALL_BINDING.USER_ID.eq(userId))
-            .and(CORE_USER_INSTALL_BINDING.INSTALL_ID.eq(installId))
-            .fetchOne()
+        val existing = sql.createQuery(UserInstallBinding::class) {
+            where(table.appId eq appId)
+            where(table.userId eq userId)
+            where(table.installId eq installId)
+            select(table)
+        }.limit(1).execute().firstOrNull()
 
         if (existing == null) {
-            val entity = UserInstallBinding(
-                id = UUID.randomUUID(),
-                appId = appId,
-                userId = userId,
-                installId = installId,
-                firstSeenAt = now,
-                lastSeenAt = now,
-                loginCount = 1,
-                clientIp = clientIp,
-                clientPlatform = clientPlatform,
-                createdAt = now,
-                updatedAt = now,
-            )
-            crud.insert(ctx, entity)
+            val now = Instant.now()
+            val entity = UserInstallBinding {
+                id = UUID.randomUUID()
+                this.appId = appId
+                this.userId = userId
+                this.installId = installId
+                this.firstSeenAt = now
+                this.lastSeenAt = now
+                this.loginCount = 1
+                this.clientIp = clientIp
+                this.clientPlatform = clientPlatform
+                this.createdAt = now
+                this.updatedAt = now
+            }
+            save(ctx, entity)
         } else {
-            ctx.dsl.update(CORE_USER_INSTALL_BINDING)
-                .set(CORE_USER_INSTALL_BINDING.LAST_SEEN_AT, now)
-                .set(CORE_USER_INSTALL_BINDING.LOGIN_COUNT, CORE_USER_INSTALL_BINDING.LOGIN_COUNT.add(1))
-                .set(CORE_USER_INSTALL_BINDING.UPDATED_AT, now)
-                .set(CORE_USER_INSTALL_BINDING.CLIENT_IP, clientIp)
-                .set(CORE_USER_INSTALL_BINDING.CLIENT_PLATFORM, clientPlatform)
-                .where(CORE_USER_INSTALL_BINDING.APP_ID.eq(appId))
-                .and(CORE_USER_INSTALL_BINDING.USER_ID.eq(userId))
-                .and(CORE_USER_INSTALL_BINDING.INSTALL_ID.eq(installId))
-                .execute()
+            val now = Instant.now()
+            sql.createUpdate(UserInstallBinding::class) {
+                where(table.id eq existing.id)
+                set(table.lastSeenAt, now)
+                set(table.loginCount, existing.loginCount + 1)
+                set(table.updatedAt, now)
+                set(table.clientIp, clientIp)
+                set(table.clientPlatform, clientPlatform)
+            }.execute()
         }
     }
 }

@@ -25,7 +25,7 @@ class MergeOnLoginListener(
             // 记录 user-install 绑定
             if (e.installId != null) {
                 bindingRepo.recordBinding(
-                    ctx = SvcCtx(op = e.ctx, dsl = SvcCtx.DEFAULT.dsl),
+                    ctx = SvcCtx(op = e.ctx, sql = SvcCtxFactory().forApp(e.ctx).sql),
                     appId = e.appId,
                     userId = e.appUserId,
                     installId = e.installId,

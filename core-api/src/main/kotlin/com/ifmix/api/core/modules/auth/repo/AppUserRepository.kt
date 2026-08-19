@@ -1,54 +1,21 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
-import com.ifmix.api.core.jooq.tables.CoreAppUser.Companion.CORE_APP_USER
 import com.ifmix.api.core.entity.auth.AppUser
-import org.jooq.TableField
+import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
+import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
-import java.time.Instant
 import java.util.UUID
 
 @Repository
-class AppUserRepository(factory: CrudRepoOpsFactory) {
+class AppUserRepository(sql: KSqlClient) : BaseAppCrudRepository<AppUser>(sql, AppUser::class) {
 
-    companion object {
-        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
-            AppUser::id.name to CORE_APP_USER.ID,
-            AppUser::appId.name to CORE_APP_USER.APP_ID,
-            AppUser::authIdentityId.name to CORE_APP_USER.AUTH_IDENTITY_ID,
-            AppUser::createdAt.name to CORE_APP_USER.CREATED_AT,
-            AppUser::updatedAt.name to CORE_APP_USER.UPDATED_AT,
-        )
-    }
-
-    private val crud = factory.create(
-        table = CORE_APP_USER,
-        idField = CORE_APP_USER.ID,
-        appIdField = CORE_APP_USER.APP_ID,
-        type = AppUser::class.java,
-    )
-
-    fun findByAppAndIdentity(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): AppUser? =
-        ctx.dsl.selectFrom(CORE_APP_USER)
-            .where(CORE_APP_USER.APP_ID.eq(appId))
-            .and(CORE_APP_USER.AUTH_IDENTITY_ID.eq(authIdentityId))
-            .fetchOneInto(AppUser::class.java)
-
-    fun findById(ctx: SvcCtx, id: UUID): AppUser? = crud.findById(ctx, id)
-
-    fun insert(ctx: SvcCtx, user: AppUser) = crud.insert(ctx, user)
-
-    fun ensure(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): UUID {
-        val existing = findByAppAndIdentity(ctx, appId, authIdentityId)
-        if (existing != null) return existing.id
-        val now = Instant.now()
-        val newUser = AppUser(
-            id = UuidV7.generate(), appId = appId, authIdentityId = authIdentityId,
-            metadata = null, createdAt = now, updatedAt = now,
-        )
-        insert(ctx, newUser)
-        return newUser.id
+    fun findByAppAndIdentity(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): AppUser? {
+        return sql.createQuery(AppUser::class) {
+            where(table.appId eq appId)
+            where(table.authIdentity eq authIdentityId)
+            select(table)
+        }.limit(1).execute().firstOrNull()
     }
 }

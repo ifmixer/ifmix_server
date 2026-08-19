@@ -1,87 +1,70 @@
 package com.ifmix.api.core.modules.ai.repo
 
+import com.ifmix.api.core.entity.ai.ScanCollectionItem
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
-import com.ifmix.api.core.jooq.tables.CoreScanCollectionItem.Companion.CORE_SCAN_COLLECTION_ITEM
-import com.ifmix.api.core.entity.ai.ScanCollectionItem
-import org.jooq.TableField
+import com.ifmix.api.core.infra.dto.Page
+import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
+import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.eq
+import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
 @Repository
-class ScanCollectionItemRepository(factory: CrudRepoOpsFactory) {
-
-    companion object {
-        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
-            ScanCollectionItem::id.name to CORE_SCAN_COLLECTION_ITEM.ID,
-            ScanCollectionItem::appId.name to CORE_SCAN_COLLECTION_ITEM.APP_ID,
-            ScanCollectionItem::collectionId.name to CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID,
-            ScanCollectionItem::scanRecordId.name to CORE_SCAN_COLLECTION_ITEM.SCAN_RECORD_ID,
-            ScanCollectionItem::createdAt.name to CORE_SCAN_COLLECTION_ITEM.CREATED_AT,
-            ScanCollectionItem::updatedAt.name to CORE_SCAN_COLLECTION_ITEM.UPDATED_AT,
-        )
-    }
-
-    private val crud = factory.create(
-        table = CORE_SCAN_COLLECTION_ITEM,
-        idField = CORE_SCAN_COLLECTION_ITEM.ID,
-        appIdField = CORE_SCAN_COLLECTION_ITEM.APP_ID,
-        type = ScanCollectionItem::class.java,
-        deletedAtField = CORE_SCAN_COLLECTION_ITEM.DELETED_AT,
-    )
+class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanCollectionItem>(sql, ScanCollectionItem::class) {
 
     fun insertIfAbsent(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
-        val existing = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION_ITEM)
-            .where(CORE_SCAN_COLLECTION_ITEM.APP_ID.eq(appId))
-            .and(CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID.eq(collectionId))
-            .and(CORE_SCAN_COLLECTION_ITEM.SCAN_RECORD_ID.eq(scanRecordId))
-            .and(CORE_SCAN_COLLECTION_ITEM.DELETED_AT.isNull)
-            .fetchOneInto(ScanCollectionItem::class.java)
+        val existing = sql.createQuery(ScanCollectionItem::class) {
+            where(table.appId eq appId)
+            where(table.collectionId eq collectionId)
+            where(table.scanRecordId eq scanRecordId)
+            select(table)
+        }.limit(1).execute().firstOrNull()
 
         if (existing != null) return existing.id
 
         val id = UuidV7.generate()
-        crud.insert(ctx, ScanCollectionItem(
-            id = id, appId = appId, collectionId = collectionId,
-            scanRecordId = scanRecordId, createdAt = Instant.now(),
-        ))
+        val entity = ScanCollectionItem {
+            id = id
+            this.appId = appId
+            this.collectionId = collectionId
+            this.scanRecordId = scanRecordId
+            createdAt = Instant.now()
+            updatedAt = Instant.now()
+        }
+        save(ctx, entity)
         return id
     }
 
     fun softDeleteByScanIds(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Int {
         if (scanRecordIds.isEmpty()) return 0
-        return ctx.dsl.update(CORE_SCAN_COLLECTION_ITEM)
-            .set(CORE_SCAN_COLLECTION_ITEM.DELETED_AT, Instant.now())
-            .where(CORE_SCAN_COLLECTION_ITEM.APP_ID.eq(appId))
-            .and(CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID.eq(collectionId))
-            .and(CORE_SCAN_COLLECTION_ITEM.SCAN_RECORD_ID.`in`(scanRecordIds))
-            .execute()
+        return sql.createUpdate(ScanCollectionItem::class) {
+            where(table.appId eq appId)
+            where(table.collectionId eq collectionId)
+            where(table.scanRecordId valueIn scanRecordIds)
+            set(table.deletedAt, Instant.now())
+        }.execute()
     }
 
     fun findItemsByCursor(ctx: SvcCtx, appId: UUID, collectionId: UUID, limit: Int, cursor: UUID?): Page<ScanCollectionItem> {
-        var cond = CORE_SCAN_COLLECTION_ITEM.APP_ID.eq(appId)
-            .and(CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID.eq(collectionId))
-            .and(CORE_SCAN_COLLECTION_ITEM.DELETED_AT.isNull)
-        cursor?.let { cond = cond.and(CORE_SCAN_COLLECTION_ITEM.ID.lt(it)) }
-
-        val items = ctx.dsl.selectFrom(CORE_SCAN_COLLECTION_ITEM)
-            .where(cond)
-            .orderBy(CORE_SCAN_COLLECTION_ITEM.ID.desc())
-            .limit(limit + 1)
-            .fetchInto(ScanCollectionItem::class.java)
+        val items = sql.createQuery(ScanCollectionItem::class) {
+            where(table.appId eq appId)
+            where(table.collectionId eq collectionId)
+            cursor?.let { where(table.id lt it) }
+            orderBy(table.id.desc())
+            select(table)
+        }.limit(limit + 1).execute()
 
         return Page.of(items, limit) { it.id.toString() }
     }
 
     fun existsByScanRecordId(ctx: SvcCtx, collectionId: UUID, scanRecordId: UUID): Boolean {
-        return ctx.dsl.fetchExists(
-            CORE_SCAN_COLLECTION_ITEM,
-            CORE_SCAN_COLLECTION_ITEM.COLLECTION_ID.eq(collectionId)
-                .and(CORE_SCAN_COLLECTION_ITEM.SCAN_RECORD_ID.eq(scanRecordId))
-                .and(CORE_SCAN_COLLECTION_ITEM.DELETED_AT.isNull),
-        )
+        return sql.createQuery(ScanCollectionItem::class) {
+            where(table.collectionId eq collectionId)
+            where(table.scanRecordId eq scanRecordId)
+            select(table)
+        }.limit(1).execute().isNotEmpty()
     }
 }

@@ -1,176 +1,35 @@
 package com.ifmix.api.core.modules.ai.repo
 
-import com.ifmix.api.core.generated.types.ScanUnsetField
-import com.ifmix.api.core.generated.types.UpdateScanInput
-import com.ifmix.api.core.generated.types.FilterGroup
-import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
-import com.ifmix.api.core.infra.jooq.FilterConditionParser
-import com.ifmix.api.core.jooq.tables.CoreScanRecord.Companion.CORE_SCAN_RECORD
-import com.ifmix.api.core.entity.ImageRef
 import com.ifmix.api.core.entity.ai.ScanRecord
-import org.jooq.TableField
+import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
+import com.ifmix.api.core.generated.types.UpdateScanInput
+import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.eq
+import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-class ScanRecordRepository(factory: CrudRepoOpsFactory) {
-
-    private val crud = factory.create(
-        table = CORE_SCAN_RECORD,
-        idField = CORE_SCAN_RECORD.ID,
-        appIdField = CORE_SCAN_RECORD.APP_ID,
-        type = ScanRecord::class.java,
-        deletedAtField = CORE_SCAN_RECORD.DELETED_AT,
-    )
-
-    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanRecord? =
-        ctx.dsl.selectFrom(CORE_SCAN_RECORD)
-            .where(CORE_SCAN_RECORD.APP_ID.eq(appId))
-            .and(CORE_SCAN_RECORD.ID.eq(id))
-            .and(CORE_SCAN_RECORD.DELETED_AT.isNull)
-            .fetchOne()?.let { toModel(it) }
-
-    fun findByIds(ctx: SvcCtx, ids: Collection<UUID>): List<ScanRecord> {
-        if (ids.isEmpty()) return emptyList()
-        return ctx.dsl.selectFrom(CORE_SCAN_RECORD)
-            .where(CORE_SCAN_RECORD.ID.`in`(ids))
-            .fetch()
-            .map { toModel(it) }
-    }
+class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(sql, ScanRecord::class) {
 
     fun findByCursor(ctx: SvcCtx, appId: UUID, collected: Boolean?, cursor: UUID?, limit: Int): List<ScanRecord> {
-        var cond = CORE_SCAN_RECORD.APP_ID.eq(appId).and(CORE_SCAN_RECORD.DELETED_AT.isNull)
-        collected?.let { cond = cond.and(CORE_SCAN_RECORD.COLLECTED.eq(it)) }
-        cursor?.let { cond = cond.and(CORE_SCAN_RECORD.ID.lt(it)) }
-        return ctx.dsl.selectFrom(CORE_SCAN_RECORD)
-            .where(cond)
-            .orderBy(CORE_SCAN_RECORD.ID.desc())
-            .limit(limit)
-            .fetch()
-            .map { toModel(it) }
-    }
-
-    fun insert(ctx: SvcCtx, entity: ScanRecord) {
-        val record = ctx.dsl.newRecord(CORE_SCAN_RECORD, entity)
-        ctx.dsl.executeInsert(record)
+        return sql.createQuery(ScanRecord::class) {
+            where(table.appId eq appId)
+            collected?.let { where(table.collected eq it) }
+            cursor?.let { where(table.id lt it) }
+            orderBy(table.id.desc())
+            select(table)
+        }.limit(limit).execute()
     }
 
     fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, req: UpdateScanInput) {
-        crud.partialUpdate(ctx, appId, id) {
-            req.set?.userDisplayName?.let { set(CORE_SCAN_RECORD.USER_DISPLAY_NAME, it) }
-            req.set?.userNotes?.let { set(CORE_SCAN_RECORD.USER_NOTES, it) }
-            req.set?.collected?.let { set(CORE_SCAN_RECORD.COLLECTED, it) }
-            if (req.unset?.contains(ScanUnsetField.USER_DISPLAY_NAME) == true) setNull(CORE_SCAN_RECORD.USER_DISPLAY_NAME)
-            if (req.unset?.contains(ScanUnsetField.USER_NOTES) == true) setNull(CORE_SCAN_RECORD.USER_NOTES)
-        }
-    }
-
-    fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean = crud.deleteById(ctx, appId, id)
-    fun exists(ctx: SvcCtx, appId: UUID, id: UUID): Boolean = crud.exists(ctx, appId, id)
-
-    // ===== 动态 Filter 查询 =====
-
-    private val filterParser = FilterConditionParser(
-        fieldMap = FIELD_MAP,
-        allowedKeys = setOf(
-            ScanRecord::status.name,
-            ScanRecord::collected.name,
-            ScanRecord::lang.name,
-            ScanRecord::country.name,
-            ScanRecord::currency.name,
-            ScanRecord::userDisplayName.name,
-            ScanRecord::userNotes.name,
-            ScanRecord::createdAt.name,
-            ScanRecord::updatedAt.name,
-        ),
-    )
-
-    @Suppress("UNCHECKED_CAST")
-    fun findByFilter(ctx: SvcCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): List<ScanRecord> {
-        val filterMap = filter?.let { convertFilterGroupToMap(it) }
-        val dynamicCond = filterParser.parse(filterMap)
-        var cond = CORE_SCAN_RECORD.APP_ID.eq(appId)
-            .and(CORE_SCAN_RECORD.DELETED_AT.isNull)
-            .and(dynamicCond)
-        cursor?.let { cond = cond.and(CORE_SCAN_RECORD.ID.lt(it)) }
-        return ctx.dsl.selectFrom(CORE_SCAN_RECORD)
-            .where(cond)
-            .orderBy(CORE_SCAN_RECORD.ID.desc())
-            .limit(limit)
-            .fetch()
-            .map { toModel(it) }
-    }
-
-    /**
-     * 将 DGS codegen 生成的 FilterGroup 对象转为 Map 结构（FilterConditionParser 的输入格式）。
-     */
-    @Suppress("UNCHECKED_CAST")
-    private fun convertFilterGroupToMap(group: FilterGroup): Map<String, Any?> {
-        val result = mutableMapOf<String, Any?>()
-        group.and?.let { list ->
-            result["and"] = list.map { expr -> convertExprToMap(expr) }
-        }
-        group.or?.let { list ->
-            result["or"] = list.map { expr -> convertExprToMap(expr) }
-        }
-        return result
-    }
-
-    private fun convertExprToMap(expr: com.ifmix.api.core.generated.types.FilterExpr): Map<String, Any?> {
-        val result = mutableMapOf<String, Any?>()
-        expr.field?.let { f ->
-            result["field"] = mapOf(
-                "field" to f.field,
-                "op" to f.op.name,
-                "value" to f.value,
-                "values" to f.values,
-            )
-        }
-        expr.group?.let { g ->
-            result["group"] = convertFilterGroupToMap(g)
-        }
-        return result
-    }
-
-    // =========================================================================
-    // JSON ↔ model helpers (JSONB fields require manual mapping)
-    // =========================================================================
-
-    private fun toModel(r: org.jooq.Record): ScanRecord = ScanRecord(
-        id = r.get(CORE_SCAN_RECORD.ID)!!,
-        appId = r.get(CORE_SCAN_RECORD.APP_ID)!!,
-        imageKeys = r.get(CORE_SCAN_RECORD.IMAGE_KEYS) ?: emptyList(),
-        basicResult = r.get(CORE_SCAN_RECORD.BASIC_RESULT),
-        premiumResult = r.get(CORE_SCAN_RECORD.PREMIUM_RESULT),
-        status = r.get(CORE_SCAN_RECORD.STATUS) ?: 100,
-        clientIp = r.get(CORE_SCAN_RECORD.CLIENT_IP),
-        lang = r.get(CORE_SCAN_RECORD.LANG),
-        country = r.get(CORE_SCAN_RECORD.COUNTRY),
-        currency = r.get(CORE_SCAN_RECORD.CURRENCY),
-        userDisplayName = r.get(CORE_SCAN_RECORD.USER_DISPLAY_NAME),
-        userNotes = r.get(CORE_SCAN_RECORD.USER_NOTES),
-        collected = r.get(CORE_SCAN_RECORD.COLLECTED) ?: false,
-        createdAt = r.get(CORE_SCAN_RECORD.CREATED_AT)!!,
-        updatedAt = r.get(CORE_SCAN_RECORD.UPDATED_AT),
-        deletedAt = r.get(CORE_SCAN_RECORD.DELETED_AT),
-    )
-
-    companion object {
-        /** Kotlin 属性名 → jOOQ TableField。供动态 filter/sort 使用。 */
-        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
-            ScanRecord::id.name to CORE_SCAN_RECORD.ID,
-            ScanRecord::appId.name to CORE_SCAN_RECORD.APP_ID,
-            ScanRecord::status.name to CORE_SCAN_RECORD.STATUS,
-            ScanRecord::collected.name to CORE_SCAN_RECORD.COLLECTED,
-            ScanRecord::lang.name to CORE_SCAN_RECORD.LANG,
-            ScanRecord::country.name to CORE_SCAN_RECORD.COUNTRY,
-            ScanRecord::currency.name to CORE_SCAN_RECORD.CURRENCY,
-            ScanRecord::userDisplayName.name to CORE_SCAN_RECORD.USER_DISPLAY_NAME,
-            ScanRecord::userNotes.name to CORE_SCAN_RECORD.USER_NOTES,
-            ScanRecord::clientIp.name to CORE_SCAN_RECORD.CLIENT_IP,
-            ScanRecord::createdAt.name to CORE_SCAN_RECORD.CREATED_AT,
-            ScanRecord::updatedAt.name to CORE_SCAN_RECORD.UPDATED_AT,
-        )
+        sql.createUpdate(ScanRecord::class) {
+            where(table.appId eq appId)
+            where(table.id eq id)
+            req.set?.userDisplayName?.let { set(table.userDisplayName, it) }
+            req.set?.userNotes?.let { set(table.userNotes, it) }
+            req.set?.collected?.let { set(table.collected, it) }
+        }.execute()
     }
 }

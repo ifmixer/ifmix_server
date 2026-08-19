@@ -1,66 +1,44 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
-import com.ifmix.api.core.jooq.tables.CoreAppRefreshToken.Companion.CORE_APP_REFRESH_TOKEN
 import com.ifmix.api.core.entity.auth.AppRefreshToken
-import org.jooq.TableField
+import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
+import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.babyfish.jimmer.sql.kt.ast.expression.eq
+import org.babyfish.jimmer.sql.kt.ast.expression.isNull
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
-/**
- * AppRefreshToken jOOQ repository.
- */
 @Repository
-class AppRefreshTokenRepository(factory: CrudRepoOpsFactory) {
+class AppRefreshTokenRepository(sql: KSqlClient) : BaseAppCrudRepository<AppRefreshToken>(sql, AppRefreshToken::class) {
 
-    companion object {
-        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
-            AppRefreshToken::id.name to CORE_APP_REFRESH_TOKEN.ID,
-            AppRefreshToken::appId.name to CORE_APP_REFRESH_TOKEN.APP_ID,
-            AppRefreshToken::appUserId.name to CORE_APP_REFRESH_TOKEN.APP_USER_ID,
-            AppRefreshToken::expiresAt.name to CORE_APP_REFRESH_TOKEN.EXPIRES_AT,
-            AppRefreshToken::revokedAt.name to CORE_APP_REFRESH_TOKEN.REVOKED_AT,
-            AppRefreshToken::createdAt.name to CORE_APP_REFRESH_TOKEN.CREATED_AT,
-            AppRefreshToken::updatedAt.name to CORE_APP_REFRESH_TOKEN.UPDATED_AT,
-        )
+    fun findValidByHash(ctx: SvcCtx, appId: UUID, tokenHash: String): AppRefreshToken? {
+        val now = Instant.now()
+        return sql.createQuery(AppRefreshToken::class) {
+            where(table.appId eq appId)
+            where(table.tokenHash eq tokenHash)
+            where(table.revokedAt.isNull)
+            where(table.expiresAt.isNull.or(table.expiresAt gt now))
+            select(table)
+        }.limit(1).execute().firstOrNull()
     }
-
-    private val crud = factory.create(
-        table = CORE_APP_REFRESH_TOKEN,
-        idField = CORE_APP_REFRESH_TOKEN.ID,
-        appIdField = CORE_APP_REFRESH_TOKEN.APP_ID,
-        type = AppRefreshToken::class.java,
-    )
-
-    fun findValidByHash(ctx: SvcCtx, appId: UUID, tokenHash: String): AppRefreshToken? =
-        ctx.dsl.selectFrom(CORE_APP_REFRESH_TOKEN)
-            .where(CORE_APP_REFRESH_TOKEN.APP_ID.eq(appId))
-            .and(CORE_APP_REFRESH_TOKEN.TOKEN_HASH.eq(tokenHash))
-            .and(CORE_APP_REFRESH_TOKEN.REVOKED_AT.isNull())
-            .and(CORE_APP_REFRESH_TOKEN.EXPIRES_AT.isNull().or(CORE_APP_REFRESH_TOKEN.EXPIRES_AT.gt(Instant.now())))
-            .fetchOneInto(AppRefreshToken::class.java)
 
     fun revoke(ctx: SvcCtx, id: UUID, replacedBy: UUID? = null) {
         val now = Instant.now()
         if (replacedBy != null) {
-            ctx.dsl.update(CORE_APP_REFRESH_TOKEN)
-                .set(CORE_APP_REFRESH_TOKEN.REVOKED_AT, now)
-                .set(CORE_APP_REFRESH_TOKEN.UPDATED_AT, now)
-                .set(CORE_APP_REFRESH_TOKEN.REPLACED_BY, replacedBy)
-                .where(CORE_APP_REFRESH_TOKEN.ID.eq(id))
-                .execute()
+            sql.createUpdate(AppRefreshToken::class) {
+                where(table.id eq id)
+                set(table.revokedAt, now)
+                set(table.updatedAt, now)
+                set(table.replacedBy, replacedBy)
+            }.execute()
         } else {
-            ctx.dsl.update(CORE_APP_REFRESH_TOKEN)
-                .set(CORE_APP_REFRESH_TOKEN.REVOKED_AT, now)
-                .set(CORE_APP_REFRESH_TOKEN.UPDATED_AT, now)
-                .where(CORE_APP_REFRESH_TOKEN.ID.eq(id))
-                .execute()
+            sql.createUpdate(AppRefreshToken::class) {
+                where(table.id eq id)
+                set(table.revokedAt, now)
+                set(table.updatedAt, now)
+            }.execute()
         }
-    }
-
-    fun insert(ctx: SvcCtx, token: AppRefreshToken) {
-        crud.insert(ctx, token)
     }
 }
