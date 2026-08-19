@@ -18,10 +18,10 @@ import java.util.UUID
 class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevision>(sql, AppConfigRevision::class) {
 
     fun findActiveByAppId(ctx: SvcCtx, appId: UUID): AppConfigRevision? {
-        return ctx.ctx.sql.createQuery(AppConfigRevision::class) {
-            where(appId eq appId)
-            where(enabled eq true)
-            orderBy(createdAt.desc())
+        return ctx.sql.createQuery(AppConfigRevision::class) {
+            where(table.appId eq appId)
+            where(table.enabled eq true)
+            orderBy(table.createdAt.desc())
             select(table)
         }.limit(1).execute().firstOrNull()
     }
