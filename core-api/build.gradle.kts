@@ -55,6 +55,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-jooq")
     jooqGenerator("org.postgresql:postgresql")
 
+    // === MyBatis (demo 模块专用，手动构建 SqlSessionFactory) ===
+    implementation("org.mybatis.spring.boot:mybatis-spring-boot-starter:4.1.0") {
+        exclude(group = "org.mybatis", module = "mybatis-spring") // 手动构建，不用 auto-config
+    }
+    implementation("org.mybatis.dynamic-sql:mybatis-dynamic-sql:2.0.0")
+    implementation("org.mybatis:mybatis:3.5.16")
+
     // UUIDv7 generator (cursor pagination requires time-ordered IDs)
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
 
