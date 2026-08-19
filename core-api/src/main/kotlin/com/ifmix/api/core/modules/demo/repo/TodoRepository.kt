@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.demo.repo
 
 import com.ifmix.api.core.common.db.CRUDOps
-import com.ifmix.api.core.common.db.RepoCtx
+import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
@@ -15,29 +15,29 @@ import org.springframework.stereotype.Component
 class TodoRepository(
     private val crudOps: CRUDOps<TodoEntity>,
 ) {
-    fun findById(ctx: RepoCtx, appId: ObjectId, id: ObjectId): TodoEntity? =
-        crudOps.findById(ctx, appId, id.toHexString())
+    fun findById(ctx: RepoCtx, appId: String, id: String): TodoEntity? =
+        crudOps.findById(ctx, appId, id)
 
-    fun findByIds(ctx: RepoCtx, appId: ObjectId, ids: List<ObjectId>): List<TodoEntity> =
-        crudOps.findByIds(ctx, appId, ids.map { it.toHexString() })
+    fun findByIds(ctx: RepoCtx, appId: String, ids: List<String>): List<TodoEntity> =
+        crudOps.findByIds(ctx, appId, ids)
 
-    fun findByCursor(ctx: RepoCtx, appId: ObjectId, input: CursorQueryInput): Page<TodoEntity> =
+    fun findByCursor(ctx: RepoCtx, appId: String, input: CursorQueryInput): Page<TodoEntity> =
         crudOps.findByCursor(ctx, appId, input)
 
-    fun insert(ctx: RepoCtx, entity: TodoEntity): ObjectId {
-        crudOps.insertOne(ctx, entity)
-        return entity.id
+    fun insert(ctx: RepoCtx, appId: String, entity: TodoEntity): String {
+        crudOps.insertOne(ctx, appId, entity)
+        return entity.id.toHexString()
     }
 
-    fun updateById(ctx: RepoCtx, appId: ObjectId, id: ObjectId, patch: Any, unsetFields: List<String>? = null): Boolean =
-        crudOps.updateByIdWithUnset(ctx, appId, id.toHexString(), patch, unsetFields)
+    fun updateById(ctx: RepoCtx, appId: String, id: String, patch: Any, unsetFields: List<String>? = null): Boolean =
+        crudOps.updateByIdWithUnset(ctx, appId, id, patch, unsetFields)
 
-    fun deleteById(ctx: RepoCtx, appId: ObjectId, id: ObjectId): Boolean =
-        crudOps.deleteById(ctx, appId, id.toHexString())
+    fun deleteById(ctx: RepoCtx, appId: String, id: String): Boolean =
+        crudOps.deleteById(ctx, appId, id)
 
-    fun deleteByIds(ctx: RepoCtx, appId: ObjectId, ids: List<ObjectId>): Int =
-        crudOps.deleteByIds(ctx, appId, ids.map { it.toHexString() })
+    fun deleteByIds(ctx: RepoCtx, appId: String, ids: List<String>): Int =
+        crudOps.deleteByIds(ctx, appId, ids)
 
-    fun updateByIds(ctx: RepoCtx, appId: ObjectId, patches: Map<String, Any>): Int =
+    fun updateByIds(ctx: RepoCtx, appId: String, patches: Map<String, Any>): Int =
         crudOps.updateByIds(ctx, appId, patches)
 }

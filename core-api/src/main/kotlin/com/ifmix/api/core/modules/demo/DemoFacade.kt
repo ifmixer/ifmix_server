@@ -1,16 +1,14 @@
 package com.ifmix.api.core.modules.demo
 
-import com.ifmix.api.core.common.db.CursorQueryInput
-import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.graphql.generated.types.CreateTodoInput
-import com.ifmix.api.core.graphql.generated.types.CreateTodoItemInput
-import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
-import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
 import com.ifmix.api.core.modules.demo.entity.TodoItemEntity
 import com.ifmix.api.core.modules.demo.handler.TodoEntityHandler
 import com.ifmix.api.core.modules.demo.handler.TodoItemEntityHandler
+import com.ifmix.api.core.graphql.generated.types.CreateTodoInput
+import com.ifmix.api.core.graphql.generated.types.CreateTodoItemInput
+import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
+import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
 import com.ifmix.api.core.modules.demo.toTodo
 import com.ifmix.api.core.modules.demo.toTodoItem
 import org.bson.types.ObjectId
@@ -26,74 +24,66 @@ class DemoFacade(
     // ---- Query ----
 
     fun findTodoById(ctx: RequestContext, id: String): TodoEntity? =
-        todoHandler.findByIdWithCtx(ObjectId(ctx.appId), ObjectId(id))
+        todoHandler.findByIdWithCtx(ctx.appId, id)
 
-    fun findTodosByIds(ctx: RequestContext, ids: List<String>): List<TodoEntity> {
-        val appId = ObjectId(ctx.appId)
-        return todoHandler.findByIds(appId, ids.map { ObjectId(it) })
+    fun findTodosByIds(ctx: RequestContext, ids: List<String>): List<TodoEntity> =
+        todoHandler.findByIds(ctx.appId, ids)
+
+    fun listTodos(ctx: RequestContext, cursor: String?, limit: Int?): com.ifmix.api.core.common.db.Page<TodoEntity> {
+        val input = com.ifmix.api.core.common.db.CursorQueryInput(cursor = cursor, limit = limit)
+        return todoHandler.findByCursor(ctx.appId, input)
     }
-
-    fun listTodos(ctx: RequestContext, cursor: String?, limit: Int?): Page<TodoEntity> =
-        todoHandler.findByCursor(ObjectId(ctx.appId), CursorQueryInput(cursor = cursor, limit = limit))
 
     // ---- Mutation: todo ----
 
     fun createTodo(ctx: RequestContext, input: CreateTodoInput): String {
-        val appId = ObjectId(ctx.appId)
-        val todoId = todoHandler.create(appId, input).toHexString()
+        val todoId = todoHandler.create(ctx.appId, input)
         input.items?.forEach { itemInput ->
-            todoItemHandler.create(appId, ObjectId(todoId), itemInput)
+            todoItemHandler.create(ctx.appId, todoId, itemInput)
         }
         return todoId
     }
 
     fun updateTodo(ctx: RequestContext, id: String, input: UpdateTodoInput): Boolean {
-        val appId = ObjectId(ctx.appId)
-        val result = todoHandler.update(appId, ObjectId(id), input)
+        val result = todoHandler.update(ctx.appId, id, input)
         input.items?.forEach { mutation ->
-            todoItemHandler.applyMutation(appId, ObjectId(id), mutation)
+            todoItemHandler.applyMutation(ctx.appId, id, mutation)
         }
         return result
     }
 
     fun deleteTodo(ctx: RequestContext, id: String): Boolean {
-        val appId = ObjectId(ctx.appId)
-        val objectId = ObjectId(id)
-        todoItemHandler.softDeleteByTodoId(appId, objectId)
-        return todoHandler.delete(appId, objectId)
+        todoItemHandler.softDeleteByTodoId(ctx.appId, id)
+        return todoHandler.delete(ctx.appId, id)
     }
 
     // ---- Mutation: todoItem ----
 
     fun createTodoItem(ctx: RequestContext, todoId: String, input: CreateTodoItemInput): String {
-        val appId = ObjectId(ctx.appId)
-        return todoItemHandler.create(appId, ObjectId(todoId), input).toHexString()
+        return todoItemHandler.create(ctx.appId, todoId, input)
     }
 
     fun findTodoItemById(ctx: RequestContext, id: String): TodoItemEntity? =
-        todoItemHandler.getById(ObjectId(ctx.appId), ObjectId(id))
+        todoItemHandler.getById(ctx.appId, id)
 
     fun updateTodoItem(ctx: RequestContext, id: String, input: UpdateTodoItemInput): Boolean {
-        return todoItemHandler.update(ObjectId(ctx.appId), ObjectId(id), input)
+        return todoItemHandler.update(ctx.appId, id, input)
     }
 
     fun deleteTodoItem(ctx: RequestContext, id: String): Boolean {
-        return todoItemHandler.softDeleteById(ObjectId(ctx.appId), ObjectId(id))
+        return todoItemHandler.softDeleteById(ctx.appId, id)
     }
 
     // ---- Admin batch ----
 
     fun batchDeleteTodos(ctx: RequestContext, ids: List<String>): Int {
-        val appId = ObjectId(ctx.appId)
-        ids.forEach { id -> todoItemHandler.softDeleteByTodoId(appId, ObjectId(id)) }
-        return todoHandler.deleteByIds(appId, ids.map { ObjectId(it) })
+        ids.forEach { id -> todoItemHandler.softDeleteByTodoId(ctx.appId, id) }
+        return todoHandler.deleteByIds(ctx.appId, ids)
     }
 
-    fun batchUpdateTodos(ctx: RequestContext, patches: List<Pair<String, Map<String, Any?>>>): Int {
-        val appId = ObjectId(ctx.appId)
-        return todoHandler.updateByIds(appId, patches.toMap())
-    }
+    fun batchUpdateTodos(ctx: RequestContext, patches: List<Pair<String, Map<String, Any?>>>): Int =
+        todoHandler.updateByIds(ctx.appId, patches.toMap())
 
     fun batchDeleteTodoItems(ctx: RequestContext, ids: List<String>): Int =
-        todoItemHandler.softDeleteByIds(ObjectId(ctx.appId), ids.map { ObjectId(it) })
+        todoItemHandler.softDeleteByIds(ctx.appId, ids)
 }

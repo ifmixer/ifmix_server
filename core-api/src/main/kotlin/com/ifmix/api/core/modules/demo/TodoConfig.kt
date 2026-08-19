@@ -2,8 +2,9 @@ package com.ifmix.api.core.modules.demo
 
 import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.db.MongoClusterResolver
-import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.redis.CacheAside
+import com.ifmix.api.core.modules.demo.handler.TodoEntityHandler
+import com.ifmix.api.core.modules.demo.handler.TodoItemEntityHandler
 import com.ifmix.api.core.modules.demo.repo.TodoItemRepository
 import com.ifmix.api.core.modules.demo.service.TodoItemService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
@@ -33,13 +34,13 @@ class TodoConfig {
 
     @Bean
     @ConditionalOnMissingBean(TodoItemService::class)
-    fun todoItemService(todoItemRepository: TodoItemRepository): TodoItemService =
-        TodoItemService(todoItemRepository)
+    fun todoItemService(todoItemHandler: TodoItemEntityHandler): TodoItemService =
+        TodoItemService(todoItemHandler)
 
     @Bean
     @ConditionalOnMissingBean(DemoFacade::class)
     fun demoFacade(
-        todoService: TodoService,
-        todoItemService: TodoItemService,
-    ): DemoFacade = DemoFacade(todoService, todoItemService)
+        todoHandler: TodoEntityHandler,
+        todoItemHandler: TodoItemEntityHandler,
+    ): DemoFacade = DemoFacade(todoHandler, todoItemHandler)
 }

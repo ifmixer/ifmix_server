@@ -1,15 +1,13 @@
 package com.ifmix.api.core.modules.demo
 
-import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
-import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.redis.CacheAside
+import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.graphql.generated.types.CreateTodoInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
-import org.bson.types.ObjectId
 
 /**
  * Todo 业务服务。只管 todos 集合，不知道 TodoItem 的存在。
@@ -20,17 +18,15 @@ class TodoService(
     private val cache: CacheAside,
 ) {
     private fun cacheKey(ctx: RequestContext, id: String) = "todo:${ctx.appId}:$id"
-    private fun repoCtx(ctx: RequestContext) = RepoCtx()
+    private fun repoCtx(ctx: RequestContext) = com.ifmix.api.core.common.http.RepoCtx()
 
     fun create(ctx: RequestContext, input: CreateTodoInput): String {
         val doc = TodoEntity().apply {
             this.title = input.title
             this.done = false
             this.meta = input.meta
-            this.userId = ctx.userId?.let { ObjectId(it) }
-            this.installId = ctx.installId?.let { ObjectId(it) }
         }
-        crudOps.insertOne(repoCtx(ctx), doc)
+        crudOps.insertOne(repoCtx(ctx), ctx.appId, doc)
         return doc.id.toHexString()
     }
 
