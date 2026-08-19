@@ -2,6 +2,7 @@ package com.ifmix.api.core.entity.auth
 
 import com.ifmix.api.core.entity.MutableProps
 import org.babyfish.jimmer.sql.*
+import java.time.Instant
 import java.util.UUID
 
 /**
