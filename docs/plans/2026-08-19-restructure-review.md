@@ -157,3 +157,26 @@ schema 中 `UpdateTodoInput` 仍是 flat 结构（`title, done, meta, unset`）�
 2. 所有关联字段走 DataLoader
 3. set/unset Update Input 改造
 4. FilterCriteriaParser 实现
+
+## 执行记录
+
+### 本轮完成 (commit 48c5fcb + e7e612e + additional)
+
+| # | 问题 | 状态 |
+|---|------|------|
+| 8 | Config 类未删除 | ⚠️ 部分保留（ConditionalOnMissingBean 需要） |
+| 7 | AiFacade 直接注入 MongoTemplate | ✅ 已移至 ScanRecordRepository |
+| 全局 | @Service/@Component 注解 | ✅ 已补全所有 Facade/Handler |
+| 全局 | ObjectIdScalar 注册 | ✅ 已在 GraphQLScalarWiring 注册 |
+| 全局 | Filter DSL | ✅ 已实现 FilterCriteriaParser + 各 Repo 白名单 |
+
+### 待后续处理
+
+| # | 问题 | 建议方式 |
+|---|------|---------|
+| 1 | RequestContext → ObjectId 全链路 | 独立大任务，影响 ~100+ 文件 |
+| 4 | Mutation 返回 XxxResult | 独立任务，schema+fetcher+handler 联动 |
+| 5 | Entity 直出 (DGS typeMapping) | 独立任务，需更新 build.gradle.kts |
+| 12 | DataLoader 全覆盖 | 独立任务，需新增多个 DataLoader |
+| 14 | UpdateTodoInput set 嵌套改造 | 部分完成，还需 schema 更新 |
+| 15 | 所有 Entity String→ObjectId | 与 P0-1 联动，大任务 |
