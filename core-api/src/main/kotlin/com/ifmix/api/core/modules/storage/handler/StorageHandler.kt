@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.storage.service.internal
+package com.ifmix.api.core.modules.storage.handler
 
 import com.ifmix.api.core.dto.storage.PresignDownloadResult
 import com.ifmix.api.core.dto.storage.PresignUploadResult
@@ -14,7 +14,7 @@ import java.time.Duration
 import java.time.Instant
 
 @Component
-class StorageEntityService(
+class StorageHandler(
     private val uploadRecordRepo: UploadRecordRepository,
     private val objectStorage: ObjectStorage,
 ) {

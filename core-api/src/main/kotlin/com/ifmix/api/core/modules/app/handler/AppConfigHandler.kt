@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.app.service.internal
+package com.ifmix.api.core.modules.app.handler
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
@@ -12,7 +12,7 @@ import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.util.UUID
 
 @Component
-class AppConfigEntityService(
+class AppConfigHandler(
     private val revisionRepo: AppConfigRepository,
 ) {
     data class CreateRevisionInput(

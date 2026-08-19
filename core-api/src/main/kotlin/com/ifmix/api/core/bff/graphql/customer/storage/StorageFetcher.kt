@@ -5,7 +5,7 @@ import com.ifmix.api.core.generated.types.PresignDownloadPayload
 import com.ifmix.api.core.generated.types.PresignUploadInput
 import com.ifmix.api.core.generated.types.PresignUploadPayload
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
-import com.ifmix.api.core.modules.storage.service.StorageModuleService
+import com.ifmix.api.core.modules.storage.StorageFacade
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
@@ -13,7 +13,7 @@ import com.netflix.graphql.dgs.InputArgument
 
 @DgsComponent
 class StorageFetcher(
-    private val storageService: StorageModuleService,
+    private val storageService: StorageFacade,
     private val ctxProvider: OperationContextProvider,
 ) {
 

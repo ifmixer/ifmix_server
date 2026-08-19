@@ -3,7 +3,7 @@ package com.ifmix.api.core.bff.webhooks
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
-import com.ifmix.api.core.modules.payment.service.PaymentModuleService
+import com.ifmix.api.core.modules.payment.PaymentFacade
 import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.modules.payment.NotificationDecoder
 import com.nimbusds.jose.JWSObject
@@ -30,9 +30,9 @@ import java.util.UUID
  */
 @RestController
 @RequestMapping("/webhooks/iap")
-@ConditionalOnBean(PaymentModuleService::class)
+@ConditionalOnBean(PaymentFacade::class)
 class WebhookController(
-    private val iapService: PaymentModuleService,
+    private val iapService: PaymentFacade,
     @Qualifier("appleDecoder") private val appleDecoder: NotificationDecoder,
     @Qualifier("googleDecoder") private val googleDecoder: NotificationDecoder,
     private val appConfigRepo: AppConfigRepository,

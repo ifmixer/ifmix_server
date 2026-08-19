@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.ai.service.internal
+package com.ifmix.api.core.modules.ai.handler
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.dto.common.Page
@@ -16,7 +16,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Component
-open class ScanCollectionEntityService(
+open class ScanCollectionHandler(
     private val collectionRepo: ScanCollectionRepository,
     private val itemRepo: ScanCollectionItemRepository,
 ) {

@@ -12,7 +12,7 @@ import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.entity.ai.ScanRecord
-import com.ifmix.api.core.modules.ai.service.AiModuleService
+import com.ifmix.api.core.modules.ai.AiFacade
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
@@ -22,7 +22,7 @@ import java.util.UUID
 
 @DgsComponent
 class ScanFetcher(
-    private val scanService: AiModuleService,
+    private val scanService: AiFacade,
     private val ctxProvider: OperationContextProvider,
 ) {
     @DgsQuery(field = "query_ai_findScanById")

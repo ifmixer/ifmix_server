@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.demo.service.internal
+package com.ifmix.api.core.modules.demo.handler
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
@@ -11,7 +11,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Component
-class TodoEntityService(
+class TodoHandler(
     private val todoRepo: TodoRepository,
     private val todoItemRepo: TodoItemRepository,
 ) {

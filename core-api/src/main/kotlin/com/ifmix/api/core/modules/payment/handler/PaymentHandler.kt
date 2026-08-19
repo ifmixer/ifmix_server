@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.payment.service.internal
+package com.ifmix.api.core.modules.payment.handler
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
@@ -9,6 +9,7 @@ import com.ifmix.api.core.entity.shared.Platforms
 import com.ifmix.api.core.entity.shared.Tiers
 import com.ifmix.api.core.modules.payment.PurchaseVerifier
 import com.ifmix.api.core.modules.payment.VerifyInput
+import com.ifmix.api.core.modules.payment.VerifyResult
 import com.ifmix.api.core.dto.payment.SubStatus
 import com.ifmix.api.core.dto.payment.VerifyReq
 import com.ifmix.api.core.dto.payment.VerifyRes
@@ -21,7 +22,7 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 
 @Component
-class PaymentEntityService(
+class PaymentHandler(
     @Qualifier("appleVerifier") private val appleVerifier: PurchaseVerifier,
     @Qualifier("googleVerifier") private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
@@ -32,26 +33,17 @@ class PaymentEntityService(
         "GOOGLE" to googleVerifier,
     )
 
-    fun verifyIapPurchase(sc: SvcCtx, req: VerifyReq): VerifyRes {
-        val ctx = sc.op
-        val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
+    /**
+     * 验证 + upsert 整体执行。
+     * 注意：外部 verifier 调用应在事务外由 Facade 编排，
+     * 此方法仅处理 DB 写入逻辑（由调用方在 tx.withTx 内调用）。
+     */
+    fun verifyAndUpsert(sc: SvcCtx, req: VerifyReq, verifyResult: VerifyResult): VerifyRes {
+        val appId = sc.op.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
-        val verifier = verifierMap[if (req.platform == Platforms.APPLE) "APPLE" else "GOOGLE"]
-            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: ${req.platform}")
-
-        val purchaseToken = req.purchaseToken ?: req.signedTransaction
-            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "purchaseToken or signedTransaction required")
-        val input = VerifyInput(
-            platform = req.platform,
-            purchaseToken = purchaseToken,
-            productId = req.productId,
-            appId = appId.toString(),
-        )
-        val verifyResult = verifier.verify(input)
-
-        val config = appConfigRepo.findActiveByAppId(sc, appId)
+        val productTierMap = appConfigRepo.findActiveByAppId(sc, appId)
+            ?.content?.iap?.productTierMap
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
-        val productTierMap = config.content.iap.productTierMap
         val tier = tierOf(req.productId, productTierMap) ?: Tiers.FREE
 
         val subscriptionPxid = verifyResult.originalTransactionId ?: run {
@@ -93,7 +85,7 @@ class PaymentEntityService(
             this.active = true
             this.subStatus = subStatus
             this.expiryDate = verifyResult.expiryDate
-            this.purchaseToken = purchaseToken
+            this.purchaseToken = req.purchaseToken ?: req.signedTransaction ?: ""
             rawResponse = mapOf(
                 "original_transaction_id" to verifyResult.originalTransactionId,
                 "product_id" to req.productId,
@@ -112,5 +104,22 @@ class PaymentEntityService(
             productId = req.productId,
             tier = tier,
         )
+    }
+
+    /** 外部验证（无事务）。返回 VerifyResult，由 Facade 在事务外调用。 */
+    fun verifyPurchase(req: VerifyReq): VerifyResult {
+        val verifier = verifierMap[if (req.platform == Platforms.APPLE) "APPLE" else "GOOGLE"]
+            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Unknown platform: ${req.platform}")
+
+        val purchaseToken = req.purchaseToken ?: req.signedTransaction
+            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "purchaseToken or signedTransaction required")
+        val appId = "" // not needed for verification
+        val input = VerifyInput(
+            platform = req.platform,
+            purchaseToken = purchaseToken,
+            productId = req.productId,
+            appId = appId,
+        )
+        return verifier.verify(input)
     }
 }

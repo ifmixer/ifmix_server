@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.payment.service.internal
+package com.ifmix.api.core.modules.payment.handler
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7

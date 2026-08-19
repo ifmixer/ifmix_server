@@ -2,7 +2,7 @@ package com.ifmix.api.core.bff.graphql.customer.todo
 
 import com.ifmix.api.core.generated.types.*
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
-import com.ifmix.api.core.modules.demo.service.DemoModuleService
+import com.ifmix.api.core.modules.demo.DemoFacade
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
@@ -15,7 +15,7 @@ import java.util.UUID
  */
 @DgsComponent
 class TodoFetcher(
-    private val demoService: DemoModuleService,
+    private val demoService: DemoFacade,
     private val ctxProvider: OperationContextProvider,
 ) {
 

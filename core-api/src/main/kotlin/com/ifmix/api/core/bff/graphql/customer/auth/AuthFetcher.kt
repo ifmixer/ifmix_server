@@ -3,13 +3,13 @@ package com.ifmix.api.core.bff.graphql.customer.auth
 import com.ifmix.api.core.dto.common.OperationResult
 import com.ifmix.api.core.generated.types.*
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
-import com.ifmix.api.core.modules.auth.service.AuthModuleService
-import com.ifmix.api.core.modules.auth.service.internal.ExchangeReq
-import com.ifmix.api.core.modules.auth.service.internal.LoginRes
-import com.ifmix.api.core.modules.auth.service.internal.LogoutReq
-import com.ifmix.api.core.modules.auth.service.internal.ProviderLoginReq
-import com.ifmix.api.core.modules.auth.service.internal.RefreshReq
-import com.ifmix.api.core.modules.auth.service.internal.WechatLoginReq
+import com.ifmix.api.core.modules.auth.AuthFacade
+import com.ifmix.api.core.modules.auth.handler.ExchangeReq
+import com.ifmix.api.core.modules.auth.handler.LoginRes
+import com.ifmix.api.core.modules.auth.handler.LogoutReq
+import com.ifmix.api.core.modules.auth.handler.ProviderLoginReq
+import com.ifmix.api.core.modules.auth.handler.RefreshReq
+import com.ifmix.api.core.modules.auth.handler.WechatLoginReq
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
@@ -19,7 +19,7 @@ import java.time.Instant
 
 @DgsComponent
 class AuthFetcher(
-    private val authService: AuthModuleService,
+    private val authService: AuthFacade,
     private val ctxProvider: OperationContextProvider,
 ) {
 

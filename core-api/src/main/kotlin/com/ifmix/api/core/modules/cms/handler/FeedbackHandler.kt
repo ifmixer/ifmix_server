@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.cms.service.internal
+package com.ifmix.api.core.modules.cms.handler
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
@@ -10,7 +10,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Component
-class FeedbackEntityService(
+class FeedbackHandler(
     private val feedbackRepo: FeedbackRepository,
 ) {
     fun submit(sc: SvcCtx, req: SubmitFeedbackReq): UUID {

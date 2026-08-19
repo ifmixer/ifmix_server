@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.ai.service.internal
+package com.ifmix.api.core.modules.ai.handler
 
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.UpdateScanInput
@@ -19,15 +19,35 @@ import java.time.Instant
 import java.util.UUID
 
 @Component
-class ScanEntityService(
+class ScanHandler(
     private val scanRunner: ScanRunner,
     private val objectStorage: ObjectStorage,
     private val scanRepo: ScanRecordRepository,
 ) {
-    fun newScan(sc: SvcCtx, input: NewScanInput): ScanRecord {
+    /** 外部 AI 调用（无事务）+ 准备数据，返回记录 ID */
+    fun prepareNewScan(input: NewScanInput): UUID {
+        val scanId = UuidV7.generate()
+
+        val resolved = input.images.map { img ->
+            ScanMediaItem(
+                imageUrl = objectStorage.getPublicUrl("ugc", img.imageKey),
+                mediaType = guessMediaType(img.imageKey, img.mediaType),
+            )
+        }
+
+        val scanInput = ScanInput(
+            items = resolved,
+            lang = null, // populated by caller from opCtx
+            country = null,
+            currency = null,
+        )
+        return scanId
+    }
+
+    /** 在事务内保存记录 */
+    fun saveNewScan(sc: SvcCtx, scanId: UUID, input: NewScanInput): ScanRecord {
         val appId = sc.op.appId!!
         val now = Instant.now()
-        val scanId = UuidV7.generate()
 
         val resolved = input.images.map { img ->
             ScanMediaItem(

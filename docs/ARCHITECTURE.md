@@ -44,8 +44,11 @@ ifmix-server/
 │  /webhooks/iap/*     (REST, Apple/Google 回调)                        │
 │  /.well-known/jwks   (REST)                                          │
 ├─────────────────────────────────────────────────────────────────────┤
-│  Service Layer (modules/*/service/)                                   │
-│  业务编排 · TxRunner 事务 · CrudServiceOps 缓存决策                    │
+│  Facade Layer (modules/*/XxxFacade.kt)                               │
+│  业务编排 · TxRunner 事务(最小边界) · 只包写操作                      │
+├─────────────────────────────────────────────────────────────────────┤
+│  Handler Layer (modules/*/handler/XxxHandler.kt)                     │
+│  纯业务逻辑 · 接收 SvcCtx · 不注入 TxRunner                         │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Repository Layer (modules/*/repo/)                                   │
 │  纯数据访问 · 使用 Jimmer KSqlClient · 接收 SvcCtx                  │
@@ -74,15 +77,40 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   ├── Todo, TodoItem, ScanRecord, ScanCollection, ...
 │   ├── AppUser, AuthIdentity, AuthDeviceSecret, ...
 │   └── Subscription, StoreNotification, Feedback, ...
-├── modules/                    # 业务模块 (每个含 repo/ + service/)
+├── modules/                    # 业务模块 (Facade + handler/)
 │   ├── auth/                   # 认证 + 社交登录
-│   ├── scan/                   # 古物扫描 + AI 识别
-│   ├── todo/                   # Todo 清单
-│   ├── iap/                    # 内购 + 订阅
-│   ├── feedback/               # 反馈
-│   ├── ai/                     # Agnes AI Key 管理 + ScanRunner
+│   │   ├── AuthFacade.kt       # @Service 对外入口
+│   │   ├── handler/AuthHandler.kt  # @Component 业务逻辑
+│   │   └── repo/
+│   ├── ai/                     # 古物扫描 + AI 识别
+│   │   ├── AiFacade.kt         # @Service 对外入口
+│   │   ├── ScanCollectionFacade.kt
+│   │   ├── handler/
+│   │   │   ├── ScanHandler.kt
+│   │   │   └── ScanCollectionHandler.kt
+│   │   ├── repo/
+│   │   └── service/            # AI infra (非 facade/handler)
+│   ├── payment/                # 内购 + 订阅
+│   │   ├── PaymentFacade.kt
+│   │   ├── handler/PaymentHandler.kt
+│   │   ├── handler/PaymentWebhookHandler.kt
+│   │   └── repo/
+│   ├── cms/                    # 用户反馈
+│   │   ├── CmsFacade.kt
+│   │   ├── handler/FeedbackHandler.kt
+│   │   └── repo/
 │   ├── storage/                # 对象存储
-│   └── app/                    # AppConfig / AppInfo
+│   │   ├── StorageFacade.kt
+│   │   ├── handler/StorageHandler.kt
+│   │   └── repo/
+│   ├── app/                    # AppConfig / AppInfo
+│   │   ├── AppConfigFacade.kt
+│   │   ├── handler/AppConfigHandler.kt
+│   │   └── repo/
+│   └── demo/                   # Todo 演示
+│       ├── DemoFacade.kt
+│       ├── handler/TodoHandler.kt
+│       └── repo/
 ├── entity/                     # Jimmer 实体 (interface + 注解, KSP 生成扩展)
 ├── infra/
 │   ├── jooq/                   # CrudOps, TxRunner, AuditRecordListener, JooqConfig, InstantConverter
@@ -339,166 +367,91 @@ Jimmer 迁移已完成。Entity 已转为 interface + 注解，KSP 生成扩展�
 
 ---
 
-## Service 分层约定（ModuleService + Internal Service）
+## 模块分层约定（Facade + Handler）
 
 ### 规则
 
-每个模块的 service 层分为两层：
+每个模块分为两层：
 
-| 层 | 文件 | 职责 | 注入 |
+| 层 | 文件 | 职责 | 注解 |
 |---|---|---|---|
-| **ModuleService** | `XxxModuleService.kt` | opCtx→svcCtx 转换、开事务、委托 internal | TxRunner + Internal Services + CrudServiceOps(简单查询) |
-| **Internal Service** | `XxxEntityService.kt` | 纯业务实现，接收 SvcCtx | Repo |
+| **Facade** | `XxxFacade.kt` (模块根目录) | opCtx→svcCtx 转换、事务边界控制、对外入口 | `@Service` |
+| **Handler** | `handler/XxxHandler.kt` | 纯业务逻辑，接收 SvcCtx | `@Component` |
 
 **约束：**
-- ModuleService 是模块对外唯一入口，DataFetcher 只注入 ModuleService
-- Internal Service **不注入 TxRunner**，**不构建 SvcCtx**，只接收 SvcCtx 参数
-- 所有 mutation 必须在 ModuleService 通过 `tx.withTx(svc(opCtx)) { sc -> ... }` 包裹
-- 简单的单行 repo 查询（如 `findById`）可保留在 ModuleService 直接调 repo/ops
-- 有逻辑的操作必须委托给 Internal Service
-- Internal Service 按 domain entity 拆文件（纯粹控制文件大小，不是设计分层）
-- 全局事务由 DataFetcher 层的 `GlobalTxRunner` 开启，ModuleService 通过 `opCtx.globalTxDsl` 检测并复用
+- Facade 是模块对外唯一入口，DataFetcher 只注入 Facade
+- Handler **不注入 TxRunner**，**不构建 SvcCtx**，只接收 SvcCtx 参数
+- 事务只包写操作：`tx.withTx { handler.writeOp() }`；读操作在事务外
+- 外部 IO（HTTP/AI 调用）必须在外事务外，不在 `tx.withTx` 内
 
 ### 目录结构
 
 ```
-modules/todo/
-├── repo/
-│   ├── TodoRepository.kt
-│   └── TodoItemRepository.kt
-└── service/
-    ├── TodoModuleService.kt           # 对外入口：事务 + 委托
-    ├── TodoEntityService.kt         # Todo 表的实现
-    └── TodoItemEntityService.kt     # TodoItem 表的实现（文件不大可合并）
+modules/ai/
+├── AiFacade.kt                     # @Service 对外入口
+├── ScanCollectionFacade.kt          # @Service
+├── handler/
+│   ├── ScanHandler.kt              # @Component
+│   └── ScanCollectionHandler.kt    # @Component
+├── repo/                           # @Repository
+└── service/                        # AI infra (非 facade/handler)
+    ├── AgnesKeyStore.kt
+    ├── AgnesChatClientFactory.kt
+    └── SpringAiScanRunner.kt
 ```
 
-简单模块（如 feedback）：
+简单模块：
 ```
-modules/feedback/
-├── repo/FeedbackRepository.kt
-└── service/
-    ├── FeedbackModuleService.kt
-    └── FeedbackEntityService.kt
+modules/cms/
+├── CmsFacade.kt                   # @Service
+├── handler/FeedbackHandler.kt      # @Component
+└── repo/
 ```
 
-### 完整 Demo — Todo 模块
+### 完整示例 — Scan 模块
 
 ```kotlin
-// ======================== ModuleService ========================
+// ======================== AiFacade ========================
 
 @Service
-class TodoModuleService(
-    private val todoInternal: TodoEntityService,
-    private val todoItemInternal: TodoItemEntityService,
-    private val repo: TodoRepository,
+class AiFacade(
+    private val svcCtxFactory: SvcCtxFactory,
+    private val scanHandler: ScanHandler,
     private val tx: TxRunner,
-    factory: CrudServiceOpsFactory,
 ) {
-    private val ops = factory.create(Todo::class.java, "todo") { it.id }
+    /** 读操作 — 无事务 */
+    fun findById(opCtx: OperationContext, id: UUID): ScanRecord? =
+        scanHandler.findById(svcCtxFactory.forApp(opCtx), id)
 
-    private fun svc(opCtx: OperationContext) = SvcCtx(
-        op = opCtx,
-        dsl = opCtx.globalTxDsl ?: SvcCtx.DEFAULT.dsl,
-    )
+    /** 写操作 — 有事务 */
+    fun updateScan(opCtx: OperationContext, input: UpdateScanInput): Boolean =
+        tx.withTx(svcCtxFactory.forApp(opCtx)) { sc -> scanHandler.updateScan(sc, input) }
 
-    // --- 简单查询：保留在 facade ---
-    fun findById(opCtx: OperationContext, id: UUID): Todo? =
-        ops.findById(svc(opCtx), id, repo::findById)
-
-    fun findByIds(opCtx: OperationContext, ids: List<UUID>): List<Todo> =
-        ops.findByIds(svc(opCtx), ids, repo::findByIds)
-
-    fun findByCursor(opCtx: OperationContext, input: TodoQueryInput): Page<Todo> =
-        ops.findByCursor(svc(opCtx), input.cursor, input.limit, repo::findByCursor)
-
-    // --- Mutation：开事务 + 走 internal ---
-    fun createTodo(opCtx: OperationContext, input: CreateTodoInput): UUID =
-        tx.withTx(svc(opCtx)) { sc -> todoInternal.create(sc, input) }
-
-    fun updateTodo(opCtx: OperationContext, input: UpdateTodoInput): Boolean =
-        tx.withTx(svc(opCtx)) { sc -> todoInternal.update(sc, input) }
-
-    fun deleteTodo(opCtx: OperationContext, id: UUID): Boolean =
-        tx.withTx(svc(opCtx)) { sc -> todoInternal.delete(sc, id) }
-
-    fun updateItems(opCtx: OperationContext, input: UpdateTodoItemsMutationInput) =
-        tx.withTx(svc(opCtx)) { sc -> todoItemInternal.update(sc, input) }
-
-    // --- DataLoader 用 ---
-    fun findItemsByTodoIds(opCtx: OperationContext, todoIds: Collection<UUID>): List<TodoItem> =
-        todoItemInternal.findByTodoIds(svc(opCtx), todoIds)
-}
-
-// ======================== Internal: TodoEntityService ========================
-
-@Component
-class TodoEntityService(
-    private val repo: TodoRepository,
-    private val itemRepo: TodoItemRepository,
-    // 不注入 TxRunner
-) {
-    fun create(sc: SvcCtx, input: CreateTodoInput): UUID {
-        val appId = sc.mustGetAppId()
-        val now = Instant.now()
-        val id = UuidV7.generate()
-        repo.insert(sc, Todo(
-            id = id, appId = appId,
-            installId = sc.installId, userId = sc.userId,
-            title = input.title, done = input.done ?: false,
-            createdAt = now,
-        ))
-        input.items?.takeIf { it.isNotEmpty() }?.let { items ->
-            itemRepo.batchInsert(sc, items.map { i ->
-                TodoItem(
-                    id = UuidV7.generate(), appId = appId, todoId = id,
-                    content = i.content, done = i.done ?: false, createdAt = now,
-                )
-            })
+    /** AI 扫描 — 外部调用在事务外，DB 写入在事务内 */
+    fun newScan(opCtx: OperationContext, input: NewScanInput): ScanRecord {
+        val scanId = scanHandler.prepareNewScan(input)  // 无事务
+        return tx.withTx(svcCtxFactory.forApp(opCtx)) { sc ->  // 事务只包 DB 写入
+            scanHandler.saveNewScan(sc, scanId, input)
         }
-        return id
-    }
-
-    fun update(sc: SvcCtx, input: UpdateTodoInput): Boolean {
-        val appId = sc.mustGetAppId()
-        if (!repo.exists(sc, appId, input.id)) throw ApiError(ErrorCode.NOT_FOUND)
-        repo.partialUpdate(sc, appId, input)
-        return true
-    }
-
-    fun delete(sc: SvcCtx, id: UUID): Boolean {
-        val appId = sc.mustGetAppId()
-        return repo.deleteById(sc, appId, id)
     }
 }
 
-// ======================== Internal: TodoItemEntityService ========================
+// ======================== Handler ========================
 
 @Component
-class TodoItemEntityService(
-    private val repo: TodoItemRepository,
-    // 不注入 TxRunner
+class ScanHandler(
+    private val scanRunner: ScanRunner,
+    private val objectStorage: ObjectStorage,
+    private val scanRepo: ScanRecordRepository,
 ) {
-    fun findByTodoIds(sc: SvcCtx, todoIds: Collection<UUID>): List<TodoItem> =
-        repo.findByTodoIds(sc, todoIds)
+    /** 外部 AI 调用准备（无事务） */
+    fun prepareNewScan(input: NewScanInput): UUID = /* ... */
 
-    fun update(sc: SvcCtx, input: UpdateTodoItemsMutationInput) {
-        val appId = sc.mustGetAppId()
-        val now = Instant.now()
-        input.create?.takeIf { it.isNotEmpty() }?.let { creates ->
-            repo.batchInsert(sc, creates.map { c ->
-                TodoItem(
-                    id = UuidV7.generate(), appId = appId, todoId = c.todoId,
-                    content = c.content, done = c.done ?: false, createdAt = now,
-                )
-            })
-        }
-        input.update?.takeIf { it.isNotEmpty() }?.let { updates ->
-            repo.batchUpdate(sc, appId, updates)
-        }
-        input.delete?.takeIf { it.isNotEmpty() }?.let { ids ->
-            repo.deleteByIds(sc, appId, ids)
-        }
-    }
+    /** 事务内保存 */
+    fun saveNewScan(sc: SvcCtx, scanId: UUID, input: NewScanInput): ScanRecord = /* ... */
+
+    fun findById(sc: SvcCtx, id: UUID): ScanRecord? = scanRepo.findById(sc, appId, id)
+    fun updateScan(sc: SvcCtx, input: UpdateScanInput): Boolean = { /* ... */ }
 }
 ```
 
@@ -506,37 +459,20 @@ class TodoItemEntityService(
 
 ```kotlin
 @DgsComponent
-class TodoFetcher(
-    private val todoService: TodoModuleService,  // 只注入 Facade
+class ScanFetcher(
+    private val scanFacade: AiFacade,       // 只注入 Facade
     private val ctxProvider: OperationContextProvider,
 ) {
-    @DgsQuery(field = "query_todo_findTodoById")
-    fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo {
-        val opCtx = ctxProvider.fromDfe(dfe)
-        return todoService.findById(opCtx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
-    }
-
-    @DgsMutation(field = "mutation_todo_createTodo")
-    fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
-        val opCtx = ctxProvider.fromDfe(dfe)
-        val id = todoService.createTodo(opCtx, input)
-        val todo = todoService.findById(opCtx, id)!!
-        return CreateTodoPayload(todo = todo)
-    }
-}
-```
-
-### 跨模块事务（DataFetcher 层）
-
-```kotlin
-@DgsMutation(field = "mutation_xxx_complexOperation")
-fun complexOp(dfe: DgsDataFetchingEnvironment, ...): ... {
-    val opCtx = ctxProvider.fromDfe(dfe)
-    return globalTx.withTx(opCtx) { txOpCtx ->
-        // 各 ModuleService 检测 txOpCtx.globalTxDsl != null → 复用事务
-        val id = todoService.createTodo(txOpCtx, ...)
-        scanService.bindToTodo(txOpCtx, id)
-        ...
+    @DgsMutation(field = "mutation_ai_updateScan")
+    fun updateScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateScanInput): UpdateScanPayload {
+        val ctx = ctxProvider.fromDfe(dfe)
+        // Step 1: 写 (有事务，Facade 内部 tx.withTx)
+        val success = scanFacade.updateScan(ctx, input)
+        // Step 2: 读 (无事务，可走从库/缓存)
+        val record = if (success && dfe.selectionSet.fields.any { it.name == "scanRecord" }) {
+            scanFacade.findById(ctx, input.id)
+        } else null
+        return UpdateScanPayload(success = success, scanRecord = record)
     }
 }
 ```
