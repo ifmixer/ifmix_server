@@ -13,6 +13,10 @@ import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.scheduling.annotation.EnableAsync
 import com.ifmix.api.core.modules.auth.repo.AppRefreshTokenRepo
+import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityRepo
+import com.ifmix.api.core.modules.auth.repo.AppUserRepo
+import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretRepo
+import com.ifmix.api.core.modules.auth.repo.UserInstallBindingRepo
 
 /**
  * 认证模块 bean 装配。

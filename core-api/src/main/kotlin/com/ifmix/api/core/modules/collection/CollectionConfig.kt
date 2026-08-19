@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import com.ifmix.api.core.modules.collection.entity.CollectionEntity
 import com.ifmix.api.core.modules.collection.repo.CollectionItemRepository
+import com.ifmix.api.core.modules.collection.repo.CollectionRepository
 
 /**
  * 收藏模块 bean 装配。
