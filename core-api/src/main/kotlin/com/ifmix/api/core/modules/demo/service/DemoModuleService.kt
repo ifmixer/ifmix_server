@@ -59,6 +59,8 @@ class DemoModuleService(
                     done = input.done ?: false,
                     createdAt = now,
                     updatedAt = now,
+                    // @TableField(fill = ...) on entity + TimeAutoFillHandler will override these on insert.
+                    // Values are kept here for clarity; handler produces the same Instant.now().
                 )
                 todoRepo.insert(txCtx, todo)
 

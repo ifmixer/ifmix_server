@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean
 import com.baomidou.mybatisplus.core.config.GlobalConfig
 import com.baomidou.mybatisplus.core.MybatisConfiguration
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor
-import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor
 import com.ifmix.api.core.infra.jooq.DataSourceRegistry
 import org.apache.ibatis.session.SqlSessionFactory
 import org.springframework.stereotype.Component
@@ -41,13 +40,13 @@ class MyBatisSessionFactories(
 
     private fun mybatisPlusInterceptor(): MybatisPlusInterceptor = MybatisPlusInterceptor().apply {
         // 暂不添加 TenantLineInnerInterceptor（appId 显式传递）
-        addInnerInterceptor(OptimisticLockerInnerInterceptor())
+        // 暂不添加 OptimisticLockerInnerInterceptor（entity 无 @Version 字段）
     }
 
     private fun globalConfig() = GlobalConfig().apply {
         dbConfig = GlobalConfig.DbConfig().apply {
-            logicDeleteValue = "NULL"
-            logicNotDeleteValue = "NOW()"
+            logicDeleteValue = "NOW()"
+            logicNotDeleteValue = "NULL"
         }
         metaObjectHandler = timeAutoFillHandler
     }
