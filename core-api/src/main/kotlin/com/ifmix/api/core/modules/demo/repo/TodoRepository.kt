@@ -26,7 +26,7 @@ import java.util.UUID
 class TodoRepository {
 
     private val ops = MybatisCrudOps<CoreTodo, CoreTodoMapper>(
-        id = id, appId = appId, deletedAt = deletedAt,
+        idColumn = id, appIdColumn = appId, deletedAtColumn = deletedAt,
         mapperFn = { ctx -> ctx.mapper() },
         selectOneFn = CoreTodoMapper::selectOne,
         selectListFn = CoreTodoMapper::select,
@@ -42,21 +42,15 @@ class TodoRepository {
     fun deleteById(ctx: SvcCtx, appIdVal: UUID, idVal: UUID) = ops.deleteById(ctx, appIdVal, idVal)
     fun exists(ctx: SvcCtx, appIdVal: UUID, idVal: UUID) = ops.exists(ctx, appIdVal, idVal)
 
-    /** Partial update — 根据 GraphQL input 的 set/unset 动态构建 */
+    /** Partial update — 业务特有 */
     fun update(ctx: SvcCtx, appIdVal: UUID, input: UpdateTodoInput) {
         ctx.mapper<CoreTodoMapper>().update {
             input.set?.title?.let { set(title) equalTo it }
             input.set?.done?.let { set(done) equalTo it }
             input.set?.note?.let { set(note) equalTo it }
-            if (input.unset?.contains(TodoUnsetField.NOTE) == true) {
-                set(note).equalToNull()
-            }
+            if (input.unset?.contains(TodoUnsetField.NOTE) == true) set(note).equalToNull()
             set(updatedAt) equalTo Instant.now()
-            where {
-                id.isEqualTo(input.id)
-                appId.isEqualTo(appIdVal)
-                deletedAt.isNull()
-            }
+            where { id.isEqualTo(input.id); appId.isEqualTo(appIdVal); deletedAt.isNull() }
         }
     }
 }

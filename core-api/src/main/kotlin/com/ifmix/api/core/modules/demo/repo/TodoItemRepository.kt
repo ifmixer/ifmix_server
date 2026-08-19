@@ -27,7 +27,7 @@ import java.util.UUID
 class TodoItemRepository {
 
     private val ops = MybatisCrudOps<CoreTodoItem, CoreTodoItemMapper>(
-        id = id, appId = appId, deletedAt = deletedAt,
+        idColumn = id, appIdColumn = appId, deletedAtColumn = deletedAt,
         mapperFn = { ctx -> ctx.mapper() },
         selectOneFn = CoreTodoItemMapper::selectOne,
         selectListFn = CoreTodoItemMapper::select,
@@ -43,10 +43,7 @@ class TodoItemRepository {
     /** 按 todoId 查子项 */
     fun findByTodoId(ctx: SvcCtx, todoIdVal: UUID): List<CoreTodoItem> =
         ctx.mapper<CoreTodoItemMapper>().select {
-            where {
-                todoId.isEqualTo(todoIdVal)
-                deletedAt.isNull()
-            }
+            where { todoId.isEqualTo(todoIdVal); deletedAt.isNull() }
             orderBy(createdAt)
         }
 
@@ -55,15 +52,9 @@ class TodoItemRepository {
         ctx.mapper<CoreTodoItemMapper>().update {
             input.set?.content?.let { set(content) equalTo it }
             input.set?.done?.let { set(done) equalTo it }
-            if (input.unset?.contains(TodoItemUnsetField.NOTE) == true) {
-                // note 列预留
-            }
+            if (input.unset?.contains(TodoItemUnsetField.NOTE) == true) { /* 预留 */ }
             set(updatedAt) equalTo Instant.now()
-            where {
-                id.isEqualTo(input.id)
-                appId.isEqualTo(appIdVal)
-                deletedAt.isNull()
-            }
+            where { id.isEqualTo(input.id); appId.isEqualTo(appIdVal); deletedAt.isNull() }
         }
     }
 }
