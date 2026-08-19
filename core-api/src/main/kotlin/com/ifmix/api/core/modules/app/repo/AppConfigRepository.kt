@@ -25,40 +25,40 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
 
     fun findActiveByAppId(ctx: SvcCtx, appId: UUID): AppConfigRevision? {
         return sql.createQuery(AppConfigRevision::class) {
-            where(appId eq appId)
-            where(enabled eq true)
-            orderBy(createdAt.desc())
+            where(table.appId eq appId)
+            where(table.enabled eq true)
+            orderBy(table.createdAt.desc())
             select(table)
         }.limit(1).execute().firstOrNull()
     }
 
     fun findByBundleId(ctx: SvcCtx, bundleId: String): AppConfigRevision? {
         return sql.createQuery(AppConfigRevision::class) {
-            where(appleBundleId eq bundleId)
-            where(enabled eq true)
+            where(table.appleBundleId eq bundleId)
+            where(table.enabled eq true)
             select(table)
         }.limit(1).execute().firstOrNull()
     }
 
     fun findByAndroidPackage(ctx: SvcCtx, pkg: String): AppConfigRevision? {
         return sql.createQuery(AppConfigRevision::class) {
-            where(androidPackageName eq pkg)
-            where(enabled eq true)
+            where(table.androidPackageName eq pkg)
+            where(table.enabled eq true)
             select(table)
         }.limit(1).execute().firstOrNull()
     }
 
     fun disableCurrentRevisions(ctx: SvcCtx, appId: UUID): Int {
         return sql.createUpdate(AppConfigRevision::class) {
-            where(appId eq appId)
-            where(enabled eq true)
+            where(table.appId eq appId)
+            where(table.enabled eq true)
             set(enabled, false)
         }.execute()
     }
 
     fun updateEnabled(ctx: SvcCtx, revisionId: UUID, enabled: Boolean): Int {
         return sql.createUpdate(AppConfigRevision::class) {
-            where(id eq revisionId)
+            where(table.id eq revisionId)
             set(enabled, enabled)
         }.execute()
     }

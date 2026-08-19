@@ -13,7 +13,7 @@ class AppInfoRepository(sql: KSqlClient) : BaseCrudRepository<AppInfo>(sql, AppI
 
     fun findBySlug(slug: String): AppInfo? {
         return sql.createQuery(AppInfo::class) {
-            where(slug eq slug)
+            where(table.slug eq slug)
             select(table)
         }.limit(1).execute().firstOrNull()
     }
