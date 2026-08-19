@@ -14,7 +14,7 @@ import java.util.UUID
 class AuthIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthIdentity>(sql, AuthIdentity::class) {
 
     fun findByTenantAndEmail(ctx: SvcCtx, tenantId: UUID, email: String): AuthIdentity? {
-        return sql.createQuery(AuthIdentity::class) {
+        return ctx.sql.createQuery(AuthIdentity::class) {
             where(table.authTenantId eq tenantId)
             where(table.email eq email)
             select(table)

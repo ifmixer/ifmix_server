@@ -18,7 +18,7 @@ import java.util.UUID
 class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanCollectionItem>(sql, ScanCollectionItem::class) {
 
     fun insertIfAbsent(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
-        val existing = sql.createQuery(ScanCollectionItem::class) {
+        val existing = ctx.sql.createQuery(ScanCollectionItem::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.get<UUID>("collectionId") eq collectionId)
             where(table.get<UUID>("scanRecordId") eq scanRecordId)
@@ -42,7 +42,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
 
     fun softDeleteByScanIds(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Int {
         if (scanRecordIds.isEmpty()) return 0
-        return sql.createUpdate(ScanCollectionItem::class) {
+        return ctx.sql.createUpdate(ScanCollectionItem::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.get<UUID>("collectionId") eq collectionId)
             where(table.get<UUID>("scanRecordId") valueIn scanRecordIds)
@@ -51,7 +51,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
     }
 
     fun findItemsByCursor(ctx: SvcCtx, appId: UUID, collectionId: UUID, limit: Int, cursor: UUID?): Page<ScanCollectionItem> {
-        val items = sql.createQuery(ScanCollectionItem::class) {
+        val items = ctx.sql.createQuery(ScanCollectionItem::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.get<UUID>("collectionId") eq collectionId)
             cursor?.let { where(table.getId<UUID>() lt it) }
@@ -63,7 +63,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
     }
 
     fun existsByScanRecordId(ctx: SvcCtx, collectionId: UUID, scanRecordId: UUID): Boolean {
-        return sql.createQuery(ScanCollectionItem::class) {
+        return ctx.sql.createQuery(ScanCollectionItem::class) {
             where(table.get<UUID>("collectionId") eq collectionId)
             where(table.get<UUID>("scanRecordId") eq scanRecordId)
             select(table)

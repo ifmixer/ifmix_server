@@ -38,7 +38,7 @@ class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<User
         clientIp: String?,
         clientPlatform: String?,
     ) {
-        val existing = sql.createQuery(UserInstallBinding::class) {
+        val existing = ctx.sql.createQuery(UserInstallBinding::class) {
             where(table.appId eq appId)
             where(table.userId eq userId)
             where(table.installId eq installId)
@@ -63,7 +63,7 @@ class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<User
             save(ctx, entity)
         } else {
             val now = Instant.now()
-            sql.createUpdate(UserInstallBinding::class) {
+            ctx.sql.createUpdate(UserInstallBinding::class) {
                 where(table.id eq existing.id)
                 set(lastSeenAt, now)
                 set(loginCount, existing.loginCount + 1)

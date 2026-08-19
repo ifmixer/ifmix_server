@@ -17,7 +17,7 @@ import java.util.UUID
 class AuthProviderIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {
 
     fun findByProviderAndAccountId(ctx: SvcCtx, tenantId: UUID, provider: String, providerAccountId: String): AuthProviderIdentity? {
-        return sql.createQuery(AuthProviderIdentity::class) {
+        return ctx.sql.createQuery(AuthProviderIdentity::class) {
             where(table.authTenantId eq tenantId)
             where(table.provider eq provider)
             where(table.providerAccountId eq providerAccountId)

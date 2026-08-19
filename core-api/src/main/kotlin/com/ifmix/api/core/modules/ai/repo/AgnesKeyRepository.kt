@@ -15,13 +15,13 @@ import java.util.UUID
 class AgnesKeyRepository(sql: KSqlClient) : BaseAppCrudRepository<AgnesKey>(sql, AgnesKey::class) {
 
     fun findAllEnabled(ctx: SvcCtx): List<AgnesKey> =
-        sql.createQuery(AgnesKey::class) {
+        ctx.sql.createQuery(AgnesKey::class) {
             select(table)
         }.execute()
 
     fun findAvailable(ctx: SvcCtx, appId: UUID): List<AgnesKey> {
         val now = Instant.now()
-        return sql.createQuery(AgnesKey::class) {
+        return ctx.sql.createQuery(AgnesKey::class) {
             where(table.appId eq appId)
             where(table.unavailableUntil.isNull or table.unavailableUntil lt now)
             select(table)
@@ -29,7 +29,7 @@ class AgnesKeyRepository(sql: KSqlClient) : BaseAppCrudRepository<AgnesKey>(sql,
     }
 
     fun markUnavailable(ctx: SvcCtx, keyId: UUID, until: Instant) {
-        sql.createUpdate(AgnesKey::class) {
+        ctx.sql.createUpdate(AgnesKey::class) {
             where(table.id eq keyId)
             set(table.unavailableUntil, until)
             set(table.updatedAt, Instant.now())

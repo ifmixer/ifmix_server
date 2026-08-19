@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository
 class AppInfoRepository(sql: KSqlClient) : BaseCrudRepository<AppInfo>(sql, AppInfo::class) {
 
     fun findBySlug(slug: String): AppInfo? {
-        return sql.createQuery(AppInfo::class) {
+        return ctx.sql.createQuery(AppInfo::class) {
             where(table.slug eq slug)
             select(table)
         }.limit(1).execute().firstOrNull()

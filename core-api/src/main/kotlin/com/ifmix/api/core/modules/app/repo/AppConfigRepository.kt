@@ -18,7 +18,7 @@ import java.util.UUID
 class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevision>(sql, AppConfigRevision::class) {
 
     fun findActiveByAppId(ctx: SvcCtx, appId: UUID): AppConfigRevision? {
-        return ctx.sql.createQuery(AppConfigRevision::class) {
+        return ctx.ctx.sql.createQuery(AppConfigRevision::class) {
             where(appId eq appId)
             where(enabled eq true)
             orderBy(createdAt.desc())
@@ -27,7 +27,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
     }
 
     fun findByBundleId(ctx: SvcCtx, bundleId: String): AppConfigRevision? {
-        return ctx.sql.createQuery(AppConfigRevision::class) {
+        return ctx.ctx.sql.createQuery(AppConfigRevision::class) {
             where(appleBundleId eq bundleId)
             where(enabled eq true)
             select(table)
@@ -35,7 +35,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
     }
 
     fun findByAndroidPackage(ctx: SvcCtx, pkg: String): AppConfigRevision? {
-        return ctx.sql.createQuery(AppConfigRevision::class) {
+        return ctx.ctx.sql.createQuery(AppConfigRevision::class) {
             where(androidPackageName eq pkg)
             where(enabled eq true)
             select(table)
@@ -43,7 +43,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
     }
 
     fun disableCurrentRevisions(ctx: SvcCtx, appId: UUID): Int {
-        return ctx.sql.createUpdate(AppConfigRevision::class) {
+        return ctx.ctx.sql.createUpdate(AppConfigRevision::class) {
             where(appId eq appId)
             where(enabled eq true)
             set(enabled, false)
@@ -51,7 +51,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
     }
 
     fun updateEnabled(ctx: SvcCtx, revisionId: UUID, enabled: Boolean): Int {
-        return ctx.sql.createUpdate(AppConfigRevision::class) {
+        return ctx.ctx.sql.createUpdate(AppConfigRevision::class) {
             where(id eq revisionId)
             set(enabled, enabled)
         }.execute()

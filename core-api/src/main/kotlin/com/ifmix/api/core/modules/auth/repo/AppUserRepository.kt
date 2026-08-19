@@ -14,7 +14,7 @@ import java.util.UUID
 class AppUserRepository(sql: KSqlClient) : BaseAppCrudRepository<AppUser>(sql, AppUser::class) {
 
     fun findByAppAndIdentity(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): AppUser? {
-        return sql.createQuery(AppUser::class) {
+        return ctx.sql.createQuery(AppUser::class) {
             where(table.appId eq appId)
             where(table.authIdentityId eq authIdentityId)
             select(table)

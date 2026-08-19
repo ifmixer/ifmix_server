@@ -16,7 +16,7 @@ import java.util.UUID
 class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscription>(sql, Subscription::class) {
 
     fun findActiveByPxid(ctx: SvcCtx, appId: UUID, pxid: String): Subscription? {
-        return sql.createQuery(Subscription::class) {
+        return ctx.sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.subscriptionPxid eq pxid)
             where(table.active eq true)
@@ -25,7 +25,7 @@ class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscripti
     }
 
     fun findByPxid(ctx: SvcCtx, appId: UUID, pxid: String): Subscription? {
-        return sql.createQuery(Subscription::class) {
+        return ctx.sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.subscriptionPxid eq pxid)
             select(table)
@@ -33,7 +33,7 @@ class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscripti
     }
 
     fun findByOriginalTxn(ctx: SvcCtx, appId: UUID, originalTxnId: String): Subscription? {
-        return sql.createQuery(Subscription::class) {
+        return ctx.sql.createQuery(Subscription::class) {
             where(table.appId eq appId)
             where(table.originalTransactionId eq originalTxnId)
             select(table)

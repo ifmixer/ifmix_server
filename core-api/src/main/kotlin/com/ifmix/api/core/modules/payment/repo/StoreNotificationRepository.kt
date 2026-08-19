@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository
 class StoreNotificationRepository(sql: KSqlClient) : BaseAppCrudRepository<StoreNotification>(sql, StoreNotification::class) {
 
     fun existsByPlatformAndToken(ctx: SvcCtx, platform: String, purchaseToken: String): Boolean {
-        return sql.createQuery(StoreNotification::class) {
+        return ctx.sql.createQuery(StoreNotification::class) {
             where(table.platform eq platform)
             where(table.purchaseToken eq purchaseToken)
             where(table.processed eq true)

@@ -22,7 +22,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDevic
 
     fun findValidByHash(ctx: SvcCtx, secretHash: String): AuthDeviceSecret? {
         val now = Instant.now()
-        return sql.createQuery(AuthDeviceSecret::class) {
+        return ctx.sql.createQuery(AuthDeviceSecret::class) {
             where(table.secretHash eq secretHash)
             where(table.revokedAt.isNull)
             where(table.expiresAt.isNull.or(table.expiresAt gt now))
@@ -31,7 +31,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDevic
     }
 
     fun touch(ctx: SvcCtx, id: UUID) {
-        sql.createUpdate(AuthDeviceSecret::class) {
+        ctx.sql.createUpdate(AuthDeviceSecret::class) {
             where(table.id eq id)
             set(table.lastUsedAt, Instant.now())
             set(table.updatedAt, Instant.now())
@@ -39,7 +39,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDevic
     }
 
     fun revoke(ctx: SvcCtx, id: UUID) {
-        sql.createUpdate(AuthDeviceSecret::class) {
+        ctx.sql.createUpdate(AuthDeviceSecret::class) {
             where(table.id eq id)
             set(table.revokedAt, Instant.now())
             set(table.updatedAt, Instant.now())

@@ -93,6 +93,11 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xjsr305=strict")
     }
+    sourceSets {
+        main {
+            kotlin.srcDir("build/generated/ksp/main/kotlin")
+        }
+    }
 }
 
 tasks.withType<Test> {

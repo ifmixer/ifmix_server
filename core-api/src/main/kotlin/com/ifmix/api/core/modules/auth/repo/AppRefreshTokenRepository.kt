@@ -22,7 +22,7 @@ class AppRefreshTokenRepository(sql: KSqlClient) : BaseAppCrudRepository<AppRefr
 
     fun findValidByHash(ctx: SvcCtx, appId: UUID, tokenHash: String): AppRefreshToken? {
         val now = Instant.now()
-        return sql.createQuery(AppRefreshToken::class) {
+        return ctx.sql.createQuery(AppRefreshToken::class) {
             where(table.appId eq appId)
             where(table.tokenHash eq tokenHash)
             where(table.revokedAt.isNull)
@@ -34,14 +34,14 @@ class AppRefreshTokenRepository(sql: KSqlClient) : BaseAppCrudRepository<AppRefr
     fun revoke(ctx: SvcCtx, id: UUID, replacedBy: UUID? = null) {
         val now = Instant.now()
         if (replacedBy != null) {
-            sql.createUpdate(AppRefreshToken::class) {
+            ctx.sql.createUpdate(AppRefreshToken::class) {
                 where(table.id eq id)
                 set(table.revokedAt, now)
                 set(table.updatedAt, now)
                 set(table.replacedBy, replacedBy)
             }.execute()
         } else {
-            sql.createUpdate(AppRefreshToken::class) {
+            ctx.sql.createUpdate(AppRefreshToken::class) {
                 where(table.id eq id)
                 set(table.revokedAt, now)
                 set(table.updatedAt, now)

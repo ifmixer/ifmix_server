@@ -14,7 +14,7 @@ import java.util.UUID
 class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(sql, ScanRecord::class) {
 
     fun findByCursor(ctx: SvcCtx, appId: UUID, collected: Boolean?, cursor: UUID?, limit: Int): List<ScanRecord> {
-        return sql.createQuery(ScanRecord::class) {
+        return ctx.sql.createQuery(ScanRecord::class) {
             where(table.appId eq appId)
             collected?.let { where(table.collected eq it) }
             cursor?.let { where(table.id lt it) }
@@ -24,7 +24,7 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
     }
 
     fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, req: UpdateScanInput) {
-        sql.createUpdate(ScanRecord::class) {
+        ctx.sql.createUpdate(ScanRecord::class) {
             where(table.appId eq appId)
             where(table.id eq id)
             req.set?.userDisplayName?.let { set(table.userDisplayName, it) }
