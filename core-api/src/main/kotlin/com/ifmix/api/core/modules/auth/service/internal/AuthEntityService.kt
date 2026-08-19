@@ -115,7 +115,7 @@ class AuthEntityService(
     }
 
     private fun tenantUUID(sc: SvcCtx, appId: UUID): UUID =
-        appConfigRepo.mustFindCurrentRevision(sc, appId).authTenantId
+        appConfigRepo.findActiveByAppId(sc, appId).authTenantId
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
     fun me(sc: SvcCtx): MeRes {
@@ -143,7 +143,7 @@ class AuthEntityService(
             ErrorCode.AUTH_PROVIDER_FAILED,
             "unsupported provider: $provider"
         )
-        val config = appConfigRepo.mustFindCurrentRevision(sc, opCtx.appId!!)
+        val config = appConfigRepo.findActiveByAppId(sc, opCtx.appId!!)
         val verified = verifier.verify(config, opCtx.clientPlatform, credential)
 
         // 2. Find or create AuthIdentity
