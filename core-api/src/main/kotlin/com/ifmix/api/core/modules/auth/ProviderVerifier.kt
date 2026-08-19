@@ -50,7 +50,7 @@ class GoogleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
     override val provider = "google"
     override fun verify(config: AppConfigRevision, platform: ClientPlatform?, idToken: String): VerifiedProvider {
         val jwt = decodeOrFail(decoder, idToken)
-        val clientIds = config.contentConfig.google.clientIds
+        val clientIds = config.content.google.clientIds
         val aud = when (platform) {
             ClientPlatform.IOS -> clientIds.ios
             ClientPlatform.ANDROID -> clientIds.android
@@ -65,7 +65,7 @@ class AppleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
     override val provider = "apple"
     override fun verify(config: AppConfigRevision, platform: ClientPlatform?, idToken: String): VerifiedProvider {
         val jwt = decodeOrFail(decoder, idToken)
-        val aud = if (platform == ClientPlatform.WEB) config.contentConfig.apple.servicesId else config.appleBundleId
+        val aud = if (platform == ClientPlatform.WEB) config.content.apple.servicesId else config.appleBundleId
         requireAud(jwt, aud)
         return jwt.toVerified()
     }

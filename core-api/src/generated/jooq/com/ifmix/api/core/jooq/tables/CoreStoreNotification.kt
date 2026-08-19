@@ -5,6 +5,7 @@ package com.ifmix.api.core.jooq.tables
 
 
 import com.ifmix.api.core.infra.jooq.InstantConverter
+import com.ifmix.api.core.infra.jooq.JsonStringConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.STORE_NOTIF_PLATFORM_SUB_IDX
 import com.ifmix.api.core.jooq.indexes.STORE_NOTIF_PLATFORM_TOKEN_IDX
@@ -22,7 +23,6 @@ import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Index
 import org.jooq.InverseForeignKey
-import org.jooq.JSONB
 import org.jooq.Name
 import org.jooq.PlainSQL
 import org.jooq.QueryPart
@@ -111,7 +111,7 @@ open class CoreStoreNotification(
     /**
      * The column <code>public.core_store_notification.raw_payload</code>.
      */
-    val RAW_PAYLOAD: TableField<CoreStoreNotificationRecord, JSONB?> = createField(DSL.name("raw_payload"), SQLDataType.JSONB, this, "")
+    val RAW_PAYLOAD: TableField<CoreStoreNotificationRecord, String?> = createField(DSL.name("raw_payload"), SQLDataType.JSONB, this, "", JsonStringConverter())
 
     /**
      * The column <code>public.core_store_notification.processed</code>.

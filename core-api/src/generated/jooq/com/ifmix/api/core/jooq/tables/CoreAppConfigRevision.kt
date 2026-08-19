@@ -4,6 +4,8 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.entity.app.ConfigContent
+import com.ifmix.api.core.infra.jooq.ConfigContentConverter
 import com.ifmix.api.core.infra.jooq.InstantConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.APP_CONFIG_BUNDLE_IDX
@@ -22,7 +24,6 @@ import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Index
 import org.jooq.InverseForeignKey
-import org.jooq.JSONB
 import org.jooq.Name
 import org.jooq.PlainSQL
 import org.jooq.QueryPart
@@ -128,7 +129,7 @@ open class CoreAppConfigRevision(
     /**
      * The column <code>public.core_app_config_revision.content</code>.
      */
-    val CONTENT: TableField<CoreAppConfigRevisionRecord, JSONB?> = createField(DSL.name("content"), SQLDataType.JSONB.nullable(false).defaultValue(DSL.field(DSL.raw("'{}'::jsonb"), SQLDataType.JSONB)), this, "")
+    val CONTENT: TableField<CoreAppConfigRevisionRecord, ConfigContent?> = createField(DSL.name("content"), SQLDataType.JSONB.nullable(false).defaultValue(DSL.field(DSL.raw("'{}'::jsonb"), SQLDataType.JSONB)), this, "", ConfigContentConverter())
 
     /**
      * The column <code>public.core_app_config_revision.note</code>.

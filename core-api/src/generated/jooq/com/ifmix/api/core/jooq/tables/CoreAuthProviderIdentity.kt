@@ -5,6 +5,7 @@ package com.ifmix.api.core.jooq.tables
 
 
 import com.ifmix.api.core.infra.jooq.InstantConverter
+import com.ifmix.api.core.infra.jooq.JsonStringConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.AUTH_PROVIDER_IDENTITY_IDX
 import com.ifmix.api.core.jooq.indexes.AUTH_PROVIDER_UQ
@@ -26,7 +27,6 @@ import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Index
 import org.jooq.InverseForeignKey
-import org.jooq.JSONB
 import org.jooq.Name
 import org.jooq.Path
 import org.jooq.PlainSQL
@@ -131,13 +131,13 @@ open class CoreAuthProviderIdentity(
     /**
      * The column <code>public.core_auth_provider_identity.user_metadata</code>.
      */
-    val USER_METADATA: TableField<CoreAuthProviderIdentityRecord, JSONB?> = createField(DSL.name("user_metadata"), SQLDataType.JSONB, this, "")
+    val USER_METADATA: TableField<CoreAuthProviderIdentityRecord, String?> = createField(DSL.name("user_metadata"), SQLDataType.JSONB, this, "", JsonStringConverter())
 
     /**
      * The column
      * <code>public.core_auth_provider_identity.provider_metadata</code>.
      */
-    val PROVIDER_METADATA: TableField<CoreAuthProviderIdentityRecord, JSONB?> = createField(DSL.name("provider_metadata"), SQLDataType.JSONB, this, "")
+    val PROVIDER_METADATA: TableField<CoreAuthProviderIdentityRecord, String?> = createField(DSL.name("provider_metadata"), SQLDataType.JSONB, this, "", JsonStringConverter())
 
     /**
      * The column <code>public.core_auth_provider_identity.login_ip</code>.

@@ -50,7 +50,7 @@ class PaymentEntityService(
         val verifyResult = verifier.verify(input)
 
         val config = appConfigRepo.mustFindCurrentRevision(sc, appId)
-        val productTierMap = config.contentConfig.iap.productTierMap
+        val productTierMap = config.content.iap.productTierMap
         val tier = tierOf(req.productId, productTierMap) ?: Tiers.FREE
 
         val subscriptionPxid = verifyResult.originalTransactionId ?: run {

@@ -4,12 +4,12 @@
 package com.ifmix.api.core.jooq.tables.records
 
 
+import com.ifmix.api.core.entity.app.ConfigContent
 import com.ifmix.api.core.jooq.tables.CoreAppConfigRevision
 
 import java.time.Instant
 import java.util.UUID
 
-import org.jooq.JSONB
 import org.jooq.Record1
 import org.jooq.impl.UpdatableRecordImpl
 
@@ -56,9 +56,9 @@ open class CoreAppConfigRevisionRecord private constructor() : UpdatableRecordIm
         set(value): Unit = set(8, value)
         get(): String? = get(8) as String?
 
-    open var content: JSONB?
+    open var content: ConfigContent?
         set(value): Unit = set(9, value)
-        get(): JSONB? = get(9) as JSONB?
+        get(): ConfigContent? = get(9) as ConfigContent?
 
     open var note: String?
         set(value): Unit = set(10, value)
@@ -73,7 +73,7 @@ open class CoreAppConfigRevisionRecord private constructor() : UpdatableRecordIm
     /**
      * Create a detached, initialised CoreAppConfigRevisionRecord
      */
-    constructor(id: UUID, appId: UUID, authTenantId: UUID? = null, appleBundleId: String? = null, androidPackageName: String? = null, revisionNumber: Int? = null, createdAt: Instant? = null, enabled: Boolean? = null, slug: String? = null, content: JSONB? = null, note: String? = null): this() {
+    constructor(id: UUID, appId: UUID, authTenantId: UUID? = null, appleBundleId: String? = null, androidPackageName: String? = null, revisionNumber: Int? = null, createdAt: Instant? = null, enabled: Boolean? = null, slug: String? = null, content: ConfigContent? = null, note: String? = null): this() {
         this.id = id
         this.appId = appId
         this.authTenantId = authTenantId

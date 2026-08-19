@@ -9,7 +9,6 @@ import com.ifmix.api.core.jooq.tables.CoreAuthIdentity
 import java.time.Instant
 import java.util.UUID
 
-import org.jooq.JSONB
 import org.jooq.Record1
 import org.jooq.impl.UpdatableRecordImpl
 
@@ -56,13 +55,13 @@ open class CoreAuthIdentityRecord private constructor() : UpdatableRecordImpl<Co
         set(value): Unit = set(8, value)
         get(): String? = get(8) as String?
 
-    open var profile: JSONB?
+    open var profile: String?
         set(value): Unit = set(9, value)
-        get(): JSONB? = get(9) as JSONB?
+        get(): String? = get(9) as String?
 
-    open var metadata: JSONB?
+    open var metadata: String?
         set(value): Unit = set(10, value)
-        get(): JSONB? = get(10) as JSONB?
+        get(): String? = get(10) as String?
 
     open var createdAt: Instant?
         set(value): Unit = set(11, value)
@@ -81,7 +80,7 @@ open class CoreAuthIdentityRecord private constructor() : UpdatableRecordImpl<Co
     /**
      * Create a detached, initialised CoreAuthIdentityRecord
      */
-    constructor(id: UUID, authTenantId: UUID, rawEmail: String? = null, email: String? = null, rawPhone: String? = null, phone: String? = null, contactEmail: String? = null, displayName: String? = null, passwordHash: String? = null, profile: JSONB? = null, metadata: JSONB? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
+    constructor(id: UUID, authTenantId: UUID, rawEmail: String? = null, email: String? = null, rawPhone: String? = null, phone: String? = null, contactEmail: String? = null, displayName: String? = null, passwordHash: String? = null, profile: String? = null, metadata: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
         this.id = id
         this.authTenantId = authTenantId
         this.rawEmail = rawEmail

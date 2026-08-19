@@ -5,6 +5,7 @@ package com.ifmix.api.core.jooq.tables
 
 
 import com.ifmix.api.core.infra.jooq.InstantConverter
+import com.ifmix.api.core.infra.jooq.JsonStringConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.AUTH_IDENTITY_TENANT_EMAIL_IDX
 import com.ifmix.api.core.jooq.indexes.AUTH_IDENTITY_TENANT_IDX
@@ -31,7 +32,6 @@ import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Index
 import org.jooq.InverseForeignKey
-import org.jooq.JSONB
 import org.jooq.Name
 import org.jooq.Path
 import org.jooq.PlainSQL
@@ -136,12 +136,12 @@ open class CoreAuthIdentity(
     /**
      * The column <code>public.core_auth_identity.profile</code>.
      */
-    val PROFILE: TableField<CoreAuthIdentityRecord, JSONB?> = createField(DSL.name("profile"), SQLDataType.JSONB, this, "")
+    val PROFILE: TableField<CoreAuthIdentityRecord, String?> = createField(DSL.name("profile"), SQLDataType.JSONB, this, "", JsonStringConverter())
 
     /**
      * The column <code>public.core_auth_identity.metadata</code>.
      */
-    val METADATA: TableField<CoreAuthIdentityRecord, JSONB?> = createField(DSL.name("metadata"), SQLDataType.JSONB, this, "")
+    val METADATA: TableField<CoreAuthIdentityRecord, String?> = createField(DSL.name("metadata"), SQLDataType.JSONB, this, "", JsonStringConverter())
 
     /**
      * The column <code>public.core_auth_identity.created_at</code>.

@@ -4,7 +4,6 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreAuthProviderIdentity.Companion.CORE_AUTH_PROVIDER_IDENTITY
 import com.ifmix.api.core.entity.auth.AuthProviderIdentity
-import org.jooq.JSONB
 import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import tools.jackson.module.kotlin.jacksonObjectMapper
@@ -59,14 +58,10 @@ class AuthProviderIdentityRepository(factory: CrudRepoOpsFactory) {
 
         if (existing != null) {
             val record = ctx.dsl.newRecord(CORE_AUTH_PROVIDER_IDENTITY, entity)
-            record.userMetadata = entity.userMetadata?.let { JSONB.jsonb(it) }
-            record.providerMetadata = entity.providerMetadata?.let { JSONB.jsonb(it) }
             record.changed(CORE_AUTH_PROVIDER_IDENTITY.ID, false)
             ctx.dsl.executeUpdate(record)
         } else {
             val record = ctx.dsl.newRecord(CORE_AUTH_PROVIDER_IDENTITY, entity)
-            record.userMetadata = entity.userMetadata?.let { JSONB.jsonb(it) }
-            record.providerMetadata = entity.providerMetadata?.let { JSONB.jsonb(it) }
             ctx.dsl.executeInsert(record)
         }
         return id

@@ -9,7 +9,6 @@ import com.ifmix.api.core.jooq.tables.CoreStoreNotification
 import java.time.Instant
 import java.util.UUID
 
-import org.jooq.JSONB
 import org.jooq.Record1
 import org.jooq.impl.UpdatableRecordImpl
 
@@ -44,9 +43,9 @@ open class CoreStoreNotificationRecord private constructor() : UpdatableRecordIm
         set(value): Unit = set(5, value)
         get(): String? = get(5) as String?
 
-    open var rawPayload: JSONB?
+    open var rawPayload: String?
         set(value): Unit = set(6, value)
-        get(): JSONB? = get(6) as JSONB?
+        get(): String? = get(6) as String?
 
     open var processed: Boolean?
         set(value): Unit = set(7, value)
@@ -77,7 +76,7 @@ open class CoreStoreNotificationRecord private constructor() : UpdatableRecordIm
     /**
      * Create a detached, initialised CoreStoreNotificationRecord
      */
-    constructor(id: UUID, appId: UUID, platform: String? = null, subscriptionPxid: String? = null, purchaseToken: String? = null, notificationType: String? = null, rawPayload: JSONB? = null, processed: Boolean? = null, processedAt: Instant? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null): this() {
+    constructor(id: UUID, appId: UUID, platform: String? = null, subscriptionPxid: String? = null, purchaseToken: String? = null, notificationType: String? = null, rawPayload: String? = null, processed: Boolean? = null, processedAt: Instant? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null): this() {
         this.id = id
         this.appId = appId
         this.platform = platform

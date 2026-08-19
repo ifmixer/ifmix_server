@@ -4,11 +4,14 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
+import com.ifmix.api.core.entity.ImageRef
+
 import java.io.Serializable
 import java.time.Instant
 import java.util.UUID
 
-import org.jooq.JSONB
+import kotlin.collections.List
+import kotlin.collections.Map
 
 
 /**
@@ -23,15 +26,15 @@ data class CoreScanRecord(
     var createdAt: Instant? = null,
     var updatedAt: Instant? = null,
     var deletedAt: Instant? = null,
-    var imageKeys: JSONB? = null,
+    var imageKeys: List<ImageRef>? = null,
     var userDisplayName: String? = null,
     var userNotes: String? = null,
     var collected: Boolean? = null,
     var lang: String? = null,
     var country: String? = null,
     var currency: String? = null,
-    var basicResult: JSONB? = null,
-    var premiumResult: JSONB? = null
+    var basicResult: Map<kotlin.String, kotlin.Any?>? = null,
+    var premiumResult: Map<kotlin.String, kotlin.Any?>? = null
 ): Serializable {
 
 

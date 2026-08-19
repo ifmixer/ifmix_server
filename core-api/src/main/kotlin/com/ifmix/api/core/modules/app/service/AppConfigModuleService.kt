@@ -1,5 +1,6 @@
 package com.ifmix.api.core.modules.app.service
 
+import com.ifmix.api.core.entity.app.AppConfigRevision
 import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jooq.TxRunner
@@ -13,9 +14,9 @@ class AppConfigModuleService(
     private val entityService: AppConfigEntityService,
     private val tx: TxRunner,
 ) {
-    fun createOneRevision(ctx: OperationContext, req: AppConfigEntityService.CreateRevisionInput): AppConfigEntityService.RevisionDto =
+    fun createOneRevision(ctx: OperationContext, req: AppConfigEntityService.CreateRevisionInput): AppConfigRevision =
         tx.withTx(svcCtxFactory.forApp(ctx)) { sc -> entityService.createOneRevision(sc, req) }
 
-    fun toggleRevision(ctx: OperationContext, revisionId: UUID, enabled: Boolean): AppConfigEntityService.RevisionDto =
+    fun toggleRevision(ctx: OperationContext, revisionId: UUID, enabled: Boolean): AppConfigRevision =
         tx.withTx(svcCtxFactory.forApp(ctx)) { sc -> entityService.toggleRevision(sc, revisionId, enabled) }
 }

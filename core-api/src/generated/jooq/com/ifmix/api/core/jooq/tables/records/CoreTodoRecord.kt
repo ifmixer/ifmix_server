@@ -9,7 +9,6 @@ import com.ifmix.api.core.jooq.tables.CoreTodo
 import java.time.Instant
 import java.util.UUID
 
-import org.jooq.JSONB
 import org.jooq.Record1
 import org.jooq.impl.UpdatableRecordImpl
 
@@ -56,9 +55,9 @@ open class CoreTodoRecord private constructor() : UpdatableRecordImpl<CoreTodoRe
         set(value): Unit = set(8, value)
         get(): UUID? = get(8) as UUID?
 
-    open var meta: JSONB?
+    open var meta: String?
         set(value): Unit = set(9, value)
-        get(): JSONB? = get(9) as JSONB?
+        get(): String? = get(9) as String?
 
     open var note: String?
         set(value): Unit = set(10, value)
@@ -73,7 +72,7 @@ open class CoreTodoRecord private constructor() : UpdatableRecordImpl<CoreTodoRe
     /**
      * Create a detached, initialised CoreTodoRecord
      */
-    constructor(id: UUID, title: String, done: Boolean? = null, appId: UUID, createdAt: Instant, updatedAt: Instant, deletedAt: Instant? = null, installId: UUID? = null, userId: UUID? = null, meta: JSONB? = null, note: String? = null): this() {
+    constructor(id: UUID, title: String, done: Boolean? = null, appId: UUID, createdAt: Instant, updatedAt: Instant, deletedAt: Instant? = null, installId: UUID? = null, userId: UUID? = null, meta: String? = null, note: String? = null): this() {
         this.id = id
         this.title = title
         this.done = done

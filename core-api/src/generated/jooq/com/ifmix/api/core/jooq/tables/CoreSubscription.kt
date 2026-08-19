@@ -5,6 +5,7 @@ package com.ifmix.api.core.jooq.tables
 
 
 import com.ifmix.api.core.infra.jooq.InstantConverter
+import com.ifmix.api.core.infra.jooq.JsonStringConverter
 import com.ifmix.api.core.infra.jooq.SmallintToIntConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.SUBSCRIPTION_APP_ID_IDX
@@ -24,7 +25,6 @@ import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Index
 import org.jooq.InverseForeignKey
-import org.jooq.JSONB
 import org.jooq.Name
 import org.jooq.PlainSQL
 import org.jooq.QueryPart
@@ -133,7 +133,7 @@ open class CoreSubscription(
     /**
      * The column <code>public.core_subscription.raw_response</code>.
      */
-    val RAW_RESPONSE: TableField<CoreSubscriptionRecord, JSONB?> = createField(DSL.name("raw_response"), SQLDataType.JSONB, this, "")
+    val RAW_RESPONSE: TableField<CoreSubscriptionRecord, String?> = createField(DSL.name("raw_response"), SQLDataType.JSONB, this, "", JsonStringConverter())
 
     /**
      * The column <code>public.core_subscription.created_at</code>.

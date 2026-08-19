@@ -175,6 +175,31 @@ jooq {
                             converter = "com.ifmix.api.core.infra.jooq.SmallintToIntConverter"
                             includeTypes = "SMALLINT"
                         })
+                        // === JSONB 列 → 领域类型 ===
+                        // core_app_config_revision.content → ConfigContent
+                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
+                            userType = "com.ifmix.api.core.entity.app.ConfigContent"
+                            converter = "com.ifmix.api.core.infra.jooq.ConfigContentConverter"
+                            includeExpression = "core_app_config_revision\\.content"
+                        })
+                        // core_scan_record.image_keys → List<ImageRef>
+                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
+                            userType = "kotlin.collections.List<com.ifmix.api.core.entity.ImageRef>"
+                            converter = "com.ifmix.api.core.infra.jooq.ImageRefListConverter"
+                            includeExpression = "core_scan_record\\.image_keys"
+                        })
+                        // core_scan_record.basic_result / premium_result → Map<String, Any?>
+                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
+                            userType = "kotlin.collections.Map<kotlin.String, kotlin.Any?>"
+                            converter = "com.ifmix.api.core.infra.jooq.JsonMapConverter"
+                            includeExpression = "core_scan_record\\.(basic_result|premium_result)"
+                        })
+                        // 其余 JSONB 列 → String（raw_payload, raw_response 等）
+                        forcedTypes.add(org.jooq.meta.jaxb.ForcedType().apply {
+                            userType = "java.lang.String"
+                            converter = "com.ifmix.api.core.infra.jooq.JsonStringConverter"
+                            includeTypes = "JSONB"
+                        })
                     }
                     target.apply {
                         packageName = "com.ifmix.api.core.jooq"

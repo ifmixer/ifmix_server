@@ -3,7 +3,6 @@ package com.ifmix.api.core.modules.payment.repo
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreSubscription.Companion.CORE_SUBSCRIPTION
 import com.ifmix.api.core.entity.iap.Subscription
-import org.jooq.JSONB
 import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import java.time.Instant
@@ -29,7 +28,6 @@ class SubscriptionRepository {
 
     fun upsertSubscription(ctx: SvcCtx, subscription: Subscription): UUID {
         val record = ctx.dsl.newRecord(CORE_SUBSCRIPTION, subscription)
-        record.rawResponse = subscription.rawResponse?.let { JSONB.jsonb(it) }
         ctx.dsl.executeInsert(record)
         return subscription.id
     }
@@ -53,7 +51,6 @@ class SubscriptionRepository {
         val existing = findByOriginalTxn(ctx, appId, originalTxnId) ?: return false
         val updated = block(existing)
         val record = ctx.dsl.newRecord(CORE_SUBSCRIPTION, updated)
-        record.rawResponse = updated.rawResponse?.let { JSONB.jsonb(it) }
         record.updatedAt = Instant.now()
         record.changed(CORE_SUBSCRIPTION.ID, false) // don't update PK
         ctx.dsl.executeUpdate(record)

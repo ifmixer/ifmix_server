@@ -9,7 +9,6 @@ import com.ifmix.api.core.jooq.tables.CoreAppUser
 import java.time.Instant
 import java.util.UUID
 
-import org.jooq.JSONB
 import org.jooq.Record1
 import org.jooq.impl.UpdatableRecordImpl
 
@@ -32,9 +31,9 @@ open class CoreAppUserRecord private constructor() : UpdatableRecordImpl<CoreApp
         set(value): Unit = set(2, value)
         get(): UUID = get(2) as UUID
 
-    open var metadata: JSONB?
+    open var metadata: String?
         set(value): Unit = set(3, value)
-        get(): JSONB? = get(3) as JSONB?
+        get(): String? = get(3) as String?
 
     open var createdAt: Instant?
         set(value): Unit = set(4, value)
@@ -53,7 +52,7 @@ open class CoreAppUserRecord private constructor() : UpdatableRecordImpl<CoreApp
     /**
      * Create a detached, initialised CoreAppUserRecord
      */
-    constructor(id: UUID, appId: UUID, authIdentityId: UUID, metadata: JSONB? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
+    constructor(id: UUID, appId: UUID, authIdentityId: UUID, metadata: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null): this() {
         this.id = id
         this.appId = appId
         this.authIdentityId = authIdentityId

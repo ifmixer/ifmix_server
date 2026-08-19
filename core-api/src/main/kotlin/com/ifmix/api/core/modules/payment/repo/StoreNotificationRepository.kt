@@ -4,7 +4,6 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreStoreNotification.Companion.CORE_STORE_NOTIFICATION
 import com.ifmix.api.core.entity.iap.StoreNotification
-import org.jooq.JSONB
 import org.jooq.TableField
 import org.springframework.stereotype.Repository
 
@@ -33,8 +32,6 @@ class StoreNotificationRepository(factory: CrudRepoOpsFactory) {
 
     fun insert(ctx: SvcCtx, notification: StoreNotification) {
         val record = ctx.dsl.newRecord(CORE_STORE_NOTIFICATION, notification)
-        // JSONB 字段需手动转换（entity 是 String?, Record 是 JSONB?）
-        record.rawPayload = notification.rawPayload?.let { JSONB.jsonb(it) }
         ctx.dsl.executeInsert(record)
     }
 

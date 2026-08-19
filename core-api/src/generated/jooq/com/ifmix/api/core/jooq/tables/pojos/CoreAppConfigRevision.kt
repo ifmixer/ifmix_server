@@ -4,11 +4,11 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
+import com.ifmix.api.core.entity.app.ConfigContent
+
 import java.io.Serializable
 import java.time.Instant
 import java.util.UUID
-
-import org.jooq.JSONB
 
 
 /**
@@ -25,7 +25,7 @@ data class CoreAppConfigRevision(
     var createdAt: Instant? = null,
     var enabled: Boolean? = null,
     var slug: String? = null,
-    var content: JSONB? = null,
+    var content: ConfigContent? = null,
     var note: String? = null
 ): Serializable {
 

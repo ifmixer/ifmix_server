@@ -4,7 +4,10 @@
 package com.ifmix.api.core.jooq.tables
 
 
+import com.ifmix.api.core.entity.ImageRef
+import com.ifmix.api.core.infra.jooq.ImageRefListConverter
 import com.ifmix.api.core.infra.jooq.InstantConverter
+import com.ifmix.api.core.infra.jooq.JsonMapConverter
 import com.ifmix.api.core.infra.jooq.SmallintToIntConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.SCAN_RECORD_APP_ID_IDX
@@ -18,13 +21,13 @@ import java.util.UUID
 
 import kotlin.collections.Collection
 import kotlin.collections.List
+import kotlin.collections.Map
 
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Index
 import org.jooq.InverseForeignKey
-import org.jooq.JSONB
 import org.jooq.Name
 import org.jooq.Path
 import org.jooq.PlainSQL
@@ -119,7 +122,7 @@ open class CoreScanRecord(
     /**
      * The column <code>public.core_scan_record.image_keys</code>.
      */
-    val IMAGE_KEYS: TableField<CoreScanRecordRecord, JSONB?> = createField(DSL.name("image_keys"), SQLDataType.JSONB.nullable(false).defaultValue(DSL.field(DSL.raw("'[]'::jsonb"), SQLDataType.JSONB)), this, "")
+    val IMAGE_KEYS: TableField<CoreScanRecordRecord, List<ImageRef>?> = createField(DSL.name("image_keys"), SQLDataType.JSONB.nullable(false).defaultValue(DSL.field(DSL.raw("'[]'::jsonb"), SQLDataType.JSONB)), this, "", ImageRefListConverter())
 
     /**
      * The column <code>public.core_scan_record.user_display_name</code>.
@@ -154,12 +157,12 @@ open class CoreScanRecord(
     /**
      * The column <code>public.core_scan_record.basic_result</code>.
      */
-    val BASIC_RESULT: TableField<CoreScanRecordRecord, JSONB?> = createField(DSL.name("basic_result"), SQLDataType.JSONB, this, "")
+    val BASIC_RESULT: TableField<CoreScanRecordRecord, Map<kotlin.String, kotlin.Any?>?> = createField(DSL.name("basic_result"), SQLDataType.JSONB, this, "", JsonMapConverter())
 
     /**
      * The column <code>public.core_scan_record.premium_result</code>.
      */
-    val PREMIUM_RESULT: TableField<CoreScanRecordRecord, JSONB?> = createField(DSL.name("premium_result"), SQLDataType.JSONB, this, "")
+    val PREMIUM_RESULT: TableField<CoreScanRecordRecord, Map<kotlin.String, kotlin.Any?>?> = createField(DSL.name("premium_result"), SQLDataType.JSONB, this, "", JsonMapConverter())
 
     private constructor(alias: Name, aliased: Table<CoreScanRecordRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CoreScanRecordRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

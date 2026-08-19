@@ -9,10 +9,8 @@ import com.ifmix.api.core.infra.jooq.FilterConditionParser
 import com.ifmix.api.core.jooq.tables.CoreScanRecord.Companion.CORE_SCAN_RECORD
 import com.ifmix.api.core.entity.ImageRef
 import com.ifmix.api.core.entity.ai.ScanRecord
-import org.jooq.JSONB
 import org.jooq.TableField
 import org.springframework.stereotype.Repository
-import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.util.UUID
 
 @Repository
@@ -55,9 +53,6 @@ class ScanRecordRepository(factory: CrudRepoOpsFactory) {
 
     fun insert(ctx: SvcCtx, entity: ScanRecord) {
         val record = ctx.dsl.newRecord(CORE_SCAN_RECORD, entity)
-        record.imageKeys = JSONB.jsonb(mapper.writeValueAsString(entity.imageKeys))
-        record.basicResult = entity.basicResult?.let { JSONB.jsonb(mapper.writeValueAsString(it)) }
-        record.premiumResult = entity.premiumResult?.let { JSONB.jsonb(mapper.writeValueAsString(it)) }
         ctx.dsl.executeInsert(record)
     }
 
@@ -145,9 +140,9 @@ class ScanRecordRepository(factory: CrudRepoOpsFactory) {
     private fun toModel(r: org.jooq.Record): ScanRecord = ScanRecord(
         id = r.get(CORE_SCAN_RECORD.ID)!!,
         appId = r.get(CORE_SCAN_RECORD.APP_ID)!!,
-        imageKeys = parseImageKeys(r.get(CORE_SCAN_RECORD.IMAGE_KEYS)),
-        basicResult = parseJsonMap(r.get(CORE_SCAN_RECORD.BASIC_RESULT)),
-        premiumResult = parseJsonMap(r.get(CORE_SCAN_RECORD.PREMIUM_RESULT)),
+        imageKeys = r.get(CORE_SCAN_RECORD.IMAGE_KEYS) ?: emptyList(),
+        basicResult = r.get(CORE_SCAN_RECORD.BASIC_RESULT),
+        premiumResult = r.get(CORE_SCAN_RECORD.PREMIUM_RESULT),
         status = r.get(CORE_SCAN_RECORD.STATUS) ?: 100,
         clientIp = r.get(CORE_SCAN_RECORD.CLIENT_IP),
         lang = r.get(CORE_SCAN_RECORD.LANG),
@@ -161,24 +156,7 @@ class ScanRecordRepository(factory: CrudRepoOpsFactory) {
         deletedAt = r.get(CORE_SCAN_RECORD.DELETED_AT),
     )
 
-    private fun parseImageKeys(jsonb: JSONB?): List<ImageRef> {
-        val str = jsonb?.toString() ?: return emptyList()
-        return runCatching {
-            @Suppress("UNCHECKED_CAST")
-            mapper.readValue(str, List::class.java) as List<ImageRef>
-        }.getOrDefault(emptyList())
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun parseJsonMap(jsonb: JSONB?): Map<String, Any?>? =
-        jsonb?.toString()?.let { str ->
-            runCatching { mapper.readValue(str, Map::class.java) as Map<String, Any?> }
-                .getOrNull()
-        }
-
     companion object {
-        private val mapper = jacksonObjectMapper()
-
         /** Kotlin 属性名 → jOOQ TableField。供动态 filter/sort 使用。 */
         val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
             ScanRecord::id.name to CORE_SCAN_RECORD.ID,

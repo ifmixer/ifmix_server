@@ -4,12 +4,15 @@
 package com.ifmix.api.core.jooq.tables.records
 
 
+import com.ifmix.api.core.entity.ImageRef
 import com.ifmix.api.core.jooq.tables.CoreScanRecord
 
 import java.time.Instant
 import java.util.UUID
 
-import org.jooq.JSONB
+import kotlin.collections.List
+import kotlin.collections.Map
+
 import org.jooq.Record1
 import org.jooq.impl.UpdatableRecordImpl
 
@@ -48,9 +51,9 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
         set(value): Unit = set(6, value)
         get(): Instant? = get(6) as Instant?
 
-    open var imageKeys: JSONB?
+    open var imageKeys: List<ImageRef>?
         set(value): Unit = set(7, value)
-        get(): JSONB? = get(7) as JSONB?
+        get(): List<ImageRef>? = get(7) as List<ImageRef>?
 
     open var userDisplayName: String?
         set(value): Unit = set(8, value)
@@ -76,13 +79,13 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
         set(value): Unit = set(13, value)
         get(): String? = get(13) as String?
 
-    open var basicResult: JSONB?
+    open var basicResult: Map<kotlin.String, kotlin.Any?>?
         set(value): Unit = set(14, value)
-        get(): JSONB? = get(14) as JSONB?
+        get(): Map<kotlin.String, kotlin.Any?>? = get(14) as Map<kotlin.String, kotlin.Any?>?
 
-    open var premiumResult: JSONB?
+    open var premiumResult: Map<kotlin.String, kotlin.Any?>?
         set(value): Unit = set(15, value)
-        get(): JSONB? = get(15) as JSONB?
+        get(): Map<kotlin.String, kotlin.Any?>? = get(15) as Map<kotlin.String, kotlin.Any?>?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -93,7 +96,7 @@ open class CoreScanRecordRecord private constructor() : UpdatableRecordImpl<Core
     /**
      * Create a detached, initialised CoreScanRecordRecord
      */
-    constructor(id: UUID, appId: UUID, status: Int? = null, clientIp: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null, imageKeys: JSONB? = null, userDisplayName: String? = null, userNotes: String? = null, collected: Boolean? = null, lang: String? = null, country: String? = null, currency: String? = null, basicResult: JSONB? = null, premiumResult: JSONB? = null): this() {
+    constructor(id: UUID, appId: UUID, status: Int? = null, clientIp: String? = null, createdAt: Instant? = null, updatedAt: Instant? = null, deletedAt: Instant? = null, imageKeys: List<ImageRef>? = null, userDisplayName: String? = null, userNotes: String? = null, collected: Boolean? = null, lang: String? = null, country: String? = null, currency: String? = null, basicResult: Map<kotlin.String, kotlin.Any?>? = null, premiumResult: Map<kotlin.String, kotlin.Any?>? = null): this() {
         this.id = id
         this.appId = appId
         this.status = status

@@ -5,6 +5,7 @@ package com.ifmix.api.core.jooq.tables
 
 
 import com.ifmix.api.core.infra.jooq.InstantConverter
+import com.ifmix.api.core.infra.jooq.JsonStringConverter
 import com.ifmix.api.core.jooq.Public
 import com.ifmix.api.core.jooq.indexes.IDX_CORE_TODO_APP_INSTALL
 import com.ifmix.api.core.jooq.indexes.IDX_CORE_TODO_APP_USER
@@ -23,7 +24,6 @@ import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Index
 import org.jooq.InverseForeignKey
-import org.jooq.JSONB
 import org.jooq.Name
 import org.jooq.PlainSQL
 import org.jooq.QueryPart
@@ -127,7 +127,7 @@ open class CoreTodo(
     /**
      * The column <code>public.core_todo.meta</code>.
      */
-    val META: TableField<CoreTodoRecord, JSONB?> = createField(DSL.name("meta"), SQLDataType.JSONB, this, "")
+    val META: TableField<CoreTodoRecord, String?> = createField(DSL.name("meta"), SQLDataType.JSONB, this, "", JsonStringConverter())
 
     /**
      * The column <code>public.core_todo.note</code>.
