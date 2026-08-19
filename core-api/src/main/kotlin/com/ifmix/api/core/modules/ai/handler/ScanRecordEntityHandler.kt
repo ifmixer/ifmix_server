@@ -25,5 +25,6 @@ class ScanRecordEntityHandler(private val facade: AiFacade) {
         cursor: String? = null,
         limit: Int? = null,
         collected: Boolean? = null,
-    ) = facade.findByCursor(ctx, cursor, limit, collected)
+        filter: com.ifmix.api.core.graphql.generated.types.FilterGroup? = null,
+    ) = facade.findByCursor(ctx, cursor, limit, collected, filter)
 }

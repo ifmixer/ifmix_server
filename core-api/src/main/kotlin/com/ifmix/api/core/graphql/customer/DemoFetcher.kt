@@ -16,6 +16,7 @@ import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
 import com.ifmix.api.core.modules.demo.DemoFacade
 import com.ifmix.api.core.modules.demo.entity.toTodo
 import com.ifmix.api.core.modules.demo.entity.toTodoItem
+import com.ifmix.api.core.graphql.generated.types.FilterGroup
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsData
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -45,10 +46,11 @@ class DemoFetcher(
         @InputArgument cursor: String?,
         @InputArgument limit: Int?,
         @InputArgument userId: String?,
+        @InputArgument filter: FilterGroup?,
         dfe: DgsDataFetchingEnvironment,
     ): TodoConnection {
         val ctx = getContext(dfe)
-        val page = demoFacade.listTodos(ctx, cursor, limit)
+        val page = demoFacade.listTodos(ctx, cursor, limit, filter)
         return TodoConnection(
             items = page.items.map { it.toTodo() },
             nextCursor = page.nextCursor,

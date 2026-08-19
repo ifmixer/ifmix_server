@@ -1,9 +1,9 @@
 type Query {
     query_demo_findTodoById(id: ID!): Todo
-    query_demo_listTodos(cursor: String, limit: Int, userId: String): TodoConnection!
+    query_demo_listTodos(cursor: String, limit: Int, userId: String, filter: FilterGroup): TodoConnection!
 
     query_ai_findScanById(id: ID!): ScanRecord
-    query_ai_listScans(cursor: String, limit: Int, collected: Boolean): ScanConnection!
+    query_ai_listScans(cursor: String, limit: Int, collected: Boolean, filter: FilterGroup): ScanConnection!
     query_ai_getDefaultCollection: Collection!
     query_ai_listCollectionItems(collectionId: ID, cursor: String, limit: Int): CollectionItemConnection!
     query_app_getCurrentConfig: AppConfigRevision

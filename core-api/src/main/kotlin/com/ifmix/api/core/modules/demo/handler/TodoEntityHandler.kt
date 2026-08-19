@@ -6,6 +6,7 @@ import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.redis.CacheAside
 import com.ifmix.api.core.graphql.generated.types.CreateTodoInput
+import com.ifmix.api.core.graphql.generated.types.FilterGroup
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
 import com.ifmix.api.core.modules.demo.repo.TodoRepository
@@ -33,8 +34,8 @@ class TodoEntityHandler(
     fun findByIds(ctx: RequestContext, ids: List<String>): List<TodoEntity> =
         repo.findByIds(RepoCtx(), ctx.appId, ids)
 
-    fun findByCursor(ctx: RequestContext, input: CursorQueryInput): Page<TodoEntity> =
-        repo.findByCursor(RepoCtx(), ctx.appId, input)
+    fun findByCursor(ctx: RequestContext, input: CursorQueryInput, filter: FilterGroup? = null): Page<TodoEntity> =
+        repo.findByCursor(RepoCtx(), ctx.appId, input, filter)
 
     fun create(ctx: RequestContext, input: CreateTodoInput): String {
         val entity = TodoEntity().apply {

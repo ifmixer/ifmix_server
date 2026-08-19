@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.demo
 
 import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.graphql.generated.types.FilterGroup
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
 import com.ifmix.api.core.modules.demo.entity.TodoItemEntity
 import com.ifmix.api.core.modules.demo.handler.TodoEntityHandler
@@ -29,9 +30,9 @@ class DemoFacade(
     fun findTodosByIds(ctx: RequestContext, ids: List<String>): List<TodoEntity> =
         todoHandler.findByIds(ctx, ids)
 
-    fun listTodos(ctx: RequestContext, cursor: String?, limit: Int?): com.ifmix.api.core.common.db.Page<TodoEntity> {
+    fun listTodos(ctx: RequestContext, cursor: String?, limit: Int?, filter: FilterGroup? = null): com.ifmix.api.core.common.db.Page<TodoEntity> {
         val input = com.ifmix.api.core.common.db.CursorQueryInput(cursor = cursor, limit = limit)
-        return todoHandler.findByCursor(ctx, input)
+        return todoHandler.findByCursor(ctx, input, filter)
     }
 
     // ---- Mutation: todo ----

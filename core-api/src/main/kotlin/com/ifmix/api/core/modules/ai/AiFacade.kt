@@ -8,6 +8,7 @@ import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.graphql.generated.types.FilterGroup
 import com.ifmix.api.core.common.ratelimit.RateLimiter
 import com.ifmix.api.core.common.storage.ObjectStorage
 import com.ifmix.api.core.modules.ai.entity.CollectionEntity
@@ -90,9 +91,10 @@ class AiFacade(
         cursor: String? = null,
         limit: Int? = null,
         collected: Boolean? = null,
+        filter: FilterGroup? = null,
     ): Page<ScanRecordEntity> {
         val input = CursorQueryInput(cursor = cursor, limit = limit)
-        val page = scanRecordRepo.findByCursor(ctx, input)
+        val page = scanRecordRepo.findByCursor(ctx, input, filter)
         // 若指定 collected 过滤，则在内存中过滤
         val filtered = if (collected != null) {
             page.items.filter { it.collected == collected }

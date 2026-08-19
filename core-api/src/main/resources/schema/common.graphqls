@@ -178,3 +178,26 @@ input RefreshInput {
 input LogoutInput {
     refreshToken: String!
 }
+
+# ===== 通用动态查询 Filter DSL =====
+
+enum FilterOp {
+  EQ NE GT GTE LT LTE IN NIN LIKE IS_NULL IS_NOT_NULL
+}
+
+input FieldFilter {
+  field: String!
+  op: FilterOp!
+  value: JSON
+  values: [JSON!]
+}
+
+input FilterGroup {
+  and: [FilterExpr!]
+  or: [FilterExpr!]
+}
+
+input FilterExpr {
+  field: FieldFilter
+  group: FilterGroup
+}

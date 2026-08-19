@@ -3,9 +3,11 @@ package com.ifmix.api.core.modules.ai.repo
 import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.db.CursorQueryInput
+import com.ifmix.api.core.common.db.FilterCriteriaParser
 import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.graphql.generated.types.FilterGroup
 import com.ifmix.api.core.modules.ai.entity.ScanRecordEntity
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
@@ -24,6 +26,13 @@ class ScanRecordRepository(
     private val crudOps: CRUDOps<ScanRecordEntity>,
     private val mongo: MongoTemplate,
 ) {
+    private val filterParser = FilterCriteriaParser(setOf(
+        ScanRecordEntity::status,
+        ScanRecordEntity::collected,
+        ScanRecordEntity::tier,
+        ScanRecordEntity::createdAt,
+    ))
+
     /** 按 id 查询（不软删过滤）。 */
     fun findById(id: String): ScanRecordEntity? =
         mongo.findOne(
@@ -36,8 +45,12 @@ class ScanRecordRepository(
         crudOps.findByIds(RepoCtx(), ctx.appId, ids)
 
     /** 按游标分页查询扫描记录（带 appId 过滤和软删）。 */
-    fun findByCursor(ctx: RequestContext, input: CursorQueryInput = CursorQueryInput()): Page<ScanRecordEntity> =
-        crudOps.findByCursor(RepoCtx(), ctx.appId, input)
+    fun findByCursor(
+        ctx: RequestContext,
+        input: CursorQueryInput = CursorQueryInput(),
+        filter: FilterGroup? = null,
+    ): Page<ScanRecordEntity> =
+        crudOps.findByCursor(RepoCtx(), ctx.appId, input, filterParser.parse(filter))
 
     /** 软删扫描记录。 */
     fun deleteById(ctx: RequestContext, id: String): Boolean {

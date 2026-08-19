@@ -3,7 +3,9 @@ package com.ifmix.api.core.modules.demo.repo
 import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.common.db.CursorQueryInput
+import com.ifmix.api.core.common.db.FilterCriteriaParser
 import com.ifmix.api.core.common.db.Page
+import com.ifmix.api.core.graphql.generated.types.FilterGroup
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
 import org.bson.types.ObjectId
 import org.springframework.stereotype.Component
@@ -15,14 +17,25 @@ import org.springframework.stereotype.Component
 class TodoRepository(
     private val crudOps: CRUDOps<TodoEntity>,
 ) {
+    private val filterParser = FilterCriteriaParser(setOf(
+        TodoEntity::title,
+        TodoEntity::done,
+        TodoEntity::authorId,
+        TodoEntity::createdAt,
+    ))
+
     fun findById(ctx: RepoCtx, appId: String, id: String): TodoEntity? =
         crudOps.findById(ctx, appId, id)
 
     fun findByIds(ctx: RepoCtx, appId: String, ids: List<String>): List<TodoEntity> =
         crudOps.findByIds(ctx, appId, ids)
 
-    fun findByCursor(ctx: RepoCtx, appId: String, input: CursorQueryInput): Page<TodoEntity> =
-        crudOps.findByCursor(ctx, appId, input)
+    fun findByCursor(
+        ctx: RepoCtx,
+        appId: String,
+        input: CursorQueryInput,
+        filter: FilterGroup? = null,
+    ): Page<TodoEntity> = crudOps.findByCursor(ctx, appId, input, filterParser.parse(filter))
 
     fun insert(ctx: RepoCtx, appId: String, entity: TodoEntity): String {
         crudOps.insertOne(ctx, appId, entity)

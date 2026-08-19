@@ -149,7 +149,7 @@ class CRUDOps<T : BaseEntity>(
      * 游标分页。自建查询：注入租户 appId（若 AppScoped）+ extraCriteria + 软删过滤（若 SoftDeletable），
      * 接管排序、游标 keyset、limit 上限与读偏好。支持按任意 [CursorQueryInput.sortBy] 排序（默认 _id）。
      */
-    fun findByCursor(ctx: RepoCtx, appId: String, input: CursorQueryInput = CursorQueryInput()): Page<T> {
+    fun findByCursor(ctx: RepoCtx, appId: String, input: CursorQueryInput = CursorQueryInput(), filterCriteria: org.springframework.data.mongodb.core.query.Criteria = org.springframework.data.mongodb.core.query.Criteria()): Page<T> {
         val limit = input.effectiveLimit()
         val desc = input.order == CursorQueryInput.Order.DESC
         val sortField = mongoField(input.sortBy)
@@ -158,6 +158,7 @@ class CRUDOps<T : BaseEntity>(
         if (appScoped) query.addCriteria(Criteria.where("appId").`is`(ObjectId(appId)))
         extraCriteria(ctx)?.let { query.addCriteria(it) }
         if (softDeletable) query.addCriteria(SoftDeletable::deletedAt isEqualTo null)
+        if (filterCriteria.criteriaObject.isNotEmpty()) query.addCriteria(filterCriteria)
         val cursor = input.cursor
         if (!cursor.isNullOrBlank()) {
             if (sortField == "_id") {

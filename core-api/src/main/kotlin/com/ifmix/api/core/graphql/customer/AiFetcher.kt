@@ -15,6 +15,7 @@ import com.ifmix.api.core.modules.ai.entity.toScanRecord
 import com.ifmix.api.core.modules.ai.entity.toCollection
 import com.ifmix.api.core.modules.ai.entity.toCollectionItemType
 import com.ifmix.api.core.modules.ai.entity.CollectionItemEntity
+import com.ifmix.api.core.graphql.generated.types.FilterGroup
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
@@ -44,10 +45,11 @@ class AiFetcher(
         @InputArgument cursor: String?,
         @InputArgument limit: Int?,
         @InputArgument collected: Boolean?,
+        @InputArgument filter: FilterGroup?,
         dfe: DgsDataFetchingEnvironment,
     ): ScanConnection {
         val ctx = getContext(dfe)
-        val page = aiFacade.findByCursor(ctx, cursor, limit, collected)
+        val page = aiFacade.findByCursor(ctx, cursor, limit, collected, filter)
         return ScanConnection(
             items = page.items.map { it.toScanRecord() },
             nextCursor = page.nextCursor,
