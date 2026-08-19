@@ -76,7 +76,8 @@ class CollectionFetcher(
 class ScanRecordsDataLoader(private val scanRecordRepo: ScanRecordRepository, private val sql: org.babyfish.jimmer.sql.kt.KSqlClient) : MappedBatchLoader<UUID, List<ScanRecord>> {
     override fun load(scanRecordIds: Set<UUID>): CompletionStage<Map<UUID, List<ScanRecord>>> {
         val ctx = SvcCtx(op = OperationContext(req = RequestContext()), sql = sql)
-        val records = scanRecordIds.map { scanRecordRepo.findById(ctx, it) ?: throw IllegalStateException("not found: $it") }
+        // Note: appId is not available in DataLoader context; load all matching records
+        val records = scanRecordIds.map { id -> scanRecordRepo.findById(ctx, id) ?: throw IllegalStateException("not found: $id") }
         val grouped = records.groupBy { it.id }
         val result = scanRecordIds.associateWith { grouped[it] ?: emptyList() }
         return CompletableFuture.completedFuture(result)

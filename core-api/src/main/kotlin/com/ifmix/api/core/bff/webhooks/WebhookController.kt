@@ -86,7 +86,7 @@ class WebhookController(
 
             // 4. 通过 bundleId 反查 appId
             val appId = if (bundleId != null) {
-                appConfigRepo.findByBundleId(buildCtx(), bundleId)?.appId
+                appConfigRepo.findByBundleId(buildCtx(svcCtxFactory), bundleId)?.appId
             } else null
 
             if (appId == null) {
@@ -119,7 +119,7 @@ class WebhookController(
 
             // 2. 通过 packageName 反查 appId
             val appId = if (packageName != null) {
-                appConfigRepo.findByAndroidPackage(buildCtx(), packageName)?.appId
+                appConfigRepo.findByAndroidPackage(buildCtx(svcCtxFactory), packageName)?.appId
             } else null
 
             if (appId == null) {
