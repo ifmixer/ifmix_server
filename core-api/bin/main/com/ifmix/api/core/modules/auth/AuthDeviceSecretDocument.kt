@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
 import org.springframework.data.mongodb.core.mapping.Document
@@ -14,7 +14,7 @@ import java.time.Instant
     CompoundIndex(name = "device_secret_uq", def = "{'authTenantId': 1, 'secretHash': 1}", unique = true),
     CompoundIndex(name = "device_secret_identity_idx", def = "{'authTenantId': 1, 'authIdentityId': 1}"),
 )
-class AuthDeviceSecretDocument : BaseDocument() {
+class AuthDeviceSecretEntity : BaseEntity() {
     var authTenantId: String? = null
     var authIdentityId: String? = null
     var secretHash: String? = null

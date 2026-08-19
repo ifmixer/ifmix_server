@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
 import org.springframework.data.mongodb.core.mapping.Document
@@ -17,7 +17,7 @@ import org.springframework.data.mongodb.core.mapping.Document
     ),
     CompoundIndex(name = "provider_identity_identity_idx", def = "{'authTenantId': 1, 'authIdentityId': 1}"),
 )
-class AuthProviderIdentityDocument : BaseDocument() {
+class AuthProviderIdentityEntity : BaseEntity() {
     var authTenantId: String? = null
     var authIdentityId: String? = null
     var provider: String? = null              // "google" | "apple"

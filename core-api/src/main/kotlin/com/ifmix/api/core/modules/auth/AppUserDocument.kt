@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.db.AppScoped
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.mapping.Document
@@ -11,7 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document
  */
 @Document(collection = "app_user")
 @CompoundIndex(name = "app_user_uq", def = "{'appId': 1, 'authIdentityId': 1}", unique = true)
-class AppUserDocument : BaseDocument(), AppScoped {
+class AppUserEntity : BaseEntity(), AppScoped {
     override lateinit var appId: ObjectId
     var authIdentityId: String? = null
     var metadata: Map<String, Any?>? = null

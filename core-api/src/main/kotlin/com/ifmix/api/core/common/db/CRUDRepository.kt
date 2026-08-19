@@ -25,7 +25,7 @@ import kotlin.reflect.full.memberProperties
  * - 实现 [SoftDeletable] → 删除走 deletedAt 标记，读写自动过滤 deletedAt=null。
  * 另保留 extraCriteria/extraIdCriteria 两个钩子，供模块附加自定义过滤（如 collection 按 collectionId）。
  */
-open class CRUDRepository<T : BaseDocument>(
+open class CRUDRepository<T : BaseEntity>(
     protected val mongo: MongoTemplate,
     protected val type: Class<T>,
 ) {
@@ -80,7 +80,7 @@ open class CRUDRepository<T : BaseDocument>(
         val query = idQuery(ctx, id)
         val update = Update()
         sets.forEach { (field, value) -> update.set(field, value) }
-        update.set(BaseDocument::updatedAt, Instant.now())
+        update.set(BaseEntity::updatedAt, Instant.now())
         return mongo.updateFirst(query, update, type).modifiedCount > 0
     }
 
@@ -102,7 +102,7 @@ open class CRUDRepository<T : BaseDocument>(
         val update = Update()
         sets.forEach { (field, value) -> update.set(field, value) }
         unsetFields?.forEach { field -> update.unset(field) }
-        update.set(BaseDocument::updatedAt, Instant.now())
+        update.set(BaseEntity::updatedAt, Instant.now())
         return mongo.updateFirst(query, update, type).modifiedCount > 0
     }
 
@@ -110,7 +110,7 @@ open class CRUDRepository<T : BaseDocument>(
         if (invalidId(id)) return false
         val query = idQuery(ctx, id)
         return if (softDeletable) {
-            val update = Update().set(SoftDeletable::deletedAt, Instant.now()).set(BaseDocument::updatedAt, Instant.now())
+            val update = Update().set(SoftDeletable::deletedAt, Instant.now()).set(BaseEntity::updatedAt, Instant.now())
             mongo.updateFirst(query, update, type).modifiedCount > 0
         } else {
             mongo.remove(query, type).deletedCount > 0
@@ -124,7 +124,7 @@ open class CRUDRepository<T : BaseDocument>(
         tenantCriteria(ctx)?.let { query.addCriteria(it) }
         extraCriteria(ctx)?.let { query.addCriteria(it) }
         if (softDeletable) query.addCriteria(SoftDeletable::deletedAt isEqualTo null)
-        query.addCriteria(BaseDocument::id inValues ids.mapNotNull { id -> if (invalidId(id)) null else ObjectId(id) })
+        query.addCriteria(BaseEntity::id inValues ids.mapNotNull { id -> if (invalidId(id)) null else ObjectId(id) })
         applyReadPreference(query, ctx)
         return mongo.find(query, type)
     }
@@ -170,7 +170,7 @@ open class CRUDRepository<T : BaseDocument>(
                 if (ObjectId.isValid(cursor)) {
                     val cursorId = ObjectId(cursor)
                     query.addCriteria(
-                        if (desc) BaseDocument::id lt cursorId else BaseDocument::id gt cursorId,
+                        if (desc) BaseEntity::id lt cursorId else BaseEntity::id gt cursorId,
                     )
                 }
             } else {
@@ -179,7 +179,7 @@ open class CRUDRepository<T : BaseDocument>(
                 val idHex = decoded?.second
                 if (value != null && idHex != null && ObjectId.isValid(idHex)) {
                     val cursorId = ObjectId(idHex)
-                    val idCond = if (desc) BaseDocument::id lt cursorId else BaseDocument::id gt cursorId
+                    val idCond = if (desc) BaseEntity::id lt cursorId else BaseEntity::id gt cursorId
                     val sortCond = if (desc) Criteria.where(sortField).lt(value) else Criteria.where(sortField).gt(value)
                     query.addCriteria(
                         Criteria().orOperator(
@@ -221,7 +221,7 @@ open class CRUDRepository<T : BaseDocument>(
         val list = mutableListOf<Criteria>()
         tenantCriteria(ctx)?.let { list.add(it) }
         extraIdCriteria(ctx)?.let { list.add(it) }
-        list.add(Criteria().andOperator(BaseDocument::id isEqualTo ObjectId(id)))
+        list.add(Criteria().andOperator(BaseEntity::id isEqualTo ObjectId(id)))
         return list
     }
 

@@ -1,7 +1,7 @@
 package com.ifmix.api.core.common.service
 
 import com.ifmix.api.core.common.db.AppScoped
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.db.CRUDRepository
 import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
@@ -13,7 +13,7 @@ import java.time.Instant
  * 通用服务：组合一个 CRUDRepository（持有，不继承）。模块 service 通过组合持有它并委托，
  * 只额外实现自己的定制逻辑（组合优于继承）。createOne 按文档能力条件盖章。
  */
-class CRUDService<T : BaseDocument>(
+class CRUDService<T : BaseEntity>(
     private val repo: CRUDRepository<T>,
 ) {
 

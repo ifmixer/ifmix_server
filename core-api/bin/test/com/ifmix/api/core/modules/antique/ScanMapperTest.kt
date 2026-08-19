@@ -10,8 +10,8 @@ class ScanMapperTest {
     private val mapper: ScanMapper = Konverter.get()
 
     @Test
-    fun mapsDocumentToDto() {
-        val doc = ScanRecordDocument().apply {
+    fun mapsEntityToDto() {
+        val doc = ScanRecordEntity().apply {
             id = "aaaaaaaaaaaaaaaaaaaaaaaa"
             scanId = "scan-001"
             imageUrl = "https://example.com/photo.png"
@@ -39,8 +39,8 @@ class ScanMapperTest {
     }
 
     @Test
-    fun mapsDocumentToListItemDto() {
-        val doc = ScanRecordDocument().apply {
+    fun mapsEntityToListItemDto() {
+        val doc = ScanRecordEntity().apply {
             id = "bbbbbbbbbbbbbbbbbbbbbbbb"
             scanId = "scan-002"
             imageUrl = "https://example.com/photo2.png"
@@ -59,7 +59,7 @@ class ScanMapperTest {
 
     @Test
     fun nullTimestampsStayNull() {
-        val doc = ScanRecordDocument().apply {
+        val doc = ScanRecordEntity().apply {
             id = "cccccccccccccccccccccccc"
             status = "FAILED"
         }

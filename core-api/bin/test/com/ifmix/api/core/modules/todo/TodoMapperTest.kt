@@ -10,8 +10,8 @@ class TodoMapperTest {
     private val mapper: TodoMapper = Konverter.get()
 
     @Test
-    fun mapsDocumentToResponseWithEpochMillis() {
-        val doc = TodoDocument().apply {
+    fun mapsEntityToResponseWithEpochMillis() {
+        val doc = TodoEntity().apply {
             id = "aaaaaaaaaaaaaaaaaaaaaaaa"
             title = "t"
             done = true
@@ -36,7 +36,7 @@ class TodoMapperTest {
 
     @Test
     fun nullTimestampsStayNull() {
-        val doc = TodoDocument().apply {
+        val doc = TodoEntity().apply {
             id = "bbbbbbbbbbbbbbbbbbbbbbbb"
             title = "t"
         }

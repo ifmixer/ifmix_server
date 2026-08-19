@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.collection
 
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
 import org.springframework.data.mongodb.core.mapping.Document
@@ -21,7 +21,7 @@ import org.springframework.data.mongodb.core.mapping.Document
         partialFilter = "{ 'isDefault': true, 'deletedAt': null }",
     ),
 )
-class CollectionDocument : BaseAppDocument() {
+class CollectionEntity : BaseAppEntity() {
 
     /** 安装标识（匿名场景下唯一标识用户）。 */
     var installId: String? = null

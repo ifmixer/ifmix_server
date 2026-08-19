@@ -2,7 +2,7 @@ package com.ifmix.api.core.common.db
 
 import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.todo.TodoDocument
+import com.ifmix.api.core.modules.todo.TodoEntity
 import com.mongodb.client.result.UpdateResult
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -27,17 +27,17 @@ class CRUDRepositoryTest {
     private lateinit var mongo: MongoTemplate
 
     private val ctx = RequestContext(appId = "app-1")
-    private lateinit var repo: CRUDRepository<TodoDocument>
+    private lateinit var repo: CRUDRepository<TodoEntity>
 
     @BeforeEach
     fun init() {
-        // TodoDocument extends BaseAppDocument → implements AppScoped + SoftDeletable,
+        // TodoEntity extends BaseAppEntity → implements AppScoped + SoftDeletable,
         // so CRUDRepository auto-detects softDelete=true and appScoped=true.
-        repo = CRUDRepository(mongo, TodoDocument::class.java)
+        repo = CRUDRepository(mongo, TodoEntity::class.java)
     }
 
-    private fun makeDoc(title: String, idHex: String): TodoDocument =
-        TodoDocument().apply {
+    private fun makeDoc(title: String, idHex: String): TodoEntity =
+        TodoEntity().apply {
             this.title = title
             appId = "app-1"
             id = idHex
@@ -49,19 +49,19 @@ class CRUDRepositoryTest {
     @Test
     fun insertThenGetById() {
         val doc = makeDoc("hello", "507f1f77bcf86cd799439011")
-        whenever(mongo.findOne(any<Query>(), eq(TodoDocument::class.java))).thenReturn(doc)
+        whenever(mongo.findOne(any<Query>(), eq(TodoEntity::class.java))).thenReturn(doc)
         assertThat(repo.getById(ctx, "507f1f77bcf86cd799439011").title).isEqualTo("hello")
     }
 
     @Test
     fun getByIdMissingThrowsNotFound() {
-        whenever(mongo.findOne(any<Query>(), eq(TodoDocument::class.java))).thenReturn(null)
+        whenever(mongo.findOne(any<Query>(), eq(TodoEntity::class.java))).thenReturn(null)
         assertThatThrownBy { repo.getById(ctx, ObjectId().toHexString()) }.isInstanceOf(ApiError::class.java)
     }
 
     @Test
     fun findByIdMissingReturnsNull() {
-        whenever(mongo.findOne(any<Query>(), eq(TodoDocument::class.java))).thenReturn(null)
+        whenever(mongo.findOne(any<Query>(), eq(TodoEntity::class.java))).thenReturn(null)
         assertThat(repo.findById(ctx, ObjectId().toHexString())).isNull()
     }
 
@@ -74,10 +74,10 @@ class CRUDRepositoryTest {
 
     @Test
     fun updateByIdAutoGeneratesSetFromMap() {
-        whenever(mongo.updateFirst(any<Query>(), any<Update>(), eq(TodoDocument::class.java)))
+        whenever(mongo.updateFirst(any<Query>(), any<Update>(), eq(TodoEntity::class.java)))
             .thenReturn(UpdateResult.acknowledged(1L, 1L, null))
         val updated = makeDoc("new", "507f1f77bcf86cd799439011")
-        whenever(mongo.findOne(any<Query>(), eq(TodoDocument::class.java))).thenReturn(updated)
+        whenever(mongo.findOne(any<Query>(), eq(TodoEntity::class.java))).thenReturn(updated)
 
         assertThat(repo.updateById(ctx, "507f1f77bcf86cd799439011", mapOf("title" to "new"))).isTrue()
         assertThat(repo.getById(ctx, "507f1f77bcf86cd799439011").title).isEqualTo("new")
@@ -85,16 +85,16 @@ class CRUDRepositoryTest {
 
     @Test
     fun updateByIdMissingReturnsFalse() {
-        whenever(mongo.updateFirst(any<Query>(), any<Update>(), eq(TodoDocument::class.java)))
+        whenever(mongo.updateFirst(any<Query>(), any<Update>(), eq(TodoEntity::class.java)))
             .thenReturn(UpdateResult.acknowledged(0L, 0L, null))
         assertThat(repo.updateById(ctx, ObjectId().toHexString(), mapOf("title" to "x"))).isFalse()
     }
 
     @Test
     fun softDeleteHidesFromFindAndList() {
-        whenever(mongo.updateFirst(any<Query>(), any<Update>(), eq(TodoDocument::class.java)))
+        whenever(mongo.updateFirst(any<Query>(), any<Update>(), eq(TodoEntity::class.java)))
             .thenReturn(UpdateResult.acknowledged(1L, 1L, null))
-        whenever(mongo.findOne(any<Query>(), eq(TodoDocument::class.java))).thenReturn(null)
+        whenever(mongo.findOne(any<Query>(), eq(TodoEntity::class.java))).thenReturn(null)
 
         assertThat(repo.deleteById(ctx, "507f1f77bcf86cd799439011")).isTrue()
         assertThat(repo.findById(ctx, "507f1f77bcf86cd799439011")).isNull()
@@ -107,14 +107,14 @@ class CRUDRepositoryTest {
         val doc2 = makeDoc("b", "507f1f77bcf86cd799439002")
         val doc3 = makeDoc("c", "507f1f77bcf86cd799439003")
 
-        whenever(mongo.find(any<Query>(), eq(TodoDocument::class.java))).thenReturn(listOf(doc3, doc2, doc1))
+        whenever(mongo.find(any<Query>(), eq(TodoEntity::class.java))).thenReturn(listOf(doc3, doc2, doc1))
 
         val p1 = repo.findByCursor(ctx, CursorQueryInput(order = CursorQueryInput.Order.DESC, limit = 2))
         assertThat(p1.items.map { it.id!! }).containsExactly("507f1f77bcf86cd799439003", "507f1f77bcf86cd799439002")
         assertThat(p1.hasMore).isTrue()
         assertThat(p1.nextCursor).isEqualTo("507f1f77bcf86cd799439002")
 
-        whenever(mongo.find(any<Query>(), eq(TodoDocument::class.java))).thenReturn(listOf(doc1))
+        whenever(mongo.find(any<Query>(), eq(TodoEntity::class.java))).thenReturn(listOf(doc1))
 
         val p2 = repo.findByCursor(ctx, CursorQueryInput(cursor = p1.nextCursor, order = CursorQueryInput.Order.DESC, limit = 2))
         assertThat(p2.items.map { it.id!! }).containsExactly("507f1f77bcf86cd799439001")

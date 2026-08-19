@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.iap
 
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
 import org.springframework.data.mongodb.core.index.IndexDirection
@@ -24,7 +24,7 @@ import org.springframework.data.mongodb.core.mapping.Document
         background = true,
     ),
 )
-class SubscriptionDocument : BaseAppDocument() {
+class SubscriptionEntity : BaseAppEntity() {
 
     /** 外部商店的 subscription ID（Apple subscriptionPxid / Google subscriptionId）。 */
     @Indexed

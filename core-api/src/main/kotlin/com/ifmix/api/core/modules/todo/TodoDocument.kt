@@ -1,13 +1,13 @@
 package com.ifmix.api.core.modules.todo
 
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.mapping.Document
 
 /** todos 集合。items 拆为独立集合 todo_items，通过 todoId 关联。 */
 @Document(collection = "todos")
 @CompoundIndex(name = "todos_app_id_id_idx", def = "{'appId': 1, '_id': 1}")
-class TodoDocument : BaseAppDocument() {
+class TodoEntity : BaseAppEntity() {
     lateinit var title: String
     var done: Boolean = false
     /** JSONB 元数据 */

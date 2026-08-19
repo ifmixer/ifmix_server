@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.antique
 import io.mcarle.konvert.api.Konverter
 
 /**
- * Konvert 编译期生成 ScanRecordDocument <-> DTO 映射。
+ * Konvert 编译期生成 ScanRecordEntity <-> DTO 映射。
  *
  * 所有字段同名且同类型，Konvert 直接拷贝即可。
  * createdAt/updatedAt 同为 Instant（JSON 由 Jackson 统一序列化成 epoch 毫秒）。
@@ -12,9 +12,9 @@ import io.mcarle.konvert.api.Konverter
 @Konverter
 interface ScanMapper {
 
-    fun toDto(record: ScanRecordDocument): ScanDto
+    fun toDto(record: ScanRecordEntity): ScanDto
 
-    fun toListItemDto(record: ScanRecordDocument): ScanListItemDto
+    fun toListItemDto(record: ScanRecordEntity): ScanListItemDto
 
     companion object
 }

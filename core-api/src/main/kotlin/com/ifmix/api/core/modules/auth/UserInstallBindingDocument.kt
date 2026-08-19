@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
 import java.time.Instant
@@ -12,7 +12,7 @@ import java.time.Instant
  * 用于登录归并、设备统计和防作弊。
  */
 @Document(collection = "core_user_install_binding")
-class UserInstallBindingDocument : BaseAppDocument() {
+class UserInstallBindingEntity : BaseAppEntity() {
 
     var userId: String? = null
 

@@ -16,7 +16,7 @@ import java.util.UUID
  * 古物扫描业务编排。
  *
  * 流程：
- * 1. 限流检查 → 2. 生成预签名上传 URL → 3. 创建 ScanRecordDocument →
+ * 1. 限流检查 → 2. 生成预签名上传 URL → 3. 创建 ScanRecordEntity →
  *    4. 异步调用 ScanRunner → 5. 返回结果
  */
 class AntiqueService(
@@ -48,7 +48,7 @@ class AntiqueService(
         val uploadUrl = objectStorage.presignUpload(objectKey, "image/png", Duration.ofMinutes(5))
 
         // 3. 创建扫描记录文档
-        val record = ScanRecordDocument().apply {
+        val record = ScanRecordEntity().apply {
             appId = ctx.appId
             scanId = UUID.randomUUID().toString()
             imageUrl = uploadUrl
@@ -64,8 +64,8 @@ class AntiqueService(
     /**
      * 获取扫描记录文档（内部方法）。
      */
-    fun getScanRecordById(id: String): ScanRecordDocument {
-        return mongo.findById(id, ScanRecordDocument::class.java)
+    fun getScanRecordById(id: String): ScanRecordEntity {
+        return mongo.findById(id, ScanRecordEntity::class.java)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "scan record not found")
     }
 
@@ -94,7 +94,7 @@ class AntiqueService(
     fun findByCursor(
         ctx: RequestContext,
         input: com.ifmix.api.core.common.db.CursorQueryInput = com.ifmix.api.core.common.db.CursorQueryInput(),
-    ): com.ifmix.api.core.common.db.Page<ScanRecordDocument> {
+    ): com.ifmix.api.core.common.db.Page<ScanRecordEntity> {
         val query = Query()
         query.addCriteria(Criteria.where("appId").`is`(ctx.appId))
         // 软删过滤
@@ -102,7 +102,7 @@ class AntiqueService(
 
         val limit = input.effectiveLimit()
         query.limit(limit + 1)
-        val docs = mongo.find(query, ScanRecordDocument::class.java)
+        val docs = mongo.find(query, ScanRecordEntity::class.java)
         val hasMore = docs.size > limit
         val items = if (hasMore) docs.subList(0, limit) else docs
         return com.ifmix.api.core.common.db.Page(items.toList(), null, hasMore)

@@ -8,14 +8,14 @@ import org.springframework.stereotype.Component
 @Component
 class AppInfoRepo(private val mongo: MongoTemplate) {
 
-    fun findById(appId: String): AppInfoDocument? =
-        if (ObjectId.isValid(appId)) mongo.findById(appId, AppInfoDocument::class.java) else null
+    fun findById(appId: String): AppInfoEntity? =
+        if (ObjectId.isValid(appId)) mongo.findById(appId, AppInfoEntity::class.java) else null
 
     fun existsById(appId: String): Boolean =
         ObjectId.isValid(appId) && mongo.exists(
             org.springframework.data.mongodb.core.query.Query(
                 org.springframework.data.mongodb.core.query.Criteria.where("_id").`is`(ObjectId(appId)),
             ),
-            AppInfoDocument::class.java,
+            AppInfoEntity::class.java,
         )
 }

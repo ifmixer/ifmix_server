@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
 
@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document
  * 不软删、不分片（全局唯一）。
  */
 @Document(collection = "auth_tenant")
-class AuthTenantDocument : BaseDocument() {
+class AuthTenantEntity : BaseEntity() {
 
     /** 租户级 Ed25519 JWT 私钥的 PEM 编码（PKCS#8）。 */
     var jwtPrivateKeyPem: String? = null

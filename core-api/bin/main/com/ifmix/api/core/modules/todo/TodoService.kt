@@ -10,11 +10,11 @@ import org.bson.types.ObjectId
  * todo 业务逻辑：**组合**持有通用 CRUDAppService（不继承），委托通用 CRUD，只实现定制逻辑
  * （带内嵌 items 的创建、部分更新自动生成）。
  */
-class TodoService(private val crud: CRUDService<TodoDocument>) {
+class TodoService(private val crud: CRUDService<TodoEntity>) {
 
     /** 创建 todo（内嵌 items 单文档原子写），返回新 id。 */
     fun create(ctx: RequestContext, req: CreateTodoRequest): String {
-        val doc = TodoDocument().apply {
+        val doc = TodoEntity().apply {
             title = req.title
             done = false
             items = (req.items ?: emptyList()).map {
@@ -28,11 +28,11 @@ class TodoService(private val crud: CRUDService<TodoDocument>) {
     fun update(ctx: RequestContext, id: String, patch: UpdateTodoRequest): Boolean =
         crud.updateById(ctx, id, patch)
 
-    fun getById(ctx: RequestContext, id: String): TodoDocument = crud.getById(ctx, id)
+    fun getById(ctx: RequestContext, id: String): TodoEntity = crud.getById(ctx, id)
 
-    fun findById(ctx: RequestContext, id: String): TodoDocument? = crud.findById(ctx, id)
+    fun findById(ctx: RequestContext, id: String): TodoEntity? = crud.findById(ctx, id)
 
-    fun findByCursor(ctx: RequestContext, input: CursorQueryInput): Page<TodoDocument> =
+    fun findByCursor(ctx: RequestContext, input: CursorQueryInput): Page<TodoEntity> =
         crud.findByCursor(ctx, input)
 
     fun deleteById(ctx: RequestContext, id: String): Boolean = crud.deleteById(ctx, id)

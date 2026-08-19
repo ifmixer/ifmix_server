@@ -4,7 +4,7 @@ import io.mcarle.konvert.api.GeneratedKonverter
 
 public object ScanMapperImpl : ScanMapper {
   @GeneratedKonverter(priority = 5_000)
-  override fun toDto(record: ScanRecordDocument): ScanDto = ScanDto(
+  override fun toDto(record: ScanRecordEntity): ScanDto = ScanDto(
     id = record.id,
     scanId = record.scanId,
     imageUrl = record.imageUrl,
@@ -18,7 +18,7 @@ public object ScanMapperImpl : ScanMapper {
   )
 
   @GeneratedKonverter(priority = 5_000)
-  override fun toListItemDto(record: ScanRecordDocument): ScanListItemDto = ScanListItemDto(
+  override fun toListItemDto(record: ScanRecordEntity): ScanListItemDto = ScanListItemDto(
     id = record.id,
     scanId = record.scanId,
     status = record.status,

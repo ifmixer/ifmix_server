@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.feedback
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.support.AbstractMongoTest
 import org.assertj.core.api.Assertions.assertThat
-import org.bson.Document
+import org.bson.Entity
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -19,10 +19,10 @@ class FeedbackIntegrationTest : AbstractMongoTest() {
 
     @BeforeEach
     fun setUp() {
-        mongoTemplate.getCollection("feedback").deleteMany(Document())
+        mongoTemplate.getCollection("feedback").deleteMany(Entity())
         service = FeedbackService(
             com.ifmix.api.core.common.service.CRUDService(
-                com.ifmix.api.core.common.db.CRUDRepository(mongoTemplate, FeedbackDocument::class.java),
+                com.ifmix.api.core.common.db.CRUDRepository(mongoTemplate, FeedbackEntity::class.java),
             ),
         )
     }

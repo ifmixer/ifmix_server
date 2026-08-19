@@ -1,10 +1,10 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.antique.ScanRecordDocument
-import com.ifmix.api.core.modules.iap.SubscriptionDocument
+import com.ifmix.api.core.modules.antique.ScanRecordEntity
+import com.ifmix.api.core.modules.iap.SubscriptionEntity
 import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
@@ -58,15 +58,15 @@ class MergeOnLoginListener(
             txRunner.withTx(RequestContext(appId = e.appId, installId = installId)) {
                 val q = Query(
                     Criteria().andOperator(
-                        ScanRecordDocument::appId isEqualTo ObjectId(e.appId),
-                        ScanRecordDocument::installId isEqualTo installId,
-                        ScanRecordDocument::userId isEqualTo null,
+                        ScanRecordEntity::appId isEqualTo ObjectId(e.appId),
+                        ScanRecordEntity::installId isEqualTo installId,
+                        ScanRecordEntity::userId isEqualTo null,
                     ),
                 )
-                val u = Update().set(ScanRecordDocument::userId, e.appUserId)
-                    .set(BaseDocument::updatedAt, Instant.now())
-                mongo.updateMulti(q, u, ScanRecordDocument::class.java)
-                mongo.updateMulti(q, u, SubscriptionDocument::class.java)
+                val u = Update().set(ScanRecordEntity::userId, e.appUserId)
+                    .set(BaseEntity::updatedAt, Instant.now())
+                mongo.updateMulti(q, u, ScanRecordEntity::class.java)
+                mongo.updateMulti(q, u, SubscriptionEntity::class.java)
             }
         } catch (ex: Exception) {
             log.error("mergeOnLogin failed appId={} appUserId={} installId={}", e.appId, e.appUserId, installId, ex)

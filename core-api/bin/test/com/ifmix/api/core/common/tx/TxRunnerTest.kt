@@ -1,7 +1,7 @@
 package com.ifmix.api.core.common.tx
 
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.todo.TodoDocument
+import com.ifmix.api.core.modules.todo.TodoEntity
 import com.ifmix.api.core.support.AbstractMongoTest
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -20,12 +20,12 @@ class TxRunnerTest : AbstractMongoTest() {
     @BeforeEach
     fun ensureCollection() {
         // 事务中隐式建集合在部分版本会失败，测试前先确保集合存在
-        if (!mongoTemplate.collectionExists(TodoDocument::class.java)) {
-            mongoTemplate.createCollection(TodoDocument::class.java)
+        if (!mongoTemplate.collectionExists(TodoEntity::class.java)) {
+            mongoTemplate.createCollection(TodoEntity::class.java)
         }
     }
 
-    private fun todo(t: String) = TodoDocument().apply {
+    private fun todo(t: String) = TodoEntity().apply {
         title = t
         appId = "app-tx"
         createdAt = Instant.now()
@@ -38,7 +38,7 @@ class TxRunnerTest : AbstractMongoTest() {
             mongoTemplate.insert(todo("a"))
             mongoTemplate.insert(todo("b"))
         }
-        assertThat(mongoTemplate.findAll(TodoDocument::class.java)).hasSize(2)
+        assertThat(mongoTemplate.findAll(TodoEntity::class.java)).hasSize(2)
     }
 
     @Test
@@ -50,6 +50,6 @@ class TxRunnerTest : AbstractMongoTest() {
             }
         }.isInstanceOf(RuntimeException::class.java)
 
-        assertThat(mongoTemplate.findAll(TodoDocument::class.java)).isEmpty()
+        assertThat(mongoTemplate.findAll(TodoEntity::class.java)).isEmpty()
     }
 }

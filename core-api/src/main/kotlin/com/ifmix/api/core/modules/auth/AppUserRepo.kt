@@ -21,7 +21,7 @@ class AppUserRepo(private val mongo: MongoTemplate) {
     fun ensure(appId: String, authIdentityId: String): String {
         findId(appId, authIdentityId)?.let { return it }
         val now = Instant.now()
-        val doc = AppUserDocument().apply {
+        val doc = AppUserEntity().apply {
             this.appId = ObjectId(appId); this.authIdentityId = authIdentityId; createdAt = now; updatedAt = now
         }
         return try {
@@ -33,9 +33,9 @@ class AppUserRepo(private val mongo: MongoTemplate) {
 
     private fun findId(appId: String, authIdentityId: String): String? = mongo.findOne(
         Query(Criteria().andOperator(
-            AppUserDocument::appId isEqualTo ObjectId(appId),
-            AppUserDocument::authIdentityId isEqualTo authIdentityId,
+            AppUserEntity::appId isEqualTo ObjectId(appId),
+            AppUserEntity::authIdentityId isEqualTo authIdentityId,
         )),
-        AppUserDocument::class.java,
+        AppUserEntity::class.java,
     )?.id?.toHexString()
 }

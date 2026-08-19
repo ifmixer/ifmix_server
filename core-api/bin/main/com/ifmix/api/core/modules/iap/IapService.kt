@@ -44,7 +44,7 @@ class IapService(
         }
 
         // 落盘订阅记录
-        val doc = SubscriptionDocument().apply {
+        val doc = SubscriptionEntity().apply {
             appId = ctx.appId
             subscriptionPxid = result.originalTransactionId ?: "pending-${java.util.UUID.randomUUID()}"
             originalTransactionId = result.originalTransactionId

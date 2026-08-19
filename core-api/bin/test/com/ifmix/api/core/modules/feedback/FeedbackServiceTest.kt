@@ -17,7 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 class FeedbackServiceTest {
 
     @Mock
-    private lateinit var crud: CRUDService<FeedbackDocument>
+    private lateinit var crud: CRUDService<FeedbackEntity>
 
     private val ctx = RequestContext(appId = "app-1", installId = "inst-1", userId = "user-1")
     private lateinit var service: FeedbackService
@@ -42,7 +42,7 @@ class FeedbackServiceTest {
     @Test
     fun submitPropagatesInstallIdAndUserIdFromContext() {
         whenever(crud.createOne(any(), any())).thenAnswer {
-            val doc = it.getArgument<FeedbackDocument>(1)
+            val doc = it.getArgument<FeedbackEntity>(1)
             doc.apply {
                 assertThat(appId).isEqualTo("app-1")
                 assertThat(installId).isEqualTo("inst-1")
@@ -57,7 +57,7 @@ class FeedbackServiceTest {
     @Test
     fun submitWithScanRecordIdStoresIt() {
         whenever(crud.createOne(any(), any())).thenAnswer {
-            val doc = it.getArgument<FeedbackDocument>(1)
+            val doc = it.getArgument<FeedbackEntity>(1)
             assertThat(doc.scanRecordId).isEqualTo("scan-123")
             "mock-id"
         }
@@ -71,7 +71,7 @@ class FeedbackServiceTest {
     @Test
     fun submitWithoutNoteIsAllowed() {
         whenever(crud.createOne(any(), any())).thenAnswer {
-            val doc = it.getArgument<FeedbackDocument>(1)
+            val doc = it.getArgument<FeedbackEntity>(1)
             assertThat(doc.note).isNull()
             "mock-id"
         }

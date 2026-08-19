@@ -16,7 +16,7 @@ import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
 
 /**
- * Trusted Documents filter（OncePerRequestFilter）。
+ * Trusted Entitys filter（OncePerRequestFilter）。
  *
  * 请求支持两种模式：
  * 1. **x-op-id 头**（优先）：客户端发 x-op-id header，从 store 按 name 查找 query 并注入 body
@@ -27,7 +27,7 @@ import java.io.InputStreamReader
  */
 @Component
 @Order(1)
-class TrustedDocumentFilter(
+class TrustedEntityFilter(
     private val store: PersistedQueryStore,
     @Value("\${graphql.trusted-documents.enabled:false}")
     private val enabled: Boolean,

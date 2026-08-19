@@ -16,9 +16,9 @@ class UploadRecordRepo(private val mongo: MongoTemplate) {
      * 插入一条上传记录。
      *
      * @param ctx     请求上下文（含 appId、installId、userId）
-     * @param doc     要插入的 UploadRecordDocument（字段已由调用方填充）
+     * @param doc     要插入的 UploadRecordEntity（字段已由调用方填充）
      */
-    fun insert(ctx: RequestContext, doc: UploadRecordDocument) {
+    fun insert(ctx: RequestContext, doc: UploadRecordEntity) {
         doc.appId = ctx.appId
         if (doc.installId == null) doc.installId = ctx.installId
         if (doc.userId == null) doc.userId = ctx.userId

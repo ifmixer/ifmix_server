@@ -9,9 +9,9 @@ import com.ifmix.api.core.graphql.generated.types.ScanRecord
 import com.ifmix.api.core.modules.antique.AntiqueService
 import com.ifmix.api.core.modules.antique.CreateScanRequest
 import com.ifmix.api.core.modules.antique.toScanRecord
-import com.ifmix.api.core.modules.antique.ScanRecordDocument
+import com.ifmix.api.core.modules.antique.ScanRecordEntity
 import com.ifmix.api.core.modules.antique.ScanRecordRepository
-import com.ifmix.api.core.modules.storage.UploadRecordDocument
+import com.ifmix.api.core.modules.storage.UploadRecordEntity
 import com.ifmix.api.core.modules.storage.UploadRecordRepo
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -23,7 +23,7 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import java.time.Duration
 import java.util.UUID
 
-/** Map field from GraphQL input to ScanRecordDocument patch. */
+/** Map field from GraphQL input to ScanRecordEntity patch. */
 private fun mapCollectedPatch(collected: Boolean): Map<String, Any?> =
     mapOf("collected" to collected, "updatedAt" to java.time.Instant.now())
 
@@ -131,7 +131,7 @@ class CustomerScanFetcher(
         category: String,
     ) {
         try {
-            val doc = UploadRecordDocument().apply {
+            val doc = UploadRecordEntity().apply {
                 this.appId = ctx.appId
                 this.installId = ctx.installId
                 this.userId = ctx.userId

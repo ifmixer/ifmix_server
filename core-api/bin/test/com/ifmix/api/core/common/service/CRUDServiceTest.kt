@@ -1,9 +1,9 @@
 package com.ifmix.api.core.common.service
 
 import com.ifmix.api.core.common.db.CRUDRepository
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.todo.TodoDocument
+import com.ifmix.api.core.modules.todo.TodoEntity
 import org.assertj.core.api.Assertions.assertThat
 import org.bson.types.ObjectId
 import org.junit.jupiter.api.BeforeEach
@@ -23,21 +23,21 @@ class CRUDServiceTest {
     private lateinit var mongo: MongoTemplate
 
     private val ctx = RequestContext(appId = "app-9")
-    private lateinit var service: CRUDService<TodoDocument>
+    private lateinit var service: CRUDService<TodoEntity>
 
     @BeforeEach
     fun init() {
-        service = CRUDService(CRUDRepository(mongo, TodoDocument::class.java))
+        service = CRUDService(CRUDRepository(mongo, TodoEntity::class.java))
     }
 
     @Test
     fun createOneStampsTenantAndTimestamps() {
         val id = ObjectId().toHexString()
-        whenever(mongo.insert(any<BaseAppDocument>())).thenAnswer { invocation ->
-            invocation.getArgument<BaseAppDocument>(0).apply { this.id = id }
+        whenever(mongo.insert(any<BaseAppEntity>())).thenAnswer { invocation ->
+            invocation.getArgument<BaseAppEntity>(0).apply { this.id = id }
         }
 
-        val doc = TodoDocument().apply { title = "t" }
+        val doc = TodoEntity().apply { title = "t" }
         val generatedId = service.createOne(ctx, doc)
 
         assertThat(generatedId).isEqualTo(id)
@@ -50,11 +50,11 @@ class CRUDServiceTest {
     @Test
     fun createOneClearsDeletedAtOnNewEntity() {
         val id = ObjectId().toHexString()
-        whenever(mongo.insert(any<BaseAppDocument>())).thenAnswer { invocation ->
-            invocation.getArgument<BaseAppDocument>(0).apply { this.id = id }
+        whenever(mongo.insert(any<BaseAppEntity>())).thenAnswer { invocation ->
+            invocation.getArgument<BaseAppEntity>(0).apply { this.id = id }
         }
 
-        val doc = TodoDocument().apply {
+        val doc = TodoEntity().apply {
             title = "t"
             deletedAt = Instant.now().minusSeconds(3600)
         }

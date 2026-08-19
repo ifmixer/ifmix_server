@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.antique
 
 /**
- * Konvert 编译期生成 ScanRecordDocument <-> DTO 映射。
+ * Konvert 编译期生成 ScanRecordEntity <-> DTO 映射。
  *
  * 所有字段同名且同类型，Konvert 直接拷贝即可。
  * createdAt/updatedAt 同为 Instant（JSON 由 Jackson 统一序列化成 epoch 毫秒）。
@@ -10,7 +10,7 @@ package com.ifmix.api.core.modules.antique
  */
 object ScanMapper {
 
-    fun toDto(record: ScanRecordDocument): ScanDto = ScanDto(
+    fun toDto(record: ScanRecordEntity): ScanDto = ScanDto(
         id = record.id.toHexString(),
         scanId = record.scanId,
         imageUrl = record.imageUrl,
@@ -26,7 +26,7 @@ object ScanMapper {
         updatedAt = record.updatedAt,
     )
 
-    fun toListItemDto(record: ScanRecordDocument): ScanListItemDto = ScanListItemDto(
+    fun toListItemDto(record: ScanRecordEntity): ScanListItemDto = ScanListItemDto(
         id = record.id.toHexString(),
         scanId = record.scanId,
         status = record.status,

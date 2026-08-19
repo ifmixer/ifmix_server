@@ -18,7 +18,7 @@ class TodoServiceTest : AbstractMongoTest() {
     @BeforeEach
     fun init() {
         service = TodoService(
-            CRUDService(CRUDRepository(mongoTemplate, TodoDocument::class.java)),
+            CRUDService(CRUDRepository(mongoTemplate, TodoEntity::class.java)),
             mongoTemplate,
         )
     }

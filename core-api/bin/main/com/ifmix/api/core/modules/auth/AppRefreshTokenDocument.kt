@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.db.AppScoped
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
@@ -17,7 +17,7 @@ import java.time.Instant
     CompoundIndex(name = "refresh_appuser_idx", def = "{'appId': 1, 'appUserId': 1}"),
     CompoundIndex(name = "refresh_device_idx", def = "{'deviceSecretId': 1}"),
 )
-class AppRefreshTokenDocument : BaseDocument(), AppScoped {
+class AppRefreshTokenEntity : BaseEntity(), AppScoped {
     override var appId: String? = null
     var appUserId: String? = null
     var deviceSecretId: String? = null

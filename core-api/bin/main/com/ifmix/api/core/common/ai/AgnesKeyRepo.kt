@@ -14,10 +14,10 @@ class AgnesKeyRepo(private val mongo: MongoTemplate) {
     /**
      * 加载所有启用的 key（deletedAt = null），按 type 排序。
      */
-    fun loadEnabled(): List<AgnesKeyDocument> {
+    fun loadEnabled(): List<AgnesKeyEntity> {
         return mongo.find(
             Query(Criteria.where("deletedAt").`is`(null)),
-            AgnesKeyDocument::class.java,
+            AgnesKeyEntity::class.java,
         )
     }
 }

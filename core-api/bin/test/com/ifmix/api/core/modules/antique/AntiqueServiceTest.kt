@@ -58,7 +58,7 @@ class AntiqueServiceTest {
 
     @Test
     fun `getScanResult returns DTO for existing record`() {
-        val doc = ScanRecordDocument().apply {
+        val doc = ScanRecordEntity().apply {
             id = "existing-id"
             scanId = "scan-001"
             imageUrl = "https://example.com/photo.png"
@@ -70,7 +70,7 @@ class AntiqueServiceTest {
             appId = "test-app-1"
         }
 
-        whenever(mongo.findById(eq("existing-id"), eq(ScanRecordDocument::class.java)))
+        whenever(mongo.findById(eq("existing-id"), eq(ScanRecordEntity::class.java)))
             .thenReturn(doc)
 
         val dto = service.getScanResult(ctx, "existing-id")
@@ -82,7 +82,7 @@ class AntiqueServiceTest {
 
     @Test
     fun `getScanResult throws NOT_FOUND for missing record`() {
-        whenever(mongo.findById(eq("missing-id"), eq(ScanRecordDocument::class.java)))
+        whenever(mongo.findById(eq("missing-id"), eq(ScanRecordEntity::class.java)))
             .thenReturn(null)
 
         val error = org.junit.jupiter.api.assertThrows<ApiError> {

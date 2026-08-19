@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.appconfig
 
 /**
- * 配置视图（BO）：保持与 AppConfigDocument 相同的嵌套结构输出，
+ * 配置视图（BO）：保持与 AppConfigEntity 相同的嵌套结构输出，
  * 供下游（iap/antique 的验证器、tier 解析等）及 API 响应直接使用。
  */
 data class AppConfigView(

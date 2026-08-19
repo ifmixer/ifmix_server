@@ -13,13 +13,13 @@ import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
  * 聚合由 GraphQL DataLoader 层处理。
  */
 class TodoService(
-    private val crud: CRUDService<TodoDocument>,
+    private val crud: CRUDService<TodoEntity>,
     private val cache: CacheAside,
 ) {
     private fun cacheKey(ctx: RequestContext, id: String) = "todo:${ctx.appId}:$id"
 
     fun create(ctx: RequestContext, input: CreateTodoInput): String {
-        val doc = TodoDocument().apply {
+        val doc = TodoEntity().apply {
             this.title = input.title
             this.done = false
             this.meta = input.meta
@@ -29,31 +29,31 @@ class TodoService(
         return crud.createOne(ctx, doc)
     }
 
-    fun getById(ctx: RequestContext, id: String, useCache: Boolean = true): TodoDocument {
+    fun getById(ctx: RequestContext, id: String, useCache: Boolean = true): TodoEntity {
         if (!useCache) return crud.getById(ctx, id)
-        return cache.getOrLoad(cacheKey(ctx, id), TodoDocument::class.java) {
+        return cache.getOrLoad(cacheKey(ctx, id), TodoEntity::class.java) {
             crud.getById(ctx, id)
         }
     }
 
-    fun findById(ctx: RequestContext, id: String, useCache: Boolean = true): TodoDocument? {
+    fun findById(ctx: RequestContext, id: String, useCache: Boolean = true): TodoEntity? {
         if (!useCache) return crud.findById(ctx, id)
-        return cache.getOrLoadNullable(cacheKey(ctx, id), TodoDocument::class.java) {
+        return cache.getOrLoadNullable(cacheKey(ctx, id), TodoEntity::class.java) {
             crud.findById(ctx, id)
         }
     }
 
-    fun findByCursor(ctx: RequestContext, input: CursorQueryInput): Page<TodoDocument> {
+    fun findByCursor(ctx: RequestContext, input: CursorQueryInput): Page<TodoEntity> {
         val page = crud.findByCursor(ctx, input)
 //        page.items.forEach { cache.put(cacheKey(ctx, it.id.toHexString()), it) }
         return page
     }
 
-    fun findByIds(ctx: RequestContext, ids: List<String>): List<TodoDocument> =
+    fun findByIds(ctx: RequestContext, ids: List<String>): List<TodoEntity> =
         cache.loadMany(
             ids = ids,
             keyOf = { cacheKey(ctx, it) },
-            type = TodoDocument::class.java,
+            type = TodoEntity::class.java,
             idOf = { it.id.toHexString() },
         ) { missIds -> crud.findByIds(ctx, missIds) }
 

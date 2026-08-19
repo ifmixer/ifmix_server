@@ -173,8 +173,8 @@ class AgnesKeyStoreTest {
 
     // ---- helpers ----
 
-    private fun makeKey(id: String, type: String, rateLimit: Long, windowSec: Long, models: List<String>): AgnesKeyDocument {
-        return AgnesKeyDocument().apply {
+    private fun makeKey(id: String, type: String, rateLimit: Long, windowSec: Long, models: List<String>): AgnesKeyEntity {
+        return AgnesKeyEntity().apply {
             this.id = id
             appId = "test-app"
             this.key = "sk-test-$id"
@@ -192,8 +192,8 @@ class AgnesKeyStoreTest {
         coolingUntil: Instant? = null,
         unavailableUntil: Instant? = null,
         models: String? = null,
-    ): AgnesKeyDocument {
-        return AgnesKeyDocument().apply {
+    ): AgnesKeyEntity {
+        return AgnesKeyEntity().apply {
             this.id = id
             this.rateLimit = rateLimit
             this.windowSec = windowSec

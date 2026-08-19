@@ -40,7 +40,7 @@ class SpringAiScanRunnerTest {
     @Test
     fun `all preDeduct fail returns FAILED status`() {
         runBlocking {
-            val keyDoc = AgnesKeyDocument().apply {
+            val keyDoc = AgnesKeyEntity().apply {
                 id = "key-1"
                 key = "sk-test"
                 rateLimit = 0L

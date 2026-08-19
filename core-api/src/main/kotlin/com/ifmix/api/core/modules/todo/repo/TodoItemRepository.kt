@@ -1,8 +1,8 @@
 package com.ifmix.api.core.modules.todo.repo
 
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.todo.document.TodoItemDocument
+import com.ifmix.api.core.modules.todo.document.TodoItemEntity
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
@@ -17,81 +17,81 @@ import java.time.Instant
  */
 class TodoItemRepository(private val mongo: MongoTemplate) {
 
-    fun insertOne(ctx: RequestContext, doc: TodoItemDocument): String {
+    fun insertOne(ctx: RequestContext, doc: TodoItemEntity): String {
         doc.appId = ObjectId(ctx.appId)
         mongo.insert(doc)
         return doc.id.toHexString()
     }
 
-    fun findById(ctx: RequestContext, id: String): TodoItemDocument? {
+    fun findById(ctx: RequestContext, id: String): TodoItemEntity? {
         val query = Query(
             Criteria().andOperator(
-                TodoItemDocument::id isEqualTo id,
-                TodoItemDocument::appId isEqualTo ctx.appId,
-                BaseAppDocument::deletedAt isEqualTo null,
+                TodoItemEntity::id isEqualTo id,
+                TodoItemEntity::appId isEqualTo ctx.appId,
+                BaseAppEntity::deletedAt isEqualTo null,
             )
         )
-        return mongo.findOne(query, TodoItemDocument::class.java)
+        return mongo.findOne(query, TodoItemEntity::class.java)
     }
 
-    fun findByTodoIds(ctx: RequestContext, todoIds: List<String>): List<TodoItemDocument> {
+    fun findByTodoIds(ctx: RequestContext, todoIds: List<String>): List<TodoItemEntity> {
         if (todoIds.isEmpty()) return emptyList()
         val query = Query(
             Criteria().andOperator(
-                TodoItemDocument::appId isEqualTo ctx.appId,
-                TodoItemDocument::todoId inValues todoIds,
-                TodoItemDocument::deletedAt isEqualTo null,
+                TodoItemEntity::appId isEqualTo ctx.appId,
+                TodoItemEntity::todoId inValues todoIds,
+                TodoItemEntity::deletedAt isEqualTo null,
             )
         )
-        return mongo.find(query, TodoItemDocument::class.java)
+        return mongo.find(query, TodoItemEntity::class.java)
     }
 
     /** 按 id 部分更新。 */
     fun updateById(ctx: RequestContext, id: String, update: org.springframework.data.mongodb.core.query.Update): Boolean {
         val query = Query(
             Criteria().andOperator(
-                TodoItemDocument::id isEqualTo id,
-                TodoItemDocument::appId isEqualTo ctx.appId,
-                TodoItemDocument::deletedAt isEqualTo null,
+                TodoItemEntity::id isEqualTo id,
+                TodoItemEntity::appId isEqualTo ctx.appId,
+                TodoItemEntity::deletedAt isEqualTo null,
             )
         )
-        return mongo.updateFirst(query, update, TodoItemDocument::class.java).modifiedCount > 0
+        return mongo.updateFirst(query, update, TodoItemEntity::class.java).modifiedCount > 0
     }
 
     fun softDeleteById(ctx: RequestContext, id: String): Boolean {
         val query = Query(
             Criteria().andOperator(
-                TodoItemDocument::id isEqualTo id,
-                TodoItemDocument::appId isEqualTo ctx.appId,
-                BaseAppDocument::deletedAt isEqualTo null,
+                TodoItemEntity::id isEqualTo id,
+                TodoItemEntity::appId isEqualTo ctx.appId,
+                BaseAppEntity::deletedAt isEqualTo null,
             )
         )
-        val update = Update().set(BaseAppDocument::deletedAt, Instant.now())
-        return mongo.updateFirst(query, update, TodoItemDocument::class.java).modifiedCount > 0
+        val update = Update().set(BaseAppEntity::deletedAt, Instant.now())
+        return mongo.updateFirst(query, update, TodoItemEntity::class.java).modifiedCount > 0
     }
 
     fun softDeleteByIds(ctx: RequestContext, ids: List<String>): Int {
         if (ids.isEmpty()) return 0
         val query = Query(
             Criteria().andOperator(
-                TodoItemDocument::id inValues ids,
-                TodoItemDocument::appId isEqualTo ctx.appId,
-                BaseAppDocument::deletedAt isEqualTo null,
+                TodoItemEntity::id inValues ids,
+                TodoItemEntity::appId isEqualTo ctx.appId,
+                BaseAppEntity::deletedAt isEqualTo null,
             )
         )
-        val update = Update().set(BaseAppDocument::deletedAt, Instant.now())
-        return mongo.updateMulti(query, update, TodoItemDocument::class.java).modifiedCount.toInt()
+        val update = Update().set(BaseAppEntity::deletedAt, Instant.now())
+        return mongo.updateMulti(query, update, TodoItemEntity::class.java).modifiedCount.toInt()
     }
 
     fun softDeleteByTodoId(ctx: RequestContext, todoId: String): Int {
         val query = Query(
             Criteria().andOperator(
-                TodoItemDocument::todoId isEqualTo todoId,
-                TodoItemDocument::appId isEqualTo ctx.appId,
-                BaseAppDocument::deletedAt isEqualTo null,
+                TodoItemEntity::todoId isEqualTo todoId,
+                TodoItemEntity::appId isEqualTo ctx.appId,
+                BaseAppEntity::deletedAt isEqualTo null,
             )
         )
-        val update = Update().set(BaseAppDocument::deletedAt, Instant.now())
-        return mongo.updateMulti(query, update, TodoItemDocument::class.java).modifiedCount.toInt()
+        val update = Update().set(BaseAppEntity::deletedAt, Instant.now())
+        return mongo.updateMulti(query, update, TodoItemEntity::class.java).modifiedCount.toInt()
     }
 }

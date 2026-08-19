@@ -1,28 +1,28 @@
 package com.ifmix.api.core.common.db
 
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.todo.TodoDocument
+import com.ifmix.api.core.modules.todo.TodoEntity
 import com.ifmix.api.core.support.AbstractMongoTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Instant
 
-/** Tenant isolation via AppScoped capability (auto-detected from TodoDocument). */
+/** Tenant isolation via AppScoped capability (auto-detected from TodoEntity). */
 class CRUDAppRepositoryTest : AbstractMongoTest() {
 
     private val app1 = RequestContext(appId = "app-1")
     private val app2 = RequestContext(appId = "app-2")
-    private lateinit var repo: CRUDRepository<TodoDocument>
+    private lateinit var repo: CRUDRepository<TodoEntity>
 
     @BeforeEach
     fun init() {
-        // TodoDocument extends BaseAppDocument → auto-detects AppScoped + SoftDeletable
-        repo = CRUDRepository(mongoTemplate, TodoDocument::class.java)
+        // TodoEntity extends BaseAppEntity → auto-detects AppScoped + SoftDeletable
+        repo = CRUDRepository(mongoTemplate, TodoEntity::class.java)
     }
 
     private fun insert(ctx: RequestContext, title: String): String {
-        val d = TodoDocument().apply {
+        val d = TodoEntity().apply {
             this.title = title
             appId = ctx.appId
             val now = Instant.now()

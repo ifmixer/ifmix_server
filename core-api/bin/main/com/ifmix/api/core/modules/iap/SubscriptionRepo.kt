@@ -22,12 +22,12 @@ class SubscriptionRepo(
      * upsert：按 subscriptionPxid + appId 查找，存在则更新，不存在则插入。
      * 返回文档 id。
      */
-    fun upsert(ctx: RequestContext, doc: SubscriptionDocument): String {
+    fun upsert(ctx: RequestContext, doc: SubscriptionEntity): String {
         val query = Query(
             Criteria.where("subscriptionPxid").`is`(doc.subscriptionPxid)
                 .and("appId").`is`(ctx.appId),
         )
-        val existing = mongo.findOne(query, SubscriptionDocument::class.java)
+        val existing = mongo.findOne(query, SubscriptionEntity::class.java)
         val now = Instant.now()
 
         if (existing != null) {
@@ -41,7 +41,7 @@ class SubscriptionRepo(
                 .set("purchaseToken", doc.purchaseToken)
                 .set("rawResponse", doc.rawResponse)
                 .set("updatedAt", now)
-            mongo.updateFirst(query, update, SubscriptionDocument::class.java)
+            mongo.updateFirst(query, update, SubscriptionEntity::class.java)
             return existing.id!!
         }
 
@@ -68,19 +68,19 @@ class SubscriptionRepo(
         val u = Update()
         updateFn(u)
         u.set("updatedAt", Instant.now())
-        return mongo.updateFirst(query, u, SubscriptionDocument::class.java).modifiedCount > 0
+        return mongo.updateFirst(query, u, SubscriptionEntity::class.java).modifiedCount > 0
     }
 
     /**
      * 查找用户当前有效的活跃订阅。
      * 最多返回一条（同一用户不应有多个 ACTIVE 订阅，调用方应做幂等）。
      */
-    fun findActiveBySubject(ctx: RequestContext, subscriptionPxid: String): SubscriptionDocument? {
+    fun findActiveBySubject(ctx: RequestContext, subscriptionPxid: String): SubscriptionEntity? {
         val query = Query(
             Criteria.where("subscriptionPxid").`is`(subscriptionPxid)
                 .and("appId").`is`(ctx.appId)
                 .and("active").`is`(true),
         )
-        return mongo.findOne(query, SubscriptionDocument::class.java)
+        return mongo.findOne(query, SubscriptionEntity::class.java)
     }
 }

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.todo.document
 
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.mapping.Document
 
@@ -10,7 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Document
  */
 @Document(collection = "todo_items")
 @CompoundIndex(name = "todo_items_app_todo_idx", def = "{'appId': 1, 'todoId': 1}")
-class TodoItemDocument : BaseAppDocument() {
+class TodoItemEntity : BaseAppEntity() {
     lateinit var todoId: String
     lateinit var content: String
     var done: Boolean = false

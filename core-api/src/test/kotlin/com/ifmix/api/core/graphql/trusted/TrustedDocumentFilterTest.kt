@@ -6,7 +6,7 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import com.ifmix.api.core.graphql.common.trusted.ClasspathPersistedQueryStore
-import com.ifmix.api.core.graphql.common.trusted.TrustedDocumentFilter
+import com.ifmix.api.core.graphql.common.trusted.TrustedEntityFilter
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -17,21 +17,21 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.lang.reflect.Method
 
-class TrustedDocumentFilterTest {
+class TrustedEntityFilterTest {
 
     private lateinit var store: ClasspathPersistedQueryStore
-    private lateinit var filter: TrustedDocumentFilter
+    private lateinit var filter: TrustedEntityFilter
 
     @BeforeEach
     fun setup() {
         store = ClasspathPersistedQueryStore("classpath:graphql/persisted-queries/")
         store.init()
-        filter = TrustedDocumentFilter(store, enabled = false)
+        filter = TrustedEntityFilter(store, enabled = false)
     }
 
     /** 通过反射调用 protected doFilterInternal，避免包访问限制。 */
     private fun doFilter(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
-        val method: Method = TrustedDocumentFilter::class.java
+        val method: Method = TrustedEntityFilter::class.java
             .getDeclaredMethod("doFilterInternal", HttpServletRequest::class.java, HttpServletResponse::class.java, FilterChain::class.java)
         method.isAccessible = true
         method.invoke(filter, request, response, chain)

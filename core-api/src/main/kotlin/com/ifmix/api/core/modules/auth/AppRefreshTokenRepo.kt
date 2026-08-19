@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.auth.Hashing
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
@@ -27,7 +27,7 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         val token = Hashing.randomTokenBase64Url()
         val now = Instant.now()
         val exp = now.plus(ttl)
-        val doc = AppRefreshTokenDocument().apply {
+        val doc = AppRefreshTokenEntity().apply {
             if (id != null) this.id = ObjectId(id)
             this.appId = ObjectId(appId); this.appUserId = appUserId; this.deviceSecretId = deviceSecretId
             tokenHash = Hashing.sha256Base64Url(token); this.loginInstallId = loginInstallId
@@ -37,12 +37,12 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         return RefreshIssued(doc.id.toHexString(), token, exp)
     }
 
-    fun findByHash(appId: String, tokenPlain: String): AppRefreshTokenDocument? = mongo.findOne(
+    fun findByHash(appId: String, tokenPlain: String): AppRefreshTokenEntity? = mongo.findOne(
         Query(Criteria().andOperator(
-            AppRefreshTokenDocument::appId isEqualTo ObjectId(appId),
-            AppRefreshTokenDocument::tokenHash isEqualTo Hashing.sha256Base64Url(tokenPlain),
+            AppRefreshTokenEntity::appId isEqualTo ObjectId(appId),
+            AppRefreshTokenEntity::tokenHash isEqualTo Hashing.sha256Base64Url(tokenPlain),
         )),
-        AppRefreshTokenDocument::class.java,
+        AppRefreshTokenEntity::class.java,
     )
 
     /** 原子轮换：条件 updateFirst 只在未撤销时置 revokedAt+replacedBy。返回是否本方胜出。 */
@@ -50,14 +50,14 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         val now = Instant.now()
         val res = mongo.updateFirst(
             Query(Criteria().andOperator(
-                AppRefreshTokenDocument::appId isEqualTo ObjectId(appId),
-                AppRefreshTokenDocument::tokenHash isEqualTo tokenHash,
-                AppRefreshTokenDocument::revokedAt isEqualTo null,
+                AppRefreshTokenEntity::appId isEqualTo ObjectId(appId),
+                AppRefreshTokenEntity::tokenHash isEqualTo tokenHash,
+                AppRefreshTokenEntity::revokedAt isEqualTo null,
             )),
-            Update().set(AppRefreshTokenDocument::revokedAt, now)
-                .set(AppRefreshTokenDocument::replacedBy, newId)
-                .set(BaseDocument::updatedAt, now),
-            AppRefreshTokenDocument::class.java,
+            Update().set(AppRefreshTokenEntity::revokedAt, now)
+                .set(AppRefreshTokenEntity::replacedBy, newId)
+                .set(BaseEntity::updatedAt, now),
+            AppRefreshTokenEntity::class.java,
         )
         return res.modifiedCount > 0
     }
@@ -66,12 +66,12 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         val now = Instant.now()
         mongo.updateMulti(
             Query(Criteria().andOperator(
-                AppRefreshTokenDocument::appId isEqualTo ObjectId(appId),
-                AppRefreshTokenDocument::appUserId isEqualTo appUserId,
-                AppRefreshTokenDocument::revokedAt isEqualTo null,
+                AppRefreshTokenEntity::appId isEqualTo ObjectId(appId),
+                AppRefreshTokenEntity::appUserId isEqualTo appUserId,
+                AppRefreshTokenEntity::revokedAt isEqualTo null,
             )),
-            Update().set(AppRefreshTokenDocument::revokedAt, now).set(BaseDocument::updatedAt, now),
-            AppRefreshTokenDocument::class.java,
+            Update().set(AppRefreshTokenEntity::revokedAt, now).set(BaseEntity::updatedAt, now),
+            AppRefreshTokenEntity::class.java,
         )
     }
 
@@ -80,11 +80,11 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         val now = Instant.now()
         mongo.updateMulti(
             Query(Criteria().andOperator(
-                AppRefreshTokenDocument::deviceSecretId isEqualTo deviceSecretId,
-                AppRefreshTokenDocument::revokedAt isEqualTo null,
+                AppRefreshTokenEntity::deviceSecretId isEqualTo deviceSecretId,
+                AppRefreshTokenEntity::revokedAt isEqualTo null,
             )),
-            Update().set(AppRefreshTokenDocument::revokedAt, now).set(BaseDocument::updatedAt, now),
-            AppRefreshTokenDocument::class.java,
+            Update().set(AppRefreshTokenEntity::revokedAt, now).set(BaseEntity::updatedAt, now),
+            AppRefreshTokenEntity::class.java,
         )
     }
 }

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.iap
 
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.http.RequestContext
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
@@ -24,28 +24,28 @@ class SubscriptionRepo(
      * upsert：按 subscriptionPxid + appId 查找，存在则更新，不存在则插入。
      * 返回文档 id。
      */
-    fun upsert(ctx: RequestContext, doc: SubscriptionDocument): String {
+    fun upsert(ctx: RequestContext, doc: SubscriptionEntity): String {
         val query = Query(
             Criteria().andOperator(
-                SubscriptionDocument::subscriptionPxid isEqualTo doc.subscriptionPxid,
-                SubscriptionDocument::appId isEqualTo ObjectId(ctx.appId),
+                SubscriptionEntity::subscriptionPxid isEqualTo doc.subscriptionPxid,
+                SubscriptionEntity::appId isEqualTo ObjectId(ctx.appId),
             ),
         )
-        val existing = mongo.findOne(query, SubscriptionDocument::class.java)
+        val existing = mongo.findOne(query, SubscriptionEntity::class.java)
         val now = Instant.now()
 
         if (existing != null) {
             // 更新已有文档
             val update = Update()
-                .set(SubscriptionDocument::productId, doc.productId)
-                .set(SubscriptionDocument::platform, doc.platform)
-                .set(SubscriptionDocument::active, doc.active)
-                .set(SubscriptionDocument::subStatus, doc.subStatus)
-                .set(SubscriptionDocument::expiryDate, doc.expiryDate)
-                .set(SubscriptionDocument::purchaseToken, doc.purchaseToken)
-                .set(SubscriptionDocument::rawResponse, doc.rawResponse)
-                .set(BaseDocument::updatedAt, now)
-            mongo.updateFirst(query, update, SubscriptionDocument::class.java)
+                .set(SubscriptionEntity::productId, doc.productId)
+                .set(SubscriptionEntity::platform, doc.platform)
+                .set(SubscriptionEntity::active, doc.active)
+                .set(SubscriptionEntity::subStatus, doc.subStatus)
+                .set(SubscriptionEntity::expiryDate, doc.expiryDate)
+                .set(SubscriptionEntity::purchaseToken, doc.purchaseToken)
+                .set(SubscriptionEntity::rawResponse, doc.rawResponse)
+                .set(BaseEntity::updatedAt, now)
+            mongo.updateFirst(query, update, SubscriptionEntity::class.java)
             return existing.id.toHexString()
         }
 
@@ -67,28 +67,28 @@ class SubscriptionRepo(
     ): Boolean {
         val query = Query(
             Criteria().andOperator(
-                SubscriptionDocument::originalTransactionId isEqualTo originalTransactionId,
-                SubscriptionDocument::appId isEqualTo ObjectId(ctx.appId),
+                SubscriptionEntity::originalTransactionId isEqualTo originalTransactionId,
+                SubscriptionEntity::appId isEqualTo ObjectId(ctx.appId),
             ),
         )
         val u = Update()
         updateFn(u)
-        u.set(BaseDocument::updatedAt, Instant.now())
-        return mongo.updateFirst(query, u, SubscriptionDocument::class.java).modifiedCount > 0
+        u.set(BaseEntity::updatedAt, Instant.now())
+        return mongo.updateFirst(query, u, SubscriptionEntity::class.java).modifiedCount > 0
     }
 
     /**
      * 查找用户当前有效的活跃订阅。
      * 最多返回一条（同一用户不应有多个 ACTIVE 订阅，调用方应做幂等）。
      */
-    fun findActiveBySubject(ctx: RequestContext, subscriptionPxid: String): SubscriptionDocument? {
+    fun findActiveBySubject(ctx: RequestContext, subscriptionPxid: String): SubscriptionEntity? {
         val query = Query(
             Criteria().andOperator(
-                SubscriptionDocument::subscriptionPxid isEqualTo subscriptionPxid,
-                SubscriptionDocument::appId isEqualTo ObjectId(ctx.appId),
-                SubscriptionDocument::active isEqualTo true,
+                SubscriptionEntity::subscriptionPxid isEqualTo subscriptionPxid,
+                SubscriptionEntity::appId isEqualTo ObjectId(ctx.appId),
+                SubscriptionEntity::active isEqualTo true,
             ),
         )
-        return mongo.findOne(query, SubscriptionDocument::class.java)
+        return mongo.findOne(query, SubscriptionEntity::class.java)
     }
 }

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.common.db
 
-import com.ifmix.api.core.modules.todo.TodoDocument
+import com.ifmix.api.core.modules.todo.TodoEntity
 import com.ifmix.api.core.support.AbstractMongoTest
 import org.assertj.core.api.Assertions.assertThat
 import org.bson.types.ObjectId
@@ -12,7 +12,7 @@ class MongoSerializationTest : AbstractMongoTest() {
 
     @Test
     fun storesObjectIdAndDateWithoutClassHint() {
-        val doc = TodoDocument().apply {
+        val doc = TodoEntity().apply {
             title = "hello"
             appId = "app-1"
             createdAt = Instant.now()
@@ -29,7 +29,7 @@ class MongoSerializationTest : AbstractMongoTest() {
         assertThat(raw.containsKey("_class")).isFalse()
         assertThat(raw["createdAt"]).isInstanceOf(Date::class.java)
 
-        val loaded = mongoTemplate.findById(doc.id!!, TodoDocument::class.java)
+        val loaded = mongoTemplate.findById(doc.id!!, TodoEntity::class.java)
         assertThat(loaded?.title).isEqualTo("hello")
     }
 }

@@ -14,15 +14,15 @@ import org.springframework.data.mongodb.core.MongoTemplate
 class TodoConfig {
 
     @Bean
-    fun todoRepository(clusterResolver: MongoClusterResolver): CRUDRepository<TodoDocument> =
-        CRUDRepository(clusterResolver.primary(), TodoDocument::class.java)
+    fun todoRepository(clusterResolver: MongoClusterResolver): CRUDRepository<TodoEntity> =
+        CRUDRepository(clusterResolver.primary(), TodoEntity::class.java)
 
     @Bean
-    fun todoCrudService(todoRepository: CRUDRepository<TodoDocument>): CRUDService<TodoDocument> =
+    fun todoCrudService(todoRepository: CRUDRepository<TodoEntity>): CRUDService<TodoEntity> =
         CRUDService(todoRepository)
 
     @Bean
-    fun todoService(todoCrudService: CRUDService<TodoDocument>, cacheAside: CacheAside): TodoService =
+    fun todoService(todoCrudService: CRUDService<TodoEntity>, cacheAside: CacheAside): TodoService =
         TodoService(todoCrudService, cacheAside)
 
     // ---- TodoItem beans ----

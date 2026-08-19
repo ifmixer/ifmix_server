@@ -18,7 +18,7 @@ class CollectionRepository(private val mongo: MongoTemplate) {
      *
      * @return 默认夹文档，未找到返回 null
      */
-    fun findDefault(ctx: RequestContext): CollectionDocument? = mongo.findOne(
+    fun findDefault(ctx: RequestContext): CollectionEntity? = mongo.findOne(
         Query(
             Criteria.where("appId").`is`(ctx.appId)
                 .andOperator(
@@ -27,6 +27,6 @@ class CollectionRepository(private val mongo: MongoTemplate) {
                     Criteria.where("deletedAt").`is`(null),
                 ),
         ),
-        CollectionDocument::class.java,
+        CollectionEntity::class.java,
     )
 }

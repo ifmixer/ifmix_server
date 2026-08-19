@@ -7,7 +7,7 @@ import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.service.CRUDService
-import com.ifmix.api.core.modules.antique.ScanRecordDocument
+import com.ifmix.api.core.modules.antique.ScanRecordEntity
 import org.springframework.dao.DuplicateKeyException
 
 /**
@@ -17,7 +17,7 @@ import org.springframework.dao.DuplicateKeyException
  * 提供默认夹 get-or-create、添加/移除条目、列表查询等功能。
  */
 class CollectionService(
-    private val collectionCrud: CRUDService<CollectionDocument>,
+    private val collectionCrud: CRUDService<CollectionEntity>,
     private val itemRepo: CollectionItemRepository,
     private val collectionRepo: CollectionRepository,
 ) {
@@ -28,10 +28,10 @@ class CollectionService(
      * partial unique 约束兜底并发冲突：若另一请求先创建了默认夹，捕获 DuplicateKeyException
      * 后回读已有默认夹。
      */
-    fun getDefault(ctx: RequestContext): CollectionDocument {
+    fun getDefault(ctx: RequestContext): CollectionEntity {
         collectionRepo.findDefault(ctx)?.let { return it }
 
-        val doc = CollectionDocument().apply {
+        val doc = CollectionEntity().apply {
             installId = ctx.installId
             userId = ctx.userId
             isDefault = true
@@ -78,7 +78,7 @@ class CollectionService(
     /**
      * 列出收藏夹中的扫描记录（游标分页，join scan_record）。
      */
-    fun listItems(ctx: RequestContext, req: ListItemsReq): Page<ScanRecordDocument> {
+    fun listItems(ctx: RequestContext, req: ListItemsReq): Page<ScanRecordEntity> {
         val cid = resolveCollectionId(ctx, req.collectionId)
         val limit = (req.limit ?: CursorQueryInput.DEFAULT_LIMIT).coerceIn(1, CursorQueryInput.MAX_LIMIT)
         val (scans, next) = itemRepo.listScanRecords(ctx, cid, req.cursor, limit)

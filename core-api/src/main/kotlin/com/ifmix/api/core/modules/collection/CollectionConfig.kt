@@ -32,23 +32,23 @@ class CollectionConfig {
 
     // 注意：勿加 @ConditionalOnMissingBean(CRUDRepository/CRUDService)——它们按擦除后的原始类型匹配，
     // 会与 todo/feedback 等模块的同类 bean 冲突导致本模块 bean 被跳过。各模块各自定义自己的泛型 bean，
-    // Spring 按泛型参数（CollectionDocument）区分注入。
+    // Spring 按泛型参数（CollectionEntity）区分注入。
     @Bean
     fun collectionCrudRepository(
         clusterResolver: MongoClusterResolver,
-    ): CRUDRepository<CollectionDocument> {
-        return CRUDRepository(clusterResolver.primary(), CollectionDocument::class.java)
+    ): CRUDRepository<CollectionEntity> {
+        return CRUDRepository(clusterResolver.primary(), CollectionEntity::class.java)
     }
 
     @Bean
-    fun collectionCrudService(repo: CRUDRepository<CollectionDocument>): CRUDService<CollectionDocument> {
+    fun collectionCrudService(repo: CRUDRepository<CollectionEntity>): CRUDService<CollectionEntity> {
         return CRUDService(repo)
     }
 
     @Bean
     @ConditionalOnMissingBean(CollectionService::class)
     fun collectionService(
-        collectionCrud: CRUDService<CollectionDocument>,
+        collectionCrud: CRUDService<CollectionEntity>,
         itemRepo: CollectionItemRepository,
         collectionRepo: CollectionRepository,
         antiqueService: AntiqueService,

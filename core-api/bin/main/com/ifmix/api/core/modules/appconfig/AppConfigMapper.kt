@@ -1,9 +1,9 @@
 package com.ifmix.api.core.modules.appconfig
 
-/** AppConfigDocument（内嵌结构）→ AppConfig（扁平视图）。iapEnv 缺省 "production"。 */
+/** AppConfigEntity（内嵌结构）→ AppConfig（扁平视图）。iapEnv 缺省 "production"。 */
 object AppConfigMapper {
 
-    fun toFlat(doc: AppConfigDocument): AppConfig = AppConfig(
+    fun toFlat(doc: AppConfigEntity): AppConfig = AppConfig(
         id = doc.id,
         appId = doc.appId,
         authTenantId = doc.authTenantId,

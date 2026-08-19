@@ -11,10 +11,10 @@ import org.springframework.data.mongodb.core.MongoTemplate
  */
 class ScanRecordRepository(
     mongo: MongoTemplate,
-) : CRUDRepository<ScanRecordDocument>(mongo, ScanRecordDocument::class.java) {
+) : CRUDRepository<ScanRecordEntity>(mongo, ScanRecordEntity::class.java) {
 
     /** 按 scanId 查找最新一条记录。 */
-    fun findByScanId(ctx: RequestContext, scanId: String): ScanRecordDocument? {
+    fun findByScanId(ctx: RequestContext, scanId: String): ScanRecordEntity? {
         // 使用自定义查询：按 scanId + appId 过滤
         return null // stub — 后续按需实现
     }

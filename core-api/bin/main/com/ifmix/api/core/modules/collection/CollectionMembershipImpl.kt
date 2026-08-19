@@ -25,7 +25,7 @@ class CollectionMembershipImpl(
                     .and("scanRecordId").`is`(org.bson.types.ObjectId(scanRecordId))
                     .and("deletedAt").`is`(null),
             ),
-            CollectionItemDocument::class.java,
+            CollectionItemEntity::class.java,
         )
     }
 }

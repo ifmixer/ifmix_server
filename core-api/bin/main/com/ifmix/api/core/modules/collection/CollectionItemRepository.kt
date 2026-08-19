@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.collection
 
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.antique.ScanRecordDocument
+import com.ifmix.api.core.modules.antique.ScanRecordEntity
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
@@ -30,12 +30,12 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
                     .and("scanRecordId").`is`(scanObjId)
                     .and("deletedAt").`is`(null),
             ),
-            CollectionItemDocument::class.java,
+            CollectionItemEntity::class.java,
         )
         if (existing?.id != null) return existing.id!!
 
         val now = Instant.now()
-        val doc = CollectionItemDocument().apply {
+        val doc = CollectionItemEntity().apply {
             appId = ctx.appId
             this.collectionId = collectionId
             this.scanRecordId = scanObjId
@@ -61,7 +61,7 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
         return mongo.updateMulti(
             query,
             Update().set("deletedAt", now).set("updatedAt", now),
-            CollectionItemDocument::class.java,
+            CollectionItemEntity::class.java,
         ).modifiedCount
     }
 
@@ -79,7 +79,7 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
         collectionId: String,
         cursor: String?,
         limit: Int,
-    ): Pair<List<ScanRecordDocument>, String?> {
+    ): Pair<List<ScanRecordEntity>, String?> {
         // 第一步：取该夹未删 item 的 scanRecordId（按 _id keyset 分页）
         val itemQuery = Query(base(ctx, collectionId).and("deletedAt").`is`(null))
 
@@ -96,7 +96,7 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
         )
         itemQuery.limit(limit + 1)
 
-        val items = mongo.find(itemQuery, CollectionItemDocument::class.java)
+        val items = mongo.find(itemQuery, CollectionItemEntity::class.java)
         val hasMore = items.size > limit
         val page = if (hasMore) items.subList(0, limit) else items
 
@@ -114,7 +114,7 @@ class CollectionItemRepository(private val mongo: MongoTemplate) {
                     .and("_id").`in`(scanIds)
                     .and("deletedAt").`is`(null),
             ),
-            ScanRecordDocument::class.java,
+            ScanRecordEntity::class.java,
         ).associateBy { it.id }
 
         val ordered = page.mapNotNull { item ->

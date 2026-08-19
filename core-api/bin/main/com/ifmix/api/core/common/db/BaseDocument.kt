@@ -4,7 +4,7 @@ import org.springframework.data.annotation.Id
 import java.time.Instant
 
 /** 所有文档的公共字段：id + 两个时间戳。appId/deletedAt/revision 为可选能力，见下方接口。 */
-abstract class BaseDocument {
+abstract class BaseEntity {
     @Id
     var id: String? = null
     var createdAt: Instant? = null
@@ -27,7 +27,7 @@ interface Versioned {
 }
 
 /** 便利基类：覆盖"app 级 + 软删"最常见组合，字段写一次，避免每个文档重复 override。 */
-abstract class BaseAppDocument : BaseDocument(), AppScoped, SoftDeletable {
+abstract class BaseAppEntity : BaseEntity(), AppScoped, SoftDeletable {
     override var appId: String? = null
     override var deletedAt: Instant? = null
 }

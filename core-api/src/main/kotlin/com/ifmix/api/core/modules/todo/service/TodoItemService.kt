@@ -1,13 +1,13 @@
 package com.ifmix.api.core.modules.todo.service
 
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.graphql.generated.types.CreateTodoItemInput
 import com.ifmix.api.core.graphql.generated.types.TodoItemMutationInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
-import com.ifmix.api.core.modules.todo.document.TodoItemDocument
+import com.ifmix.api.core.modules.todo.document.TodoItemEntity
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 import org.springframework.data.mongodb.core.query.Update
 import java.time.Instant
@@ -18,7 +18,7 @@ import java.time.Instant
 class TodoItemService(private val repo: TodoItemRepository) {
 
     fun create(ctx: RequestContext, todoId: String, input: CreateTodoItemInput): String {
-        val doc = TodoItemDocument().apply {
+        val doc = TodoItemEntity().apply {
             this.todoId = todoId
             this.content = input.content
             this.done = input.done ?: false
@@ -28,23 +28,23 @@ class TodoItemService(private val repo: TodoItemRepository) {
         return repo.insertOne(ctx, doc)
     }
 
-    fun getById(ctx: RequestContext, id: String): TodoItemDocument =
+    fun getById(ctx: RequestContext, id: String): TodoItemEntity =
         repo.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND, "todo item not found")
 
-    fun findById(ctx: RequestContext, id: String): TodoItemDocument? = repo.findById(ctx, id)
+    fun findById(ctx: RequestContext, id: String): TodoItemEntity? = repo.findById(ctx, id)
 
-    fun findByTodoIds(ctx: RequestContext, todoIds: List<String>): List<TodoItemDocument> =
+    fun findByTodoIds(ctx: RequestContext, todoIds: List<String>): List<TodoItemEntity> =
         repo.findByTodoIds(ctx, todoIds)
 
     fun update(ctx: RequestContext, id: String, input: UpdateTodoItemInput): Boolean {
         val update = Update()
-        input.content?.let { update.set(TodoItemDocument::content, it) }
-        input.done?.let { update.set(TodoItemDocument::done, it) }
+        input.content?.let { update.set(TodoItemEntity::content, it) }
+        input.done?.let { update.set(TodoItemEntity::done, it) }
         if (!input.unset.isNullOrEmpty()) {
             input.unset.forEach { update.unset(it) }
         }
         if (update.updateObject.isEmpty()) return true
-        update.set(BaseDocument::updatedAt, Instant.now())
+        update.set(BaseEntity::updatedAt, Instant.now())
         return repo.updateById(ctx, id, update)
     }
 
@@ -63,11 +63,11 @@ class TodoItemService(private val repo: TodoItemRepository) {
         } else {
             // set + unset
             val update = Update()
-            mutation.content?.let { update.set(TodoItemDocument::content, it) }
-            mutation.done?.let { update.set(TodoItemDocument::done, it) }
+            mutation.content?.let { update.set(TodoItemEntity::content, it) }
+            mutation.done?.let { update.set(TodoItemEntity::done, it) }
             mutation.unset?.forEach { update.unset(it) }
             if (update.updateObject.isNotEmpty()) {
-                update.set(BaseDocument::updatedAt, Instant.now())
+                update.set(BaseEntity::updatedAt, Instant.now())
                 repo.updateById(ctx, mutation.id, update)
             }
         }

@@ -19,15 +19,15 @@ class CollectionRepository(private val mongo: MongoTemplate) {
      *
      * @return 默认夹文档，未找到返回 null
      */
-    fun findDefault(ctx: RequestContext): CollectionDocument? = mongo.findOne(
+    fun findDefault(ctx: RequestContext): CollectionEntity? = mongo.findOne(
         Query(
             Criteria().andOperator(
-                CollectionDocument::appId isEqualTo ctx.appId,
+                CollectionEntity::appId isEqualTo ctx.appId,
                 ownerCriteria(ctx),
-                CollectionDocument::isDefault isEqualTo true,
-                CollectionDocument::deletedAt isEqualTo null,
+                CollectionEntity::isDefault isEqualTo true,
+                CollectionEntity::deletedAt isEqualTo null,
             ),
         ),
-        CollectionDocument::class.java,
+        CollectionEntity::class.java,
     )
 }

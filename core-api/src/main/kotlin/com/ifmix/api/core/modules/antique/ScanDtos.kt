@@ -12,7 +12,7 @@ data class CreateScanRequest(
     val relatedId: String? = null,
 )
 
-/** 扫描记录 DTO（对外响应）。字段与 ScanRecordDocument 一一对应，由 Konvert 自动映射。 */
+/** 扫描记录 DTO（对外响应）。字段与 ScanRecordEntity 一一对应，由 Konvert 自动映射。 */
 data class ScanDto(
     val id: String?,
     val scanId: String?,

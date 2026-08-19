@@ -73,7 +73,7 @@ class AuthServiceTest {
     }
 
     @Test fun `refresh replay revokes all and fails`() {
-        val row = AppRefreshTokenDocument().apply {
+        val row = AppRefreshTokenEntity().apply {
             id = "r1"; appId = "app1"; appUserId = "user1"; deviceSecretId = "ds1"
             revokedAt = Instant.now()  // 已撤销 = 重放
         }

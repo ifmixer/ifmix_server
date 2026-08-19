@@ -20,7 +20,7 @@ class AppUserRepo(private val mongo: MongoTemplate) {
     fun ensure(appId: String, authIdentityId: String): String {
         findId(appId, authIdentityId)?.let { return it }
         val now = Instant.now()
-        val doc = AppUserDocument().apply {
+        val doc = AppUserEntity().apply {
             this.appId = appId; this.authIdentityId = authIdentityId; createdAt = now; updatedAt = now
         }
         return try {
@@ -32,6 +32,6 @@ class AppUserRepo(private val mongo: MongoTemplate) {
 
     private fun findId(appId: String, authIdentityId: String): String? = mongo.findOne(
         Query(Criteria.where("appId").isEqualTo(appId).and("authIdentityId").isEqualTo(authIdentityId)),
-        AppUserDocument::class.java,
+        AppUserEntity::class.java,
     )?.id
 }

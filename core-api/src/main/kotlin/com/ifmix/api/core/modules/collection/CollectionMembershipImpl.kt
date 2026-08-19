@@ -22,13 +22,13 @@ class CollectionMembershipImpl(
         return mongo.exists(
             Query(
                 Criteria().andOperator(
-                    CollectionItemDocument::appId isEqualTo ctx.appId,
-                    CollectionItemDocument::collectionId isEqualTo cid,
-                    CollectionItemDocument::scanRecordId isEqualTo org.bson.types.ObjectId(scanRecordId),
-                    CollectionItemDocument::deletedAt isEqualTo null,
+                    CollectionItemEntity::appId isEqualTo ctx.appId,
+                    CollectionItemEntity::collectionId isEqualTo cid,
+                    CollectionItemEntity::scanRecordId isEqualTo org.bson.types.ObjectId(scanRecordId),
+                    CollectionItemEntity::deletedAt isEqualTo null,
                 ),
             ),
-            CollectionItemDocument::class.java,
+            CollectionItemEntity::class.java,
         )
     }
 }

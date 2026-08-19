@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.auth.Hashing
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
@@ -23,7 +23,7 @@ class AuthDeviceSecretRepo(private val mongo: MongoTemplate) {
     fun issue(tenantId: String, authIdentityId: String, loginInstallId: String?): Pair<String, String> {
         val secret = Hashing.randomTokenBase64Url()
         val now = Instant.now()
-        val doc = AuthDeviceSecretDocument().apply {
+        val doc = AuthDeviceSecretEntity().apply {
             authTenantId = tenantId; this.authIdentityId = authIdentityId
             secretHash = Hashing.sha256Base64Url(secret); this.loginInstallId = loginInstallId
             expiresAt = now.plus(idleTtl); lastUsedAt = now; createdAt = now; updatedAt = now
@@ -33,13 +33,13 @@ class AuthDeviceSecretRepo(private val mongo: MongoTemplate) {
     }
 
     /** 按 (tenantId, hash) 定向查有效 device_secret（未撤销、未过期）。 */
-    fun findValid(tenantId: String, secretPlain: String): AuthDeviceSecretDocument? {
+    fun findValid(tenantId: String, secretPlain: String): AuthDeviceSecretEntity? {
         val doc = mongo.findOne(
             Query(Criteria().andOperator(
-                AuthDeviceSecretDocument::authTenantId isEqualTo tenantId,
-                AuthDeviceSecretDocument::secretHash isEqualTo Hashing.sha256Base64Url(secretPlain),
+                AuthDeviceSecretEntity::authTenantId isEqualTo tenantId,
+                AuthDeviceSecretEntity::secretHash isEqualTo Hashing.sha256Base64Url(secretPlain),
             )),
-            AuthDeviceSecretDocument::class.java,
+            AuthDeviceSecretEntity::class.java,
         ) ?: return null
         val valid = doc.revokedAt == null && (doc.expiresAt?.isAfter(Instant.now()) == true)
         return if (valid) doc else null
@@ -48,20 +48,20 @@ class AuthDeviceSecretRepo(private val mongo: MongoTemplate) {
     fun touch(id: String) {
         val now = Instant.now()
         mongo.updateFirst(
-            Query(Criteria().andOperator(AuthDeviceSecretDocument::id isEqualTo ObjectId(id))),
-            Update().set(AuthDeviceSecretDocument::lastUsedAt, now)
-                .set(AuthDeviceSecretDocument::expiresAt, now.plus(idleTtl))
-                .set(BaseDocument::updatedAt, now),
-            AuthDeviceSecretDocument::class.java,
+            Query(Criteria().andOperator(AuthDeviceSecretEntity::id isEqualTo ObjectId(id))),
+            Update().set(AuthDeviceSecretEntity::lastUsedAt, now)
+                .set(AuthDeviceSecretEntity::expiresAt, now.plus(idleTtl))
+                .set(BaseEntity::updatedAt, now),
+            AuthDeviceSecretEntity::class.java,
         )
     }
 
     fun revoke(id: String) {
         val now = Instant.now()
         mongo.updateFirst(
-            Query(Criteria().andOperator(AuthDeviceSecretDocument::id isEqualTo ObjectId(id))),
-            Update().set(AuthDeviceSecretDocument::revokedAt, now).set(BaseDocument::updatedAt, now),
-            AuthDeviceSecretDocument::class.java,
+            Query(Criteria().andOperator(AuthDeviceSecretEntity::id isEqualTo ObjectId(id))),
+            Update().set(AuthDeviceSecretEntity::revokedAt, now).set(BaseEntity::updatedAt, now),
+            AuthDeviceSecretEntity::class.java,
         )
     }
 }

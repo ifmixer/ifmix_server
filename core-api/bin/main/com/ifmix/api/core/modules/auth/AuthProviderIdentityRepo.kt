@@ -41,7 +41,7 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
                     .and("provider").isEqualTo(input.provider)
                     .and("providerAccountId").isEqualTo(input.accountId),
             ),
-            AuthProviderIdentityDocument::class.java,
+            AuthProviderIdentityEntity::class.java,
         )
         if (existing?.authIdentityId != null) {
             mongo.updateFirst(
@@ -50,12 +50,12 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
                     .set("phone", input.phone).set("loginIp", input.loginIp)
                     .set("loginInstallId", input.loginInstallId).set("loginAppId", input.loginAppId)
                     .set("userMetadata", input.userMetadata).set("updatedAt", now),
-                AuthProviderIdentityDocument::class.java,
+                AuthProviderIdentityEntity::class.java,
             )
             return existing.authIdentityId!!
         }
         // 新建 identity（v1：每次新 provider 账号 = 新 identity，不按 email 合并）
-        val identity = AuthIdentityDocument().apply {
+        val identity = AuthIdentityEntity().apply {
             authTenantId = tenantId
             rawEmail = input.email
             email = EmailNormalize.normalizeEmail(input.email)
@@ -66,7 +66,7 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
             createdAt = now; updatedAt = now
         }
         mongo.insert(identity)
-        val pi = AuthProviderIdentityDocument().apply {
+        val pi = AuthProviderIdentityEntity().apply {
             authTenantId = tenantId
             authIdentityId = identity.id
             provider = input.provider

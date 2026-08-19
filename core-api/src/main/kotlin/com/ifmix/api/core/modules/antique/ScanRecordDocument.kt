@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.antique
 
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.mapping.Document
@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document
  * 按 appId 分片，支持软删。userId/installId 用于登录后归并匿名记录。
  */
 @Document(collection = "scan_records")
-class ScanRecordDocument : BaseAppDocument() {
+class ScanRecordEntity : BaseAppEntity() {
 
     @Indexed
     var scanId: String? = null

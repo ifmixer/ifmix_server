@@ -1,9 +1,9 @@
 package com.ifmix.api.core.modules.appconfig
 
-/** AppConfigDocument → AppConfig（保持嵌套结构不变）。 */
+/** AppConfigEntity → AppConfig（保持嵌套结构不变）。 */
 object AppConfigMapper {
 
-    fun toView(doc: AppConfigDocument): AppConfigView = AppConfigView(
+    fun toView(doc: AppConfigEntity): AppConfigView = AppConfigView(
         id = doc.id.toHexString(),
         appId = doc.appId.toHexString(),
         authTenantId = doc.authTenantId,

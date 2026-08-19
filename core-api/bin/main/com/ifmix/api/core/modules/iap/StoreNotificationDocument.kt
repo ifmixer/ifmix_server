@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.iap
 
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.mapping.Document
@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document
  * 商店推送通知的落盘记录。
  * 用于 webhook 幂等——重复推送不会重复处理。
  *
- * 注意：继承 BaseAppDocument 获得 deletedAt 字段，但本集合实际不做软删。
+ * 注意：继承 BaseAppEntity 获得 deletedAt 字段，但本集合实际不做软删。
  * 保留继承是为了与文档基类保持一致性，后续如需硬删可切换策略。
  */
 @Document(collection = "store_notifications")
@@ -17,7 +17,7 @@ import org.springframework.data.mongodb.core.mapping.Document
     name = "store_notif_platform_sub_idx",
     def = "{'platform': 1, 'subscriptionPxid': 1, 'processedAt': 1}",
 )
-class StoreNotificationDocument : BaseAppDocument() {
+class StoreNotificationEntity : BaseAppEntity() {
 
     @Indexed
     var platform: Platform? = null

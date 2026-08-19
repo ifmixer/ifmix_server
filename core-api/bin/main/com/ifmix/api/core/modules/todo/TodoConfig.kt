@@ -6,19 +6,19 @@ import com.ifmix.api.core.common.service.CRUDService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-/** todo 模块 bean 装配。todos 集合开启软删（由 BaseAppDocument 能力接口声明，CRUDRepository 反射探测）。 */
+/** todo 模块 bean 装配。todos 集合开启软删（由 BaseAppEntity 能力接口声明，CRUDRepository 反射探测）。 */
 @Configuration
 class TodoConfig {
 
     @Bean
-    fun todoRepository(clusterResolver: MongoClusterResolver): CRUDRepository<TodoDocument> =
-        CRUDRepository(clusterResolver.primary(), TodoDocument::class.java)
+    fun todoRepository(clusterResolver: MongoClusterResolver): CRUDRepository<TodoEntity> =
+        CRUDRepository(clusterResolver.primary(), TodoEntity::class.java)
 
     @Bean
-    fun todoCrudService(todoRepository: CRUDRepository<TodoDocument>): CRUDService<TodoDocument> =
+    fun todoCrudService(todoRepository: CRUDRepository<TodoEntity>): CRUDService<TodoEntity> =
         CRUDService(todoRepository)
 
     @Bean
-    fun todoService(todoCrudService: CRUDService<TodoDocument>): TodoService =
+    fun todoService(todoCrudService: CRUDService<TodoEntity>): TodoService =
         TodoService(todoCrudService)
 }

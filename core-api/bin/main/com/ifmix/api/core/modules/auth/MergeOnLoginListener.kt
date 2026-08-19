@@ -2,8 +2,8 @@ package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.antique.ScanRecordDocument
-import com.ifmix.api.core.modules.iap.SubscriptionDocument
+import com.ifmix.api.core.modules.antique.ScanRecordEntity
+import com.ifmix.api.core.modules.iap.SubscriptionEntity
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
 import org.springframework.data.mongodb.core.MongoTemplate
@@ -36,8 +36,8 @@ class MergeOnLoginListener(
                         .and("installId").`is`(installId).and("userId").`is`(null),
                 )
                 val u = Update().set("userId", e.appUserId).set("updatedAt", Instant.now())
-                mongo.updateMulti(q, u, ScanRecordDocument::class.java)
-                mongo.updateMulti(q, u, SubscriptionDocument::class.java)
+                mongo.updateMulti(q, u, ScanRecordEntity::class.java)
+                mongo.updateMulti(q, u, SubscriptionEntity::class.java)
             }
         } catch (ex: Exception) {
             log.error("mergeOnLogin failed appId={} appUserId={} installId={}", e.appId, e.appUserId, installId, ex)

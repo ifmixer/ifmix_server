@@ -21,7 +21,7 @@ import kotlin.reflect.full.memberProperties
  * - 实现 [SoftDeletable] → 删除走 deletedAt 标记，读写自动过滤 deletedAt=null。
  * 另保留 extraCriteria/extraIdCriteria 两个钩子，供模块附加自定义过滤（如 collection 按 collectionId）。
  */
-open class CRUDRepository<T : BaseDocument>(
+open class CRUDRepository<T : BaseEntity>(
     protected val mongo: MongoTemplate,
     protected val type: Class<T>,
 ) {

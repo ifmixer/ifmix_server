@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.collection
 
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
 import org.springframework.data.mongodb.core.mapping.Document
@@ -21,7 +21,7 @@ import org.springframework.data.mongodb.core.mapping.Document
         partialFilter = "{ 'deletedAt': null }",
     ),
 )
-class CollectionItemDocument : BaseAppDocument() {
+class CollectionItemEntity : BaseAppEntity() {
 
     /** 所属收藏夹 ID（ObjectId hex 字符串）。 */
     var collectionId: String? = null

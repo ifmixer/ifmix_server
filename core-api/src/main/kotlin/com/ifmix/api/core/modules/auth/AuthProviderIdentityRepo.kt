@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.common.auth.EmailNormalize
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -38,29 +38,29 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
         val now = Instant.now()
         val existing = mongo.findOne(
             Query(Criteria().andOperator(
-                AuthProviderIdentityDocument::authTenantId isEqualTo tenantId,
-                AuthProviderIdentityDocument::provider isEqualTo input.provider,
-                AuthProviderIdentityDocument::providerAccountId isEqualTo input.accountId,
+                AuthProviderIdentityEntity::authTenantId isEqualTo tenantId,
+                AuthProviderIdentityEntity::provider isEqualTo input.provider,
+                AuthProviderIdentityEntity::providerAccountId isEqualTo input.accountId,
             )),
-            AuthProviderIdentityDocument::class.java,
+            AuthProviderIdentityEntity::class.java,
         )
         if (existing?.authIdentityId != null) {
             mongo.updateFirst(
-                Query(Criteria().andOperator(AuthProviderIdentityDocument::id isEqualTo existing.id)),
-                Update().set(AuthProviderIdentityDocument::email, input.email)
-                    .set(AuthProviderIdentityDocument::emailVerified, input.emailVerified)
-                    .set(AuthProviderIdentityDocument::phone, input.phone)
-                    .set(AuthProviderIdentityDocument::loginIp, input.loginIp)
-                    .set(AuthProviderIdentityDocument::loginInstallId, input.loginInstallId)
-                    .set(AuthProviderIdentityDocument::loginAppId, input.loginAppId)
-                    .set(AuthProviderIdentityDocument::userMetadata, input.userMetadata)
-                    .set(BaseDocument::updatedAt, now),
-                AuthProviderIdentityDocument::class.java,
+                Query(Criteria().andOperator(AuthProviderIdentityEntity::id isEqualTo existing.id)),
+                Update().set(AuthProviderIdentityEntity::email, input.email)
+                    .set(AuthProviderIdentityEntity::emailVerified, input.emailVerified)
+                    .set(AuthProviderIdentityEntity::phone, input.phone)
+                    .set(AuthProviderIdentityEntity::loginIp, input.loginIp)
+                    .set(AuthProviderIdentityEntity::loginInstallId, input.loginInstallId)
+                    .set(AuthProviderIdentityEntity::loginAppId, input.loginAppId)
+                    .set(AuthProviderIdentityEntity::userMetadata, input.userMetadata)
+                    .set(BaseEntity::updatedAt, now),
+                AuthProviderIdentityEntity::class.java,
             )
             return existing.authIdentityId!!
         }
         // 新建 identity（v1：每次新 provider 账号 = 新 identity，不按 email 合并）
-        val identity = AuthIdentityDocument().apply {
+        val identity = AuthIdentityEntity().apply {
             authTenantId = tenantId
             rawEmail = input.email
             email = EmailNormalize.normalizeEmail(input.email)
@@ -71,7 +71,7 @@ class AuthProviderIdentityRepo(private val mongo: MongoTemplate) {
             createdAt = now; updatedAt = now
         }
         mongo.insert(identity)
-        val pi = AuthProviderIdentityDocument().apply {
+        val pi = AuthProviderIdentityEntity().apply {
             authTenantId = tenantId
             authIdentityId = identity.id.toHexString()
             provider = input.provider

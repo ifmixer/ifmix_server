@@ -3,11 +3,11 @@ package com.ifmix.api.core.modules.antique
 import com.ifmix.api.core.graphql.generated.types.ScanRecord
 
 /**
- * 将 ScanRecordDocument 转换为 GraphQL 展示类型。
+ * 将 ScanRecordEntity 转换为 GraphQL 展示类型。
  *
  * userDisplayName / userNotes 在文档中不存在，固定返回 null，未来可在扩展字段后回填。
  */
-fun ScanRecordDocument.toScanRecord(): ScanRecord = ScanRecord(
+fun ScanRecordEntity.toScanRecord(): ScanRecord = ScanRecord(
     id = this.id.toHexString(),
     scanId = this.scanId,
     imageUrl = this.imageUrl,

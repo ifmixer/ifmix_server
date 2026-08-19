@@ -24,7 +24,7 @@ open class AgnesKeyStore(
     private val redis: StringRedisTemplate,
     private val now: () -> Instant = { Instant.now() },
     private val rng: Random = Random(),
-    private val loadKeys: () -> List<AgnesKeyDocument> = { emptyList() },
+    private val loadKeys: () -> List<AgnesKeyEntity> = { emptyList() },
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -39,7 +39,7 @@ open class AgnesKeyStore(
 
     /** 内存中 key 的运行时状态。 */
     data class KeyState(
-        val doc: AgnesKeyDocument,
+        val doc: AgnesKeyEntity,
         var remaining: Long,
         var coolingUntil: Instant? = null,
     )

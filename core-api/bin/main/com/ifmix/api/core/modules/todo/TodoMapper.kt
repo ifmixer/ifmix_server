@@ -12,7 +12,7 @@ interface TodoMapper {
 
     fun toDto(item: TodoItem): TodoItemDto
 
-    fun toDto(todo: TodoDocument): TodoDto
+    fun toDto(todo: TodoEntity): TodoDto
 
     companion object
 }

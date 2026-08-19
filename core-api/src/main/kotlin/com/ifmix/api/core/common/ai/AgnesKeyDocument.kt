@@ -1,6 +1,6 @@
 package com.ifmix.api.core.common.ai
 
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.db.AppScoped
 import com.ifmix.api.core.common.db.SoftDeletable
 import org.bson.types.ObjectId
@@ -15,7 +15,7 @@ import java.time.Instant
  * 软删（deletedAt != null）的 key 不参与挑选。
  */
 @Document(collection = "agnes_keys")
-class AgnesKeyDocument : BaseDocument(), AppScoped, SoftDeletable {
+class AgnesKeyEntity : BaseEntity(), AppScoped, SoftDeletable {
 
     /** 所属应用 ID（分片键）。 */
     override lateinit var appId: ObjectId

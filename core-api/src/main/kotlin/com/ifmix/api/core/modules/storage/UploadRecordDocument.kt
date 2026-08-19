@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.storage
 
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
 import java.time.Instant
@@ -11,7 +11,7 @@ import java.time.Instant
  * 追踪每次通过 presign upload 上传的对象，用于审计和用量统计。
  */
 @Document(collection = "core_upload_record")
-class UploadRecordDocument : BaseDocument() {
+class UploadRecordEntity : BaseEntity() {
 
     var appId: String = ""
 

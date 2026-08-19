@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.common.db.BaseDocument
+import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.http.RequestContext
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
@@ -39,34 +39,34 @@ class UserInstallBindingRepo(private val mongo: MongoTemplate) {
     ) {
         val query = Query(
             Criteria().andOperator(
-                UserInstallBindingDocument::appId isEqualTo ObjectId(ctx.appId),
-                UserInstallBindingDocument::installId isEqualTo installId,
+                UserInstallBindingEntity::appId isEqualTo ObjectId(ctx.appId),
+                UserInstallBindingEntity::installId isEqualTo installId,
             ),
         )
         // 如果 userId 非空，也按 userId 精确匹配；否则只按 installId
         if (userId != null) {
-            query.addCriteria(UserInstallBindingDocument::userId isEqualTo userId)
+            query.addCriteria(UserInstallBindingEntity::userId isEqualTo userId)
         }
 
-        val existing = mongo.findOne(query, UserInstallBindingDocument::class.java)
+        val existing = mongo.findOne(query, UserInstallBindingEntity::class.java)
         val now = Instant.now()
 
         if (existing != null) {
             // 更新已有记录
             val update = Update()
-                .set(UserInstallBindingDocument::lastSeenAt, now)
-                .inc(UserInstallBindingDocument::loginCount, 1)
-                .set(UserInstallBindingDocument::clientIp, clientIp)
-                .set(UserInstallBindingDocument::clientPlatform, clientPlatform)
-                .set(BaseDocument::updatedAt, now)
+                .set(UserInstallBindingEntity::lastSeenAt, now)
+                .inc(UserInstallBindingEntity::loginCount, 1)
+                .set(UserInstallBindingEntity::clientIp, clientIp)
+                .set(UserInstallBindingEntity::clientPlatform, clientPlatform)
+                .set(BaseEntity::updatedAt, now)
             if (userId != null) {
                 // 匿名登录后绑定用户，回填 userId
-                update.set(UserInstallBindingDocument::userId, userId)
+                update.set(UserInstallBindingEntity::userId, userId)
             }
-            mongo.updateFirst(query, update, UserInstallBindingDocument::class.java)
+            mongo.updateFirst(query, update, UserInstallBindingEntity::class.java)
         } else {
             // 插入新记录
-            val doc = UserInstallBindingDocument().apply {
+            val doc = UserInstallBindingEntity().apply {
                 appId = ObjectId(ctx.appId)
                 this.userId = userId
                 this.installId = installId

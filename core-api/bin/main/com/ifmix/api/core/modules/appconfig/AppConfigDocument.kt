@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.appconfig
 
-import com.ifmix.api.core.common.db.BaseAppDocument
+import com.ifmix.api.core.common.db.BaseAppEntity
 import com.ifmix.api.core.common.db.Versioned
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.Indexed
@@ -18,7 +18,7 @@ import org.springframework.data.mongodb.core.mapping.Document
     unique = true,
     partialFilter = "{ 'deletedAt': null }",
 )
-class AppConfigDocument : BaseAppDocument(), Versioned {
+class AppConfigEntity : BaseAppEntity(), Versioned {
     var authTenantId: String? = null
 
     @Indexed

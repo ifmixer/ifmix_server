@@ -11,7 +11,7 @@ public object TodoMapperImpl : TodoMapper {
   )
 
   @GeneratedKonverter(priority = 5_000)
-  override fun toDto(todo: TodoDocument): TodoDto = TodoDto(
+  override fun toDto(todo: TodoEntity): TodoDto = TodoDto(
     id = todo.id,
     title = todo.title,
     done = todo.done,

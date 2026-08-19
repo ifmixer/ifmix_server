@@ -10,14 +10,14 @@ import java.time.Instant
  */
 class AuthTenantRepo(private val mongo: MongoTemplate) {
 
-    fun findById(id: String): AuthTenantDocument? =
-        mongo.findById(id, AuthTenantDocument::class.java)
+    fun findById(id: String): AuthTenantEntity? =
+        mongo.findById(id, AuthTenantEntity::class.java)
 
     /** 返回默认/首个活跃租户；不存在则创建空文档。 */
-    fun findOrCreateDefault(): AuthTenantDocument {
-        var tenant = mongo.findOne(Query(), AuthTenantDocument::class.java)
+    fun findOrCreateDefault(): AuthTenantEntity {
+        var tenant = mongo.findOne(Query(), AuthTenantEntity::class.java)
         if (tenant == null) {
-            tenant = AuthTenantDocument().apply { createdAt = Instant.now(); updatedAt = Instant.now() }
+            tenant = AuthTenantEntity().apply { createdAt = Instant.now(); updatedAt = Instant.now() }
             mongo.insert(tenant)
         }
         return tenant

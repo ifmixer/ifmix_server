@@ -24,7 +24,7 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         val token = Hashing.randomTokenBase64Url()
         val now = Instant.now()
         val exp = now.plus(ttl)
-        val doc = AppRefreshTokenDocument().apply {
+        val doc = AppRefreshTokenEntity().apply {
             this.id = id
             this.appId = appId; this.appUserId = appUserId; this.deviceSecretId = deviceSecretId
             tokenHash = Hashing.sha256Base64Url(token); this.loginInstallId = loginInstallId
@@ -34,9 +34,9 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         return RefreshIssued(doc.id!!, token, exp)
     }
 
-    fun findByHash(appId: String, tokenPlain: String): AppRefreshTokenDocument? = mongo.findOne(
+    fun findByHash(appId: String, tokenPlain: String): AppRefreshTokenEntity? = mongo.findOne(
         Query(Criteria.where("appId").`is`(appId).and("tokenHash").`is`(Hashing.sha256Base64Url(tokenPlain))),
-        AppRefreshTokenDocument::class.java,
+        AppRefreshTokenEntity::class.java,
     )
 
     /** 原子轮换：条件 updateFirst 只在未撤销时置 revokedAt+replacedBy。返回是否本方胜出。 */
@@ -45,7 +45,7 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         val res = mongo.updateFirst(
             Query(Criteria.where("appId").`is`(appId).and("tokenHash").`is`(tokenHash).and("revokedAt").`is`(null)),
             Update().set("revokedAt", now).set("replacedBy", newId).set("updatedAt", now),
-            AppRefreshTokenDocument::class.java,
+            AppRefreshTokenEntity::class.java,
         )
         return res.modifiedCount > 0
     }
@@ -55,7 +55,7 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         mongo.updateMulti(
             Query(Criteria.where("appId").`is`(appId).and("appUserId").`is`(appUserId).and("revokedAt").`is`(null)),
             Update().set("revokedAt", now).set("updatedAt", now),
-            AppRefreshTokenDocument::class.java,
+            AppRefreshTokenEntity::class.java,
         )
     }
 
@@ -65,7 +65,7 @@ class AppRefreshTokenRepo(private val mongo: MongoTemplate) {
         mongo.updateMulti(
             Query(Criteria.where("deviceSecretId").`is`(deviceSecretId).and("revokedAt").`is`(null)),
             Update().set("revokedAt", now).set("updatedAt", now),
-            AppRefreshTokenDocument::class.java,
+            AppRefreshTokenEntity::class.java,
         )
     }
 }

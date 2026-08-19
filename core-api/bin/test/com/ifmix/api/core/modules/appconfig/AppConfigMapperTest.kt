@@ -8,7 +8,7 @@ class AppConfigMapperTest {
 
     @Test
     fun flattensNestedConfigWithDefaults() {
-        val doc = AppConfigDocument().apply {
+        val doc = AppConfigEntity().apply {
             id = "aaaaaaaaaaaaaaaaaaaaaaaa"
             appId = "app-1"
             appleBundleId = "com.example.app"
@@ -36,7 +36,7 @@ class AppConfigMapperTest {
 
     @Test
     fun keepsExplicitIapEnv() {
-        val doc = AppConfigDocument().apply { iap = IapConfig(env = "sandbox") }
+        val doc = AppConfigEntity().apply { iap = IapConfig(env = "sandbox") }
         assertThat(AppConfigMapper.toFlat(doc).iapEnv).isEqualTo("sandbox")
     }
 }

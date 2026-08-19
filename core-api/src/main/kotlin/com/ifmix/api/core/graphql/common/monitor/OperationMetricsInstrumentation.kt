@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture
  * - graphql.operation.count (Counter) — tags: bff, operation, result
  * - graphql.operation.duration (Timer) — tags: bff, operation
  *
- * Operation name 从 TrustedDocumentFilter 注入的 request attribute 取（可信来源）；
+ * Operation name 从 TrustedEntityFilter 注入的 request attribute 取（可信来源）；
  * 开发模式下 fallback 到 GraphQL operation name。
  */
 @Component

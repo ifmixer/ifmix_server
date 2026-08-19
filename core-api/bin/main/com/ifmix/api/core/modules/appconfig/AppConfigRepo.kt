@@ -38,7 +38,7 @@ class AppConfigRepo(
         val key = "$field:$value"
         cache[key]?.let { if (System.currentTimeMillis() - it.at < cacheTtlMs) return it.cfg }
         val query = Query(Criteria.where(field).`is`(value).and("deletedAt").`is`(null))
-        val doc = mongo.findOne(query, AppConfigDocument::class.java)
+        val doc = mongo.findOne(query, AppConfigEntity::class.java)
         val cfg = doc?.let { AppConfigMapper.toFlat(it) }
         cache[key] = Cached(System.currentTimeMillis(), cfg)
         return cfg
@@ -49,17 +49,17 @@ class AppConfigRepo(
         txRunner.withTx(ctx) {
             val current = mongo.findOne(
                 Query(Criteria.where("appId").`is`(appId).and("deletedAt").`is`(null)),
-                AppConfigDocument::class.java,
+                AppConfigEntity::class.java,
             )
             val now = Instant.now()
             if (current?.id != null) {
                 mongo.updateFirst(
                     Query(Criteria.where("_id").`is`(ObjectId(current.id))),
                     Update().set("deletedAt", now).set("updatedAt", now),
-                    AppConfigDocument::class.java,
+                    AppConfigEntity::class.java,
                 )
             }
-            val next = AppConfigDocument().apply {
+            val next = AppConfigEntity().apply {
                 this.appId = appId
                 authTenantId = patch.authTenantId ?: current?.authTenantId
                 appleBundleId = patch.appleBundleId ?: current?.appleBundleId
