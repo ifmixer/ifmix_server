@@ -23,7 +23,7 @@ class AppRefreshTokenRepository(sql: KSqlClient) : BaseAppCrudRepository<AppRefr
     fun findValidByHash(ctx: SvcCtx, appId: UUID, tokenHash: String): AppRefreshToken? {
         val now = Instant.now()
         return ctx.sql.createQuery(AppRefreshToken::class) {
-            where(table.appId eq appId)
+            where(table.get<UUID>("appId") eq appId)
             where(table.tokenHash eq tokenHash)
             where(table.revokedAt.isNull)
             where(table.expiresAt.isNull.or(table.expiresAt gt now))

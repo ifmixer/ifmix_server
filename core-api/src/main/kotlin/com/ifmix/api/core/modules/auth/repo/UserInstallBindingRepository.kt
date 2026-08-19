@@ -39,7 +39,7 @@ class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<User
         clientPlatform: String?,
     ) {
         val existing = ctx.sql.createQuery(UserInstallBinding::class) {
-            where(table.appId eq appId)
+            where(table.get<UUID>("appId") eq appId)
             where(table.userId eq userId)
             where(table.installId eq installId)
             select(table)

@@ -13,7 +13,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
 
     fun findActiveByAppId(ctx: SvcCtx, appId: UUID): AppConfigRevision? {
         return ctx.sql.createQuery(AppConfigRevision::class) {
-            where(table.appId eq appId)
+            where(table.get<UUID>("appId") eq appId)
             where(table.enabled eq true)
             orderBy(table.createdAt.desc())
             select(table)
@@ -38,7 +38,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
 
     fun disableCurrentRevisions(ctx: SvcCtx, appId: UUID): Int {
         return ctx.sql.createUpdate(AppConfigRevision::class) {
-            where(table.appId eq appId)
+            where(table.get<UUID>("appId") eq appId)
             where(table.enabled eq true)
             set(table.enabled, false)
         }.execute()

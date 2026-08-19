@@ -14,7 +14,7 @@ class ScanCollectionRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanColl
     fun findDefault(ctx: SvcCtx, appId: UUID, installId: UUID?, userId: UUID?): ScanCollection? {
         if (userId != null) {
             return ctx.sql.createQuery(ScanCollection::class) {
-                where(table.appId eq appId)
+                where(table.get<UUID>("appId") eq appId)
                 where(table.isDefault eq true)
                 where(table.userId eq userId)
                 select(table)
@@ -22,7 +22,7 @@ class ScanCollectionRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanColl
         }
         if (installId != null) {
             return ctx.sql.createQuery(ScanCollection::class) {
-                where(table.appId eq appId)
+                where(table.get<UUID>("appId") eq appId)
                 where(table.isDefault eq true)
                 where(table.installId eq installId)
                 select(table)
@@ -33,7 +33,7 @@ class ScanCollectionRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanColl
 
     fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanCollection? {
         return ctx.sql.createQuery(ScanCollection::class) {
-            where(table.appId eq appId)
+            where(table.get<UUID>("appId") eq appId)
             where(table.id eq id)
             select(table)
         }.limit(1).execute().firstOrNull()

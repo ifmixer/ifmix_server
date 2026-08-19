@@ -17,7 +17,7 @@ class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscripti
 
     fun findActiveByPxid(ctx: SvcCtx, appId: UUID, pxid: String): Subscription? {
         return ctx.sql.createQuery(Subscription::class) {
-            where(table.appId eq appId)
+            where(table.get<UUID>("appId") eq appId)
             where(table.subscriptionPxid eq pxid)
             where(table.active eq true)
             select(table)
@@ -26,7 +26,7 @@ class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscripti
 
     fun findByPxid(ctx: SvcCtx, appId: UUID, pxid: String): Subscription? {
         return ctx.sql.createQuery(Subscription::class) {
-            where(table.appId eq appId)
+            where(table.get<UUID>("appId") eq appId)
             where(table.subscriptionPxid eq pxid)
             select(table)
         }.limit(1).execute().firstOrNull()
@@ -34,7 +34,7 @@ class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscripti
 
     fun findByOriginalTxn(ctx: SvcCtx, appId: UUID, originalTxnId: String): Subscription? {
         return ctx.sql.createQuery(Subscription::class) {
-            where(table.appId eq appId)
+            where(table.get<UUID>("appId") eq appId)
             where(table.originalTransactionId eq originalTxnId)
             select(table)
         }.limit(1).execute().firstOrNull()
