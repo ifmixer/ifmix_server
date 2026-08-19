@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component
 @Component
 class MergeOnLoginListener(
     private val bindingRepo: UserInstallBindingRepository,
+    private val svcCtxFactory: SvcCtxFactory,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -26,7 +27,7 @@ class MergeOnLoginListener(
             // 记录 user-install 绑定
             if (e.installId != null) {
                 bindingRepo.recordBinding(
-                    ctx = SvcCtx(op = e.ctx, sql = com.ifmix.api.core.infra.db.SvcCtxFactory().forApp(e.ctx).sql),
+                    ctx = svcCtxFactory.forApp(e.ctx),
                     appId = e.appId,
                     userId = e.appUserId,
                     installId = e.installId,
