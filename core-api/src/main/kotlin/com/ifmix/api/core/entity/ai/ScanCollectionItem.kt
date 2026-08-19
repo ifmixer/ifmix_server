@@ -1,18 +1,24 @@
 package com.ifmix.api.core.entity.ai
 
 import com.ifmix.api.core.entity.AppScopedProps
-import com.ifmix.api.core.entity.MutableProps
+import com.ifmix.api.core.entity.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
-import java.time.Instant
 import java.util.UUID
 
 @Entity
 @Table(name = "core_scan_collection_item")
-interface ScanCollectionItem : AppScopedProps, MutableProps {
+interface ScanCollectionItem : AppScopedProps, SoftDeletableProps {
+
     @Id
     val id: UUID
+
     override val appId: UUID
 
-    val collectionId: UUID
-    val scanRecordId: UUID
+    @ManyToOne
+    @JoinColumn(name = "collection_id")
+    val collection: ScanCollection
+
+    @ManyToOne
+    @JoinColumn(name = "scan_record_id")
+    val scanRecord: ScanRecord
 }
