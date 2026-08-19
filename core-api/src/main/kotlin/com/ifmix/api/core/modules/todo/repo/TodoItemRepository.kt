@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.todo.repo
 
 import com.ifmix.api.core.common.db.BaseAppEntity
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.todo.document.TodoItemEntity
+import com.ifmix.api.core.modules.todo.entity.TodoItemEntity
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria

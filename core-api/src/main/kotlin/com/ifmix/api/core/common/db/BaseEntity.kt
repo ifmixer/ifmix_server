@@ -8,8 +8,8 @@ import java.time.Instant
 abstract class BaseEntity {
     @Id
     lateinit var id: ObjectId
-    var createdAt: Instant = Instant.now()
-    var updatedAt: Instant = Instant.now()
+    lateinit var createdAt: Instant
+    lateinit var updatedAt: Instant
 }
 
 /** 能力：多租户，按 appId 分片。实现后 CRUDRepository 自动注入 appId 过滤与创建盖章。 */

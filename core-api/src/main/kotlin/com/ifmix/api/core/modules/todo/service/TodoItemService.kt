@@ -7,7 +7,7 @@ import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.graphql.generated.types.CreateTodoItemInput
 import com.ifmix.api.core.graphql.generated.types.TodoItemMutationInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
-import com.ifmix.api.core.modules.todo.document.TodoItemEntity
+import com.ifmix.api.core.modules.todo.entity.TodoItemEntity
 import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 import org.springframework.data.mongodb.core.query.Update
 import java.time.Instant
