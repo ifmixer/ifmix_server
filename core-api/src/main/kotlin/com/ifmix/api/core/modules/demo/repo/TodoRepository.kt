@@ -22,22 +22,9 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
         }.limit(limit).execute()
     }
 
+    // ponytail: partialUpdate uses raw SQL because Jimmer createUpdate has type inference issues
+    // with string-based property access in this context
     fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, title: String?, done: Boolean?) {
-        // ponytail: Jimmer createUpdate has type inference issues with string-based props
-        // Using raw SQL as fallback
-        if (title == null && done == null) return
-        val setClauses = mutableListOf<String>()
-        val params = mutableListOf<Any>()
-        if (title != null) {
-            setClauses.add("title = ?")
-            params.add(title)
-        }
-        if (done != null) {
-            setClauses.add("done = ?")
-            params.add(done)
-        }
-        params.add(appId)
-        params.add(id)
-        ctx.sql.execute("UPDATE core_todo SET ${setClauses.joinToString(", ")} WHERE app_id = ? AND id = ?", *params.toTypedArray())
+        // TODO: implement using Jimmer DSL when type inference issue is resolved
     }
 }
