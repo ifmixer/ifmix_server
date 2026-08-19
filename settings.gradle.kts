@@ -1,3 +1,3 @@
-rootProject.name = "ifmix-server"
+rootProject.name = "ifmix-server-mongo"
 
 include("core-api")
