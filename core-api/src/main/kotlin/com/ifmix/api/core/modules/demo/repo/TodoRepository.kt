@@ -9,16 +9,13 @@ import org.springframework.stereotype.Repository
 import java.util.UUID
 import com.ifmix.api.core.entity.demo.appId
 import com.ifmix.api.core.entity.demo.id
-import com.ifmix.api.core.entity.demo.title
-import com.ifmix.api.core.entity.demo.done
-import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::class) {
 
     fun findByCursor(ctx: SvcCtx, appId: UUID, cursor: UUID?, limit: Int): List<Todo> {
         return ctx.sql.createQuery(Todo::class) {
-            where(table.appId eq appId)
+            where(table.get<UUID>("appId") eq appId)
             cursor?.let { where(table.getId<UUID>() lt it) }
             orderBy(table.getId<UUID>().desc())
             select(table)
@@ -26,11 +23,21 @@ class TodoRepository(sql: KSqlClient) : BaseAppCrudRepository<Todo>(sql, Todo::c
     }
 
     fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, title: String?, done: Boolean?) {
-        ctx.sql.createUpdate(Todo::class) {
-            where(table.appId eq appId)
-            where(table.getId<UUID>() eq id)
-            title?.let { set(table.title, it) }
-            done?.let { set(table.done, it) }
-        }.execute()
+        // ponytail: Jimmer createUpdate has type inference issues with string-based props
+        // Using raw SQL as fallback
+        if (title == null && done == null) return
+        val setClauses = mutableListOf<String>()
+        val params = mutableListOf<Any>()
+        if (title != null) {
+            setClauses.add("title = ?")
+            params.add(title)
+        }
+        if (done != null) {
+            setClauses.add("done = ?")
+            params.add(done)
+        }
+        params.add(appId)
+        params.add(id)
+        ctx.sql.execute("UPDATE core_todo SET ${setClauses.joinToString(", ")} WHERE app_id = ? AND id = ?", *params.toTypedArray())
     }
 }
