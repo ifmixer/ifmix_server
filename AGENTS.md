@@ -9,7 +9,7 @@
 ## 技术栈速查
 
 - Kotlin 2.3.10 / JDK 25 (Virtual Threads)
-- Spring Boot 4.1.0 / jOOQ 3.21.5 / PostgreSQL / Redis
+- Spring Boot 4.1.0 / Jimmer 0.11.5 (KSP) / PostgreSQL / Redis
 - GraphQL: Netflix DGS 12.x (DGS codegen 8.6.0)
 - Jackson 3 (`tools.jackson`) / Spring AI 2.0 / EdDSA JWT
 - Gradle 9.6.1
@@ -22,8 +22,8 @@
 |----|--------|------|------|
 | DataFetcher | `bff/graphql/customer/` | `@DgsComponent` | GraphQL 路由、构造 OperationContext、DataLoader |
 | Service | `modules/*/service/` | `@Service` | 业务编排、TxRunner 事务、CrudServiceOps 缓存 |
-| Repository | `modules/*/repo/` | `@Repository` | 纯数据访问、注入 CrudOps、接收 RepoContext |
-| Model | `entity/` | 无 | Domain data class、可加业务方法 |
+| Repository | `modules/*/repo/` | `@Repository` | 纯数据访问、使用 Jimmer KSqlClient、接收 SvcCtx |
+| Model | `entity/` | 无 | Jimmer interface entity，KSP 生成扩展属性和 Draft DSL |
 | Infra | `infra/` | `@Component`/`@Configuration` | 横切关注点、外部集成 |
 
 ### DI 风格
@@ -43,11 +43,11 @@
 - 这是有意设计，不要改成阻塞式
 
 ### 数据库
-- 使用 jOOQ（类型安全 SQL DSL + codegen）
+- 使用 Jimmer（interface entity + KSP 扩展属性 + Draft DSL）
 - **所有表名带 `core_` 前缀**（如 `core_todo`, `core_app_user`, `core_scan_record`）
 - UUIDv7 作为主键（时间有序，支持游标分页）
 - **UUID 字符串统一用 22 位 Base58 URL-safe 编码**（不用原始 36 位格式）
-  - PG/jOOQ 层：原生 UUID 类型
+  - PG/Jimmer 层：原生 UUID 类型
   - REST API / Redis JSON / 前端交互：22 位 Base58
   - Jackson 全局模块自动转换（`JacksonConfig.uuidBase58Module`）
   - 工具类：`infra/codec/Base58.kt`（`uuid.toBase58()` / `str.toUuidFromBase58()`）
@@ -75,14 +75,11 @@
 ## 常用命令
 
 ```bash
-# 编译
+# 编译（含 KSP）
 ./gradlew :core-api:compileKotlin
 
 # 测试
 ./gradlew :core-api:test
-
-# jOOQ codegen (需本地 PG 运行)
-./gradlew :core-api:generateJooq
 
 # 运行 (需要 PostgreSQL + Redis)
 ./gradlew :core-api:bootRun
@@ -99,7 +96,7 @@
 以下是已确定的设计决策，除非有充分理由否则不要推翻：
 
 1. **GraphQL (DGS) 作为 API 层** — 替代旧 REST BFF
-2. **jOOQ 替代 Jimmer** — 类型安全 SQL + 显式控制
+2. **Jimmer 替代 jOOQ** — interface entity + KSP 扩展属性 + Draft DSL
 3. **TxRunner 替代 @Transactional** — 支持多集群动态路由
 4. **AuthInterceptor 非阻塞** — 支持匿名+认证混合接口
 5. **presignUpload 不要求登录** — 后续通过行为验证增强
@@ -111,11 +108,11 @@
 11. **Webhook 必须验签** — Apple JWS / Google 通过 packageName 反查 appId
 12. **DataLoader caching=false** — 只 batching，防 mutation 间脏读
 13. **CacheAside 显式调用** — 不用 @Cacheable 魔法
-14. **Domain Entity = data class** — 不是 jOOQ codegen POJO
+14. **Entity = Jimmer interface + 注解** — KSP 生成扩展属性和 Draft DSL
 15. **set/unset Update 语义** — 防 null vs undefined 歧义
 16. **枚举全链路 Int 透传** — GraphQL 不用 enum，灰度/多版本安全
 17. **枚举常量放 model class 嵌套 object** — 就近原则，跨模块的放 entity/shared/
-18. **codegen 输出不与手写混** — jOOQ 生成到 src/generated/jooq/，DGS 在 build/generated/
+18. **KSP 输出在 build/generated/ksp/** — 不与手写源码混
 19. **Operation 命名含对象** — `query_todo_findTodoById` 而非 `query_todo_findById`
 
 ## 工作方式

@@ -50,6 +50,7 @@ class PaymentEntityService(
         val verifyResult = verifier.verify(input)
 
         val config = appConfigRepo.findActiveByAppId(sc, appId)
+            ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val productTierMap = config.content.iap.productTierMap
         val tier = tierOf(req.productId, productTierMap) ?: Tiers.FREE
 
@@ -82,29 +83,27 @@ class PaymentEntityService(
         }
 
         val now = Instant.now()
-        val subscription = Subscription(
-            id = UuidV7.generate(),
-            appId = appId,
-            subscriptionPxid = subscriptionPxid,
-            originalTransactionId = verifyResult.originalTransactionId,
-            productId = req.productId,
-            platform = req.platform,
-            active = true,
-            subStatus = subStatus,
-            expiryDate = verifyResult.expiryDate,
-            purchaseToken = purchaseToken,
-            rawResponse = tools.jackson.databind.ObjectMapper().writeValueAsString(
-                mapOf(
-                    "original_transaction_id" to verifyResult.originalTransactionId,
-                    "product_id" to req.productId,
-                    "expiry_date" to verifyResult.expiryDate?.toString(),
-                    "sub_status" to verifyResult.subStatus.name,
-                    "platform" to req.platform,
-                ),
-            ),
-            createdAt = now,
-            updatedAt = now,
-        )
+        val subscription = Subscription {
+            id = UuidV7.generate()
+            appId = appId
+            subscriptionPxid = subscriptionPxid
+            originalTransactionId = verifyResult.originalTransactionId
+            productId = req.productId
+            platform = req.platform
+            active = true
+            subStatus = subStatus
+            expiryDate = verifyResult.expiryDate
+            purchaseToken = purchaseToken
+            rawResponse = mapOf(
+                "original_transaction_id" to verifyResult.originalTransactionId,
+                "product_id" to req.productId,
+                "expiry_date" to verifyResult.expiryDate?.toString(),
+                "sub_status" to verifyResult.subStatus.name,
+                "platform" to req.platform,
+            )
+            createdAt = now
+            updatedAt = now
+        }
 
         subscriptionRepo.upsertSubscription(sc, subscription)
         return VerifyRes(

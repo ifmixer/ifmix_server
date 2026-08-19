@@ -10,15 +10,6 @@ import com.ifmix.api.core.entity.auth.clientIp
 import com.ifmix.api.core.entity.auth.userId
 import com.ifmix.api.core.entity.auth.installId
 import com.ifmix.api.core.entity.auth.loginCount
-import com.ifmix.api.core.entity.auth.UserInstallBinding.appId
-import com.ifmix.api.core.entity.auth.UserInstallBinding.userId
-import com.ifmix.api.core.entity.auth.UserInstallBinding.installId
-import com.ifmix.api.core.entity.auth.UserInstallBinding.id
-import com.ifmix.api.core.entity.auth.UserInstallBinding.lastSeenAt
-import com.ifmix.api.core.entity.auth.UserInstallBinding.loginCount
-import com.ifmix.api.core.entity.auth.UserInstallBinding.updatedAt
-import com.ifmix.api.core.entity.auth.UserInstallBinding.clientIp
-import com.ifmix.api.core.entity.auth.UserInstallBinding.clientPlatform
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -26,7 +17,6 @@ import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
-import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<UserInstallBinding>(sql, UserInstallBinding::class) {
@@ -66,11 +56,11 @@ class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<User
             val now = Instant.now()
             ctx.sql.createUpdate(UserInstallBinding::class) {
                 where(table.id eq existing.id)
-                set(lastSeenAt, now)
-                set(loginCount, existing.loginCount + 1)
-                set(updatedAt, now)
-                set(clientIp, clientIp)
-                set(clientPlatform, clientPlatform)
+                set(table.lastSeenAt, now)
+                set(table.loginCount, existing.loginCount + 1)
+                set(table.updatedAt, now)
+                set(table.clientIp, clientIp)
+                set(table.clientPlatform, clientPlatform)
             }.execute()
         }
     }

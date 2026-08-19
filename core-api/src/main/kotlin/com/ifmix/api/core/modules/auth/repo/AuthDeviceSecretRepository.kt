@@ -13,12 +13,11 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.gt
 import org.babyfish.jimmer.sql.kt.ast.expression.isNull
+import org.babyfish.jimmer.sql.kt.ast.expression.or
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 import com.ifmix.api.core.entity.auth.appId
-import com.ifmix.api.core.entity.auth.deviceSecretId
-import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDeviceSecret>(sql, AuthDeviceSecret::class) {
@@ -27,8 +26,13 @@ class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDevic
         val now = Instant.now()
         return ctx.sql.createQuery(AuthDeviceSecret::class) {
             where(table.secretHash eq secretHash)
-            where(table.revokedAt.isNull)
-            where(table.expiresAt.isNull.or(table.expiresAt gt now))
+            where(table.revokedAt.isNull())
+            where(
+                or(
+                    table.expiresAt.isNull(),
+                    table.expiresAt gt now
+                )
+            )
             select(table)
         }.limit(1).execute().firstOrNull()
     }

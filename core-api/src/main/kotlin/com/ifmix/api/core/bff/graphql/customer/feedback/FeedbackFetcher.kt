@@ -11,7 +11,7 @@ import com.netflix.graphql.dgs.DgsMutation
 import com.netflix.graphql.dgs.InputArgument
 
 /**
- * Feedback GraphQL DataFetcher（jOOQ 版）。
+ * Feedback GraphQL DataFetcher。
  * Feedback 是 append-only，无需缓存淘汰。
  */
 @DgsComponent

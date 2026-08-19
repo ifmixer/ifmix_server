@@ -15,7 +15,7 @@ interface Todo : AppScopedProps, SoftDeletableProps {
     @Id
     val id: UUID
 
-    override val appId: UUID
+    val appId: UUID
 
     val installId: UUID?
     val userId: UUID?

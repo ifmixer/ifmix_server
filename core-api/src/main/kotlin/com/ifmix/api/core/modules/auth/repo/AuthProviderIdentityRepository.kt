@@ -13,7 +13,6 @@ import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 import com.ifmix.api.core.entity.auth.authIdentityId
-import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class AuthProviderIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {

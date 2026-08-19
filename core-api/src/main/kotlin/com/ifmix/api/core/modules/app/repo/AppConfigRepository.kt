@@ -13,7 +13,6 @@ import com.ifmix.api.core.entity.app.androidPackageName
 import com.ifmix.api.core.entity.app.enabled
 import com.ifmix.api.core.entity.app.createdAt
 import com.ifmix.api.core.entity.app.id
-import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevision>(sql, AppConfigRevision::class) {

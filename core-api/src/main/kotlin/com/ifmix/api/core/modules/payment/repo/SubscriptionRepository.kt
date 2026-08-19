@@ -13,7 +13,6 @@ import org.springframework.stereotype.Repository
 import java.util.UUID
 import com.ifmix.api.core.entity.iap.userId
 import com.ifmix.api.core.entity.iap.id
-import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscription>(sql, Subscription::class) {
@@ -41,5 +40,11 @@ class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscripti
             where(table.originalTransactionId eq originalTxnId)
             select(table)
         }.limit(1).execute().firstOrNull()
+    }
+
+    fun upsertSubscription(ctx: SvcCtx, entity: Subscription) {
+        ctx.sql.entities.save(entity) {
+            setKeyProps(Subscription::subscriptionPxid)
+        }
     }
 }

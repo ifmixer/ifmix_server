@@ -115,14 +115,14 @@ class AuthEntityService(
     }
 
     private fun tenantUUID(sc: SvcCtx, appId: UUID): UUID =
-        appConfigRepo.findActiveByAppId(sc, appId).authTenantId
+        appConfigRepo.findActiveByAppId(sc, appId)?.authTenantId
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
     fun me(sc: SvcCtx): MeRes {
         val userId = sc.op.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
-        val appUser = appUserRepo.findById(sc, userId)
+        val appUser = appUserRepo.findById(sc, appId, userId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "user not found")
-        val identity = identityRepo.findById(sc, appUser.authIdentityId)
+        val identity = identityRepo.findById(sc, appUser.getAuthIdentityId())
         return MeRes(userId, identity?.email)
     }
 
@@ -186,36 +186,36 @@ class AuthEntityService(
         val now = Instant.now()
         val rawDeviceSecret = Hashing.randomTokenBase64Url()
         val deviceSecretHash = Hashing.sha256Base64Url(rawDeviceSecret)
-        deviceSecretRepo.insert(sc, AuthDeviceSecret(
-            id = UuidV7.generate(),
-            authTenantId = tenantId,
-            authIdentityId = identity.id,
-            secretHash = deviceSecretHash,
-            loginInstallId = opCtx.installId,
-            expiresAt = now.plusSeconds(DEVICE_SECRET_TTL_DAYS * 86400),
-            revokedAt = null,
-            lastUsedAt = now,
-            createdAt = now,
-            updatedAt = now,
-        ))
+        deviceSecretRepo.save(sc, AuthDeviceSecret {
+            id = UuidV7.generate()
+            authTenant { id = tenantId }
+            authIdentity { id = identity.id }
+            secretHash = deviceSecretHash
+            loginInstallId = opCtx.installId
+            expiresAt = now.plusSeconds(DEVICE_SECRET_TTL_DAYS * 86400)
+            revokedAt = null
+            lastUsedAt = now
+            createdAt = now
+            updatedAt = now
+        })
 
         // 6. Issue refresh token
         val rawRefreshToken = Hashing.randomTokenBase64Url()
         val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
         val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
-        refreshRepo.insert(sc, AppRefreshToken(
-            id = UuidV7.generate(),
-            appId = opCtx.appId!!,
-            appUserId = appUserId,
-            deviceSecretId = null,
-            tokenHash = refreshTokenHash,
-            loginInstallId = opCtx.installId,
-            expiresAt = refreshExpiresAt,
-            revokedAt = null,
-            replacedBy = null,
-            createdAt = now,
-            updatedAt = now,
-        ))
+        refreshRepo.save(sc, AppRefreshToken {
+            id = UuidV7.generate()
+            appId = opCtx.appId!!
+            appUser { id = appUserId }
+            deviceSecretId = null
+            tokenHash = refreshTokenHash
+            loginInstallId = opCtx.installId
+            expiresAt = refreshExpiresAt
+            revokedAt = null
+            replacedBy = null
+            createdAt = now
+            updatedAt = now
+        })
 
         // 7. Sign access token
         val accessToken = jwt.signAccess(appUserId.toString(), opCtx.appId!!.toString())
@@ -256,19 +256,19 @@ class AuthEntityService(
         val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
         val now = Instant.now()
         val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
-        refreshRepo.insert(sc, AppRefreshToken(
-            id = UuidV7.generate(),
-            appId = appId,
-            appUserId = appUserId,
-            deviceSecretId = foundSecret.id,
-            tokenHash = refreshTokenHash,
-            loginInstallId = sc.installId,
-            expiresAt = refreshExpiresAt,
-            revokedAt = null,
-            replacedBy = null,
-            createdAt = now,
-            updatedAt = now,
-        ))
+        refreshRepo.save(sc, AppRefreshToken {
+            id = UuidV7.generate()
+            appId = appId
+            appUser { id = appUserId }
+            deviceSecret { id = foundSecret.id }
+            tokenHash = refreshTokenHash
+            loginInstallId = sc.installId
+            expiresAt = refreshExpiresAt
+            revokedAt = null
+            replacedBy = null
+            createdAt = now
+            updatedAt = now
+        })
 
         val accessToken = jwt.signAccess(appUserId.toString(), appId.toString())
         return ExchangeRes(
@@ -293,18 +293,18 @@ class AuthEntityService(
         val newExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         val newTokenId = UuidV7.generate()
 
-        refreshRepo.insert(sc, AppRefreshToken(
-            id = newTokenId,
-            appId = appId,
-            appUserId = oldToken.appUserId,
-            tokenHash = newTokenHash,
-            loginInstallId = oldToken.loginInstallId,
-            expiresAt = newExpiresAt,
-            revokedAt = null,
-            replacedBy = null,
-            createdAt = now,
-            updatedAt = now,
-        ))
+        refreshRepo.save(sc, AppRefreshToken {
+            id = newTokenId
+            appId = appId
+            appUser { id = oldToken.appUserId }
+            tokenHash = newTokenHash
+            loginInstallId = oldToken.loginInstallId
+            expiresAt = newExpiresAt
+            revokedAt = null
+            replacedBy = null
+            createdAt = now
+            updatedAt = now
+        })
         refreshRepo.revoke(sc, oldToken.id, replacedBy = newTokenId)
 
         val appUserId = oldToken.appUserId
@@ -358,22 +358,22 @@ class AuthEntityService(
         userMetadata: Map<String, Any?>?,
     ): AuthIdentity {
         val now = Instant.now()
-        val identity = AuthIdentity(
-            id = UuidV7.generate(),
-            authTenantId = tenantId,
-            rawEmail = rawEmail,
-            email = email,
-            rawPhone = phone,
-            phone = phone,
-            contactEmail = email,
-            displayName = userMetadata?.get("name") as? String,
-            passwordHash = null,
-            profile = null,
-            metadata = null,
-            createdAt = now,
-            updatedAt = now,
-        )
-        identityRepo.insert(sc, identity)
+        val identity = AuthIdentity {
+            id = UuidV7.generate()
+            authTenant { id = tenantId }
+            rawEmail = rawEmail
+            email = email
+            rawPhone = phone
+            phone = phone
+            contactEmail = email
+            displayName = userMetadata?.get("name") as? String
+            passwordHash = null
+            profile = null
+            metadata = null
+            createdAt = now
+            updatedAt = now
+        }
+        identityRepo.save(sc, identity)
         return identity
     }
 }

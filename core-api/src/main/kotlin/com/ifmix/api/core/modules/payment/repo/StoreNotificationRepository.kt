@@ -11,7 +11,6 @@ import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import com.ifmix.api.core.entity.iap.appId
 import com.ifmix.api.core.entity.iap.id
-import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class StoreNotificationRepository(sql: KSqlClient) : BaseAppCrudRepository<StoreNotification>(sql, StoreNotification::class) {

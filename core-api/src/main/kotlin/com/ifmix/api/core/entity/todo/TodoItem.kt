@@ -12,7 +12,7 @@ interface TodoItem : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
-    override val appId: UUID
+    val appId: UUID
 
     val todoId: UUID
     val content: String

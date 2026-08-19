@@ -1,673 +1,465 @@
-# jOOQ → Jimmer 迁移实现计划
+# jOOQ → Jimmer 迁移修复计划
 
-> **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [ ]`）语法来跟踪进度。
+> 执行者：Claude Code
+> 日期：2026-08-19
+> 前置条件：当前编译已有 103 个错误，大部分是本文档列出的模式性问题
 
-**目标：** 将 ORM 层从 jOOQ 替换为 Jimmer，保留现有 GraphQL (DGS) + TxRunner + ClusterRouter 分层架构。
+## 总体评价
 
-**架构：** Entity 从 data class 改为 Jimmer `@Entity interface`；Repository 从 CrudRepoOps/手写 DSL 改为继承 Jimmer BaseAppCrudRepository；Service 层和 DataFetcher 层结构不变，仅适配新的 entity 创建语法和 repo API。事务通过 Spring PlatformTransactionManager 统一管理（TxRunner 底层不变）。
-
-**技术栈：** Kotlin 2.3.10, Jimmer 0.11.5+, Spring Boot 4.1.0, DGS 12.x, KSP, PostgreSQL
-
-**参考分支：** `feature/swagger-jimmer`（Entity 定义、Repository 模式可直接复用）
-
----
-
-## 文件结构概览
-
-### 删除的文件
-
-| 路径 | 原因 |
-|------|------|
-| `core-api/src/generated/jooq/` 整个目录 | jOOQ codegen 输出，不再需要 |
-| `infra/jooq/CrudRepoOps.kt` | 被 Jimmer BaseCrudRepository 替代 |
-| `infra/jooq/CrudRepoOpsFactory.kt` | 同上 |
-| `infra/jooq/DataSourceConfig.kt` | 改用 Jimmer 的数据源配置 |
-| `infra/jooq/AuditRecordListener.kt` | Jimmer 有自己的 DraftInterceptor |
-| `infra/jooq/InstantConverter.kt` | Jimmer 原生支持 Instant |
-| `infra/jooq/SmallintToIntConverter.kt` | Jimmer 直接映射 Int |
-| `infra/jooq/ConfigContentConverter.kt` | `@Serialized` 替代 |
-| `infra/jooq/ImageRefListConverter.kt` | `@Serialized` 替代 |
-| `infra/jooq/JsonMapConverter.kt` | `@Serialized` 替代 |
-| `infra/jooq/JsonStringConverter.kt` | `@Serialized` 替代 |
-
-### 新建的文件
-
-| 路径 | 职责 |
-|------|------|
-| `entity/AppScopedProps.kt` | 多租户标记接口 `val appId: UUID` |
-| `entity/MutableProps.kt` | `createdAt + updatedAt` 基类 |
-| `entity/SoftDeletableProps.kt` | `@LogicalDeleted deletedAt` |
-| `entity/ai/ScanRecord.kt` | `@Entity interface`（替代 data class） |
-| `entity/ai/ScanCollection.kt` | 同上 |
-| `entity/ai/ScanCollectionItem.kt` | 同上 |
-| `entity/ai/AgnesKey.kt` | 同上 |
-| `entity/app/AppConfigRevision.kt` | 同上（含 ConfigContent 等值对象） |
-| `entity/app/AppInfo.kt` | 同上 |
-| `entity/auth/AppUser.kt` | 同上 |
-| `entity/auth/AuthIdentity.kt` | 同上 |
-| `entity/auth/AuthProviderIdentity.kt` | 同上 |
-| `entity/auth/AuthDeviceSecret.kt` | 同上 |
-| `entity/auth/AppRefreshToken.kt` | 同上 |
-| `entity/auth/AuthTenant.kt` | 同上 |
-| `entity/auth/UserInstallBinding.kt` | 同上 |
-| `entity/iap/Subscription.kt` | 同上 |
-| `entity/iap/StoreNotification.kt` | 同上 |
-| `entity/feedback/Feedback.kt` | 同上 |
-| `entity/storage/UploadRecord.kt` | 同上 |
-| `entity/shared/Enums.kt` | 枚举常量（Tiers、Platforms 等） |
-| `infra/jimmer/JimmerConfig.kt` | KSqlClient bean 配置 + 多数据源 |
-| `infra/jimmer/BaseAppCrudRepository.kt` | 通用 CRUD（从 swagger-jimmer 分支搬运） |
-| `infra/jimmer/BaseCrudRepository.kt` | 无 appId 的通用 CRUD |
-| `infra/jimmer/AppScopedFilter.kt` | 全局过滤器（非必须，可选） |
-| `infra/jimmer/DraftInterceptor.kt` | 自动填充 createdAt/updatedAt |
-
-### 修改的文件
-
-| 路径 | 改动 |
-|------|------|
-| `build.gradle.kts` (root) | 添加 KSP 插件、Jimmer 版本管理 |
-| `core-api/build.gradle.kts` | 移除 jOOQ 插件/依赖，添加 Jimmer 依赖 + KSP |
-| `infra/db/SvcCtx.kt` | `dsl: DSLContext` → `sql: KSqlClient` |
-| `infra/db/SvcCtxFactory.kt` | 使用 KSqlClient 替代 DSLContext |
-| `infra/db/ClusterRouter.kt` | 返回 KSqlClient 而非 DSLContext |
-| `infra/jooq/TxRunner.kt` | 路径不变（移到 `infra/tx/`），底层改用 Spring TX |
-| `infra/jooq/FilterConditionParser.kt` | 改用 Jimmer DSL 动态 where |
-| 所有 `modules/*/repo/*.kt` | 改为继承 BaseCrudRepository/BaseAppCrudRepository |
-| 所有 `modules/*/service/internal/*.kt` | 适配 Jimmer entity 创建语法 |
-| `bff/webhooks/WebhookController.kt` | 适配新 repo API |
+迁移方向正确：entity 已转为 interface + 注解、infra 层 JimmerConfig/ClusterRegistry/TxRunner 架构良好。
+问题集中在 **Jimmer DSL 语法细节** — 主要是把 jOOQ/data class 思维惯性带入了 Jimmer。
 
 ---
 
-## 任务分解
+## 问题分类与修复方案
 
-### 任务 1：Gradle 依赖替换
+### 1. [CRITICAL] `AppScopedProps` 缺少 `@MappedSuperclass`
 
-**文件：**
-- 修改：`build.gradle.kts`（root）
-- 修改：`core-api/build.gradle.kts`
+**文件**: `entity/AppScopedProps.kt`
 
-- [ ] **步骤 1：root build.gradle.kts 添加 KSP 插件和 Jimmer 版本**
+**问题**: 所有继承 `AppScopedProps` 的 entity 引用 `appId` 时，KSP 不会为它生成扩展属性（导致下游 `table.appId` 编译失败）。
 
+**修复**:
 ```kotlin
-plugins {
-    // ... 已有
-    id("com.google.devtools.ksp") version "2.3.10" apply false
-}
-
-extra["jimmerVersion"] = "0.11.5"
-```
-
-- [ ] **步骤 2：core-api/build.gradle.kts 替换 jOOQ → Jimmer**
-
-移除：
-```kotlin
-id("nu.studer.jooq")  // plugins 块
-jooqGenerator("org.postgresql:postgresql")  // dependencies
-implementation("org.springframework.boot:spring-boot-starter-jooq")
-// 整个 jooq { ... } 配置块
-// sourceSets 中的 kotlin.srcDir("src/generated/jooq")
-```
-
-添加：
-```kotlin
-plugins {
-    id("com.google.devtools.ksp")
-}
-
-val jimmerVersion = rootProject.extra["jimmerVersion"] as String
-
-dependencies {
-    implementation("org.babyfish.jimmer:jimmer-spring-boot-starter:$jimmerVersion")
-    implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
-    ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")
-}
-
-ksp {
-    arg("jimmer.language", "kotlin")
-}
-```
-
-- [ ] **步骤 3：删除 jOOQ 生成目录**
-
-```bash
-rm -rf core-api/src/generated/jooq
-```
-
-- [ ] **步骤 4：验证 Gradle sync 成功**
-
-```bash
-./gradlew :core-api:dependencies | grep jimmer
-```
-
-- [ ] **步骤 5：Commit**
-
-```bash
-git add -A && git commit -m "build: replace jOOQ with Jimmer dependencies"
-```
-
----
-
-### 任务 2：Entity 层改造 — 公共接口
-
-**文件：**
-- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/entity/AppScopedProps.kt`
-- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/entity/MutableProps.kt`
-- 创建：`core-api/src/main/kotlin/com/ifmix/api/core/entity/SoftDeletableProps.kt`
-
-- [ ] **步骤 1：创建公共接口**
-
-```kotlin
-// AppScopedProps.kt
 package com.ifmix.api.core.entity
 
+import org.babyfish.jimmer.sql.MappedSuperclass
 import java.util.UUID
 
+@MappedSuperclass
 interface AppScopedProps {
     val appId: UUID
 }
-
-// MutableProps.kt
-package com.ifmix.api.core.entity
-
-import org.babyfish.jimmer.sql.MappedSuperclass
-import java.time.Instant
-
-@MappedSuperclass
-interface CreatedAtProps {
-    val createdAt: Instant
-}
-
-@MappedSuperclass
-interface MutableProps : CreatedAtProps {
-    val updatedAt: Instant
-}
-
-// SoftDeletableProps.kt
-package com.ifmix.api.core.entity
-
-import org.babyfish.jimmer.sql.LogicalDeleted
-import org.babyfish.jimmer.sql.MappedSuperclass
-import java.time.Instant
-
-@MappedSuperclass
-interface SoftDeletableProps : MutableProps {
-    @LogicalDeleted("now")
-    val deletedAt: Instant?
-}
-```
-
-- [ ] **步骤 2：验证编译**
-
-```bash
-./gradlew :core-api:compileKotlin
-```
-
-- [ ] **步骤 3：Commit**
-
-```bash
-git add -A && git commit -m "feat(entity): add Jimmer shared MappedSuperclass interfaces"
 ```
 
 ---
 
-### 任务 3：Entity 层改造 — 核心实体（AI 模块）
+### 2. [CRITICAL] 实体构造方式错误 — 用了 data class 构造器语法
 
-**文件：**
-- 创建/覆盖：`entity/ai/ScanRecord.kt`、`entity/ai/ScanCollection.kt`、`entity/ai/ScanCollectionItem.kt`、`entity/ai/AgnesKey.kt`、`entity/ImageRef.kt`
-- 删除旧 data class 版本
+**影响文件**:
+- `modules/auth/service/internal/AuthEntityService.kt` — `AuthIdentity(...)`, `AuthDeviceSecret(...)`, `AppRefreshToken(...)`
+- `modules/payment/service/internal/PaymentEntityService.kt` — `Subscription(...)`
+- `modules/payment/service/internal/PaymentWebhookHandler.kt` — `StoreNotification(...)`
+- `modules/cms/service/internal/CmsEntityService.kt` — `Feedback(...)`
 
-- [ ] **步骤 1：创建 ScanRecord entity**
+**问题**: Jimmer entity 是 `interface`，不能 `Xxx(param=...)` 构造。KSP 生成的是 `Xxx { block }` DSL。
 
-从 `feature/swagger-jimmer` 分支复制并适配：
+**修复模式**: 
 ```kotlin
-package com.ifmix.api.core.entity.ai
+// ❌ 错误
+val entity = AuthIdentity(
+    id = UuidV7.generate(),
+    authTenantId = tenantId,
+    rawEmail = rawEmail,
+    ...
+)
 
-import com.ifmix.api.core.entity.AppScopedProps
-import com.ifmix.api.core.entity.SoftDeletableProps
-import com.ifmix.api.core.entity.ImageRef
-import org.babyfish.jimmer.sql.*
-import java.util.UUID
-
-@Entity
-@Table(name = "core_scan_record")
-interface ScanRecord : AppScopedProps, SoftDeletableProps {
-    @Id val id: UUID
-    override val appId: UUID
-
-    @Serialized
-    @Column(name = "image_keys")
-    val imageKeys: List<ImageRef>
-
-    @Serialized
-    @Column(name = "basic_result")
-    val basicResult: Map<String, Any?>?
-
-    @Serialized
-    @Column(name = "premium_result")
-    val premiumResult: Map<String, Any?>?
-
-    val status: Int
-    val clientIp: String?
-    val lang: String?
-    val country: String?
-    val currency: String?
-    val userDisplayName: String?
-    val userNotes: String?
-    val collected: Boolean
+// ✅ 正确（Jimmer DSL）
+val entity = AuthIdentity {
+    id = UuidV7.generate()
+    authTenant { id = tenantId }  // @ManyToOne 关联用嵌套 block
+    rawEmail = rawEmail
+    ...
 }
 ```
 
-- [ ] **步骤 2：创建其他 AI entity（ScanCollection、ScanCollectionItem、AgnesKey、ImageRef）**
+**注意 @ManyToOne 字段的赋值**:
+- `authTenantId = xxx` → 改为 `authTenant { id = xxx }` （设置关联对象的仅 id 版本）
+- `authIdentityId = xxx` → 改为 `authIdentity { id = xxx }`
+- `appUserId = xxx` → 改为 `appUser { id = xxx }`
+- `deviceSecretId = xxx` → 改为 `deviceSecret { id = xxx }` （nullable 时用 `deviceSecret = null`）
 
-ImageRef 是值对象（`@Embeddable` 或纯 data class）：
+---
+
+### 3. [CRITICAL] `sub.copy(...)` 对 Jimmer interface 无效
+
+**文件**: `modules/payment/service/internal/PaymentWebhookHandler.kt:69`
+
+**修复**:
 ```kotlin
-package com.ifmix.api.core.entity
+// ❌ 错误
+val updated = sub.copy(active = false, subStatus = "refunded", updatedAt = now)
 
-import org.babyfish.jimmer.sql.Embeddable
-
-data class ImageRef(val key: String)
-```
-
-其他同理，按 `feature/swagger-jimmer` 分支模式创建。
-
-- [ ] **步骤 3：验证 KSP 生成**
-
-```bash
-./gradlew :core-api:kspKotlin
-```
-
-- [ ] **步骤 4：Commit**
-
-```bash
-git add -A && git commit -m "feat(entity): add Jimmer AI module entities"
+// ✅ 正确 — 基于现有对象创建新 Draft
+val updated = Subscription(sub) {
+    active = false
+    subStatus = "refunded"
+    // updatedAt 由 TimestampDraftInterceptor 自动填充，不用手动设
+}
+subscriptionRepo.save(sc, updated)
 ```
 
 ---
 
-### 任务 4：Entity 层改造 — Auth 模块
+### 4. [CRITICAL] 调用不存在的 `insert()` 方法
 
-**文件：**
-- 创建/覆盖：`entity/auth/AppUser.kt`、`entity/auth/AuthIdentity.kt`、`entity/auth/AuthProviderIdentity.kt`、`entity/auth/AuthDeviceSecret.kt`、`entity/auth/AppRefreshToken.kt`、`entity/auth/AuthTenant.kt`、`entity/auth/UserInstallBinding.kt`
+**影响**: `AuthEntityService` 中大量 `xxxRepo.insert(sc, entity)` 调用。
 
-- [ ] **步骤 1：创建全部 Auth entity**
+**问题**: `BaseCrudRepository` 和 `BaseAppCrudRepository` 只有 `save()`，没有 `insert()`。
 
-按 `feature/swagger-jimmer` 分支逐个创建。注意：
-- `AuthIdentity` 有 `@ManyToOne` 关联到 `AuthTenant`
-- `AuthProviderIdentity` 有 `@ManyToOne` 关联到 `AuthIdentity`
-- JSONB 字段用 `@Serialized`
-- 枚举字段保持 Int（不用 Jimmer 的 EnumType）
+**修复方案（二选一）**:
 
-- [ ] **步骤 2：验证 KSP 生成**
-
-```bash
-./gradlew :core-api:kspKotlin
+**方案 A（推荐）**: 直接将 `insert` 替换为 `save`：
+```kotlin
+// ❌
+deviceSecretRepo.insert(sc, entity)
+// ✅
+deviceSecretRepo.save(sc, entity)
 ```
 
-- [ ] **步骤 3：Commit**
+Jimmer 的 `save()` 默认行为是 "有 id 就 upsert"，对 UUIDv7 新生成的 id 等价于 INSERT。
 
-```bash
-git add -A && git commit -m "feat(entity): add Jimmer Auth module entities"
+**方案 B**: 如果需要严格 INSERT（不允许 upsert），可以在 base repo 加方法：
+```kotlin
+open fun insert(ctx: SvcCtx, entity: E): E =
+    sql.entities.save(entity) {
+        setMode(SaveMode.INSERT_ONLY)
+    }.modifiedEntity
+```
+
+我建议方案 A（简单替换），因为 UUIDv7 保证新 id 不冲突，save 行为等价于 insert。
+
+---
+
+### 5. [CRITICAL] `AppUserRepository` 缺少 `ensure()` 方法
+
+**文件**: `modules/auth/repo/AppUserRepository.kt`
+
+**问题**: `AuthEntityService` 调用 `appUserRepo.ensure(sc, appId, identityId)` 但方法不存在。
+
+**修复** — 添加方法：
+```kotlin
+fun ensure(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): UUID {
+    val existing = findByAppAndIdentity(ctx, appId, authIdentityId)
+    if (existing != null) return existing.id
+    
+    val id = UuidV7.generate()
+    val now = Instant.now()
+    val entity = AppUser {
+        this.id = id
+        this.appId = appId
+        authIdentity { this.id = authIdentityId }
+        metadata = null
+        createdAt = now
+        updatedAt = now
+    }
+    save(ctx, entity)
+    return id
+}
 ```
 
 ---
 
-### 任务 5：Entity 层改造 — App/IAP/Storage/Feedback
+### 6. [CRITICAL] `SubscriptionRepository` 缺少 `upsertSubscription()` 方法
 
-**文件：**
-- 创建/覆盖：`entity/app/AppConfigRevision.kt`（含 ConfigContent 值对象）、`entity/app/AppInfo.kt`、`entity/iap/Subscription.kt`、`entity/iap/StoreNotification.kt`、`entity/storage/UploadRecord.kt`、`entity/feedback/Feedback.kt`
+**文件**: `modules/payment/repo/SubscriptionRepository.kt`
 
-- [ ] **步骤 1：创建全部剩余 entity**
-
-AppConfigRevision 的 content 字段：
+**修复** — 添加方法（利用 Jimmer `@Key` 的 upsert 能力）：
 ```kotlin
-@Serialized
-val content: ConfigContent
-```
-
-ConfigContent 和子值对象保持为 `data class`（Jimmer 的 `@Serialized` 字段值类型不需要是 entity）。
-
-- [ ] **步骤 2：验证 KSP 全量编译通过**
-
-```bash
-./gradlew :core-api:compileKotlin
-```
-
-此时由于 Repository/Service 还引用旧 entity，大量编译错误是预期行为。只需 KSP 生成成功即可。
-
-- [ ] **步骤 3：Commit**
-
-```bash
-git add -A && git commit -m "feat(entity): add Jimmer App/IAP/Storage/Feedback entities"
-```
-
----
-
-### 任务 6：基础设施层 — JimmerConfig + SvcCtx 适配
-
-**文件：**
-- 创建：`infra/jimmer/JimmerConfig.kt`
-- 创建：`infra/jimmer/DraftInterceptor.kt`
-- 修改：`infra/db/SvcCtx.kt`
-- 修改：`infra/db/SvcCtxFactory.kt`
-- 修改：`infra/db/ClusterRouter.kt`
-
-- [ ] **步骤 1：创建 JimmerConfig**
-
-```kotlin
-package com.ifmix.api.core.infra.jimmer
-
-import org.babyfish.jimmer.sql.kt.KSqlClient
-import org.babyfish.jimmer.sql.kt.newKSqlClient
-import org.babyfish.jimmer.sql.runtime.ConnectionManager
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
-import javax.sql.DataSource
-
-@Configuration
-class JimmerConfig {
-    @Bean
-    fun sqlClient(dataSource: DataSource): KSqlClient = newKSqlClient {
-        setConnectionManager(ConnectionManager.simpleConnectionManager(dataSource))
-        // dialect、interceptor 等后续配置
+fun upsertSubscription(ctx: SvcCtx, entity: Subscription) {
+    // Subscription 有 @Key val subscriptionPxid，Jimmer save 会自动 upsert by key
+    sql.entities.save(entity) {
+        setKeyProps(Subscription::subscriptionPxid)
     }
 }
 ```
 
-注：Spring Boot starter 自动配置 KSqlClient。如果用 `jimmer-spring-boot-starter`，可能不需要手动 bean。验证后决定。
+---
 
-- [ ] **步骤 2：修改 SvcCtx**
+### 7. [HIGH] `isNull` 需要调用为 `isNull()`
 
+**影响文件**: 
+- `AppRefreshTokenRepository.kt`
+- `AuthDeviceSecretRepository.kt`
+- `AgnesKeyRepository.kt`
+
+**修复**:
 ```kotlin
-data class SvcCtx(
-    val op: OperationContext,
-    val sql: KSqlClient,         // 之前是 dsl: DSLContext
-    val clusterId: String = "default",
-    val inTransaction: Boolean = false,
+// ❌ 错误
+where(table.revokedAt.isNull)
+
+// ✅ 正确
+where(table.revokedAt.isNull())
+```
+
+---
+
+### 8. [HIGH] `.or()` / `.gt()` 操作符使用错误
+
+**影响**: `AppRefreshTokenRepository`、`AuthDeviceSecretRepository`、`AgnesKeyRepository`
+
+**问题**: `table.expiresAt.isNull.or(table.expiresAt gt now)` — 链式 `.or()` 不是 Jimmer 的语法。
+
+**修复**:
+```kotlin
+// ❌ 错误
+where(table.expiresAt.isNull.or(table.expiresAt gt now))
+
+// ✅ 正确 — 使用 or {} block
+where(
+    or(
+        table.expiresAt.isNull(),
+        table.expiresAt gt now
+    )
 )
 ```
 
-- [ ] **步骤 3：修改 ClusterRouter 和 SvcCtxFactory**
+需要 import: `import org.babyfish.jimmer.sql.kt.ast.expression.or`
 
-ClusterRouter 返回 `KSqlClient`；SvcCtxFactory 构建 `SvcCtx(sql = router.forApp(appId))`。
+---
 
-- [ ] **步骤 4：适配 TxRunner**
+### 9. [HIGH] `.desc()` 扩展函数未正确引用
 
-TxRunner 改用 Spring 的 `PlatformTransactionManager`：
+**影响文件**: 多个 repo 的 `orderBy(table.id.desc())` 或 `orderBy(table.createdAt.desc())`
+
+**修复**: 确保 import:
 ```kotlin
-@Component
-class TxRunner(private val txManager: PlatformTransactionManager) {
-    fun <R> withTx(svcCtx: SvcCtx, propagation: TxPropagation = TxPropagation.REQUIRED, body: (SvcCtx) -> R): R {
-        // 使用 TransactionTemplate 执行
-        val template = TransactionTemplate(txManager).apply {
-            this.propagationBehavior = propagation.toSpring()
-        }
-        return template.execute { body(svcCtx.copy(inTransaction = true)) }!!
+import org.babyfish.jimmer.sql.kt.ast.expression.desc
+```
+
+如果仍不行，使用完整写法：
+```kotlin
+orderBy(table.id.desc())
+// 或
+orderBy(table.getId<UUID>().desc())
+```
+
+---
+
+### 10. [HIGH] `UserInstallBindingRepository` import 路径错误
+
+**文件**: `modules/auth/repo/UserInstallBindingRepository.kt`
+
+**问题**: 导入了 `com.ifmix.api.core.entity.auth.UserInstallBinding.appId` 形式（从 interface companion 导入），Jimmer 生成的扩展属性不在 companion 里。
+
+**修复** — 删除所有 `UserInstallBinding.xxx` 导入，只保留包级导入：
+```kotlin
+// ❌ 错误
+import com.ifmix.api.core.entity.auth.UserInstallBinding.appId
+import com.ifmix.api.core.entity.auth.UserInstallBinding.userId
+
+// ✅ 正确 — Jimmer KSP 生成的扩展属性在包级
+import com.ifmix.api.core.entity.auth.appId
+import com.ifmix.api.core.entity.auth.userId
+import com.ifmix.api.core.entity.auth.installId
+// ... 等等
+```
+
+同时 `createUpdate` 中的 `set(lastSeenAt, now)` 需要改为 `set(table.lastSeenAt, now)`。
+
+---
+
+### 11. [HIGH] `authIdentityId` 等 FK 字段在 service 层的访问方式
+
+**影响**: `AuthEntityService` 中大量 `xxx.authIdentityId`、`xxx.appUserId`、`xxx.deviceSecretId`
+
+**Jimmer 规则**: `@ManyToOne` 声明的关联，KSP 会自动生成 `xxxId` 属性（如 `authIdentity` → 自动有 `authIdentityId`）。这些可以直接访问，**前提是 KSP 成功运行**。
+
+**修复**: 
+1. 先确保 `AppScopedProps` 加上 `@MappedSuperclass`（问题 1）
+2. 确保 KSP 正常运行（`./gradlew :core-api:kspKotlin`）
+3. KSP 运行后，`entity.authIdentityId` 是可用的（Jimmer 自动生成的 IdView 属性）
+
+如果 KSP 生成后仍编译失败，可能需要显式声明 `@IdView`：
+```kotlin
+// 在 AppUser entity 中
+@IdView("authIdentity")
+val authIdentityId: UUID
+```
+
+---
+
+### 12. [HIGH] `findActiveByAppId()` 返回 nullable 但调用方未处理
+
+**影响文件**:
+- `AuthEntityService.kt:118` — `appConfigRepo.findActiveByAppId(sc, appId).authTenantId`
+- `PaymentEntityService.kt:53` — `config.content.iap.productTierMap`
+
+**修复**:
+```kotlin
+// ❌
+val config = appConfigRepo.findActiveByAppId(sc, appId)
+val productTierMap = config.content.iap.productTierMap
+
+// ✅
+val config = appConfigRepo.findActiveByAppId(sc, appId)
+    ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
+val productTierMap = config.content.iap.productTierMap
+```
+
+---
+
+### 13. [HIGH] `rawResponse` 类型不匹配
+
+**文件**: `PaymentEntityService.kt:85`
+
+**问题**: entity 声明 `val rawResponse: Map<String, Any?>?` 但代码赋值 `ObjectMapper().writeValueAsString(...)` 返回 `String`。
+
+**修复**:
+```kotlin
+// ❌ 
+rawResponse = tools.jackson.databind.ObjectMapper().writeValueAsString(mapOf(...))
+
+// ✅ — 直接赋 Map，Jimmer @Serialized 会自动序列化为 JSONB
+rawResponse = mapOf(
+    "original_transaction_id" to verifyResult.originalTransactionId,
+    "product_id" to req.productId,
+    "expiry_date" to verifyResult.expiryDate?.toString(),
+    "sub_status" to verifyResult.subStatus.name,
+    "platform" to req.platform,
+)
+```
+
+---
+
+### 14. [HIGH] `category = req.category.toShort()` 类型错误
+
+**文件**: `CmsEntityService.kt:19`
+
+**问题**: `Feedback.category` 类型是 `Int`，但 `.toShort()` 转成了 `Short`。
+
+**修复**:
+```kotlin
+// ❌
+category = req.category.toShort()
+// ✅
+category = req.category
+```
+
+---
+
+### 15. [MEDIUM] `table.get<UUID>("appId")` 失去类型安全
+
+**影响**: 全项目 32 处
+
+**说明**: `table.get<T>("fieldName")` 是 Jimmer 的 string-based 属性引用，功能正确但失去了编译期检查。
+
+**修复**:
+- 等 `AppScopedProps` 加上 `@MappedSuperclass` 后，KSP 会为每个 entity 生成 `table.appId` 扩展属性
+- 然后全局替换 `table.get<UUID>("appId")` → `table.appId`
+
+先让项目编译通过，再做此优化。此项可以最后处理或作为后续 PR。
+
+---
+
+### 16. [MEDIUM] `ScanRecordsDataLoader` 完全坏掉
+
+**文件**: `bff/graphql/customer/collection/CollectionFetcher.kt`
+
+**问题**: 
+```kotlin
+val ctx = SvcCtx(op = OperationContext(req = RequestContext()), sql = sql)
+```
+创建了一个空的 OperationContext（没有 appId），然后 `findById(ctx, UUID.randomUUID(), id)` 用随机 UUID 当 appId 查询。
+
+**修复**: DataLoader 需要从 DGS 的 context 获取 OperationContext：
+```kotlin
+@DgsDataLoader(name = ScanRecordsDataLoader.NAME, caching = false)
+class ScanRecordsDataLoader(
+    private val scanRecordRepo: ScanRecordRepository,
+    private val svcCtxFactory: SvcCtxFactory,
+) : MappedBatchLoader<UUID, ScanRecord?> {
+    
+    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanRecord?>> {
+        // DataLoader 在 DGS 中通过 DgsDataFetchingEnvironment 获取 context
+        // 但 MappedBatchLoader 不接收 DFE — 需要通过 DgsContext / ThreadLocal
+        // 
+        // ponytail: 当前先用 OperationContextHolder 获取（在 AuthInterceptor 中设置过）
+        val opCtx = OperationContextHolder.current()
+        val sc = svcCtxFactory.forApp(opCtx)
+        val appId = opCtx.mustGetAppId()
+        
+        val records = scanRecordRepo.findByIds(sc, appId, ids.toList())
+        val map = records.associateBy { it.id }
+        return CompletableFuture.completedFuture(
+            ids.associateWith { map[it] }
+        )
     }
+    
+    companion object { const val NAME = "scanRecords" }
 }
-```
-
-- [ ] **步骤 5：Commit**
-
-```bash
-git add -A && git commit -m "infra: adapt SvcCtx/ClusterRouter/TxRunner for Jimmer KSqlClient"
 ```
 
 ---
 
-### 任务 7：Repository 层改造 — 基类
+### 17. [MEDIUM] `findByFilter` 被调用但从未实现
 
-**文件：**
-- 创建：`infra/jimmer/BaseAppCrudRepository.kt`
-- 创建：`infra/jimmer/BaseCrudRepository.kt`
-- 删除：`infra/jooq/CrudRepoOps.kt`、`infra/jooq/CrudRepoOpsFactory.kt`
+**影响**: `AiModuleService.findByFilter()` → `ScanEntityService.findByFilter()` 不存在
 
-- [ ] **步骤 1：创建 BaseAppCrudRepository**
-
-从 `feature/swagger-jimmer` 分支复制，适配 SvcCtx（将 RepoContext 替换为 SvcCtx）：
+**修复**: 暂时先 stub 掉，或者实现一个基本版本：
 ```kotlin
-abstract class BaseAppCrudRepository<E : AppScopedProps>(
-    protected val entityType: KClass<E>,
-) {
-    open fun findById(ctx: SvcCtx, appId: UUID, id: UUID): E? =
-        ctx.sql.createQuery(entityType) {
-            where(table.get<UUID>("appId") eq appId)
-            where(table.getId<UUID>() eq id)
-            select(table)
-        }.limit(1).execute().firstOrNull()
-
-    open fun save(ctx: SvcCtx, entity: E): E =
-        ctx.sql.entities.save(entity).modifiedEntity
-
-    open fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean { ... }
-    // ... 其他通用方法
+// ScanEntityService.kt 中添加
+fun findByFilter(sc: SvcCtx, filter: FilterGroup?, cursor: String?, limit: Int?): Page<ScanRecord> {
+    // ponytail: FilterGroup 解析暂未实现，fallback 到普通游标查询
+    return findByCursorFiltered(sc, cursor, limit, null)
 }
 ```
 
-关键改动：所有方法从 `(RepoContext, ...)` 改为 `(SvcCtx, ...)`，内部用 `ctx.sql` 获取 KSqlClient。
+---
 
-- [ ] **步骤 2：创建 BaseCrudRepository（无 appId 场景）**
+### 18. [MEDIUM] `TodoItemRepository` 中 `TodoItem` 未 import
 
-同理，用于 AuthTenant、AuthIdentity 等无 appId 的表。
+**文件**: `modules/demo/repo/TodoItemRepository.kt`
 
-- [ ] **步骤 3：删除旧 jOOQ 基础类**
+**问题**: `BaseCrudRepository<TodoItem>` 但 `TodoItem` 未导入。
 
-```bash
-rm core-api/src/main/kotlin/com/ifmix/api/core/infra/jooq/CrudRepoOps.kt
-rm core-api/src/main/kotlin/com/ifmix/api/core/infra/jooq/CrudRepoOpsFactory.kt
-```
-
-- [ ] **步骤 4：Commit**
-
-```bash
-git add -A && git commit -m "infra: add Jimmer BaseAppCrudRepository, remove jOOQ CrudRepoOps"
-```
+**修复**: 添加 `import com.ifmix.api.core.entity.demo.TodoItem`
 
 ---
 
-### 任务 8：Repository 层改造 — 逐模块迁移
+### 19. [MEDIUM] `ScanCollectionRepository.findById` 缺少 `override`
 
-**文件：** 所有 `modules/*/repo/*.kt`（16 个文件）
+**问题**: 子类定义了与父类签名相同的方法但没有加 `override`。
 
-此任务按模块分批进行。每个 repo 的模式相同：
-
-1. 继承 `BaseAppCrudRepository<E>` 或 `BaseCrudRepository<E>`
-2. 构造函数不再注入 `CrudRepoOpsFactory`（不需要了，Jimmer 通过 Spring 注入 KSqlClient，基类持有）
-3. 自定义查询改用 Jimmer DSL
-4. 删除 FIELD_MAP companion（不再需要）
-
-- [ ] **步骤 1：迁移 AI 模块 repo（ScanRecordRepository、ScanCollectionRepository、ScanCollectionItemRepository、AgnesKeyRepository）**
-
-示例 ScanRecordRepository：
-```kotlin
-@Repository
-class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(ScanRecord::class) {
-
-    init { this.sql = sql } // 或通过构造函数传递
-
-    fun findByCursor(ctx: SvcCtx, appId: UUID, collected: Boolean?, cursor: UUID?, limit: Int): List<ScanRecord> =
-        ctx.sql.createQuery(ScanRecord::class) {
-            where(table.appId eq appId)
-            collected?.let { where(table.collected eq it) }
-            cursor?.let { where(table.id lt it) }
-            orderBy(table.id.desc())
-            select(table)
-        }.limit(limit).execute()
-}
-```
-
-- [ ] **步骤 2：迁移 Auth 模块 repo（7 个文件）**
-
-- [ ] **步骤 3：迁移 App/IAP/Storage/Feedback repo（6 个文件）**
-
-- [ ] **步骤 4：验证编译**
-
-```bash
-./gradlew :core-api:compileKotlin
-```
-
-- [ ] **步骤 5：Commit**
-
-```bash
-git add -A && git commit -m "feat(repo): migrate all repositories to Jimmer DSL"
-```
+**修复**: 加上 `override` 关键字。
 
 ---
 
-### 任务 9：Service 层适配
+### 20. [LOW] 文档过时
 
-**文件：** 所有 `modules/*/service/**/*.kt`
-
-主要改动：
-1. Entity 创建语法从 `ScanRecord(id = ..., appId = ...)` 改为 Jimmer 的 `ScanRecord { id = ...; appId = ... }`
-2. Entity 是不可变接口，更新用 `sql.createUpdate(ScanRecord::class) { ... }`
-3. `fetchOneInto(Entity::class.java)` 不再存在——Jimmer 查询直接返回 entity
-
-- [ ] **步骤 1：适配 ScanInternalService（AI 模块 - 最复杂）**
-
-```kotlin
-// 之前
-val record = ScanRecord(id = scanId, appId = appId, ...)
-scanRepo.insert(sc, record)
-
-// 之后
-val entity = ScanRecord {
-    id = scanId
-    this.appId = appId
-    this.imageKeys = input.images.map { ImageRef(key = it.imageKey) }
-    this.basicResult = result
-    // ...
-}
-scanRepo.save(sc, entity)
-```
-
-- [ ] **步骤 2：适配 AuthInternalService**
-
-- [ ] **步骤 3：适配 PaymentInternalService、StorageInternalService、其他**
-
-- [ ] **步骤 4：适配 WebhookController（直接使用 repo）**
-
-- [ ] **步骤 5：验证编译**
-
-```bash
-./gradlew :core-api:compileKotlin
-```
-
-- [ ] **步骤 6：Commit**
-
-```bash
-git add -A && git commit -m "feat(service): adapt all services to Jimmer entity creation"
-```
+**需更新**:
+1. `docs/ARCHITECTURE.md` — 状态说明改为 "已完成 Jimmer 迁移"，删除 jOOQ 相关段落
+2. `AGENTS.md` — 技术栈中 jOOQ 替换为 Jimmer，更新常用命令（去掉 `generateJooq`）
+3. `FeedbackFetcher.kt` — 删除 `（jOOQ 版）` 注释
 
 ---
 
-### 任务 10：GraphQL DataFetcher 适配
+### 21. [LOW] 项目根目录遗留文件
 
-**文件：** `bff/graphql/customer/**/*Fetcher.kt`
+**删除**:
+- `/org/babyfish/jimmer/` — 旧的 .class 文件缓存
+- `/META-INF/jimmer-sql-kotlin.kotlin_module` — 同上
+- `/META-INF/MANIFEST.MF`
 
-DataFetcher 层改动最小——它只调 Service，不直接接触 ORM。主要变化：
-1. Jimmer entity 是接口，Jackson 序列化需确认 DGS 能正确输出
-2. `FilterConditionParser` 改用 Jimmer 动态 where
-
-- [ ] **步骤 1：验证 DGS 能正确序列化 Jimmer entity**
-
-Jimmer entity 默认支持 Jackson 序列化（有 `@JimmerModule`）。在 JacksonConfig 中确认注册了 Jimmer 的 Jackson module。
-
-- [ ] **步骤 2：改造 FilterConditionParser → Jimmer 版**
-
-```kotlin
-// 之前（jOOQ）
-val cond = filterParser.parse(filterMap)
-ctx.dsl.selectFrom(TABLE).where(cond)
-
-// 之后（Jimmer）
-ctx.sql.createQuery(ScanRecord::class) {
-    applyFilter(filter)  // 新的 helper
-    select(table)
-}
-```
-
-`applyFilter` 递归遍历 FilterGroup，调用 Jimmer 的 `where(table.get<T>(fieldName) eq/gt/lt... value)`。
-
-- [ ] **步骤 3：验证全部 DataFetcher 编译通过**
-
-```bash
-./gradlew :core-api:compileKotlin
-```
-
-- [ ] **步骤 4：Commit**
-
-```bash
-git add -A && git commit -m "feat(bff): adapt DataFetchers and FilterParser for Jimmer"
-```
+这些是之前本地编译残留，对项目无影响但污染 git。
 
 ---
 
-### 任务 11：清理 jOOQ 残留
+## 执行顺序
 
-**文件：**
-- 删除：`infra/jooq/` 整个目录（剩余文件）
-- 删除：`core-api/src/generated/jooq/`（如果还在）
-- 修改：`build.gradle.kts` 移除 jOOQ 相关 sourceSets
-
-- [ ] **步骤 1：删除所有 jOOQ 相关文件**
-
-```bash
-rm -rf core-api/src/main/kotlin/com/ifmix/api/core/infra/jooq
-rm -rf core-api/src/generated/jooq
-```
-
-- [ ] **步骤 2：清理 import 和编译错误**
-
-```bash
-./gradlew :core-api:compileKotlin
-```
-
-修复所有残留的 jOOQ import。
-
-- [ ] **步骤 3：验证 full build**
-
-```bash
-./gradlew :core-api:build
-```
-
-- [ ] **步骤 4：Commit**
-
-```bash
-git add -A && git commit -m "chore: remove all jOOQ artifacts and codegen"
-```
+1. **先修 `AppScopedProps` 加 `@MappedSuperclass`**（问题 1），然后运行 `./gradlew :core-api:kspKotlin` 让 KSP 重新生成
+2. **修所有 entity 构造方式**（问题 2, 3）— 批量 `Xxx(...)` → `Xxx {...}`
+3. **修 `insert` → `save`**（问题 4）
+4. **补缺失方法** `ensure()`, `upsertSubscription()`（问题 5, 6）
+5. **修 DSL 语法** `isNull()`, `or()`, `desc()`, import（问题 7, 8, 9, 10）
+6. **修 nullable 处理**（问题 12, 13, 14）
+7. **修 DataLoader / stub**（问题 16, 17, 18, 19）
+8. **验证编译通过**: `./gradlew :core-api:compileKotlin`
+9. **最后做优化** `table.get<>` → 强类型（问题 15）
+10. **更新文档 + 清理文件**（问题 20, 21）
 
 ---
 
-### 任务 12：测试验证
+## 关键原则
 
-**文件：** `core-api/src/test/kotlin/`
+- **Jimmer entity 是 interface**，永远不能用 `Xxx(param=value)` 构造，必须用 `Xxx { prop = value }` DSL
+- **Jimmer entity 没有 `.copy()`**，修改实体用 `Xxx(existingEntity) { 修改的字段 }`
+- **`@ManyToOne` 关联的 FK 字段** 由 KSP 自动生成 `xxxId` 属性（`@IdView`），不用手动声明
+- **`save()` 是万能写入**：新 id 等于 insert，已有 id 等于 upsert
+- **`@MappedSuperclass`** 是继承链中必须有的注解，缺了它 KSP 不认识父接口的字段
+- **Jimmer 的 `isNull` 是函数调用** `isNull()`，不是属性
+- **`or` / `and`** 使用顶层函数 `or(expr1, expr2)` 或 `or { expr1; expr2 }`
 
-- [ ] **步骤 1：修复现有测试编译**
+## 验收标准
 
-更新测试中引用旧 entity/repo 的 import。
-
-- [ ] **步骤 2：运行测试**
-
-```bash
-./gradlew :core-api:test
-```
-
-- [ ] **步骤 3：修复失败的测试**
-
-主要是 entity 创建方式和 mock 方式的变化。
-
-- [ ] **步骤 4：Commit**
-
-```bash
-git add -A && git commit -m "test: fix all tests for Jimmer migration"
-```
-
----
-
-## 风险和注意事项
-
-1. **Jimmer 0.11.5 + Spring Boot 4.1.0 兼容性**：需要验证。如果有问题，升级 Jimmer 到最新版。
-2. **KSqlClient 多实例**：ClusterRouter 需要为每个集群创建独立的 KSqlClient。Jimmer 支持多数据源，参考官方文档。
-3. **GraphQL JSON scalar**：Jimmer 的 `@Serialized` 字段序列化为 JSON 时，DGS 的 `JSON` scalar 应能透传。验证 Map/List 字段输出。
-4. **软删除**：Jimmer 的 `@LogicalDeleted` 会自动在所有查询中追加 `WHERE deleted_at IS NULL`。之前手动加的 `.and(DELETED_AT.isNull)` 要删除，否则重复。
-5. **枚举字段**：保持 Int 类型，不用 Jimmer 的 `@EnumType`——和 AGENTS.md 设计决策一致。
+`./gradlew :core-api:compileKotlin` 零错误通过。

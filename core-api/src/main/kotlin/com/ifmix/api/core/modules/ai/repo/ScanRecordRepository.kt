@@ -14,7 +14,6 @@ import com.ifmix.api.core.entity.ai.collected
 import com.ifmix.api.core.entity.ai.id
 import com.ifmix.api.core.entity.ai.userDisplayName
 import com.ifmix.api.core.entity.ai.userNotes
-import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(sql, ScanRecord::class) {

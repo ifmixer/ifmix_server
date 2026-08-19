@@ -105,6 +105,11 @@ class ScanEntityService(
     fun getPublicUrl(sc: SvcCtx, objectKey: String): String =
         objectStorage.getPublicUrl("ugc", objectKey)
 
+    fun findByFilter(sc: SvcCtx, filter: FilterGroup?, cursor: String?, limit: Int?): Page<ScanRecord> {
+        // ponytail: FilterGroup 解析暂未实现，fallback 到普通游标查询
+        return findByCursorFiltered(sc, cursor, limit, null)
+    }
+
     private fun guessMediaType(key: String, mediaType: String?): String =
         mediaType ?: run {
             val ext = key.substringAfterLast('.', "").lowercase()

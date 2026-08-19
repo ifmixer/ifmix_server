@@ -12,7 +12,6 @@ import com.ifmix.api.core.entity.ai.userId
 import com.ifmix.api.core.entity.ai.installId
 import com.ifmix.api.core.entity.ai.isDefault
 import com.ifmix.api.core.entity.ai.id
-import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class ScanCollectionRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanCollection>(sql, ScanCollection::class) {
@@ -37,7 +36,7 @@ class ScanCollectionRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanColl
         return null
     }
 
-    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanCollection? {
+    override fun findById(ctx: SvcCtx, appId: UUID, id: UUID): ScanCollection? {
         return ctx.sql.createQuery(ScanCollection::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.id eq id)

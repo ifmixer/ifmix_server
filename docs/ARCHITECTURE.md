@@ -1,7 +1,7 @@
 # ifmix_server 架构文档
 
-> 最后更新: 2026-08-18
-> 状态: Jimmer → jOOQ 迁移进行中（两者共存），GraphQL DGS 已就位
+> 最后更新: 2026-08-19
+> 状态: Jimmer 迁移已完成，GraphQL DGS 已就位
 
 ## 项目概述
 
@@ -15,8 +15,7 @@
 | 运行时 | JDK 25 (Virtual Threads) | — |
 | 框架 | Spring Boot | 4.1.0 |
 | API | GraphQL (Netflix DGS) | 12.0.1 |
-| SQL (新) | jOOQ | 3.21.5 |
-| ORM (旧，迁移中) | Jimmer | 0.11.5 |
+| SQL | Jimmer | 0.11.5 |
 | 数据库 | PostgreSQL (读写分离) | — |
 | 缓存 | Redis + CacheAside | — |
 | 对象存储 | S3 兼容 (AWS/R2/MinIO) | — |
@@ -25,7 +24,6 @@
 | 构建 | Gradle 9.6.1 + KSP | — |
 | 序列化 | Jackson 3 (tools.jackson) | — |
 | GraphQL codegen | DGS codegen 8.6.0 | schema → input/payload/enum |
-| jOOQ codegen | nu.studer.jooq 9.0 | 手动触发 |
 
 ## 当前模块结构
 
@@ -50,13 +48,13 @@ ifmix-server/
 │  业务编排 · TxRunner 事务 · CrudServiceOps 缓存决策                    │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Repository Layer (modules/*/repo/)                                   │
-│  纯数据访问 · 注入 CrudOps (jOOQ) · 接收 RepoContext                  │
+│  纯数据访问 · 使用 Jimmer KSqlClient · 接收 SvcCtx                  │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Model (entity/)                                                      │
-│  Domain data class · 可加业务方法 · Jackson 直接序列化                  │
+│  Jimmer interface + @MappedSuperclass · KSP 生成扩展属性               │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Infra (infra/)                                                      │
-│  jOOQ/CacheAside/TxRunner/GraphQL scalars/Auth/RateLimit/Storage     │
+│  Jimmer/CacheAside/TxRunner/GraphQL scalars/Auth/RateLimit/Storage     │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Data: PostgreSQL (Writer + Reader) | Redis | S3                     │
 │  Flyway V1-V24 | UUIDv7 时间有序 ID                                  │
@@ -72,7 +70,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   ├── graphql/customer/       # DGS DataFetcher (Todo/Scan/Collection/Feedback)
 │   ├── webhooks/               # Apple/Google IAP 回调 (REST)
 │   └── wellknown/              # JWKS (REST)
-├── entity/                      # Domain data class (jOOQ 时代)
+├── entity/                      # Jimmer entities (interface + 注解)
 │   ├── Todo, TodoItem, ScanRecord, ScanCollection, ...
 │   ├── AppUser, AuthIdentity, AuthDeviceSecret, ...
 │   └── Subscription, StoreNotification, Feedback, ...
@@ -85,12 +83,12 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   ├── ai/                     # Agnes AI Key 管理 + ScanRunner
 │   ├── storage/                # 对象存储
 │   └── app/                    # AppConfig / AppInfo
-├── entity/                     # Jimmer 实体 (迁移中，逐步删除)
+├── entity/                     # Jimmer 实体 (interface + 注解, KSP 生成扩展)
 ├── infra/
 │   ├── jooq/                   # CrudOps, TxRunner, AuditRecordListener, JooqConfig, InstantConverter
 │   ├── jimmer/                 # ClusterRegistry, ReadWriteRouting (迁移完后删除)
 │   ├── graphql/                # OperationContextProvider, scalars, ExceptionHandler, EndpointConfig
-│   ├── repo/                   # BaseCrudRepository, BaseAppCrudRepository (jOOQ 基类)
+│   ├── repo/                   # BaseCrudRepository, BaseAppCrudRepository (Jimmer 基类)
 │   ├── service/                # CrudServiceOps (通用 service 操作)
 │   ├── http/                   # Envelope, ApiError, ErrorCode, Interceptors, RequestContext
 │   ├── auth/                   # JWT 签发/验签, AuthInterceptor, Hashing
@@ -100,8 +98,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   ├── db/                     # UuidV7, RepoContext, Ownership
 │   ├── dto/                    # CursorQueryInput, Page, CommonDto
 │   └── config/                 # WebConfig, JacksonConfig, TransactionConfig
-└── src/generated/jooq/          # jOOQ codegen 生成代码 (提交 git，不与手写混)
-    └── com/ifmix/api/core/jooq/
+└── src/generated/ksp/main/kotlin/  # KSP 生成的 Jimmer 扩展属性和 Draft
 
 resources/
 ├── schema/common/              # GraphQL 公共 scalars
@@ -156,40 +153,32 @@ type XxxPayload {
 - `caching = false`（只 batching，防 mutation 间脏读）
 - 关联字段（如 Todo.items）走 DataLoader 批量加载
 
-## 数据访问层 (jOOQ)
+## 数据访问层 (Jimmer)
 
-### 组合优于继承
+### Entity 定义
 
-- **CrudOps** (`infra/jooq/`): 无状态全局 bean，通用 CRUD 操作
-  - `findById`, `findByIds`, `findByCursor`, `exists`
-  - `insert` (newRecord 自动映射), `batchInsert`
-  - `partialUpdate` (lambda 构建 SET)
-  - `deleteById`, `deleteByIds` (软删除可选)
-- **CrudServiceOps** (`infra/service/`): Service 级操作，工厂创建
-  - 封装 readCache 判断 + cache evict
-  - `factory.create(Type::class.java, "prefix") { it.id }`
-- **BaseCrudRepository / BaseAppCrudRepository** (`infra/repo/`): Repo 基类，委托 CrudOps
-- **每个 Repo 一张表**，注入 CrudOps
+- Jimmer `interface` + KSP 注解（`@Entity`, `@MappedSuperclass`, `@Id`, `@Column`, `@ManyToOne`, `@Serialized` 等）
+- KSP 自动生成：包级扩展属性（`table.xxx`）、Draft DSL（`Xxx { ... }`）、IdView（`xxxId`）
+- 不用手动维护 POJO，KSP 生成代码在 `build/generated/ksp/`
 
 ### 事务管理 — TxRunner
 
 ```kotlin
-fun createXxx(ctx, input) = tx.withTx(ctx) { txCtx ->
-    repo.insert(txCtx.repoCtx, ...)
-    id
+fun createXxx(sc: SvcCtx, input) = tx.withTx(sc) { txSc ->
+    repo.save(txSc, entity)
+    entity.id
 }
 ```
-- 不用 `@Transactional`（DSLContext 动态路由，Spring 注解绑固定 DataSource）
+- 不用 `@Transactional`（动态路由，Spring 注解绑固定 DataSource）
 - 传播行为: REQUIRED / REQUIRES_NEW / SUPPORTS / NOT_SUPPORTED
 - 事务边界在 Service 层
 
-### RepoContext
+### SvcCtx
 
 ```kotlin
-data class RepoContext(
-    val dsl: DSLContext,
-    val clusterId: String = "default",
-    val inTransaction: Boolean = false,
+data class SvcCtx(
+    val op: OperationContext,
+    val sql: KSqlClient,
 )
 ```
 
@@ -199,34 +188,13 @@ data class RepoContext(
 data class OperationContext(
     // per-request (HTTP header): appId, installId, userId, lang, currency, country, clientPlatform, clientIp
     // per-operation (GraphQL):
+    val req: RequestContext,
     val opName: String?,
     val isMutation: Boolean,
-    val readFromReplica: Boolean = !isMutation,   // mutation → 主库
-    val readCache: Boolean = !isMutation,          // mutation → 跳过缓存
-    val repoCtx: RepoContext,
+    val globalTxSql: KSqlClient? = null,
+    val inGlobalTx: Boolean = false,
 )
 ```
-
-### jOOQ Codegen
-
-```bash
-./gradlew :core-api:generateJooq   # 手动触发，连本地 DB
-```
-- 生成到 `src/generated/jooq/`（不与手写源码混），提交 git
-- `generateSchemaSourceOnCompilation = false`
-- forcedType: TIMESTAMP → Instant (InstantConverter), SMALLINT → Int (SmallintToIntConverter)
-- 生成 POJO 作参考，不直接当 model
-
-### 审计字段
-
-`AuditRecordListener` 全局拦截 insert/update，自动填充 `created_at`/`updated_at`
-
-### Domain Entity
-
-- 普通 Kotlin `data class`，放 `entity/`
-- 字段名与 DB column camelCase 对齐
-- 时间统一 `Instant`
-- 可加业务方法，Jackson 直接序列化
 
 ## 缓存分层
 
@@ -237,7 +205,7 @@ Redis CacheAside (跨 request, TTL 分钟级)
   → query: readCache=true → 走 cache
   → mutation: readCache=false → 跳过
   → 写后: evict
-DB (via jOOQ)
+DB (via Jimmer KSqlClient)
   → query: readFromReplica=true → 从库
   → mutation: readFromReplica=false → 主库
 ```
@@ -260,13 +228,13 @@ DB (via jOOQ)
 | # | 决策 | 理由 |
 |---|------|------|
 | 1 | GraphQL (DGS) 替代 REST | 移动端按需取字段、DataLoader 解决 N+1 |
-| 2 | jOOQ 替代 Jimmer | 类型安全 SQL + 显式控制 + 无 unloaded 问题 |
+| 2 | Jimmer 替代 jOOQ | Interface entity + KSP 扩展属性 + Draft DSL + @MappedSuperclass 继承支持 |
 | 3 | TxRunner 替代 @Transactional | 多集群动态路由、显式控制 |
 | 4 | CrudOps 组合注入 | 灵活可测、不强制继承 |
 | 5 | DataLoader caching=false | 防 mutation 间脏读 |
 | 6 | CacheAside 显式调用 | 不用 @Cacheable 魔法 |
 | 7 | Domain Entity = data class | 可加方法、Jackson 直接序列化、无框架依赖 |
-| 8 | jOOQ codegen 手动执行 | 不依赖 DB 来编译 |
+| 8 | KSP 自动生成代码 | 无需手动 codegen，编译时自动处理 |
 | 9 | set/unset Update 语义 | 防 null vs undefined 歧义 |
 | 10 | AuthInterceptor 非阻塞 | 支持匿名+认证混合 |
 | 11 | presignUpload 不要求登录 | 已确定 |
@@ -292,7 +260,7 @@ DB (via jOOQ)
 
 ### UUID 表示
 
-- **PG/jOOQ**: 原生 UUID (16 bytes)
+- **PG/Jimmer**: 原生 UUID (16 bytes)
 - **API/Redis/前端**: 22 位 Base58 (Bitcoin 字母表, URL-safe)
 - **Jackson**: 全局模块自动转换 (`JacksonConfig.uuidBase58Module`)
 - **工具**: `infra/codec/Base58.kt` — `uuid.toBase58()` / `str.toUuidFromBase58()`
@@ -302,7 +270,7 @@ DB (via jOOQ)
 **全链路 Int 透传 + 内部常量辅助。**
 
 - **GraphQL**: input/output 全部 `Int`，schema 注释写含义
-- **PG**: SMALLINT（jOOQ forcedType 自动转 Int）
+- **PG**: SMALLINT（Jimmer @Column 自动映射 Int）
 - **Kotlin Model**: `val status: Int`
 - **Kotlin 内部辅助**: 常量放 model class 的嵌套 object（如 `ScanRecord.Status.COMPLETED`）
 - **跨模块共享**: 放 `entity/shared/`
@@ -330,7 +298,9 @@ DB (via jOOQ)
 - **Key 重试**: 每个模型遍历所有可用 key（内层循环）
 - **预扣配额**: 请求前扣减，失败归还
 
-## 迁移状态 (2026-08-18)
+## 迁移状态 (2026-08-19)
+
+Jimmer 迁移已完成。Entity 已转为 interface + 注解，KSP 生成扩展属性和 Draft DSL。
 
 ## 待办
 
@@ -358,7 +328,7 @@ DB (via jOOQ)
 ./gradlew :core-api:compileKotlin          # 编译
 ./gradlew :core-api:test                   # 全部测试
 ./gradlew :core-api:test --tests "*.e2e.*" # E2E
-./gradlew :core-api:generateJooq           # jOOQ codegen (需本地 PG)
+./gradlew :core-api:compileKotlin          # 编译（含 KSP）
 ./gradlew :core-api:bootRun                # 运行 (需 PG + Redis)
 ```
 

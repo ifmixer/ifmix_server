@@ -13,10 +13,11 @@ import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.isNull
+import org.babyfish.jimmer.sql.kt.ast.expression.or
+import org.babyfish.jimmer.sql.kt.ast.expression.gt
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
-import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class AppRefreshTokenRepository(sql: KSqlClient) : BaseAppCrudRepository<AppRefreshToken>(sql, AppRefreshToken::class) {
@@ -26,8 +27,13 @@ class AppRefreshTokenRepository(sql: KSqlClient) : BaseAppCrudRepository<AppRefr
         return ctx.sql.createQuery(AppRefreshToken::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.tokenHash eq tokenHash)
-            where(table.revokedAt.isNull)
-            where(table.expiresAt.isNull.or(table.expiresAt gt now))
+            where(table.revokedAt.isNull())
+            where(
+                or(
+                    table.expiresAt.isNull(),
+                    table.expiresAt gt now
+                )
+            )
             select(table)
         }.limit(1).execute().firstOrNull()
     }
