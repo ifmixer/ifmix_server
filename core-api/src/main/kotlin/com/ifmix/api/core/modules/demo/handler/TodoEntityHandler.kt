@@ -22,12 +22,6 @@ class TodoEntityHandler(
 ) {
     private fun cacheKey(appId: ObjectId, id: ObjectId) = "todo:${appId}:${id}"
 
-    fun findById(id: ObjectId): TodoEntity? {
-        return cache.getOrLoadNullable(cacheKey(repo, id), TodoEntity::class.java) {
-            repo.findById(RepoCtx(), ObjectId(""), id) // appId overridden below
-        }
-    }
-
     fun findByIdWithCtx(appId: ObjectId, id: ObjectId): TodoEntity? {
         val key = cacheKey(appId, id)
         return cache.getOrLoadNullable(key, TodoEntity::class.java) {
@@ -50,8 +44,7 @@ class TodoEntityHandler(
             this.createdAt = Instant.now()
             this.updatedAt = Instant.now()
         }
-        val id = repo.insert(RepoCtx(), entity)
-        return id
+        return repo.insert(RepoCtx(), entity)
     }
 
     fun update(appId: ObjectId, id: ObjectId, input: UpdateTodoInput): Boolean {

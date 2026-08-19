@@ -16,6 +16,9 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import com.ifmix.api.core.modules.app.entity.AppConfigEntity
+import com.ifmix.api.core.modules.app.entity.AppleConfig
+import com.ifmix.api.core.modules.app.entity.GoogleConfig
+import com.ifmix.api.core.modules.app.entity.IapConfig
 import com.ifmix.api.core.modules.app.AppConfigView
 import com.ifmix.api.core.modules.app.AppConfigMapper
 import com.ifmix.api.core.modules.app.AppConfigPatch

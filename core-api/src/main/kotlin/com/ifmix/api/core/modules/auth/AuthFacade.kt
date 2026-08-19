@@ -73,11 +73,10 @@ class AuthFacade(
             val appUserId = appUserRepo.ensure(ctx.appId, identityId)
             val existing = deviceSecret?.let { entityHandler.findValidDeviceSecret(tid, it) }
             val (dsId, dsPlain) = if (existing != null && existing.authIdentityId == identityId) {
-                val idHex = existing.id.toHexString()
-                entityHandler.findValidDeviceSecret(tid, existing) // just touch via repo
-                idHex to deviceSecret!!
+                entityHandler.touchDeviceSecret(existing.id.toHexString())
+                existing.id.toHexString() to deviceSecret!!
             } else {
-                entityHandler.issueDeviceSecret(it, tid, identityId)
+                entityHandler.issueDeviceSecret(OperationContext.from(ctx), tid, identityId)
             }
             val refresh = refreshRepo.issue(ctx.appId, appUserId, dsId, ctx.installId)
             Issued(identityId, appUserId, dsPlain, refresh, jwt.signAccess(appUserId, ctx.appId))
@@ -109,7 +108,7 @@ class AuthFacade(
         if (ds.authTenantId != tid) throw ApiError(ErrorCode.UNAUTHORIZED)
         return txRunner.withTx(OperationContext.from(ctx)) {
             val appUserId = appUserRepo.ensure(ctx.appId, ds.authIdentityId!!)
-            entityHandler.findValidDeviceSecret(ds.id.toHexString()) // touch via repo
+            entityHandler.touchDeviceSecret(ds.id.toHexString())
             val refresh = refreshRepo.issue(ctx.appId, appUserId, ds.id.toHexString(), null)
             AuthExchangeResult(
                 accessToken = jwt.signAccess(appUserId, ctx.appId),
@@ -146,7 +145,7 @@ class AuthFacade(
     fun logout(ctx: RequestContext, refreshToken: String): Boolean {
         val row = refreshRepo.findByHash(ctx.appId, refreshToken)
         row?.deviceSecretId?.let {
-            entityHandler.touchDeviceSecret(it.toHexString())
+            entityHandler.touchDeviceSecret(it.toHexString()) // no-op for logout, just touch for safety
             refreshRepo.revokeByDeviceSecret(it.toHexString())
         }
         return true

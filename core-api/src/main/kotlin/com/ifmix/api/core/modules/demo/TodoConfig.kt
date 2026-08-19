@@ -1,51 +1,44 @@
 package com.ifmix.api.core.modules.demo
 
-import com.ifmix.api.core.common.http.RequestContext
+import com.ifmix.api.core.common.db.CRUDOps
+import com.ifmix.api.core.common.db.MongoClusterResolver
+import com.ifmix.api.core.common.redis.CacheAside
 import com.ifmix.api.core.common.service.CRUDService
-import com.ifmix.api.core.modules.demo.entity.TodoEntity
 import com.ifmix.api.core.modules.demo.repo.TodoItemRepository
+import com.ifmix.api.core.modules.demo.repo.TodoRepository
 import com.ifmix.api.core.modules.demo.service.TodoItemService
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.data.mongodb.core.MongoTemplate
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
-import com.ifmix.api.core.modules.demo.repo.TodoRepository
 
-/**
- * Todo 模块 bean 装配。
- */
 @Configuration
 class TodoConfig {
 
     @Bean
     @ConditionalOnMissingBean(TodoRepository::class)
-    fun todoRepository(clusterResolver: com.ifmix.api.core.common.db.MongoClusterResolver): TodoRepository {
-        return TodoRepository()
-    }
-
-    // 注意：勿加 @ConditionalOnMissingBean(CRUDOps/CRUDService)——它们按擦除后的原始类型匹配，
-    // 会与其他模块的同类 bean 冲突导致本模块 bean 被跳过。各模块各自定义自己的泛型 bean，
-    // Spring 按泛型参数（TodoEntity）区分注入。
-    @Bean
-    fun todoCrudRepository(
-        clusterResolver: com.ifmix.api.core.common.db.MongoClusterResolver,
-    ): com.ifmix.api.core.common.db.CRUDOps<TodoEntity> {
-        return com.ifmix.api.core.common.db.CRUDOps(clusterResolver.primary(), TodoEntity::class.java)
-    }
+    fun todoRepository(clusterResolver: MongoClusterResolver): TodoRepository =
+        TodoRepository()
 
     @Bean
-    fun todoCrudService(repo: com.ifmix.api.core.common.db.CRUDOps<TodoEntity>): CRUDService<TodoEntity> =
-        CRUDService(repo)
+    fun todoCrudRepository(clusterResolver: MongoClusterResolver): CRUDOps<TodoEntity> =
+        CRUDOps(clusterResolver.primary(), TodoEntity::class.java)
+
+    @Bean
+    fun todoCrudService(todoCrudRepository: CRUDOps<TodoEntity>): CRUDService<TodoEntity> =
+        CRUDService(todoCrudRepository)
 
     @Bean
     @ConditionalOnMissingBean(TodoService::class)
-    fun todoService(todoCrudService: CRUDService<TodoEntity>, cacheAside: com.ifmix.api.core.common.redis.CacheAside): TodoService =
-        TodoService(todoCrudService, cacheAside)
-
-    // ---- TodoItem beans ----
+    fun todoService(
+        todoCrudService: CRUDService<TodoEntity>,
+        cacheAside: CacheAside,
+    ): TodoService = TodoService(todoCrudService, cacheAside)
 
     @Bean
     @ConditionalOnMissingBean(TodoItemRepository::class)
-    fun todoItemRepository(mongo: org.springframework.data.mongodb.core.MongoTemplate): TodoItemRepository =
+    fun todoItemRepository(mongo: MongoTemplate): TodoItemRepository =
         TodoItemRepository(mongo)
 
     @Bean

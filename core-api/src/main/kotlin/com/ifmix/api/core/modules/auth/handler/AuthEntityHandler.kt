@@ -34,4 +34,10 @@ class AuthEntityHandler(
      */
     fun findValidDeviceSecret(tenantId: String, secretPlain: String) =
         deviceSecretRepo.findValid(tenantId, secretPlain)
+
+    /**
+     * 更新设备密钥的 lastUsedAt 并延长 TTL。
+     */
+    fun touchDeviceSecret(id: String) =
+        deviceSecretRepo.touch(id)
 }

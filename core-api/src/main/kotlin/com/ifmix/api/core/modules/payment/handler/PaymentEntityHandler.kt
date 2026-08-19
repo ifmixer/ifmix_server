@@ -1,6 +1,5 @@
 package com.ifmix.api.core.modules.payment.handler
 
-import com.ifmix.api.core.common.db.CRUDOps
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.modules.payment.entity.StoreNotificationEntity
 import com.ifmix.api.core.modules.payment.repo.SubscriptionRepo
@@ -19,14 +18,13 @@ class PaymentEntityHandler(
     private val subscriptionRepo: SubscriptionRepo,
     private val mongo: MongoTemplate,
 ) {
-    private val ops = CRUDOps<StoreNotificationEntity>(mongo, StoreNotificationEntity::class.java)
 
     /** 写入商店通知记录用于幂等去重。 */
     fun insertStoreNotification(ctx: RequestContext, doc: StoreNotificationEntity): String {
         doc.appId = ObjectId(ctx.appId)
         doc.createdAt = Instant.now()
         doc.updatedAt = Instant.now()
-        ops.mongo.insert(doc)
+        mongo.insert(doc)
         return doc.id.toHexString()
     }
 

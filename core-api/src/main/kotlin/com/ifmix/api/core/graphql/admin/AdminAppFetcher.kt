@@ -1,13 +1,13 @@
 package com.ifmix.api.core.graphql.admin
 
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.app.AppleConfig
 import com.ifmix.api.core.modules.app.AppConfigMapper
 import com.ifmix.api.core.modules.app.AppConfigPatch
 import com.ifmix.api.core.modules.app.AppConfigView
-import com.ifmix.api.core.modules.app.GoogleClientIds
-import com.ifmix.api.core.modules.app.GoogleConfig
-import com.ifmix.api.core.modules.app.IapConfig
+import com.ifmix.api.core.modules.app.entity.AppleConfig
+import com.ifmix.api.core.modules.app.entity.GoogleClientIds
+import com.ifmix.api.core.modules.app.entity.GoogleConfig
+import com.ifmix.api.core.modules.app.entity.IapConfig
 import com.ifmix.api.core.modules.app.handler.AppConfigHandler
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsMutation
