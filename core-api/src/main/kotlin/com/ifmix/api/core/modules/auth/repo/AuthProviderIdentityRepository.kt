@@ -5,6 +5,7 @@ import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreAuthProviderIdentity.Companion.CORE_AUTH_PROVIDER_IDENTITY
 import com.ifmix.api.core.entity.auth.AuthProviderIdentity
 import org.jooq.JSONB
+import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.time.Instant
@@ -15,6 +16,18 @@ class AuthProviderIdentityRepository(factory: CrudRepoOpsFactory) {
 
     companion object {
         private val mapper = jacksonObjectMapper()
+
+        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
+            AuthProviderIdentity::id.name to CORE_AUTH_PROVIDER_IDENTITY.ID,
+            AuthProviderIdentity::authTenantId.name to CORE_AUTH_PROVIDER_IDENTITY.AUTH_TENANT_ID,
+            AuthProviderIdentity::authIdentityId.name to CORE_AUTH_PROVIDER_IDENTITY.AUTH_IDENTITY_ID,
+            AuthProviderIdentity::provider.name to CORE_AUTH_PROVIDER_IDENTITY.PROVIDER,
+            AuthProviderIdentity::providerAccountId.name to CORE_AUTH_PROVIDER_IDENTITY.PROVIDER_ACCOUNT_ID,
+            AuthProviderIdentity::email.name to CORE_AUTH_PROVIDER_IDENTITY.EMAIL,
+            AuthProviderIdentity::emailVerified.name to CORE_AUTH_PROVIDER_IDENTITY.EMAIL_VERIFIED,
+            AuthProviderIdentity::createdAt.name to CORE_AUTH_PROVIDER_IDENTITY.CREATED_AT,
+            AuthProviderIdentity::updatedAt.name to CORE_AUTH_PROVIDER_IDENTITY.UPDATED_AT,
+        )
     }
 
     fun findByProviderAndAccountId(ctx: SvcCtx, tenantId: UUID, provider: String, providerAccountId: String): AuthProviderIdentity? =

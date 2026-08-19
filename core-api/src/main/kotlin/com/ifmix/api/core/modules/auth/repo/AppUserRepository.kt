@@ -5,12 +5,23 @@ import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreAppUser.Companion.CORE_APP_USER
 import com.ifmix.api.core.entity.auth.AppUser
+import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
 @Repository
 class AppUserRepository(factory: CrudRepoOpsFactory) {
+
+    companion object {
+        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
+            AppUser::id.name to CORE_APP_USER.ID,
+            AppUser::appId.name to CORE_APP_USER.APP_ID,
+            AppUser::authIdentityId.name to CORE_APP_USER.AUTH_IDENTITY_ID,
+            AppUser::createdAt.name to CORE_APP_USER.CREATED_AT,
+            AppUser::updatedAt.name to CORE_APP_USER.UPDATED_AT,
+        )
+    }
 
     private val crud = factory.create(
         table = CORE_APP_USER,

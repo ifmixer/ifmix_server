@@ -4,11 +4,24 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreScanCollection.Companion.CORE_SCAN_COLLECTION
 import com.ifmix.api.core.entity.ai.ScanCollection
+import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
 class ScanCollectionRepository(factory: CrudRepoOpsFactory) {
+
+    companion object {
+        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
+            ScanCollection::id.name to CORE_SCAN_COLLECTION.ID,
+            ScanCollection::appId.name to CORE_SCAN_COLLECTION.APP_ID,
+            ScanCollection::installId.name to CORE_SCAN_COLLECTION.INSTALL_ID,
+            ScanCollection::userId.name to CORE_SCAN_COLLECTION.USER_ID,
+            ScanCollection::isDefault.name to CORE_SCAN_COLLECTION.IS_DEFAULT,
+            ScanCollection::createdAt.name to CORE_SCAN_COLLECTION.CREATED_AT,
+            ScanCollection::updatedAt.name to CORE_SCAN_COLLECTION.UPDATED_AT,
+        )
+    }
 
     private val crud = factory.create(
         table = CORE_SCAN_COLLECTION,

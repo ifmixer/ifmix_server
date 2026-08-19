@@ -4,6 +4,7 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreAppConfigRevision.Companion.CORE_APP_CONFIG_REVISION
 import com.ifmix.api.core.entity.app.AppConfigRevision
 import org.jooq.JSONB
+import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
@@ -12,6 +13,20 @@ import java.util.UUID
  */
 @Repository
 class AppConfigRepository {
+
+    companion object {
+        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
+            AppConfigRevision::id.name to CORE_APP_CONFIG_REVISION.ID,
+            AppConfigRevision::appId.name to CORE_APP_CONFIG_REVISION.APP_ID,
+            AppConfigRevision::authTenantId.name to CORE_APP_CONFIG_REVISION.AUTH_TENANT_ID,
+            AppConfigRevision::appleBundleId.name to CORE_APP_CONFIG_REVISION.APPLE_BUNDLE_ID,
+            AppConfigRevision::androidPackageName.name to CORE_APP_CONFIG_REVISION.ANDROID_PACKAGE_NAME,
+            AppConfigRevision::revisionNumber.name to CORE_APP_CONFIG_REVISION.REVISION_NUMBER,
+            AppConfigRevision::enabled.name to CORE_APP_CONFIG_REVISION.ENABLED,
+            AppConfigRevision::slug.name to CORE_APP_CONFIG_REVISION.SLUG,
+            AppConfigRevision::createdAt.name to CORE_APP_CONFIG_REVISION.CREATED_AT,
+        )
+    }
 
     /** 查询指定 app 下当前生效（enabled=true）的配置版本，按创建时间倒序取最新一条 */
     fun findActiveByAppId(ctx: SvcCtx, appId: UUID): AppConfigRevision? =

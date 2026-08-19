@@ -4,6 +4,7 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreAuthDeviceSecret.Companion.CORE_AUTH_DEVICE_SECRET
 import com.ifmix.api.core.entity.auth.AuthDeviceSecret
+import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
@@ -13,6 +14,20 @@ import java.util.UUID
  */
 @Repository
 class AuthDeviceSecretRepository(factory: CrudRepoOpsFactory) {
+
+    companion object {
+        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
+            AuthDeviceSecret::id.name to CORE_AUTH_DEVICE_SECRET.ID,
+            AuthDeviceSecret::authTenantId.name to CORE_AUTH_DEVICE_SECRET.AUTH_TENANT_ID,
+            AuthDeviceSecret::authIdentityId.name to CORE_AUTH_DEVICE_SECRET.AUTH_IDENTITY_ID,
+            AuthDeviceSecret::loginInstallId.name to CORE_AUTH_DEVICE_SECRET.LOGIN_INSTALL_ID,
+            AuthDeviceSecret::expiresAt.name to CORE_AUTH_DEVICE_SECRET.EXPIRES_AT,
+            AuthDeviceSecret::revokedAt.name to CORE_AUTH_DEVICE_SECRET.REVOKED_AT,
+            AuthDeviceSecret::lastUsedAt.name to CORE_AUTH_DEVICE_SECRET.LAST_USED_AT,
+            AuthDeviceSecret::createdAt.name to CORE_AUTH_DEVICE_SECRET.CREATED_AT,
+            AuthDeviceSecret::updatedAt.name to CORE_AUTH_DEVICE_SECRET.UPDATED_AT,
+        )
+    }
 
     private val crud = factory.create(
         table = CORE_AUTH_DEVICE_SECRET,

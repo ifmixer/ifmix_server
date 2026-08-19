@@ -4,6 +4,7 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreUserInstallBinding.Companion.CORE_USER_INSTALL_BINDING
 import com.ifmix.api.core.entity.auth.UserInstallBinding
+import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
@@ -13,6 +14,22 @@ import java.util.UUID
  */
 @Repository
 class UserInstallBindingRepository(factory: CrudRepoOpsFactory) {
+
+    companion object {
+        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
+            UserInstallBinding::id.name to CORE_USER_INSTALL_BINDING.ID,
+            UserInstallBinding::appId.name to CORE_USER_INSTALL_BINDING.APP_ID,
+            UserInstallBinding::userId.name to CORE_USER_INSTALL_BINDING.USER_ID,
+            UserInstallBinding::installId.name to CORE_USER_INSTALL_BINDING.INSTALL_ID,
+            UserInstallBinding::firstSeenAt.name to CORE_USER_INSTALL_BINDING.FIRST_SEEN_AT,
+            UserInstallBinding::lastSeenAt.name to CORE_USER_INSTALL_BINDING.LAST_SEEN_AT,
+            UserInstallBinding::loginCount.name to CORE_USER_INSTALL_BINDING.LOGIN_COUNT,
+            UserInstallBinding::clientIp.name to CORE_USER_INSTALL_BINDING.CLIENT_IP,
+            UserInstallBinding::clientPlatform.name to CORE_USER_INSTALL_BINDING.CLIENT_PLATFORM,
+            UserInstallBinding::createdAt.name to CORE_USER_INSTALL_BINDING.CREATED_AT,
+            UserInstallBinding::updatedAt.name to CORE_USER_INSTALL_BINDING.UPDATED_AT,
+        )
+    }
 
     private val crud = factory.create(
         table = CORE_USER_INSTALL_BINDING,

@@ -4,6 +4,7 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreAppRefreshToken.Companion.CORE_APP_REFRESH_TOKEN
 import com.ifmix.api.core.entity.auth.AppRefreshToken
+import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
@@ -13,6 +14,18 @@ import java.util.UUID
  */
 @Repository
 class AppRefreshTokenRepository(factory: CrudRepoOpsFactory) {
+
+    companion object {
+        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
+            AppRefreshToken::id.name to CORE_APP_REFRESH_TOKEN.ID,
+            AppRefreshToken::appId.name to CORE_APP_REFRESH_TOKEN.APP_ID,
+            AppRefreshToken::appUserId.name to CORE_APP_REFRESH_TOKEN.APP_USER_ID,
+            AppRefreshToken::expiresAt.name to CORE_APP_REFRESH_TOKEN.EXPIRES_AT,
+            AppRefreshToken::revokedAt.name to CORE_APP_REFRESH_TOKEN.REVOKED_AT,
+            AppRefreshToken::createdAt.name to CORE_APP_REFRESH_TOKEN.CREATED_AT,
+            AppRefreshToken::updatedAt.name to CORE_APP_REFRESH_TOKEN.UPDATED_AT,
+        )
+    }
 
     private val crud = factory.create(
         table = CORE_APP_REFRESH_TOKEN,

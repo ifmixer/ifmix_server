@@ -4,12 +4,28 @@ import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreSubscription.Companion.CORE_SUBSCRIPTION
 import com.ifmix.api.core.entity.iap.Subscription
 import org.jooq.JSONB
+import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
 @Repository
 class SubscriptionRepository {
+
+    companion object {
+        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
+            Subscription::id.name to CORE_SUBSCRIPTION.ID,
+            Subscription::appId.name to CORE_SUBSCRIPTION.APP_ID,
+            Subscription::subscriptionPxid.name to CORE_SUBSCRIPTION.SUBSCRIPTION_PXID,
+            Subscription::originalTransactionId.name to CORE_SUBSCRIPTION.ORIGINAL_TRANSACTION_ID,
+            Subscription::productId.name to CORE_SUBSCRIPTION.PRODUCT_ID,
+            Subscription::platform.name to CORE_SUBSCRIPTION.PLATFORM,
+            Subscription::active.name to CORE_SUBSCRIPTION.ACTIVE,
+            Subscription::expiryDate.name to CORE_SUBSCRIPTION.EXPIRY_DATE,
+            Subscription::createdAt.name to CORE_SUBSCRIPTION.CREATED_AT,
+            Subscription::updatedAt.name to CORE_SUBSCRIPTION.UPDATED_AT,
+        )
+    }
 
     fun upsertSubscription(ctx: SvcCtx, subscription: Subscription): UUID {
         val record = ctx.dsl.newRecord(CORE_SUBSCRIPTION, subscription)

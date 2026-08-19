@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.ai.repo
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.jooq.tables.CoreAgnesKey.Companion.CORE_AGNES_KEY
 import com.ifmix.api.core.entity.ai.AgnesKey
+import org.jooq.TableField
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
@@ -12,6 +13,21 @@ import java.util.UUID
  */
 @Repository
 class AgnesKeyRepository {
+
+    companion object {
+        val FIELD_MAP: Map<String, TableField<*, *>> = mapOf(
+            AgnesKey::id.name to CORE_AGNES_KEY.ID,
+            AgnesKey::appId.name to CORE_AGNES_KEY.APP_ID,
+            AgnesKey::key.name to CORE_AGNES_KEY.KEY,
+            AgnesKey::email.name to CORE_AGNES_KEY.EMAIL,
+            AgnesKey::type.name to CORE_AGNES_KEY.TYPE,
+            AgnesKey::rateLimit.name to CORE_AGNES_KEY.RATE_LIMIT,
+            AgnesKey::windowSec.name to CORE_AGNES_KEY.WINDOW_SEC,
+            AgnesKey::unavailableUntil.name to CORE_AGNES_KEY.UNAVAILABLE_UNTIL,
+            AgnesKey::createdAt.name to CORE_AGNES_KEY.CREATED_AT,
+            AgnesKey::updatedAt.name to CORE_AGNES_KEY.UPDATED_AT,
+        )
+    }
 
     fun findAllEnabled(ctx: SvcCtx): List<AgnesKey> =
         ctx.dsl.selectFrom(CORE_AGNES_KEY)
