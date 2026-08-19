@@ -18,7 +18,7 @@ class FeedbackEntityService(
         val feedback = Feedback(id = id, appId = sc.op.appId!!, installId = sc.op.installId!!, userId = sc.op.userId,
             category = req.category.toShort(), comment = req.comment,
             scanRecordId = req.scanRecordId, createdAt = Instant.now())
-        feedbackRepo.insert(sc, feedback)
+        feedbackRepo.save(sc, feedback)
         return id
     }
 }

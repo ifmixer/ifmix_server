@@ -37,7 +37,7 @@ class AppConfigEntityService(
             createdAt = now, enabled = req.enabled, slug = req.slug,
             content = req.content, note = req.note
         )
-        revisionRepo.insert(sc, revision)
+        revisionRepo.save(sc, revision)
         return revision
     }
 

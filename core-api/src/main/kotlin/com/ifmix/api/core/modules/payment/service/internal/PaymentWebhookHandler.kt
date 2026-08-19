@@ -98,6 +98,6 @@ class PaymentWebhookHandler(
             createdAt = now,
             updatedAt = now,
         )
-        storeNotificationRepo.insert(sc, notif)
+        storeNotificationRepo.save(sc, notif)
     }
 }

@@ -27,7 +27,7 @@ class AgnesKeyRepository(sql: KSqlClient) : BaseAppCrudRepository<AgnesKey>(sql,
         val now = Instant.now()
         return sql.createQuery(AgnesKey::class) {
             where(table.appId eq appId)
-            where(table.unavailableUntil.isNull().or(table.unavailableUntil lt now))
+            where(table.unavailableUntil.isNull.or(table.unavailableUntil lt now))
             select(table)
         }.execute()
     }

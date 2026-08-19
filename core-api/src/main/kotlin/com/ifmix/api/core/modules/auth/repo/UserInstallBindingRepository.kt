@@ -10,6 +10,15 @@ import com.ifmix.api.core.entity.auth.clientIp
 import com.ifmix.api.core.entity.auth.userId
 import com.ifmix.api.core.entity.auth.installId
 import com.ifmix.api.core.entity.auth.loginCount
+import com.ifmix.api.core.entity.auth.UserInstallBinding.appId
+import com.ifmix.api.core.entity.auth.UserInstallBinding.userId
+import com.ifmix.api.core.entity.auth.UserInstallBinding.installId
+import com.ifmix.api.core.entity.auth.UserInstallBinding.id
+import com.ifmix.api.core.entity.auth.UserInstallBinding.lastSeenAt
+import com.ifmix.api.core.entity.auth.UserInstallBinding.loginCount
+import com.ifmix.api.core.entity.auth.UserInstallBinding.updatedAt
+import com.ifmix.api.core.entity.auth.UserInstallBinding.clientIp
+import com.ifmix.api.core.entity.auth.UserInstallBinding.clientPlatform
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -30,9 +39,9 @@ class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<User
         clientPlatform: String?,
     ) {
         val existing = sql.createQuery(UserInstallBinding::class) {
-            where(table.appId eq appId)
-            where(table.userId eq userId)
-            where(table.installId eq installId)
+            where(appId eq appId)
+            where(userId eq userId)
+            where(installId eq installId)
             select(table)
         }.limit(1).execute().firstOrNull()
 
@@ -55,12 +64,12 @@ class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<User
         } else {
             val now = Instant.now()
             sql.createUpdate(UserInstallBinding::class) {
-                where(table.id eq existing.id)
-                set(table.lastSeenAt, now)
-                set(table.loginCount, existing.loginCount + 1)
-                set(table.updatedAt, now)
-                set(table.clientIp, clientIp)
-                set(table.clientPlatform, clientPlatform)
+                where(id eq existing.id)
+                set(lastSeenAt, now)
+                set(loginCount, existing.loginCount + 1)
+                set(updatedAt, now)
+                set(clientIp, clientIp)
+                set(clientPlatform, clientPlatform)
             }.execute()
         }
     }

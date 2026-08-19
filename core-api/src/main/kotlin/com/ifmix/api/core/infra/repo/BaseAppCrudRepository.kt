@@ -28,7 +28,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         if (ids.isEmpty()) return emptyList()
         return sql.createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
-            where(table.getId<UUID>() valueIn ids)
+            where(table.getId<UUID>() eq ids)
             select(table)
         }.execute()
     }

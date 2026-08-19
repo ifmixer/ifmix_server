@@ -25,7 +25,7 @@ open class ScanCollectionEntityService(
         val now = Instant.now()
         val model = ScanCollection(id = UuidV7.generate(), appId = sc.appId!!, userId = ctx.userId,
             installId = ctx.installId, isDefault = true, createdAt = now, updatedAt = now, deletedAt = null)
-        collectionRepo.insert(sc, model)
+        collectionRepo.save(sc, model)
         return model
     }
 

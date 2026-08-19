@@ -61,7 +61,7 @@ class ScanEntityService(
             createdAt = now,
             updatedAt = now,
         )
-        scanRepo.insert(sc, record)
+        scanRepo.save(sc, record)
         return record
     }
 
