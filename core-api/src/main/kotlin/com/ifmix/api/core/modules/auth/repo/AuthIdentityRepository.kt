@@ -15,7 +15,7 @@ class AuthIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthIdentity>
 
     fun findByTenantAndEmail(ctx: SvcCtx, tenantId: UUID, email: String): AuthIdentity? {
         return sql.createQuery(AuthIdentity::class) {
-            where(table.authTenant eq tenantId)
+            where(table.authTenantId eq tenantId)
             where(table.email eq email)
             select(table)
         }.limit(1).execute().firstOrNull()

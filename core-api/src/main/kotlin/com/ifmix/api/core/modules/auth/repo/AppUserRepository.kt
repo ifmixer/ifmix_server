@@ -16,7 +16,7 @@ class AppUserRepository(sql: KSqlClient) : BaseAppCrudRepository<AppUser>(sql, A
     fun findByAppAndIdentity(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): AppUser? {
         return sql.createQuery(AppUser::class) {
             where(table.appId eq appId)
-            where(table.authIdentity eq authIdentityId)
+            where(table.authIdentityId eq authIdentityId)
             select(table)
         }.limit(1).execute().firstOrNull()
     }
