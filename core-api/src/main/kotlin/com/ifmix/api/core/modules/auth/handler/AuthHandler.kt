@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.auth.service.internal
+package com.ifmix.api.core.modules.auth.handler
 
 import com.ifmix.api.core.entity.auth.AppRefreshToken
 import com.ifmix.api.core.entity.auth.AuthDeviceSecret
@@ -96,7 +96,7 @@ data class DeleteAccountRes(
 )
 
 @Component
-class AuthEntityService(
+class AuthHandler(
     private val appConfigRepo: AppConfigRepository,
     private val verifiers: Map<String, ProviderVerifier>,
     private val jwt: AuthJwtService,
