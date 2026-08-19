@@ -14,8 +14,8 @@ import com.ifmix.api.core.graphql.generated.types.TodoItem
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
 import com.ifmix.api.core.modules.demo.DemoFacade
-import com.ifmix.api.core.modules.demo.toTodo
-import com.ifmix.api.core.modules.demo.toTodoItem
+import com.ifmix.api.core.modules.demo.entity.toTodo
+import com.ifmix.api.core.modules.demo.entity.toTodoItem
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsData
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment

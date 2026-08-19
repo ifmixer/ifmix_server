@@ -4,7 +4,7 @@ import com.ifmix.api.core.common.http.ModuleCtx
 import com.ifmix.api.core.common.http.RepoCtx
 import com.ifmix.api.core.modules.cms.entity.FeedbackEntity
 import com.ifmix.api.core.modules.cms.repo.FeedbackRepository
-import com.ifmix.api.core.modules.feedback.FeedbackCategory
+import com.ifmix.api.core.modules.cms.FeedbackCategory
 import com.ifmix.api.core.graphql.generated.types.SubmitFeedbackInput
 import org.bson.types.ObjectId
 import org.springframework.stereotype.Component

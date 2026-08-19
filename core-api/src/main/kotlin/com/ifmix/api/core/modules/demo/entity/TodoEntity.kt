@@ -21,3 +21,15 @@ class TodoEntity : BaseAppEntity() {
     /** 拥有者 installId（匿名或登录均填）。 */
     var installId: ObjectId? = null
 }
+
+/** TodoEntity → GraphQL Todo 转换（Entity 直出，零 mapper）。 */
+fun TodoEntity.toTodo(): com.ifmix.api.core.graphql.generated.types.Todo =
+    com.ifmix.api.core.graphql.generated.types.Todo(
+        id = this.id.toHexString(),
+        title = this.title,
+        done = this.done,
+        meta = this.meta,
+        items = emptyList(), // DataLoader 填充
+        createdAt = this.createdAt,
+        updatedAt = this.updatedAt,
+    )

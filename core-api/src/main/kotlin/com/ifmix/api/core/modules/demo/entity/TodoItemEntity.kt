@@ -16,3 +16,14 @@ class TodoItemEntity : BaseAppEntity() {
     lateinit var content: String
     var done: Boolean = false
 }
+
+/** TodoItemEntity → GraphQL TodoItem 转换（Entity 直出，零 mapper）。 */
+fun TodoItemEntity.toTodoItem(): com.ifmix.api.core.graphql.generated.types.TodoItem =
+    com.ifmix.api.core.graphql.generated.types.TodoItem(
+        id = this.id.toHexString(),
+        todoId = this.todoId.toHexString(),
+        content = this.content,
+        done = this.done,
+        createdAt = this.createdAt,
+        updatedAt = this.updatedAt,
+    )

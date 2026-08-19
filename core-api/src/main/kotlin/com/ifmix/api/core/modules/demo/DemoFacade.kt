@@ -9,8 +9,8 @@ import com.ifmix.api.core.graphql.generated.types.CreateTodoInput
 import com.ifmix.api.core.graphql.generated.types.CreateTodoItemInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoItemInput
-import com.ifmix.api.core.modules.demo.toTodo
-import com.ifmix.api.core.modules.demo.toTodoItem
+import com.ifmix.api.core.modules.demo.entity.toTodo
+import com.ifmix.api.core.modules.demo.entity.toTodoItem
 import org.bson.types.ObjectId
 
 /**

@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.feedback
+package com.ifmix.api.core.modules.cms
 
 /** 反馈类别枚举。 */
 enum class FeedbackCategory {

@@ -2,7 +2,7 @@ package com.ifmix.api.core.graphql.common.dataloader
 
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.graphql.generated.types.TodoItem
-import com.ifmix.api.core.modules.demo.toTodoItem
+import com.ifmix.api.core.modules.demo.entity.toTodoItem
 import com.ifmix.api.core.modules.demo.service.TodoItemService
 import com.netflix.graphql.dgs.DgsDataLoader
 import com.netflix.graphql.dgs.context.DgsContext
