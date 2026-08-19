@@ -12,8 +12,6 @@ interface ScanCollection : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
-    override val appId: UUID
-
     val installId: UUID?
     val userId: UUID?
     val isDefault: Boolean

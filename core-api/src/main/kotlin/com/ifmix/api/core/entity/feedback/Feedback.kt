@@ -15,8 +15,6 @@ interface Feedback : AppScopedProps, CreatedAtProps {
     @Id
     val id: UUID
 
-    override val appId: UUID
-
     val installId: UUID
 
     @Column(name = "user_id")
