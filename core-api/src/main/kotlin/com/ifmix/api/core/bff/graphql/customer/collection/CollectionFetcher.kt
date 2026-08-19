@@ -7,6 +7,8 @@ import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsInput
 import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsPayload
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.http.RequestContext
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -71,9 +73,10 @@ class CollectionFetcher(
 }
 
 @DgsDataLoader(name = ScanRecordsDataLoader.NAME, caching = false)
-class ScanRecordsDataLoader(private val scanRecordRepo: ScanRecordRepository) : MappedBatchLoader<UUID, List<ScanRecord>> {
+class ScanRecordsDataLoader(private val scanRecordRepo: ScanRecordRepository, private val sql: org.babyfish.jimmer.sql.kt.KSqlClient) : MappedBatchLoader<UUID, List<ScanRecord>> {
     override fun load(scanRecordIds: Set<UUID>): CompletionStage<Map<UUID, List<ScanRecord>>> {
-        val records = scanRecordRepo.findByIds(SvcCtx.DEFAULT, scanRecordIds)
+        val ctx = SvcCtx(op = OperationContext(req = RequestContext()), sql = scanRecordsDataLoader.javaClass.classLoader.loadClass("org.babyfish.jimmer.sql.kt.KSqlClient").getDeclaredConstructor().newInstance() as org.babyfish.jimmer.sql.kt.KSqlClient)
+        val records = scanRecordRepo.findByIds(ctx, scanRecordIds)
         val grouped = records.groupBy { it.id }
         val result = scanRecordIds.associateWith { grouped[it] ?: emptyList() }
         return CompletableFuture.completedFuture(result)

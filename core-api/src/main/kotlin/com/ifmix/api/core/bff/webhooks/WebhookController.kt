@@ -35,6 +35,7 @@ class WebhookController(
     @Qualifier("appleDecoder") private val appleDecoder: NotificationDecoder,
     @Qualifier("googleDecoder") private val googleDecoder: NotificationDecoder,
     private val appConfigRepo: AppConfigRepository,
+    private val svcCtxFactory: com.ifmix.api.core.infra.db.SvcCtxFactory,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
