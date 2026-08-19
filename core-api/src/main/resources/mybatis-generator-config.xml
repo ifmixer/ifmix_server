@@ -1,0 +1,33 @@
+<!DOCTYPE generatorConfiguration PUBLIC
+        "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+
+<generatorConfiguration>
+    <context id="demo" targetRuntime="MyBatis3Kotlin">
+        <!-- 不生成注释 -->
+        <commentGenerator>
+            <property name="suppressAllComments" value="true"/>
+        </commentGenerator>
+
+        <!-- JDBC 连接 -->
+        <jdbcConnection driverClass="org.postgresql.Driver"
+                        connectionURL="jdbc:postgresql://localhost:5432/ifmix_core_local"
+                        userId="postgres"
+                        password="postgres"/>
+
+        <!-- 自定义类型解析：uuid→UUID, timestamptz→Instant, jsonb→String -->
+        <javaTypeResolver type="com.ifmix.api.core.infra.mybatis.PgTypeResolver"/>
+
+        <!-- Kotlin model -->
+        <modelGenerator targetPackage="com.ifmix.api.core.generated.mybatis.model"
+                        targetProject="src/generated/mybatis"/>
+
+        <!-- Mapper 接口 + 扩展函数 -->
+        <clientGenerator targetPackage="com.ifmix.api.core.generated.mybatis.mapper"
+                         targetProject="src/generated/mybatis"/>
+
+        <!-- 表定义 — 干净，无需 columnOverride -->
+        <table tableName="core_todo" domainObjectName="CoreTodo"/>
+        <table tableName="core_todo_item" domainObjectName="CoreTodoItem"/>
+    </context>
+</generatorConfiguration>
