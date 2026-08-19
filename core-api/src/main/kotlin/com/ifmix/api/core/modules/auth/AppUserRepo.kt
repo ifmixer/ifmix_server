@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.query.isEqualTo
 import org.bson.types.ObjectId
 import org.springframework.stereotype.Component
 import java.time.Instant
+import com.ifmix.api.core.modules.auth.entity.AppUserEntity
 
 /**
  * app_user ensure：按 (appId, authIdentityId) 建/取，返回 appUserId。

@@ -10,6 +10,7 @@ import org.springframework.data.mongodb.core.query.Update
 import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.stereotype.Component
 import java.time.Instant
+import com.ifmix.api.core.modules.iap.entity.SubscriptionEntity
 
 /**
  * subscriptions 集合的读写操作。

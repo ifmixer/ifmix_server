@@ -3,8 +3,8 @@ package com.ifmix.api.core.modules.auth
 import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.antique.ScanRecordEntity
-import com.ifmix.api.core.modules.iap.SubscriptionEntity
+import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
+import com.ifmix.api.core.modules.iap.entity.SubscriptionEntity
 import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener

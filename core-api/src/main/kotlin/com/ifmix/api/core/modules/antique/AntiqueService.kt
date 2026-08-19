@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.query.isEqualTo
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
+import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
 
 /**
  * 古物扫描业务编排。

@@ -7,6 +7,7 @@ import com.ifmix.api.core.common.redis.CacheAside
 import com.ifmix.api.core.common.service.CRUDService
 import com.ifmix.api.core.graphql.generated.types.CreateTodoInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
+import com.ifmix.api.core.modules.todo.entity.TodoEntity
 
 /**
  * Todo 业务服务。只管 todos 集合，不知道 TodoItem 的存在。

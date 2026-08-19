@@ -6,6 +6,7 @@ import com.ifmix.api.core.common.http.RequestContext
 import org.bson.types.ObjectId
 import com.ifmix.api.core.modules.appconfig.AppConfigRepo
 import java.time.Instant
+import com.ifmix.api.core.modules.iap.entity.SubscriptionEntity
 
 /**
  * IAP 服务：购买验证、订阅状态管理、商店通知处理。

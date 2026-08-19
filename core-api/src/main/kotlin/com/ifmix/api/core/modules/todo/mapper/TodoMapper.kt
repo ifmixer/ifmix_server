@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.todo.mapper
 
 import com.ifmix.api.core.graphql.generated.types.Todo
 import com.ifmix.api.core.graphql.generated.types.TodoItem
-import com.ifmix.api.core.modules.todo.TodoEntity
+import com.ifmix.api.core.modules.todo.entity.TodoEntity
 import com.ifmix.api.core.modules.todo.entity.TodoItemEntity
 
 /** TodoEntity → GraphQL Todo 转换。 */

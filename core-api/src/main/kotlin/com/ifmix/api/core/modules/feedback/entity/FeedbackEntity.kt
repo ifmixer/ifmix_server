@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.feedback
+package com.ifmix.api.core.modules.feedback.entity
 
 import com.ifmix.api.core.common.db.AppScoped
 import com.ifmix.api.core.common.db.BaseEntity

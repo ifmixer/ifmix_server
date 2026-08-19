@@ -4,8 +4,8 @@ import com.ifmix.api.core.graphql.generated.types.CollectionItemType
 import com.ifmix.api.core.graphql.generated.types.Collection
 import com.ifmix.api.core.graphql.generated.types.ScanRecord
 import com.ifmix.api.core.modules.antique.toScanRecord
-import com.ifmix.api.core.modules.collection.CollectionEntity
-import com.ifmix.api.core.modules.collection.CollectionItemEntity
+import com.ifmix.api.core.modules.collection.entity.CollectionEntity
+import com.ifmix.api.core.modules.collection.entity.CollectionItemEntity
 
 /** CollectionEntity → GraphQL Collection 转换。 */
 fun CollectionEntity.toCollection(): Collection = Collection(

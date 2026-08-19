@@ -1,4 +1,4 @@
-package com.ifmix.api.core.common.ai
+package com.ifmix.api.core.common.ai.entity
 
 import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.db.AppScoped

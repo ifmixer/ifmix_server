@@ -9,6 +9,7 @@ import com.ifmix.api.core.modules.todo.service.TodoItemService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.mongodb.core.MongoTemplate
+import com.ifmix.api.core.modules.todo.entity.TodoEntity
 
 @Configuration
 class TodoConfig {

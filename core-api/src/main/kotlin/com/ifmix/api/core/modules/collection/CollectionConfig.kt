@@ -8,6 +8,7 @@ import com.ifmix.api.core.modules.antique.CollectionMembership
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import com.ifmix.api.core.modules.collection.entity.CollectionEntity
 
 /**
  * 收藏模块 bean 装配。

@@ -10,6 +10,7 @@ import org.springframework.data.mongodb.core.query.Update
 import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.stereotype.Component
 import java.time.Instant
+import com.ifmix.api.core.modules.auth.entity.UserInstallBindingEntity
 
 /**
  * 设备绑定仓储。

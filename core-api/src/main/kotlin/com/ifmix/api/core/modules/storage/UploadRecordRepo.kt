@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.storage
 import com.ifmix.api.core.common.http.RequestContext
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.stereotype.Component
+import com.ifmix.api.core.modules.storage.entity.UploadRecordEntity
 
 /**
  * 上传记录仓储。

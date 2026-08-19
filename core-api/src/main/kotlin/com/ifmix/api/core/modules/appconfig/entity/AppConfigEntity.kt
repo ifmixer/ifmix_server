@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.appconfig
+package com.ifmix.api.core.modules.appconfig.entity
 
 import com.ifmix.api.core.common.db.BaseAppEntity
 import com.ifmix.api.core.common.db.Versioned

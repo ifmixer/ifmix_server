@@ -5,6 +5,7 @@ import com.ifmix.api.core.common.db.MongoClusterResolver
 import com.ifmix.api.core.common.service.CRUDService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import com.ifmix.api.core.modules.feedback.entity.FeedbackEntity
 
 /** feedback 模块 bean 装配。feedback 集合不软删（FeedbackEntity 未实现 SoftDeletable）。 */
 @Configuration

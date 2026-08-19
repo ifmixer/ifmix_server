@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.appconfig
+package com.ifmix.api.core.modules.appconfig.entity
 
 import com.ifmix.api.core.common.db.BaseEntity
 import org.springframework.data.mongodb.core.index.Indexed

@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.isEqualTo
+import com.ifmix.api.core.modules.collection.entity.CollectionEntity
 
 /**
  * collection 仓储：按归属查默认收藏夹。

@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.antique
 import com.ifmix.api.core.common.db.CRUDRepository
 import com.ifmix.api.core.common.http.RequestContext
 import org.springframework.data.mongodb.core.MongoTemplate
+import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
 
 /**
  * 古物扫描记录仓储。

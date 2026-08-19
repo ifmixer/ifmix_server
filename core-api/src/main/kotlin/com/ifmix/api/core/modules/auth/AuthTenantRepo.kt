@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.auth
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Query
 import java.time.Instant
+import com.ifmix.api.core.modules.auth.entity.AuthTenantEntity
 
 /**
  * auth_tenant 读取：按 _id 查找。

@@ -2,6 +2,7 @@ package com.ifmix.api.core.modules.antique
 
 import jakarta.validation.constraints.NotBlank
 import java.time.Instant
+import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
 
 /** 创建扫描记录的请求体。 */
 data class CreateScanRequest(

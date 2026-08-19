@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.isEqualTo
+import com.ifmix.api.core.common.ai.entity.AgnesKeyEntity
 
 /**
  * Agnes key 仓储。

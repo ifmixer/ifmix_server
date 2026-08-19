@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.antique
+package com.ifmix.api.core.modules.antique.entity
 
 import com.ifmix.api.core.common.db.BaseAppEntity
 import org.springframework.data.annotation.Id

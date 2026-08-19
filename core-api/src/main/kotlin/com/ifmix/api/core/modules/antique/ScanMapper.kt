@@ -1,4 +1,5 @@
 package com.ifmix.api.core.modules.antique
+import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
 
 /**
  * Konvert 编译期生成 ScanRecordEntity <-> DTO 映射。

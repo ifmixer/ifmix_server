@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.isEqualTo
+import com.ifmix.api.core.modules.collection.entity.CollectionItemEntity
 
 /**
  * CollectionMembership 端口实现：查询 collection_item 判断 scanRecordId 是否在默认夹中。

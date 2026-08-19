@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.collection
 import com.ifmix.api.core.common.db.BaseAppEntity
 import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.http.RequestContext
-import com.ifmix.api.core.modules.antique.ScanRecordEntity
+import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
@@ -13,6 +13,7 @@ import org.springframework.data.mongodb.core.query.inValues
 import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.data.mongodb.core.query.lt
 import java.time.Instant
+import com.ifmix.api.core.modules.collection.entity.CollectionItemEntity
 
 /**
  * collection_item 自定义仓储：幂等插入、批量软删、join scan_record 列表查询。

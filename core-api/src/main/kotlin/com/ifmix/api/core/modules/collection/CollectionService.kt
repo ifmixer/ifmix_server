@@ -8,8 +8,10 @@ import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.service.CRUDService
 import com.ifmix.api.core.modules.antique.AntiqueService
-import com.ifmix.api.core.modules.antique.ScanRecordEntity
+import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
 import org.springframework.dao.DuplicateKeyException
+import com.ifmix.api.core.modules.collection.entity.CollectionEntity
+import com.ifmix.api.core.modules.collection.entity.CollectionItemEntity
 
 /**
  * 收藏业务编排。
@@ -103,7 +105,7 @@ class CollectionService(
     fun listItemsWithRecords(
         ctx: RequestContext,
         req: ListItemsReq,
-    ): Triple<List<com.ifmix.api.core.modules.collection.CollectionItemEntity>, Map<String, ScanRecordEntity>, Boolean> {
+    ): Triple<List<com.ifmix.api.core.modules.collection.entity.CollectionItemEntity>, Map<String, ScanRecordEntity>, Boolean> {
         val cid = resolveCollectionId(ctx, req.collectionId)
         val limit = (req.limit ?: CursorQueryInput.DEFAULT_LIMIT).coerceIn(1, CursorQueryInput.MAX_LIMIT)
         val items = itemRepo.findItemsByCursor(ctx, cid, req.cursor, limit)

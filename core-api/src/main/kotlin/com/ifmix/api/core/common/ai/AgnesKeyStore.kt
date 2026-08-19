@@ -5,6 +5,7 @@ import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Instant
 import java.util.Random
 import java.util.concurrent.TimeUnit
+import com.ifmix.api.core.common.ai.entity.AgnesKeyEntity
 
 /**
  * Agnes API key 仓储（内存 + Redis 缓存）。

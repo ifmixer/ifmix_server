@@ -9,6 +9,8 @@ import org.springframework.data.mongodb.core.query.Update
 import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.stereotype.Component
 import java.time.Instant
+import com.ifmix.api.core.modules.auth.entity.AuthIdentityEntity
+import com.ifmix.api.core.modules.auth.entity.AuthProviderIdentityEntity
 
 /** 供 AuthProviderIdentityRepo.upsert 使用的输入参数。 */
 data class UpsertInput(

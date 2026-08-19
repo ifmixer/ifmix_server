@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.Instant
+import com.ifmix.api.core.modules.auth.entity.AppRefreshTokenEntity
 
 /** 签发刷新令牌的结果。 */
 data class RefreshIssued(val id: String, val token: String, val expiresAt: Instant)

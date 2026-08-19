@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.iap
+package com.ifmix.api.core.modules.iap.entity
 
 import com.ifmix.api.core.common.db.BaseAppEntity
 import org.springframework.data.mongodb.core.index.CompoundIndex

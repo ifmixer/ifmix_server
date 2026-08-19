@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.antique
 
 import com.ifmix.api.core.graphql.generated.types.ScanRecord
+import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
 
 /**
  * 将 ScanRecordEntity 转换为 GraphQL 展示类型。

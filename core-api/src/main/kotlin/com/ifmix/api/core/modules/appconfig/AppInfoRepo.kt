@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.stereotype.Component
+import com.ifmix.api.core.modules.appconfig.entity.AppInfoEntity
 
 /** app_info 读取：按 appId（= _id）查稳定身份。 */
 @Component

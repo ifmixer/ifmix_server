@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.feedback
 import com.ifmix.api.core.common.http.RequestContext
 import org.bson.types.ObjectId
 import com.ifmix.api.core.common.service.CRUDService
+import com.ifmix.api.core.modules.feedback.entity.FeedbackEntity
 
 /**
  * feedback 业务逻辑：**组合**持有通用 CRUDService（不继承），委托通用 CRUD，只实现定制逻辑。

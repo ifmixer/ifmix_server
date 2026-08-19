@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.storage
+package com.ifmix.api.core.modules.storage.entity
 
 import com.ifmix.api.core.common.db.BaseEntity
 import org.springframework.data.annotation.Id

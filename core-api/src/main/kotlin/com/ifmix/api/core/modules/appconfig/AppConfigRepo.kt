@@ -14,6 +14,7 @@ import org.springframework.data.mongodb.core.query.ne
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import com.ifmix.api.core.modules.appconfig.entity.AppConfigEntity
 
 /**
  * app_config 读取：按 appId / appleBundleId / androidPackageName 查“当前版本”（deletedAt=null），

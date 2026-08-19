@@ -1,4 +1,6 @@
 package com.ifmix.api.core.modules.appconfig
+import com.ifmix.api.core.modules.appconfig.entity.AppConfigEntity
+import com.ifmix.api.core.modules.appconfig.entity.AppInfoEntity
 
 /** AppConfigEntity → AppConfig（保持嵌套结构不变）。 */
 object AppConfigMapper {
