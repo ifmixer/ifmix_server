@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.ai.repo
 import com.ifmix.api.core.entity.ai.ScanCollectionItem
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.dto.Page
+
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
@@ -17,9 +17,9 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
 
     fun insertIfAbsent(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
         val existing = sql.createQuery(ScanCollectionItem::class) {
-            where(table.appId eq appId)
-            where(table.collectionId eq collectionId)
-            where(table.scanRecordId eq scanRecordId)
+            where(appId eq appId)
+            where(collectionId eq collectionId)
+            where(scanRecordId eq scanRecordId)
             select(table)
         }.limit(1).execute().firstOrNull()
 
@@ -41,19 +41,19 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
     fun softDeleteByScanIds(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Int {
         if (scanRecordIds.isEmpty()) return 0
         return sql.createUpdate(ScanCollectionItem::class) {
-            where(table.appId eq appId)
-            where(table.collectionId eq collectionId)
-            where(table.scanRecordId valueIn scanRecordIds)
-            set(table.deletedAt, Instant.now())
+            where(appId eq appId)
+            where(collectionId eq collectionId)
+            where(table.scanRecordId in_ scanRecordIds)
+            set(deletedAt, Instant.now())
         }.execute()
     }
 
     fun findItemsByCursor(ctx: SvcCtx, appId: UUID, collectionId: UUID, limit: Int, cursor: UUID?): Page<ScanCollectionItem> {
         val items = sql.createQuery(ScanCollectionItem::class) {
-            where(table.appId eq appId)
-            where(table.collectionId eq collectionId)
-            cursor?.let { where(table.id lt it) }
-            orderBy(table.id.desc())
+            where(appId eq appId)
+            where(collectionId eq collectionId)
+            cursor?.let { where(id lt it) }
+            orderBy(id.desc())
             select(table)
         }.limit(limit + 1).execute()
 
@@ -62,8 +62,8 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
 
     fun existsByScanRecordId(ctx: SvcCtx, collectionId: UUID, scanRecordId: UUID): Boolean {
         return sql.createQuery(ScanCollectionItem::class) {
-            where(table.collectionId eq collectionId)
-            where(table.scanRecordId eq scanRecordId)
+            where(collectionId eq collectionId)
+            where(scanRecordId eq scanRecordId)
             select(table)
         }.limit(1).execute().isNotEmpty()
     }

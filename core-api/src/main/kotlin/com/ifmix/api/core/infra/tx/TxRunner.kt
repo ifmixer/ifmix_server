@@ -2,7 +2,8 @@ package com.ifmix.api.core.infra.tx
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import org.springframework.stereotype.Component
-import org.springframework.transaction.Propagation
+import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.support.TransactionTemplate
 
 /**
@@ -19,11 +20,11 @@ enum class TxPropagation {
     NOT_SUPPORTED,
 }
 
-fun TxPropagation.toSpring() = when (this) {
-    TxPropagation.REQUIRED -> Propagation.REQUIRED
-    TxPropagation.REQUIRES_NEW -> Propagation.REQUIRES_NEW
-    TxPropagation.SUPPORTS -> Propagation.SUPPORTS
-    TxPropagation.NOT_SUPPORTED -> Propagation.NOT_SUPPORTED
+fun TxPropagation.toSpring(): Int = when (this) {
+    TxPropagation.REQUIRED -> TransactionDefinition.PROPAGATION_REQUIRED
+    TxPropagation.REQUIRES_NEW -> TransactionDefinition.PROPAGATION_REQUIRES_NEW
+    TxPropagation.SUPPORTS -> TransactionDefinition.PROPAGATION_SUPPORTS
+    TxPropagation.NOT_SUPPORTED -> TransactionDefinition.PROPAGATION_NOT_SUPPORTED
 }
 
 /**
@@ -41,10 +42,10 @@ class TxRunner(private val txManager: org.springframework.transaction.PlatformTr
     ): R = when (propagation) {
         TxPropagation.REQUIRED -> {
             if (svcCtx.inTransaction) body(svcCtx)
-            else newTx(svcCtx, body)
+            else newTx(svcCtx, body, TxPropagation.REQUIRED)
         }
         TxPropagation.REQUIRES_NEW -> {
-            newTx(svcCtx.copy(inTransaction = false), body)
+            newTx(svcCtx.copy(inTransaction = false), body, TxPropagation.REQUIRES_NEW)
         }
         TxPropagation.SUPPORTS -> {
             body(svcCtx)
@@ -58,9 +59,9 @@ class TxRunner(private val txManager: org.springframework.transaction.PlatformTr
         }
     }
 
-    private fun <R> newTx(svcCtx: SvcCtx, body: (SvcCtx) -> R): R {
+    private fun <R> newTx(svcCtx: SvcCtx, body: (SvcCtx) -> R, prop: TxPropagation): R {
         val template = TransactionTemplate(txManager).apply {
-            this.propagationBehavior = propagation.toSpring()
+            this.propagationBehavior = prop.toSpring()
         }
         return template.execute { body(svcCtx.copy(inTransaction = true)) }!!
     }

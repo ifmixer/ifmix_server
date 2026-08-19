@@ -4,6 +4,7 @@ import com.ifmix.api.core.infra.http.OperationContext
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.springframework.stereotype.Component
 import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.support.TransactionTemplate
 
 /**
@@ -28,7 +29,7 @@ class GlobalTxRunner(
     fun <R> withTx(opCtx: OperationContext, body: (OperationContext) -> R): R {
         val txCtx = opCtx.copy(globalTxSql = sqlClient, inGlobalTx = true)
         val template = TransactionTemplate(txManager).apply {
-            propagationBehavior = org.springframework.transaction.Propagation.REQUIRED
+            propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRED
         }
         return template.execute { body(txCtx) }!!
     }

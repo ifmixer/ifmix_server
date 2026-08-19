@@ -41,17 +41,18 @@ class StorageEntityService(
         val uploadUrl = objectStorage.presignUpload("ugc", objectKey, mimeType, Duration.ofSeconds(300))
         val downloadUrl = objectStorage.getPublicUrl("ugc", objectKey)
 
-        uploadRecordRepo.insert(sc, UploadRecord(
-            id = mediaId,
-            appId = appId,
-            installId = installId,
-            userId = sc.op.userId,
-            objectKey = objectKey,
-            contentType = mimeType,
-            category = category,
-            clientIp = sc.op.clientIp,
-            createdAt = Instant.now(),
-        ))
+        val entity = UploadRecord {
+            id = mediaId
+            this.appId = appId
+            this.installId = installId
+            this.userId = sc.op.userId
+            this.objectKey = objectKey
+            this.contentType = mimeType
+            this.category = category
+            this.clientIp = sc.op.clientIp
+            this.createdAt = Instant.now()
+        }
+        uploadRecordRepo.save(sc, entity)
 
         return PresignUploadResult(
             mediaId = mediaId,

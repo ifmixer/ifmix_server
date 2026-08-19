@@ -3,7 +3,7 @@ package com.ifmix.api.core.infra.repo
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.infra.db.SvcCtx
 import org.babyfish.jimmer.sql.kt.KSqlClient
-import org.babyfish.jimmer.sql.kt.ast.expression.eq
+import org.babyfish.jimmer.sql.kt.ast.expression.*
 import java.util.UUID
 import kotlin.reflect.KClass
 
