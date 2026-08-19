@@ -3,11 +3,13 @@ package com.ifmix.api.core.modules.demo.handler
 import com.ifmix.api.core.common.db.CursorQueryInput
 import com.ifmix.api.core.common.db.Page
 import com.ifmix.api.core.common.http.RepoCtx
+import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.redis.CacheAside
 import com.ifmix.api.core.graphql.generated.types.CreateTodoInput
 import com.ifmix.api.core.graphql.generated.types.UpdateTodoInput
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
 import com.ifmix.api.core.modules.demo.repo.TodoRepository
+import org.bson.types.ObjectId
 import org.springframework.stereotype.Component
 import java.time.Instant
 
@@ -21,52 +23,56 @@ class TodoEntityHandler(
 ) {
     private fun cacheKey(appId: String, id: String) = "todo:$appId:$id"
 
-    fun findByIdWithCtx(appId: String, id: String): TodoEntity? {
-        val key = cacheKey(appId, id)
+    fun findByIdWithCtx(ctx: RequestContext, id: String): TodoEntity? {
+        val key = cacheKey(ctx.appId, id)
         return cache.getOrLoadNullable(key, TodoEntity::class.java) {
-            repo.findById(RepoCtx(), appId, id)
+            repo.findById(RepoCtx(), ctx.appId, id)
         }
     }
 
-    fun findByIds(appId: String, ids: List<String>): List<TodoEntity> =
-        repo.findByIds(RepoCtx(), appId, ids)
+    fun findByIds(ctx: RequestContext, ids: List<String>): List<TodoEntity> =
+        repo.findByIds(RepoCtx(), ctx.appId, ids)
 
-    fun findByCursor(appId: String, input: CursorQueryInput): Page<TodoEntity> =
-        repo.findByCursor(RepoCtx(), appId, input)
+    fun findByCursor(ctx: RequestContext, input: CursorQueryInput): Page<TodoEntity> =
+        repo.findByCursor(RepoCtx(), ctx.appId, input)
 
-    fun create(appId: String, input: CreateTodoInput): String {
+    fun create(ctx: RequestContext, input: CreateTodoInput): String {
         val entity = TodoEntity().apply {
             this.title = input.title
             this.done = false
             this.meta = input.meta
+            this.authorId = input.authorId?.let { ObjectId(it) } ?: ctx.userId?.let { ObjectId(it) }
+            this.userId = ctx.userId?.let { ObjectId(it) }
+            this.installId = ctx.installId?.let { ObjectId(it) }
             this.createdAt = Instant.now()
             this.updatedAt = Instant.now()
         }
-        return repo.insert(RepoCtx(), appId, entity)
+        return repo.insert(RepoCtx(), ctx.appId, entity)
     }
 
-    fun update(appId: String, id: String, input: UpdateTodoInput): Boolean {
+    fun update(ctx: RequestContext, id: String, input: UpdateTodoInput): Boolean {
         val patch = mutableMapOf<String, Any?>()
         input.title?.let { patch["title"] = it }
         input.done?.let { patch["done"] = it }
         input.meta?.let { patch["meta"] = it }
-        val result = repo.updateById(RepoCtx(), appId, id, patch, input.unset)
-        if (result) cache.evict(cacheKey(appId, id))
+        input.authorId?.let { patch["authorId"] = it }
+        val result = repo.updateById(RepoCtx(), ctx.appId, id, patch, input.unset)
+        if (result) cache.evict(cacheKey(ctx.appId, id))
         return result
     }
 
-    fun delete(appId: String, id: String): Boolean {
-        val result = repo.deleteById(RepoCtx(), appId, id)
-        if (result) cache.evict(cacheKey(appId, id))
+    fun delete(ctx: RequestContext, id: String): Boolean {
+        val result = repo.deleteById(RepoCtx(), ctx.appId, id)
+        if (result) cache.evict(cacheKey(ctx.appId, id))
         return result
     }
 
-    fun deleteByIds(appId: String, ids: List<String>): Int {
-        val count = repo.deleteByIds(RepoCtx(), appId, ids)
-        ids.forEach { cache.evict(cacheKey(appId, it)) }
+    fun deleteByIds(ctx: RequestContext, ids: List<String>): Int {
+        val count = repo.deleteByIds(RepoCtx(), ctx.appId, ids)
+        ids.forEach { cache.evict(cacheKey(ctx.appId, it)) }
         return count
     }
 
-    fun updateByIds(appId: String, patches: Map<String, Any>): Int =
-        repo.updateByIds(RepoCtx(), appId, patches)
+    fun updateByIds(ctx: RequestContext, patches: Map<String, Any>): Int =
+        repo.updateByIds(RepoCtx(), ctx.appId, patches)
 }

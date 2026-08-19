@@ -51,17 +51,19 @@ class TodoItemEntityHandler(
      */
     fun applyMutation(appId: String, todoId: String, mutation: TodoItemMutationInput) {
         if (mutation.id == null) {
-            val content = mutation.content ?: throw com.ifmix.api.core.common.http.ApiError(
+            val set = mutation.set
+            val content = set?.content ?: throw com.ifmix.api.core.common.http.ApiError(
                 com.ifmix.api.core.common.http.ErrorCode.INVALID_REQUEST,
                 "item create requires content"
             )
-            create(appId, todoId, CreateTodoItemInput(content = content, done = mutation.done))
+            create(appId, todoId, CreateTodoItemInput(content = content, done = set?.done))
         } else if (mutation.delete == true) {
             softDeleteById(appId, mutation.id)
         } else {
+            val set = mutation.set
             val update = Update()
-            mutation.content?.let { update.set(TodoItemEntity::content, it) }
-            mutation.done?.let { update.set(TodoItemEntity::done, it) }
+            set?.content?.let { update.set(TodoItemEntity::content, it) }
+            set?.done?.let { update.set(TodoItemEntity::done, it) }
             mutation.unset?.forEach { update.unset(it) }
             if (update.updateObject.isNotEmpty()) {
                 update.set(TodoItemEntity::updatedAt, Instant.now())

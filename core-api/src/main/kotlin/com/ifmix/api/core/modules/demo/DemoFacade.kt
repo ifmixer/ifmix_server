@@ -24,20 +24,20 @@ class DemoFacade(
     // ---- Query ----
 
     fun findTodoById(ctx: RequestContext, id: String): TodoEntity? =
-        todoHandler.findByIdWithCtx(ctx.appId, id)
+        todoHandler.findByIdWithCtx(ctx, id)
 
     fun findTodosByIds(ctx: RequestContext, ids: List<String>): List<TodoEntity> =
-        todoHandler.findByIds(ctx.appId, ids)
+        todoHandler.findByIds(ctx, ids)
 
     fun listTodos(ctx: RequestContext, cursor: String?, limit: Int?): com.ifmix.api.core.common.db.Page<TodoEntity> {
         val input = com.ifmix.api.core.common.db.CursorQueryInput(cursor = cursor, limit = limit)
-        return todoHandler.findByCursor(ctx.appId, input)
+        return todoHandler.findByCursor(ctx, input)
     }
 
     // ---- Mutation: todo ----
 
     fun createTodo(ctx: RequestContext, input: CreateTodoInput): String {
-        val todoId = todoHandler.create(ctx.appId, input)
+        val todoId = todoHandler.create(ctx, input)
         input.items?.forEach { itemInput ->
             todoItemHandler.create(ctx.appId, todoId, itemInput)
         }
@@ -45,7 +45,7 @@ class DemoFacade(
     }
 
     fun updateTodo(ctx: RequestContext, id: String, input: UpdateTodoInput): Boolean {
-        val result = todoHandler.update(ctx.appId, id, input)
+        val result = todoHandler.update(ctx, id, input)
         input.items?.forEach { mutation ->
             todoItemHandler.applyMutation(ctx.appId, id, mutation)
         }
@@ -54,7 +54,7 @@ class DemoFacade(
 
     fun deleteTodo(ctx: RequestContext, id: String): Boolean {
         todoItemHandler.softDeleteByTodoId(ctx.appId, id)
-        return todoHandler.delete(ctx.appId, id)
+        return todoHandler.delete(ctx, id)
     }
 
     // ---- Mutation: todoItem ----
@@ -78,11 +78,11 @@ class DemoFacade(
 
     fun batchDeleteTodos(ctx: RequestContext, ids: List<String>): Int {
         ids.forEach { id -> todoItemHandler.softDeleteByTodoId(ctx.appId, id) }
-        return todoHandler.deleteByIds(ctx.appId, ids)
+        return todoHandler.deleteByIds(ctx, ids)
     }
 
     fun batchUpdateTodos(ctx: RequestContext, patches: List<Pair<String, Map<String, Any?>>>): Int =
-        todoHandler.updateByIds(ctx.appId, patches.toMap())
+        todoHandler.updateByIds(ctx, patches.toMap())
 
     fun batchDeleteTodoItems(ctx: RequestContext, ids: List<String>): Int =
         todoItemHandler.softDeleteByIds(ctx.appId, ids)

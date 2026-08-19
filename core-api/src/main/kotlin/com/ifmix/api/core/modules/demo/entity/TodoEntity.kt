@@ -16,6 +16,8 @@ class TodoEntity : BaseAppEntity() {
     var done: Boolean = false
     /** JSONB 元数据 */
     var meta: Map<String, Any?>? = null
+    /** 创建者 authorId（登录用户或匿名 installId），可为 null。 */
+    var authorId: ObjectId? = null
     /** 拥有者 userId（登录用户），可为 null（匿名用户时不填）。 */
     var userId: ObjectId? = null
     /** 拥有者 installId（匿名或登录均填）。 */
@@ -28,6 +30,7 @@ fun TodoEntity.toTodo(): com.ifmix.api.core.graphql.generated.types.Todo =
         id = this.id.toHexString(),
         title = this.title,
         done = this.done,
+        authorId = this.authorId?.toHexString(),
         meta = this.meta,
         items = emptyList(), // DataLoader 填充
         createdAt = this.createdAt,

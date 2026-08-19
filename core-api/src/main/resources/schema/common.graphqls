@@ -11,6 +11,7 @@ type Todo {
     id: ID!
     title: String!
     done: Boolean!
+    authorId: ID
     meta: JSON
     items: [TodoItem!]!
     createdAt: DateTime!
@@ -81,6 +82,7 @@ type AppConfigRevision { id: ID! appId: ID! content: JSON revisionNumber: Int! e
 
 input CreateTodoInput {
     title: String!
+    authorId: ID
     meta: JSON
     items: [CreateTodoItemInput!]
 }
@@ -93,6 +95,7 @@ input CreateTodoItemInput {
 input UpdateTodoInput {
     title: String
     done: Boolean
+    authorId: ID
     meta: JSON
     unset: [String!]
     items: [TodoItemMutationInput!]
@@ -107,13 +110,17 @@ input UpdateTodoItemInput {
 input TodoItemMutationInput {
     """目标 item id（create 时不传）"""
     id: ID
-    """要写入的字段"""
-    content: String
-    done: Boolean
+    """要写入的字段（有值才 $set，null/未传不动）"""
+    set: TodoItemSetInput
     """要 $unset 的字段名"""
     unset: [String!]
     """是否删除此 item"""
     delete: Boolean
+}
+
+input TodoItemSetInput {
+    content: String
+    done: Boolean
 }
 
 input BatchUpdateTodoInput {
