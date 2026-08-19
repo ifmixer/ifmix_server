@@ -6,7 +6,6 @@ import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.isNull
-import org.babyfish.jimmer.sql.kt.ast.expression.or
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import org.springframework.stereotype.Repository
 import java.time.Instant
@@ -23,20 +22,17 @@ class AgnesKeyRepository(sql: KSqlClient) : BaseAppCrudRepository<AgnesKey>(sql,
     fun findAvailable(ctx: SvcCtx, appId: UUID): List<AgnesKey> {
         val now = Instant.now()
         return sql.createQuery(AgnesKey::class) {
-            where(table.get<UUID>("appId") eq appId)
-            where(or(
-                isNull(table.get<Instant?>("unavailableUntil")),
-                table.get<Instant?>("unavailableUntil") lt now
-            ))
+            where(table.appId eq appId)
+            where(table.unavailableUntil.isNull or table.unavailableUntil lt now)
             select(table)
         }.execute()
     }
 
     fun markUnavailable(ctx: SvcCtx, keyId: UUID, until: Instant) {
         sql.createUpdate(AgnesKey::class) {
-            where(table.getId<UUID>() eq keyId)
-            set(table.get<Instant?>("unavailableUntil"), until)
-            set(table.get<Instant>("updatedAt"), Instant.now())
+            where(table.id eq keyId)
+            set(table.unavailableUntil, until)
+            set(table.updatedAt, Instant.now())
         }.execute()
     }
 }
