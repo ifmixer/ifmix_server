@@ -33,7 +33,7 @@ class AiConfig(private val sqlClient: KSqlClient) {
                     AgnesKeyStore.AgnesKeyDoc(
                         id = key.id.toString(),
                         key = key.key,
-                        type = AgnesKey.Type.nameOf(key.type.toInt()),
+                        type = com.ifmix.api.core.entity.ai.AgnesKeyType.fromCode(key.type.toInt()),
                         rateLimit = key.rateLimit,
                         windowSec = key.windowSec,
                         models = key.models,

@@ -48,7 +48,7 @@ class WebhookController(
     private val jwksCacheTtl = java.time.Duration.ofHours(1)
 
     companion object {
-        private fun buildCtx() = svcCtxFactory.default(
+        private fun buildCtx(svcCtxFactory: com.ifmix.api.core.infra.db.SvcCtxFactory) = svcCtxFactory.default(
             com.ifmix.api.core.infra.http.OperationContext(
                 req = com.ifmix.api.core.infra.http.RequestContext()
             )

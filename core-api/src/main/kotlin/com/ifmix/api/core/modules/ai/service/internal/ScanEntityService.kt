@@ -7,7 +7,7 @@ import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.storage.ObjectStorage
-import com.ifmix.api.core.entity.ImageRef
+import com.ifmix.api.core.entity.scan.ImageRef
 import com.ifmix.api.core.entity.ai.ScanRecord
 import com.ifmix.api.core.modules.ai.ScanRunner
 import com.ifmix.api.core.dto.ai.ScanInput
@@ -44,23 +44,22 @@ class ScanEntityService(
         )
         val result = scanRunner.run(sc.op, scanInput)
 
-        val record = ScanRecord(
-            id = scanId,
-            appId = appId,
-            imageKeys = input.images.map { ImageRef(key = it.imageKey) },
-            basicResult = result,
-            premiumResult = null,
-            status = ScanRecord.Status.COMPLETED,
-            clientIp = sc.op.clientIp,
-            lang = sc.op.lang,
-            country = sc.op.country,
-            currency = sc.op.currency,
-            userDisplayName = null,
-            userNotes = null,
-            collected = false,
-            createdAt = now,
-            updatedAt = now,
-        )
+        val record = ScanRecord {
+            id = scanId
+            this.appId = appId
+            this.images = input.images.map { ImageRef(key = it.imageKey) }
+            this.result = result
+            this.status = 200
+            this.clientIp = sc.op.clientIp
+            this.lang = sc.op.lang
+            this.country = sc.op.country
+            this.currency = sc.op.currency
+            this.userDisplayName = null
+            this.userNotes = null
+            this.collected = false
+            this.createdAt = now
+            this.updatedAt = now
+        }
         scanRepo.save(sc, record)
         return record
     }
@@ -92,21 +91,7 @@ class ScanEntityService(
         val resultItems = items.take(effectiveLimit)
         return Page(
             items = resultItems,
-            nextCursor = resultItems.lastOrNull()?.let { it.id.toString() },
-            hasMore = hasMore,
-        )
-    }
-
-    fun findByFilter(sc: SvcCtx, filter: FilterGroup?, cursor: String?, limit: Int?): Page<ScanRecord> {
-        val appId = sc.op.mustGetAppId()
-        val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
-        val cursorUuid = cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-        val items = scanRepo.findByFilter(sc, appId, filter, cursorUuid, effectiveLimit + 1)
-        val hasMore = items.size > effectiveLimit
-        val resultItems = items.take(effectiveLimit)
-        return Page(
-            items = resultItems,
-            nextCursor = resultItems.lastOrNull()?.let { it.id.toString() },
+            nextCursor = resultItems.lastOrNull()?.id?.toString(),
             hasMore = hasMore,
         )
     }

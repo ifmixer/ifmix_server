@@ -30,13 +30,19 @@ class AppConfigEntityService(
         val appId = sc.appId!!
         if (req.enabled) revisionRepo.disableCurrentRevisions(sc, appId)
         val now = java.time.Instant.now()
-        val revision = AppConfigRevision(
-            id = UuidV7.generate(), appId = appId,
-            authTenantId = req.authTenantId, appleBundleId = req.appleBundleId,
-            androidPackageName = req.androidPackageName, revisionNumber = req.revisionNumber,
-            createdAt = now, enabled = req.enabled, slug = req.slug,
-            content = req.content, note = req.note
-        )
+        val revision = AppConfigRevision {
+            id = UuidV7.generate()
+            this.appId = appId
+            this.authTenantId = req.authTenantId
+            this.appleBundleId = req.appleBundleId
+            this.androidPackageName = req.androidPackageName
+            this.revisionNumber = req.revisionNumber
+            this.createdAt = now
+            this.enabled = req.enabled
+            this.slug = req.slug
+            this.content = req.content
+            this.note = req.note
+        }
         revisionRepo.save(sc, revision)
         return revision
     }

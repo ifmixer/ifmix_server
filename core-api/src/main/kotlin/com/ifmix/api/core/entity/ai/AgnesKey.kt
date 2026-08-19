@@ -24,3 +24,17 @@ interface AgnesKey : AppScopedProps, MutableProps {
     val models: String?
     val unavailableUntil: Instant?
 }
+
+/** AI Key 类型编码 */
+object AgnesKeyType {
+    const val UNKNOWN = 0
+    const val PERSONAL = 100
+    const val ENTERPRISE = 200
+
+    private val byName = entries.associateBy { it.name }
+    fun fromCode(code: Int): String = when (code) {
+        PERSONAL -> "PERSONAL"
+        ENTERPRISE -> "ENTERPRISE"
+        else -> "UNKNOWN"
+    }
+}

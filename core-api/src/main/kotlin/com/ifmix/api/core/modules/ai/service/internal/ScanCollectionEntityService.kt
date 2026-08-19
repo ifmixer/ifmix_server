@@ -23,8 +23,16 @@ open class ScanCollectionEntityService(
     fun createDefaultCollection(sc: SvcCtx): ScanCollection {
         val ctx = sc.op
         val now = Instant.now()
-        val model = ScanCollection(id = UuidV7.generate(), appId = sc.appId!!, userId = ctx.userId,
-            installId = ctx.installId, isDefault = true, createdAt = now, updatedAt = now, deletedAt = null)
+        val id = UuidV7.generate()
+        val model = ScanCollection {
+            this.id = id
+            this.appId = sc.appId!!
+            this.userId = ctx.userId
+            this.installId = ctx.installId
+            this.isDefault = true
+            this.createdAt = now
+            this.updatedAt = now
+        }
         collectionRepo.save(sc, model)
         return model
     }
