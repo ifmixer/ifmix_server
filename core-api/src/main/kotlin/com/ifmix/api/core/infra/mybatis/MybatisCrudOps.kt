@@ -1,5 +1,3 @@
-package com.ifmix.api.core.infra.mybatis
-
 import com.ifmix.api.core.infra.db.SvcCtx
 import org.mybatis.dynamic.sql.render.RenderingStrategies
 import java.time.Instant
@@ -15,20 +13,6 @@ object SqlRender {
     /** 将动态 SQL 渲染为 MYBATIS3 格式（parameterized SQL + named parameters） */
     inline fun <reified M> SvcCtx.renderSql(block: M.() -> Unit): String =
         throw UnsupportedOperationException("Use the typed overload below")
-}
-
-/**
- * MyBatis 事务传播行为（对标 Spring Propagation）。
- */
-enum class TxPropagation {
-    /** 有事务则加入，无则新建（默认）。 */
-    REQUIRED,
-    /** 总是新建事务（挂起外层事务）。 */
-    REQUIRES_NEW,
-    /** 有事务则加入，无则非事务执行。 */
-    SUPPORTS,
-    /** 无事务执行，有事务则挂起。 */
-    NOT_SUPPORTED,
 }
 
 /**
