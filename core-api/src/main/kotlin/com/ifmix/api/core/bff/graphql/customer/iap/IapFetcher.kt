@@ -4,7 +4,7 @@ import com.ifmix.api.core.generated.types.verifyIapPurchaseInput
 import com.ifmix.api.core.generated.types.verifyIapPurchasePayload
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.dto.payment.VerifyReq
-import com.ifmix.api.core.modules.payment.service.PaymentModuleService
+import com.ifmix.api.core.modules.payment.PaymentFacade
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
@@ -13,7 +13,7 @@ import java.time.Instant
 
 @DgsComponent
 class IapFetcher(
-    private val iapService: PaymentModuleService,
+    private val iapService: PaymentFacade,
     private val ctxProvider: OperationContextProvider,
 ) {
 

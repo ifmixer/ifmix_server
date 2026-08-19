@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.payment.service.internal
+package com.ifmix.api.core.modules.payment.handler
 
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 
 @Component
-class PaymentEntityService(
+class PaymentHandler(
     @Qualifier("appleVerifier") private val appleVerifier: PurchaseVerifier,
     @Qualifier("googleVerifier") private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
