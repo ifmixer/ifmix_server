@@ -1,6 +1,8 @@
 package com.ifmix.api.core.infra.mybatis
 
 import com.ifmix.api.core.infra.jooq.DataSourceRegistry
+import com.ifmix.api.core.modules.demo.repo.TodoItemMapper
+import com.ifmix.api.core.modules.demo.repo.TodoMapper
 import org.apache.ibatis.mapping.Environment
 import org.apache.ibatis.session.Configuration
 import org.apache.ibatis.session.SqlSessionFactory
@@ -31,9 +33,8 @@ class MyBatisSessionFactories(
             typeHandlerRegistry.register(UuidTypeHandler::class.java)
             typeHandlerRegistry.register(InstantTypeHandler::class.java)
             typeHandlerRegistry.register(JsonbTypeHandler::class.java)
-            // Phase 2: 注册 Mapper
-            // addMapper(TodoMapper::class.java)
-            // addMapper(TodoItemMapper::class.java)
+            addMapper(TodoMapper::class.java)
+            addMapper(TodoItemMapper::class.java)
         }
         return SqlSessionFactoryBuilder().build(config)
     }
