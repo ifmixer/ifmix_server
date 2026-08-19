@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.app.service
+package com.ifmix.api.core.modules.app
 
 import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionCreateInput
 import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionDto
@@ -8,15 +8,14 @@ import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 @Service
-class AppConfigService(
+class AppConfigFacade(
     private val revisionRepo: AppConfigRevisionRepository,
 ) {
 
-    @Transactional
+    /** 写操作 — 有事务 */
     fun createOneRevision(ctx: OperationContext, req: AppConfigRevisionCreateInput): AppConfigRevisionDto {
         val appId = ctx.mustGetAppId()
 
@@ -30,7 +29,7 @@ class AppConfigService(
             ?: throw ApiError(ErrorCode.INTERNAL, "failed to read newly created revision")
     }
 
-    @Transactional
+    /** 写操作 — 有事务 */
     fun toggleRevision(ctx: OperationContext, revisionId: UUID, enabled: Boolean): AppConfigRevisionDto {
         val appId = ctx.mustGetAppId()
 

@@ -15,7 +15,7 @@ import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetInstallId
-import com.ifmix.api.core.modules.todo.service.TodoService
+import com.ifmix.api.core.modules.todo.TodoFacade
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/customer")
-class CustomerTodoController(private val todoService: TodoService) {
+class CustomerTodoController(private val todoFacade: TodoFacade) {
 
     @PutMapping("/query/core/todo/findTodoByCursor")
     fun findByCursor(
@@ -41,13 +41,13 @@ class CustomerTodoController(private val todoService: TodoService) {
         @RequestBody(required = false) input: CursorQueryInput?,
     ): Page<TodoListDto> {
         ctx.mustGetInstallId()
-        return todoService.findTodoByCursor(ctx, input ?: CursorQueryInput())
+        return todoFacade.findTodoByCursor(ctx, input ?: CursorQueryInput())
     }
 
     @PutMapping("/query/core/todo/findTodoById")
     fun findById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): TodoDetailDto {
         ctx.mustGetInstallId()
-        val todo = todoService.getTodo(ctx, req.id)
+        val todo = todoFacade.getTodo(ctx, req.id)
         checkOwnership(ctx, todo)
         return todo
     }
@@ -55,25 +55,25 @@ class CustomerTodoController(private val todoService: TodoService) {
     @PostMapping("/mutation/core/todo/createTodo")
     fun createOne(ctx: OperationContext, @Valid @RequestBody req: TodoCreateInput): CreateOneRes {
         ctx.mustGetInstallId()
-        val id = todoService.createOne(ctx, req)
+        val id = todoFacade.createOne(ctx, req)
         return CreateOneRes(id = id)
     }
 
     @PostMapping("/mutation/core/todo/updateTodo")
     fun updateOne(ctx: OperationContext, @Valid @RequestBody req: TodoUpdateInput): OperationResult {
         ctx.mustGetInstallId()
-        val existing = todoService.getTodo(ctx, req.id)
+        val existing = todoFacade.getTodo(ctx, req.id)
         checkOwnership(ctx, existing)
-        val updated = todoService.updateOne(ctx, req)
+        val updated = todoFacade.updateOne(ctx, req)
         return OperationResult(success = updated, modifiedCount = if (updated) 1 else 0)
     }
 
     @PostMapping("/mutation/core/todo/deleteTodoById")
     fun deleteById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): OperationResult {
         ctx.mustGetInstallId()
-        val existing = todoService.getTodo(ctx, req.id)
+        val existing = todoFacade.getTodo(ctx, req.id)
         checkOwnership(ctx, existing)
-        val deleted = todoService.deleteOne(ctx, req.id)
+        val deleted = todoFacade.deleteOne(ctx, req.id)
         return OperationResult(success = deleted)
     }
 
@@ -81,14 +81,14 @@ class CustomerTodoController(private val todoService: TodoService) {
     fun deleteItemsByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): OperationResult {
         ctx.mustGetInstallId()
         // TODO: 批量 item 归属校验待完善（需通过 item → todo 查归属）
-        val count = todoService.deleteItems(ctx, req.ids)
+        val count = todoFacade.deleteItems(ctx, req.ids)
         return OperationResult(success = count == req.ids.size, modifiedCount = count)
     }
 
     @PutMapping("/query/core/todo/findTodoByIds")
     fun findByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): List<TodoListDto> {
         ctx.mustGetInstallId()
-        val todos = todoService.findByIds(ctx, req.ids)
+        val todos = todoFacade.findByIds(ctx, req.ids)
         return todos.filter { ownsRow(ctx, it.userId, it.installId) }
     }
 
@@ -96,18 +96,18 @@ class CustomerTodoController(private val todoService: TodoService) {
     fun updateByIds(ctx: OperationContext, @Valid @RequestBody req: List<TodoUpdateInput>): OperationResult {
         ctx.mustGetInstallId()
         val ids = req.map { it.id }
-        val todos = todoService.findByIds(ctx, ids)
+        val todos = todoFacade.findByIds(ctx, ids)
         todos.forEach { checkOwnership(ctx, it) }
-        val count = todoService.updateByIds(ctx, req)
+        val count = todoFacade.updateByIds(ctx, req)
         return OperationResult(success = count == req.size, modifiedCount = count)
     }
 
     @PostMapping("/mutation/core/todo/deleteTodosByIds")
     fun deleteByIds(ctx: OperationContext, @Valid @RequestBody req: ByIdsRequest): OperationResult {
         ctx.mustGetInstallId()
-        val todos = todoService.findByIds(ctx, req.ids)
+        val todos = todoFacade.findByIds(ctx, req.ids)
         todos.forEach { checkOwnership(ctx, it) }
-        val count = todoService.deleteByIds(ctx, req.ids)
+        val count = todoFacade.deleteByIds(ctx, req.ids)
         return OperationResult(success = count == req.ids.size, modifiedCount = count)
     }
 

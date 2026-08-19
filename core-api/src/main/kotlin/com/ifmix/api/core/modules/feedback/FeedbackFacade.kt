@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.feedback.service
+package com.ifmix.api.core.modules.feedback
 
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
@@ -7,14 +7,13 @@ import com.ifmix.api.core.infra.dto.CreateOneRes
 import com.ifmix.api.core.modules.feedback.dto.SubmitFeedbackReq
 import com.ifmix.api.core.modules.feedback.repo.FeedbackRepository
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 
 @Service
-class FeedbackService(
+class FeedbackFacade(
     private val feedbackRepo: FeedbackRepository,
 ) {
 
-    @Transactional
+    /** 写操作 — 有事务 */
     fun submit(ctx: OperationContext, req: SubmitFeedbackReq): CreateOneRes {
         val appId = ctx.mustGetAppId()
         val installId = ctx.mustGetInstallId()

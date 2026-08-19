@@ -16,7 +16,7 @@ interface NotificationDecoder {
     fun decode(rawPayload: String, platform: Platform): DecodedNotification
 }
 
-/** 解码后的通知——供 IapService.handleXxxNotification 消费。 */
+/** 解码后的通知——供 IapFacade.handleXxxNotification 消费。 */
 data class DecodedNotification(
     val subscriptionPxid: String,
     val originalTransactionId: String?,

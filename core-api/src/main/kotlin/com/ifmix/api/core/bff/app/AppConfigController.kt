@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.appconfig.dto.AppConfigRevisionDto
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.mustGetAppId
 import com.ifmix.api.core.infra.dto.ToggleRevisionRequest
-import com.ifmix.api.core.modules.app.service.AppConfigService
+import com.ifmix.api.core.modules.app.AppConfigFacade
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/app/core")
-class AppConfigController(private val appConfigService: AppConfigService) {
+class AppConfigController(private val appConfigFacade: AppConfigFacade) {
 
     /**
      * 创建新的 app 配置版本。
@@ -29,7 +29,7 @@ class AppConfigController(private val appConfigService: AppConfigService) {
         @Valid @RequestBody req: AppConfigRevisionCreateInput,
     ): AppConfigRevisionDto {
         ctx.mustGetAppId()
-        return appConfigService.createOneRevision(ctx, req)
+        return appConfigFacade.createOneRevision(ctx, req)
     }
 
     /**
@@ -42,8 +42,6 @@ class AppConfigController(private val appConfigService: AppConfigService) {
         @Valid @RequestBody req: ToggleRevisionRequest,
     ): AppConfigRevisionDto {
         ctx.mustGetAppId()
-        return appConfigService.toggleRevision(ctx, req.id, req.enabled)
+        return appConfigFacade.toggleRevision(ctx, req.id, req.enabled)
     }
 }
-
-

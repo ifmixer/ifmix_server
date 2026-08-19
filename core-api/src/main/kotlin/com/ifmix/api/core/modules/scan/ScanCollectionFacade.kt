@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.scan.service
+package com.ifmix.api.core.modules.scan
 
 import com.ifmix.api.core.entity.scan.ScanCollection
 import com.ifmix.api.core.entity.scan.dto.ScanCollectionItemDto
@@ -16,17 +16,16 @@ import com.ifmix.api.core.modules.scan.dto.RemoveItemsRes
 import com.ifmix.api.core.modules.scan.repo.ScanCollectionRepository
 import com.ifmix.api.core.modules.scan.repo.ScanCollectionItemRepository
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
 
 @Service
-open class ScanCollectionService(
+open class ScanCollectionFacade(
     private val collectionRepo: ScanCollectionRepository,
     private val itemRepo: ScanCollectionItemRepository,
 ) {
 
-    @Transactional
+    /** 读操作 — 无事务 */
     fun getDefault(ctx: OperationContext): ScanCollection {
         val appId = ctx.mustGetAppId()
         val userId = ctx.userId
@@ -56,14 +55,14 @@ open class ScanCollectionService(
         return collectionRepo.save(ctx.repoCtx, entity)
     }
 
-    @Transactional
+    /** 写操作 — 有事务 */
     fun addItem(ctx: OperationContext, req: AddItemReq): AddItemRes {
         val collectionId = req.collectionId ?: getDefault(ctx).id
         val itemId = itemRepo.insertIfAbsent(ctx.repoCtx, ctx.mustGetAppId(), collectionId, req.scanRecordId)
         return AddItemRes(id = itemId)
     }
 
-    @Transactional
+    /** 写操作 — 有事务 */
     fun removeItems(ctx: OperationContext, req: RemoveItemsReq): RemoveItemsRes {
         if (req.scanRecordIds.isEmpty()) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "scanRecordIds cannot be empty")
@@ -74,6 +73,7 @@ open class ScanCollectionService(
         return RemoveItemsRes(removed = deletedCount.toInt())
     }
 
+    /** 读操作 — 无事务 */
     fun findItemsByCursor(ctx: OperationContext, req: ListItemsReq?): Page<ScanCollectionItemDto> {
         val appId = ctx.mustGetAppId()
         val collectionId = req?.collectionId ?: getDefault(ctx).id

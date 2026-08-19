@@ -10,7 +10,7 @@ import com.ifmix.api.core.modules.scan.dto.PresignDownloadReq
 import com.ifmix.api.core.modules.scan.dto.PresignUploadReq
 import com.ifmix.api.core.modules.scan.dto.PresignedDownloadResponse
 import com.ifmix.api.core.modules.scan.dto.PresignedUploadResponse
-import com.ifmix.api.core.modules.scan.service.AntiqueService
+import com.ifmix.api.core.modules.scan.ScanFacade
 import com.ifmix.api.core.modules.storage.repo.UploadRecordRepository
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
@@ -28,9 +28,9 @@ import java.time.Duration
  */
 @RestController
 @RequestMapping("/customer")
-@ConditionalOnBean(AntiqueService::class)
+@ConditionalOnBean(ScanFacade::class)
 class CustomerStorageController(
-    private val antiqueService: AntiqueService,
+    private val scanFacade: ScanFacade,
     private val uploadRecordRepo: UploadRecordRepository,
 ) {
 
@@ -38,7 +38,7 @@ class CustomerStorageController(
         summary = "获取预签名上传 URL",
         description = """
             服务端生成 objectKey 并返回预签名上传 URL + imageKey。
-            客户端上传完成后用 imageKey 调 antique/newScan。
+            客户端上传完成后用 imageKey 调 scan/newScan。
             不要求登录；user 未登录时 objectKey 中 user 段为 "none"。
         """,
     )
@@ -54,8 +54,8 @@ class CustomerStorageController(
         // objectKey: app_{appId}/{category}/i_{installId}//{id}.{ext}
         val objectKey = "app_$appId/${req.category.path}/i_$installId/$mediaId.${req.contentType.extension}"
 
-        val url = antiqueService.presignedUploadUrl(ctx, objectKey, req.contentType.mimeType, Duration.ofSeconds(300))
-        val downloadUrl = antiqueService.presignedDownloadUrl(ctx, objectKey, Duration.ZERO)
+        val url = scanFacade.presignedUploadUrl(ctx, objectKey, req.contentType.mimeType, Duration.ofSeconds(300))
+        val downloadUrl = scanFacade.presignedDownloadUrl(ctx, objectKey, Duration.ZERO)
 
         // 记录上传信息到 DB（id 与文件名一致）
         uploadRecordRepo.create(
@@ -87,7 +87,7 @@ class CustomerStorageController(
         @Valid @RequestBody req: PresignDownloadReq,
     ): PresignedDownloadResponse {
         validateObjectKey(ctx, req.imageKey)
-        val url = antiqueService.presignedDownloadUrl(ctx, req.imageKey, Duration.ofSeconds(req.durationSeconds ?: 3600L))
+        val url = scanFacade.presignedDownloadUrl(ctx, req.imageKey, Duration.ofSeconds(req.durationSeconds ?: 3600L))
         return PresignedDownloadResponse(url)
     }
 

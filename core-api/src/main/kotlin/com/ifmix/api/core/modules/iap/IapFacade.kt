@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.iap.service
+package com.ifmix.api.core.modules.iap
 
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -13,10 +13,6 @@ import com.ifmix.api.core.infra.db.RepoContext
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.entity.enums.Platform
 import com.ifmix.api.core.entity.enums.Tier
-import com.ifmix.api.core.modules.iap.NotificationDecoder
-import com.ifmix.api.core.modules.iap.NotificationType
-import com.ifmix.api.core.modules.iap.PurchaseVerifier
-import com.ifmix.api.core.modules.iap.VerifyInput
 import com.ifmix.api.core.modules.iap.dto.SubStatus
 import com.ifmix.api.core.modules.iap.dto.VerifyReq
 import com.ifmix.api.core.modules.iap.dto.VerifyRes
@@ -24,13 +20,12 @@ import com.ifmix.api.core.modules.iap.dto.statusFromExpiry
 import com.ifmix.api.core.modules.iap.dto.tierOf
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
 @Service
-open class IapService(
+open class IapFacade(
     @Qualifier("appleVerifier")
     private val appleVerifier: PurchaseVerifier,
     @Qualifier("googleVerifier")
@@ -45,7 +40,7 @@ open class IapService(
         "GOOGLE" to googleVerifier
     )
 
-    @Transactional
+    /** 写操作 — 有事务：外部验证先执行，DB upsert 在事务内 */
     fun verifyPurchase(ctx: OperationContext, req: VerifyReq): VerifyRes {
         val rc = ctx.repoCtx
         val appId = ctx.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
@@ -61,6 +56,8 @@ open class IapService(
             productId = req.productId,
             appId = appId.toString()
         )
+
+        // 外部验证（HTTP 调用，在事务外）
         val verifyResult = verifier.verify(input)
 
         val config = appConfigRepo.mustFindCurrentRevision(rc, appId)
@@ -71,6 +68,7 @@ open class IapService(
             "pxid-${platformEnum.name}-${UuidV7.generate()}"
         }
 
+        // DB 写入有事务
         val existingSub = subscriptionRepo.findActiveByPxid(rc, appId, subscriptionPxid)
         if (existingSub != null) {
             return VerifyRes(
@@ -128,15 +126,17 @@ open class IapService(
         )
     }
 
+    /** 读操作 — 无事务 */
     fun handleAppleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) {
         handleNotification(ctx, rawPayload, decoder, "APPLE")
     }
 
+    /** 读操作 — 无事务 */
     fun handleGoogleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) {
         handleNotification(ctx, rawPayload, decoder, "GOOGLE")
     }
 
-    @Transactional
+    /** 写操作 — 有事务 */
     fun handleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder, platform: String) {
         val rc = ctx.repoCtx
         val appId = ctx.appId ?: return

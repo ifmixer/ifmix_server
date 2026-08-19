@@ -2,7 +2,7 @@ package com.ifmix.api.core.bff.webhooks
 
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.app.repo.AppConfigRevisionRepository
-import com.ifmix.api.core.modules.iap.service.IapService
+import com.ifmix.api.core.modules.iap.IapFacade
 import com.ifmix.api.core.modules.iap.NotificationDecoder
 import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -27,9 +27,9 @@ import java.util.UUID
  */
 @RestController
 @RequestMapping("/webhooks/iap")
-@ConditionalOnBean(IapService::class)
+@ConditionalOnBean(IapFacade::class)
 class WebhookController(
-    private val iapService: IapService,
+    private val iapFacade: IapFacade,
     @Qualifier("appleDecoder") private val appleDecoder: NotificationDecoder,
     @Qualifier("googleDecoder") private val googleDecoder: NotificationDecoder,
     private val appConfigRepo: AppConfigRevisionRepository,
@@ -80,7 +80,7 @@ class WebhookController(
 
             // 5. 构建 OperationContext 并处理通知
             val ctx = OperationContext(appId = appId, userId = SYSTEM_USER_ID)
-            iapService.handleAppleNotification(ctx, rawPayload, appleDecoder)
+            iapFacade.handleAppleNotification(ctx, rawPayload, appleDecoder)
             return ResponseEntity.ok("ok")
 
         } catch (e: Exception) {
@@ -113,7 +113,7 @@ class WebhookController(
 
             // 3. 处理通知
             val ctx = OperationContext(appId = appId, userId = SYSTEM_USER_ID)
-            iapService.handleGoogleNotification(ctx, rawPayload, googleDecoder)
+            iapFacade.handleGoogleNotification(ctx, rawPayload, googleDecoder)
             return ResponseEntity.ok("ok")
 
         } catch (e: Exception) {

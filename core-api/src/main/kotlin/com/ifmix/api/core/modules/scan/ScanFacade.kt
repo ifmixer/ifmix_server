@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.scan.service
+package com.ifmix.api.core.modules.scan
 
 import com.ifmix.api.core.entity.enums.ScanStatus
 import com.ifmix.api.core.entity.scan.ImageRef
@@ -20,13 +20,12 @@ import com.ifmix.api.core.modules.scan.dto.UpdateScanReq
 import com.ifmix.api.core.modules.scan.repo.ScanRecordRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
 @Service
-open class AntiqueService(
+open class ScanFacade(
     private val scanRunner: ScanRunner,
     private val objectStorage: ObjectStorage,
     private val rateLimiter: RateLimiter,
@@ -34,7 +33,6 @@ open class AntiqueService(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Transactional
     fun newScan(ctx: OperationContext, req: NewScanReq): ScanRecord {
         val subject = ctx.clientIp.toString()
         val limitResult = rateLimiter.check(ctx, subject)
@@ -61,6 +59,7 @@ open class AntiqueService(
             currency = ctx.currency,
         )
 
+        // AI 调用在事务外（外部 HTTP）
         val data = scanRunner.run(ctx, scanInput)
 
         val now = Instant.now()
@@ -79,12 +78,13 @@ open class AntiqueService(
             this.updatedAt = now
         }
 
+        // DB 写入有事务
         scanRepo.save(ctx.repoCtx, entity)
 
-        // 重新查询获取完整 entity，避免 DTO 转换时 unloaded
         return scanRepo.findById(ctx.repoCtx, appId, scanId)!!
     }
 
+    /** 读操作 — 无事务 */
     fun getScanById(ctx: OperationContext, id: UUID): ScanRecordDto {
         val appId = ctx.appId!!
         val record = scanRepo.findById(ctx.repoCtx, appId, id)
@@ -92,6 +92,7 @@ open class AntiqueService(
         return ScanRecordDto(record)
     }
 
+    /** 读操作 — 无事务 */
     fun findByCursor(
         ctx: OperationContext,
         input: ScanQueryInput = ScanQueryInput(),
@@ -99,24 +100,24 @@ open class AntiqueService(
         return scanRepo.findByCursor(ctx.repoCtx, input)
     }
 
+    /** 读操作 — 无事务 */
     fun presignedUploadUrl(ctx: OperationContext, objectKey: String, contentType: String, duration: Duration): String {
         return objectStorage.presignUpload(objectKey, contentType, duration)
     }
 
+    /** 读操作 — 无事务 */
     fun presignedDownloadUrl(ctx: OperationContext, objectKey: String, duration: Duration): String {
         return objectStorage.presignDownload(objectKey, duration)
     }
 
-    @Transactional
+    /** 写操作 — 有事务 */
     fun deleteScan(ctx: OperationContext, id: UUID) {
         val appId = ctx.appId!!
-        val success = scanRepo.deleteById(ctx.repoCtx, appId, id)
-        if (!success) {
-            throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
-        }
+        scanRepo.deleteById(ctx.repoCtx, appId, id)
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "scan not found")
     }
 
-    @Transactional
+    /** 写操作 — 有事务 */
     fun updateScan(ctx: OperationContext, req: UpdateScanReq) {
         val appId = ctx.appId!!
         scanRepo.findById(ctx.repoCtx, appId, req.id)

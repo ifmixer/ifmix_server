@@ -12,7 +12,7 @@ import com.ifmix.api.core.modules.auth.dto.ProviderLoginReq
 import com.ifmix.api.core.modules.auth.dto.RefreshReq
 import com.ifmix.api.core.modules.auth.dto.RefreshRes
 import com.ifmix.api.core.modules.auth.dto.WechatLoginReq
-import com.ifmix.api.core.modules.auth.service.AuthService
+import com.ifmix.api.core.modules.auth.AuthFacade
 import io.swagger.v3.oas.annotations.Operation
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/customer")
-class CustomerAuthController(private val authService: AuthService) {
+class CustomerAuthController(private val authFacade: AuthFacade) {
 
     @Operation(
         summary = "Google 登录",
@@ -40,7 +40,7 @@ class CustomerAuthController(private val authService: AuthService) {
     )
     @PostMapping("/mutation/core/auth/google")
     fun google(ctx: OperationContext, @Valid @RequestBody req: ProviderLoginReq): LoginRes =
-        authService.loginWithIdToken(ctx, "google", req)
+        authFacade.loginWithIdToken(ctx, "google", req)
 
     @Operation(
         summary = "Apple 登录",
@@ -51,7 +51,7 @@ class CustomerAuthController(private val authService: AuthService) {
     )
     @PostMapping("/mutation/core/auth/apple")
     fun apple(ctx: OperationContext, @Valid @RequestBody req: ProviderLoginReq): LoginRes =
-        authService.loginWithIdToken(ctx, "apple", req)
+        authFacade.loginWithIdToken(ctx, "apple", req)
 
     @Operation(
         summary = "微信登录",
@@ -62,7 +62,7 @@ class CustomerAuthController(private val authService: AuthService) {
     )
     @PostMapping("/mutation/core/auth/wechat")
     fun wechat(ctx: OperationContext, @Valid @RequestBody req: WechatLoginReq): LoginRes =
-        authService.loginWithCode(ctx, "wechat", req)
+        authFacade.loginWithCode(ctx, "wechat", req)
 
     @Operation(
         summary = "匿名 token 签发",
@@ -78,26 +78,26 @@ class CustomerAuthController(private val authService: AuthService) {
     )
     @PostMapping("/mutation/core/auth/anonymous")
     fun anonymous(ctx: OperationContext): LoginRes =
-        authService.anonymousLogin(ctx)
+        authFacade.anonymousLogin(ctx)
 
     @Operation(summary = "同系 App SSO 交换", description = "用 deviceSecret 在同一租户下的兄弟 App 之间免登录切换。免鉴权。")
     @PostMapping("/mutation/core/auth/exchange")
     fun exchange(ctx: OperationContext, @Valid @RequestBody req: ExchangeReq): ExchangeRes =
-        authService.exchange(ctx, req)
+        authFacade.exchange(ctx, req)
 
     @Operation(summary = "刷新 token", description = "用 refreshToken 换新的 accessToken + refreshToken。免鉴权。token 无效/过期返回 401003。")
     @PostMapping("/mutation/core/auth/refresh")
     fun refresh(ctx: OperationContext, @Valid @RequestBody req: RefreshReq): RefreshRes =
-        authService.refresh(ctx, req)
+        authFacade.refresh(ctx, req)
 
     @Operation(summary = "登出", description = "宣告当前 refreshToken 作废。需要 Bearer token。\n登出后客户端应调 auth/anonymous 重新获取匿名 token，否则后续接口将返回 401。")
     @PostMapping("/mutation/core/auth/logout")
     fun logout(ctx: OperationContext, @Valid @RequestBody req: LogoutReq): LogoutRes =
-        authService.logout(ctx, req)
+        authFacade.logout(ctx, req)
 
     @Operation(summary = "获取当前用户信息和权益", description = "返回用户身份 + 订阅状态（tier/active/expiresAt）。需要 Bearer token。")
     @PutMapping("/query/core/auth/me")
-    fun me(ctx: OperationContext): MeRes = authService.me(ctx)   // ctx.userId 为空时 service 抛 UNAUTHORIZED
+    fun me(ctx: OperationContext): MeRes = authFacade.me(ctx)   // ctx.userId 为空时 service 抛 UNAUTHORIZED
 
     @Operation(
         summary = "请求删除账号",
@@ -112,5 +112,5 @@ class CustomerAuthController(private val authService: AuthService) {
     )
     @PostMapping("/mutation/core/auth/deleteAccount")
     fun deleteAccount(ctx: OperationContext): DeleteAccountRes =
-        authService.requestAccountDeletion(ctx)
+        authFacade.requestAccountDeletion(ctx)
 }

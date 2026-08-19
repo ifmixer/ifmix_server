@@ -5,7 +5,7 @@ import com.ifmix.api.core.infra.dto.OperationResult
 import com.ifmix.api.core.entity.scan.dto.ScanRecordDto
 import com.ifmix.api.core.infra.dto.Page
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.scan.service.AntiqueService
+import com.ifmix.api.core.modules.scan.ScanFacade
 import com.ifmix.api.core.modules.scan.dto.NewScanReq
 import com.ifmix.api.core.modules.scan.dto.ScanQueryInput
 import com.ifmix.api.core.modules.scan.dto.UpdateScanReq
@@ -23,8 +23,8 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/customer")
-@ConditionalOnBean(AntiqueService::class)
-class CustomerScanController(private val antiqueService: AntiqueService) {
+@ConditionalOnBean(ScanFacade::class)
+class CustomerScanController(private val scanFacade: ScanFacade) {
 
     @Operation(
         summary = "扫描古物（同步）",
@@ -32,7 +32,7 @@ class CustomerScanController(private val antiqueService: AntiqueService) {
             接受已上传图片的 imageKey，同步调用 AI 模型识别，阻塞直到分析完成才返回（典型 3-8秒）。
             返回的 result 必定是 COMPLETED 状态的完整结果，无需轮询。
             失败场景走 ErrorEnvelope（503000 AI_UNAVAILABLE 或 429000 RATE_LIMITED）。
-            
+
             id 关系说明：
             - NewScanRes.id = ScanRecordDto.id = 数据库主键（UUIDv7）
             - 所有需要传 scanRecordId 的地方（收藏/反馈/findById）都用这个 id
@@ -40,7 +40,7 @@ class CustomerScanController(private val antiqueService: AntiqueService) {
     )
     @PostMapping("/mutation/core/scan/newScan")
     fun newScan(ctx: OperationContext, @Valid @RequestBody req: NewScanReq): ScanRecordDto {
-        val record = antiqueService.newScan(ctx, req)
+        val record = scanFacade.newScan(ctx, req)
         return ScanRecordDto(record)
     }
 
@@ -55,7 +55,7 @@ class CustomerScanController(private val antiqueService: AntiqueService) {
     )
     @PutMapping("/query/core/scan/findScanById")
     fun findById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): ScanRecordDto {
-        return antiqueService.getScanById(ctx, req.id)
+        return scanFacade.getScanById(ctx, req.id)
     }
 
     @Operation(
@@ -71,7 +71,7 @@ class CustomerScanController(private val antiqueService: AntiqueService) {
         ctx: OperationContext,
         @RequestBody(required = false) input: ScanQueryInput?,
     ): Page<ScanRecordDto> {
-        val page = antiqueService.findByCursor(ctx, input ?: ScanQueryInput())
+        val page = scanFacade.findByCursor(ctx, input ?: ScanQueryInput())
         val views = page.items.map { ScanRecordDto(it) }
         return Page(views, page.nextCursor, page.hasMore)
     }
@@ -87,7 +87,7 @@ class CustomerScanController(private val antiqueService: AntiqueService) {
     )
     @PostMapping("/mutation/core/scan/deleteScanById")
     fun deleteById(ctx: OperationContext, @Valid @RequestBody req: ByIdRequest): OperationResult {
-        antiqueService.deleteScan(ctx, req.id)
+        scanFacade.deleteScan(ctx, req.id)
         return OperationResult()
     }
 
@@ -102,7 +102,7 @@ class CustomerScanController(private val antiqueService: AntiqueService) {
     )
     @PostMapping("/mutation/core/scan/updateScan")
     fun updateOne(ctx: OperationContext, @Valid @RequestBody req: UpdateScanReq): OperationResult {
-        antiqueService.updateScan(ctx, req)
+        scanFacade.updateScan(ctx, req)
         return OperationResult(success = true, modifiedCount = 1)
     }
 }
