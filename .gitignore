@@ -79,3 +79,5 @@ kotlin-ide/
 .test-federation.*
 .claude
 .gitnexus
+
+.superpowers/
