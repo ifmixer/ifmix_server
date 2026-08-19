@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.redis.core.StringRedisTemplate
+import com.ifmix.api.core.common.ai.repo.AgnesKeyRepo
 
 /**
  * AI configuration — assembly semua bean untuk Agnes AI scanning.

@@ -3,6 +3,7 @@ package com.ifmix.api.core.common.db
 import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
 import java.time.Instant
+import com.ifmix.api.core.modules.appconfig.repo.AppConfigRepo
 
 /** 所有文档的公共字段：id + 两个时间戳。appId/deletedAt/revision 为可选能力，见下方接口。 */
 abstract class BaseEntity {

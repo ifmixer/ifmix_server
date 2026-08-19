@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.query.Update
 import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.data.mongodb.core.query.inValues
 import java.time.Instant
+import com.ifmix.api.core.modules.todo.repo.TodoItemRepository
 
 /**
  * TodoItem 仓储。直接持有 MongoTemplate，提供批量按 todoId 查询（DataLoader 专用）和软删操作。

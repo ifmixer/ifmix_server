@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.auth
+package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.common.db.BaseEntity
 import com.ifmix.api.core.common.http.RequestContext
@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.stereotype.Component
 import java.time.Instant
 import com.ifmix.api.core.modules.auth.entity.UserInstallBindingEntity
+import com.ifmix.api.core.modules.auth.repo.UserInstallBindingRepo
 
 /**
  * 设备绑定仓储。

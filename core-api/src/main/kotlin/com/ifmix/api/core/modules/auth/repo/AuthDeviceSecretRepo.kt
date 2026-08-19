@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.auth
+package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.common.auth.Hashing
 import com.ifmix.api.core.common.db.BaseEntity
@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.Instant
 import com.ifmix.api.core.modules.auth.entity.AuthDeviceSecretEntity
+import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretRepo
 
 /**
  * 设备密钥管理：签发、查找、touch、吊销。

@@ -16,6 +16,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
+import com.ifmix.api.core.modules.antique.repo.ScanRecordRepository
 
 /**
  * 古物扫描业务编排。

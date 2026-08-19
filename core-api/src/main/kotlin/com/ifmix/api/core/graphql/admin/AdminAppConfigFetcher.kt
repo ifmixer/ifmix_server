@@ -4,7 +4,7 @@ import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.modules.appconfig.AppleConfig
 import com.ifmix.api.core.modules.appconfig.AppConfigMapper
 import com.ifmix.api.core.modules.appconfig.AppConfigPatch
-import com.ifmix.api.core.modules.appconfig.AppConfigRepo
+import com.ifmix.api.core.modules.appconfig.repo.AppConfigRepo
 import com.ifmix.api.core.modules.appconfig.AppConfigView
 import com.ifmix.api.core.modules.appconfig.GoogleClientIds
 import com.ifmix.api.core.modules.appconfig.GoogleConfig

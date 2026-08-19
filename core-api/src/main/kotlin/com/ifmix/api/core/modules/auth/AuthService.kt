@@ -6,13 +6,14 @@ import com.ifmix.api.core.common.http.ClientIpResolver
 import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.appconfig.AppConfigRepo
+import com.ifmix.api.core.modules.appconfig.repo.AppConfigRepo
 import jakarta.servlet.http.HttpServletRequest
 import org.bson.types.ObjectId
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
 import java.time.Instant
+import com.ifmix.api.core.modules.auth.repo.AppRefreshTokenRepo
 
 /**
  * 认证业务编排（组合非继承）。

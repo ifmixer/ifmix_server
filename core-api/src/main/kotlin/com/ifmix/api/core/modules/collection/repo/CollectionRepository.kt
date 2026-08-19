@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.collection
+package com.ifmix.api.core.modules.collection.repo
 
 import com.ifmix.api.core.common.db.ownerCriteria
 import com.ifmix.api.core.common.http.RequestContext
@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.isEqualTo
 import com.ifmix.api.core.modules.collection.entity.CollectionEntity
+import com.ifmix.api.core.modules.collection.repo.CollectionRepository
 
 /**
  * collection 仓储：按归属查默认收藏夹。

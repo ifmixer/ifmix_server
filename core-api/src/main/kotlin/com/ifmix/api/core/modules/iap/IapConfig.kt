@@ -1,11 +1,12 @@
 package com.ifmix.api.core.modules.iap
 
-import com.ifmix.api.core.modules.appconfig.AppConfigRepo
+import com.ifmix.api.core.modules.appconfig.repo.AppConfigRepo
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.springframework.beans.factory.annotation.Qualifier
+import com.ifmix.api.core.modules.iap.repo.SubscriptionRepo
 
 /**
  * IAP 模块 bean 装配。

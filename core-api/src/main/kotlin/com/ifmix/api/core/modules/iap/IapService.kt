@@ -4,9 +4,10 @@ import com.ifmix.api.core.common.http.ApiError
 import com.ifmix.api.core.common.http.ErrorCode
 import com.ifmix.api.core.common.http.RequestContext
 import org.bson.types.ObjectId
-import com.ifmix.api.core.modules.appconfig.AppConfigRepo
+import com.ifmix.api.core.modules.appconfig.repo.AppConfigRepo
 import java.time.Instant
 import com.ifmix.api.core.modules.iap.entity.SubscriptionEntity
+import com.ifmix.api.core.modules.iap.repo.SubscriptionRepo
 
 /**
  * IAP 服务：购买验证、订阅状态管理、商店通知处理。

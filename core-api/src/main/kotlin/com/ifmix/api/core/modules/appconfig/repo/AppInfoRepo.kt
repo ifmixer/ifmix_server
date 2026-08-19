@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.appconfig
+package com.ifmix.api.core.modules.appconfig.repo
 
 import com.ifmix.api.core.common.db.BaseEntity
 import org.bson.types.ObjectId
@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.stereotype.Component
 import com.ifmix.api.core.modules.appconfig.entity.AppInfoEntity
+import com.ifmix.api.core.modules.appconfig.repo.AppInfoRepo
 
 /** app_info 读取：按 appId（= _id）查稳定身份。 */
 @Component

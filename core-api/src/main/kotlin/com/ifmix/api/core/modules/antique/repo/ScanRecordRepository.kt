@@ -1,9 +1,10 @@
-package com.ifmix.api.core.modules.antique
+package com.ifmix.api.core.modules.antique.repo
 
 import com.ifmix.api.core.common.db.CRUDRepository
 import com.ifmix.api.core.common.http.RequestContext
 import org.springframework.data.mongodb.core.MongoTemplate
 import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
+import com.ifmix.api.core.modules.antique.repo.ScanRecordRepository
 
 /**
  * 古物扫描记录仓储。

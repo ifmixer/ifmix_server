@@ -12,6 +12,7 @@ import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
 import org.springframework.dao.DuplicateKeyException
 import com.ifmix.api.core.modules.collection.entity.CollectionEntity
 import com.ifmix.api.core.modules.collection.entity.CollectionItemEntity
+import com.ifmix.api.core.modules.collection.repo.CollectionItemRepository
 
 /**
  * 收藏业务编排。

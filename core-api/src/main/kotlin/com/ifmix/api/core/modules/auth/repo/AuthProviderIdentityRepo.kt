@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.auth
+package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.common.auth.EmailNormalize
 import com.ifmix.api.core.common.db.BaseEntity
@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 import com.ifmix.api.core.modules.auth.entity.AuthIdentityEntity
 import com.ifmix.api.core.modules.auth.entity.AuthProviderIdentityEntity
+import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityRepo
 
 /** 供 AuthProviderIdentityRepo.upsert 使用的输入参数。 */
 data class UpsertInput(

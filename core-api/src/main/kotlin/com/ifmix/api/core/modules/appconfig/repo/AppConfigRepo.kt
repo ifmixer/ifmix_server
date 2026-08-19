@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.appconfig
+package com.ifmix.api.core.modules.appconfig.repo
 
 import com.ifmix.api.core.common.db.BaseAppEntity
 import com.ifmix.api.core.common.db.BaseEntity
@@ -15,6 +15,9 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import com.ifmix.api.core.modules.appconfig.entity.AppConfigEntity
+import com.ifmix.api.core.modules.appconfig.AppConfigView
+import com.ifmix.api.core.modules.appconfig.AppConfigMapper
+import com.ifmix.api.core.modules.appconfig.AppConfigPatch
 
 /**
  * app_config 读取：按 appId / appleBundleId / androidPackageName 查“当前版本”（deletedAt=null），

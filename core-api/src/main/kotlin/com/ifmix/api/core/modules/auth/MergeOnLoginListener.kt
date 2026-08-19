@@ -16,6 +16,7 @@ import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import java.time.Instant
+import com.ifmix.api.core.modules.auth.repo.UserInstallBindingRepo
 
 /**
  * 登录后归并匿名数据：把 (appId, installId, userId=null) 的 scan_record/subscription 回填 userId。

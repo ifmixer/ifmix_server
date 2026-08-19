@@ -1,4 +1,4 @@
-package com.ifmix.api.core.common.ai
+package com.ifmix.api.core.common.ai.repo
 
 import com.ifmix.api.core.common.db.BaseEntity
 import org.springframework.data.mongodb.core.MongoTemplate
@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.isEqualTo
 import com.ifmix.api.core.common.ai.entity.AgnesKeyEntity
+import com.ifmix.api.core.common.ai.repo.AgnesKeyRepo
 
 /**
  * Agnes key 仓储。

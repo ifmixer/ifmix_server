@@ -10,9 +10,9 @@ import com.ifmix.api.core.modules.antique.AntiqueService
 import com.ifmix.api.core.modules.antique.CreateScanRequest
 import com.ifmix.api.core.modules.antique.toScanRecord
 import com.ifmix.api.core.modules.antique.entity.ScanRecordEntity
-import com.ifmix.api.core.modules.antique.ScanRecordRepository
+import com.ifmix.api.core.modules.antique.repo.ScanRecordRepository
 import com.ifmix.api.core.modules.storage.entity.UploadRecordEntity
-import com.ifmix.api.core.modules.storage.UploadRecordRepo
+import com.ifmix.api.core.modules.storage.repo.UploadRecordRepo
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation

@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.auth
 import com.ifmix.api.core.common.auth.AuthJwtKeys
 import com.ifmix.api.core.common.auth.AuthJwtService
 import com.ifmix.api.core.common.tx.TxRunner
-import com.ifmix.api.core.modules.appconfig.AppConfigRepo
+import com.ifmix.api.core.modules.appconfig.repo.AppConfigRepo
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.scheduling.annotation.EnableAsync
+import com.ifmix.api.core.modules.auth.repo.AppRefreshTokenRepo
 
 /**
  * 认证模块 bean 装配。

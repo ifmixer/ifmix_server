@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.auth
+package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.common.http.RequestContext
 import org.springframework.dao.DuplicateKeyException
@@ -10,6 +10,7 @@ import org.bson.types.ObjectId
 import org.springframework.stereotype.Component
 import java.time.Instant
 import com.ifmix.api.core.modules.auth.entity.AppUserEntity
+import com.ifmix.api.core.modules.auth.repo.AppUserRepo
 
 /**
  * app_user ensure：按 (appId, authIdentityId) 建/取，返回 appUserId。

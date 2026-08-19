@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.iap
 import com.ifmix.api.core.common.http.RequestContext
 import com.ifmix.api.core.common.ratelimit.Tier
 import com.ifmix.api.core.common.ratelimit.TierResolver
+import com.ifmix.api.core.modules.iap.repo.SubscriptionRepo
 
 /**
  * 基于 IAP 订阅的 TierResolver 实现。
