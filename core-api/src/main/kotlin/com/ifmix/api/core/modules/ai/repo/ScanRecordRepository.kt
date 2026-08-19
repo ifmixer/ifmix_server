@@ -9,6 +9,12 @@ import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import org.springframework.stereotype.Repository
 import java.util.UUID
+import com.ifmix.api.core.entity.ai.appId
+import com.ifmix.api.core.entity.ai.collected
+import com.ifmix.api.core.entity.ai.id
+import com.ifmix.api.core.entity.ai.userDisplayName
+import com.ifmix.api.core.entity.ai.userNotes
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(sql, ScanRecord::class) {

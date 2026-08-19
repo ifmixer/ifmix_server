@@ -16,6 +16,9 @@ import org.babyfish.jimmer.sql.kt.ast.expression.isNull
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
+import com.ifmix.api.core.entity.auth.appId
+import com.ifmix.api.core.entity.auth.deviceSecretId
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDeviceSecret>(sql, AuthDeviceSecret::class) {

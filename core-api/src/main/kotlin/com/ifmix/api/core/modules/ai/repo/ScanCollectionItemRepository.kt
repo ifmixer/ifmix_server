@@ -13,6 +13,12 @@ import org.babyfish.jimmer.sql.kt.ast.expression.valueIn
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
+import com.ifmix.api.core.entity.ai.appId
+import com.ifmix.api.core.entity.ai.collectionId
+import com.ifmix.api.core.entity.ai.scanRecordId
+import com.ifmix.api.core.entity.ai.id
+import com.ifmix.api.core.entity.ai.updatedAt
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanCollectionItem>(sql, ScanCollectionItem::class) {

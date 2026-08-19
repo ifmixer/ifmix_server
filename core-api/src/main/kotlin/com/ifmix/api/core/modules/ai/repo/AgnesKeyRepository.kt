@@ -10,6 +10,11 @@ import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
+import com.ifmix.api.core.entity.ai.appId
+import com.ifmix.api.core.entity.ai.id
+import com.ifmix.api.core.entity.ai.unavailableUntil
+import com.ifmix.api.core.entity.ai.updatedAt
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class AgnesKeyRepository(sql: KSqlClient) : BaseAppCrudRepository<AgnesKey>(sql, AgnesKey::class) {

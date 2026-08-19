@@ -5,6 +5,10 @@ import com.ifmix.api.core.infra.repo.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
+import com.ifmix.api.core.entity.app.appId
+import com.ifmix.api.core.entity.app.id
+import com.ifmix.api.core.entity.app.slug
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class AppInfoRepository(sql: KSqlClient) : BaseCrudRepository<AppInfo>(sql, AppInfo::class) {

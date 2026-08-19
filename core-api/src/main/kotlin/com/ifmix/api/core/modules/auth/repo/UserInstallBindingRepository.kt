@@ -26,6 +26,7 @@ import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<UserInstallBinding>(sql, UserInstallBinding::class) {

@@ -8,6 +8,9 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
 import java.util.UUID
+import com.ifmix.api.core.entity.demo.appId
+import com.ifmix.api.core.entity.demo.id
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class TodoItemRepository(sql: KSqlClient) : BaseCrudRepository<TodoItem>(sql, TodoItem::class) {

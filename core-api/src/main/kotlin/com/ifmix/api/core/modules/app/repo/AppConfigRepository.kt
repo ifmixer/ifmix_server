@@ -7,6 +7,13 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.util.UUID
+import com.ifmix.api.core.entity.app.appId
+import com.ifmix.api.core.entity.app.appleBundleId
+import com.ifmix.api.core.entity.app.androidPackageName
+import com.ifmix.api.core.entity.app.enabled
+import com.ifmix.api.core.entity.app.createdAt
+import com.ifmix.api.core.entity.app.id
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevision>(sql, AppConfigRevision::class) {

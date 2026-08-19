@@ -16,6 +16,7 @@ import org.babyfish.jimmer.sql.kt.ast.expression.isNull
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class AppRefreshTokenRepository(sql: KSqlClient) : BaseAppCrudRepository<AppRefreshToken>(sql, AppRefreshToken::class) {

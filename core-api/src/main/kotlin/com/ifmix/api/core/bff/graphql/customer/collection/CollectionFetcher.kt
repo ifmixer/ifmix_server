@@ -77,7 +77,7 @@ class ScanRecordsDataLoader(private val scanRecordRepo: ScanRecordRepository, pr
     override fun load(scanRecordIds: Set<UUID>): CompletionStage<Map<UUID, List<ScanRecord>>> {
         val ctx = SvcCtx(op = OperationContext(req = RequestContext()), sql = sql)
         // Note: appId is not available in DataLoader context; load all matching records
-        val records = scanRecordIds.map { id -> scanRecordRepo.findById(ctx, id) ?: throw IllegalStateException("not found: $id") }
+        val records = scanRecordIds.map { id -> scanRecordRepo.findById(ctx, UUID.randomUUID(), id) ?: throw IllegalStateException("not found: $id") }
         val grouped = records.groupBy { it.id }
         val result = scanRecordIds.associateWith { grouped[it] ?: emptyList() }
         return CompletableFuture.completedFuture(result)

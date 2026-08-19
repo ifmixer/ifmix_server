@@ -9,6 +9,8 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.util.UUID
+import com.ifmix.api.core.entity.auth.authTenantId
+import org.babyfish.jimmer.sql.kt.ast.table.table
 
 @Repository
 class AuthIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthIdentity>(sql, AuthIdentity::class) {
