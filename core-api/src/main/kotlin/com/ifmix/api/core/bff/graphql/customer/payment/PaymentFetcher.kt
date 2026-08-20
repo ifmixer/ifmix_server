@@ -17,7 +17,7 @@ class PaymentFetcher(
     private val ctxProvider: OperationContextProvider,
 ) {
 
-    @DgsMutation(field = "m_payment_verifyIapPurchase")
+    @DgsMutation(field = "m_pay_verifyIapPurchase")
     fun verifyIapPurchase(dfe: DgsDataFetchingEnvironment, @InputArgument input: verifyIapPurchaseInput): verifyIapPurchasePayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = paymentService.verifyIapPurchase(ctx, VerifyReq(

@@ -404,7 +404,7 @@ ${q|m}_${module}_${action}
 | `m_demo_deleteTodo` | 删除 |
 | `q_ai_findScans` | 扫描列表 |
 | `m_ai_createScan` | 发起扫描 |
-| `m_payment_verifyPurchase` | 购买验证 |
+| `m_pay_verifyPurchase` | 购买验证 |
 | `m_auth_loginGoogle` | Google 登录 |
 
 ### 约定
