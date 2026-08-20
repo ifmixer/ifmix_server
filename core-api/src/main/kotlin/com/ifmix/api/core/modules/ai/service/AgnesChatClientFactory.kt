@@ -8,13 +8,16 @@ import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.ai.openai.OpenAiChatOptions
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
 
 /**
  * 按 API key + model 动态创建 ChatClient（每次 forKey 产生新实例，无状态，供多 key 轮换）。
  */
+@Component
 open class AgnesChatClientFactory(
-    val baseUrl: String,
-    val defaultModel: String,
+    @Value("\${spring.ai.openai.base-url:https://api.openai.com}") val baseUrl: String,
+    @Value("\${spring.ai.openai.chat.options.model:gpt-4o}") val defaultModel: String,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 

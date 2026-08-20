@@ -3,18 +3,37 @@ package com.ifmix.api.core.modules.ai.service
 import com.ifmix.api.core.modules.ai.repo.AgnesKeyRepository
 import org.springframework.beans.factory.annotation.Value
 import org.babyfish.jimmer.sql.kt.KSqlClient
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.stereotype.Component
 
 /**
- * AI 模块 bean 装配 — 直注册为 @Component。
+ * AI 模块 bean 装配。
  *
- * AgnesKeyStore / AgnesChatClientFactory 始终加载，
- * SpringAiScanRunner 已经是 @Service @Primary。
+ * AgnesKeyStore 需要 lambda 构造参数（loadKeys），不适合直接 @Component 注册，
+ * 因此在此处通过 @Bean 手动装配。
  */
-@Component
+@Configuration
 class AiConfig(
     private val sqlClient: KSqlClient,
     private val redis: StringRedisTemplate,
     private val agnesKeyRepo: AgnesKeyRepository,
-)
+) {
+    @Bean
+    fun agnesKeyStore(): AgnesKeyStore = AgnesKeyStore(redis) {
+        // 用全局 sqlClient 加载所有 key（不依赖 ModuleCtx，因为 key 加载是 infra 级操作）
+        val keys = sqlClient.createQuery(com.ifmix.api.core.entity.ai.AgnesKey::class) {
+            select(table)
+        }.execute()
+        keys.map { k ->
+            AgnesKeyStore.AgnesKeyDoc(
+                id = k.id.toString(),
+                key = k.key,
+                type = k.type.toString(),
+                rateLimit = k.rateLimit,
+                windowSec = k.windowSec,
+                models = k.models,
+            )
+        }
+    }
+}
