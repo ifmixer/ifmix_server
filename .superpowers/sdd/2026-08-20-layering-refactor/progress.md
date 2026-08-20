@@ -55,3 +55,55 @@ Task 6: complete (payment module - entity/iap→payment, IapConfig→@Component 
 Task 7: complete (ai module - scan→ai merge, CollectionFetcher fix)
 Task 8: complete (auth module - AuthHandler→AuthAggHandler, TxRunner removed)
 Remaining: AiConfig @Configuration still has @Bean (deferred), CollectionFetcher has direct repo inject (minor)
+
+Task 2: complete (commits 8bb9ac6..f29ab42, review pending)
+- entity/todo/ → entity/demo/, bff/todo/ → bff/demo/
+- TodoHandler → TodoAggHandler, params sc→mc
+- DemoFacade: removed TxRunner, uses ModuleCtxFactory only
+- DemoFetcher: removed toDto(), entity direct output, mutations use globalTx.withTx
+- build.gradle.kts: added Todo, TodoItem, TodoPage typeMappings
+
+Task 3: complete (commits 8bb9ac6..6173b23)
+- entity/feedback/ → entity/cms/
+- FeedbackHandler → FeedbackAggHandler
+- CmsFacade: removed TxRunner
+- CmsFetcher: mutations use globalTx.withTx
+
+Task 4: complete (commits 8bb9ac6..6173b23)
+- AppConfigHandler → AppConfigAggHandler
+- AppConfigFacade: removed TxRunner
+
+Task 5: complete (commits 8bb9ac6..6173b23)
+- StorageHandler → StorageAggHandler
+- Params sc→mc
+
+Task 6: complete (commits 6173b23..7993ac1)
+- entity/iap/ → entity/payment/
+- PaymentHandler → PaymentAggHandler
+- PaymentFacade: removed TxRunner
+- IapConfig → @Component
+- IapFetcher → PaymentFetcher
+- PaymentWebhookHandler: params sc→mc
+
+Task 7: complete (commits 777209c..7993ac1)
+- entity/scan/ → entity/ai/ (ImageRef.kt merged)
+- ScanHandler → ScanAggHandler
+- ScanCollectionHandler → ScanCollectionAggHandler
+- AiFacade: removed TxRunner
+- ScanCollectionFacade: removed TxRunner
+- AiFetcher: merged scan+collection fetchers
+- BFF dirs: scan/ and collection/ merged into ai/
+- Schema: q_/m_ prefix aligned
+
+Task 8: complete (commits 777209c..7993ac1)
+- AuthHandler → AuthAggHandler
+- AuthFacade: removed TxRunner
+- AuthFetcher: no globalTx needed (simple identity ops)
+- AuthConfig: kept as-is (security infra beans)
+
+Task 9: PENDING
+- Delete BaseCrudRepository/BaseAppCrudRepository (still used by many repos)
+- AiConfig still @Configuration (deferred)
+- AiFetcher cross-layer: scanRecordRepo + mcFactory in DataLoader (acceptable pattern)
+- AuthFetcher: operation names not yet renamed to m_ prefix
+- StorageFetcher: mutation names not yet renamed to m_ prefix
