@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.scan
 
-import com.ifmix.api.core.entity.scan.ScanStatus
-import com.ifmix.api.core.modules.scan.dto.ScanResult
+import com.ifmix.api.core.entity.ai.ScanStatus
+import com.ifmix.api.core.modules.ai.dto.ScanResult
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tools.jackson.module.kotlin.KotlinModule
