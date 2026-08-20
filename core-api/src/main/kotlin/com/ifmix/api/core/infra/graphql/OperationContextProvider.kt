@@ -48,12 +48,14 @@ class OperationContextProvider {
             clientIp = ClientIpResolver.resolve(servletRequest),
         )
 
-        return OperationContext(
+        val ctx = OperationContext(
             req = reqCtx,
             opName = opName,
             isMutation = isMutation,
             preferReader = !isMutation,
         )
+        com.ifmix.api.core.infra.jimmer.OperationContextHolder.set(ctx)
+        return ctx
     }
 
     private fun parseUuid(header: String?): java.util.UUID? =

@@ -3,6 +3,7 @@ package com.ifmix.api.core.infra.http
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import com.ifmix.api.core.infra.jimmer.OperationContextHolder
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
@@ -72,6 +73,8 @@ class RequestLoggingFilter : OncePerRequestFilter() {
 
             // 必须 copyBodyToResponse，否则客户端收不到响应体
             wrappedResponse.copyBodyToResponse()
+            // 清理 ThreadLocal，防止虚拟线程池中的上下文泄漏
+            OperationContextHolder.clear()
         }
     }
 

@@ -11,6 +11,7 @@ import com.ifmix.api.core.entity.demo.note
 import com.ifmix.api.core.entity.demo.userId
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
+import com.ifmix.api.core.generated.types.TodoUnsetField
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.CrudRepoTemplate
@@ -56,8 +57,8 @@ class TodoRepository {
         val rows = mc.sql.createQuery(Todo::class) {
             where(table.appId eq appId)
             FilterGroupResolver.apply(this, filter, FILTERABLE)
-            cursor?.let { where(table.getId<UUID>() lt it) }
-            orderBy(table.getId<UUID>().desc())
+            cursor?.let { where(table.id lt it) }
+            orderBy(table.id.desc())
             select(table)
         }.limit(limit + 1).execute()
 
@@ -65,14 +66,30 @@ class TodoRepository {
     }
 
     fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoInput) {
-        val set = input.set ?: return
-        if (set.title == null && set.done == null && set.note == null) return
+        val set = input.set
+        val unset = input.unset?.toSet() ?: emptySet()
+
+        // 没有任何更新请求
+        if (set == null && unset.isEmpty()) return
+
         mc.sql.createUpdate(Todo::class) {
             where(table.appId eq appId)
             where(table.id eq input.id)
-            set.title?.let { set(table.title, it) }
-            set.done?.let { set(table.done, it) }
-            set.note?.let { set(table.note, it) }
+
+            // unset 优先：如果字段同时出现在 set 和 unset，以 unset 为准
+            if (TodoUnsetField.NOTE in unset) {
+                set(table.note, null as String?)
+            } else {
+                set?.note?.let { set(table.note, it) }
+            }
+
+            if (TodoUnsetField.NOTE !in unset) {
+                set?.title?.let { set(table.title, it) }
+            }
+
+            if (TodoUnsetField.NOTE !in unset) {
+                set?.done?.let { set(table.done, it) }
+            }
         }.execute()
     }
 }

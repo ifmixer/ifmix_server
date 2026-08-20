@@ -1,7 +1,11 @@
 package com.ifmix.api.core.modules.ai
 
+import com.ifmix.api.core.dto.ai.AiScanResult
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.generated.types.FilterGroup
+import com.ifmix.api.core.generated.types.NewScanInput
+import com.ifmix.api.core.generated.types.UpdateScanInput
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.ai.handler.ScanAggHandler
@@ -27,17 +31,15 @@ class AiFacade(
     fun findByFilter(opCtx: OperationContext, filter: FilterGroup?, cursor: String?, limit: Int?): Page<ScanRecord> =
         scanHandler.findByFilter(mcFactory.forApp(opCtx), filter, cursor, limit)
 
-    /**
-     * newScan: AI 调用在事务外，DB 写入也在事务外（事务由 DataFetcher 层 GlobalTxRunner 管理）。
-     */
-    fun newScan(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.NewScanInput): ScanRecord {
-        // Step 1: 外部 AI 调用（无事务）
-        val scanId = scanHandler.prepareNewScan(input)
-        // Step 2: DB 写入
-        return scanHandler.saveNewScan(mcFactory.forApp(opCtx), scanId, input)
-    }
+    /** AI 调用在事务外 */
+    fun runAiScan(opCtx: OperationContext, input: NewScanInput): AiScanResult =
+        scanHandler.runAiScan(opCtx, input)
 
-    fun updateScan(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.UpdateScanInput): Boolean =
+    /** DB 写入在事务内 */
+    fun saveScanRecord(opCtx: OperationContext, result: AiScanResult): ScanRecord =
+        scanHandler.saveNewScan(mcFactory.forApp(opCtx), result)
+
+    fun updateScan(opCtx: OperationContext, input: UpdateScanInput): Boolean =
         scanHandler.updateScan(mcFactory.forApp(opCtx), input)
 
     fun deleteScan(opCtx: OperationContext, id: UUID): Boolean =

@@ -3,15 +3,17 @@ package com.ifmix.api.core.modules.ai.handler
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.generated.types.FilterGroup
+import com.ifmix.api.core.dto.ai.AiScanResult
+import com.ifmix.api.core.dto.ai.ScanInput
+import com.ifmix.api.core.dto.ai.ScanMediaItem
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.entity.ai.ImageRef
 import com.ifmix.api.core.entity.ai.ScanRecord
 import com.ifmix.api.core.modules.ai.ScanRunner
-import com.ifmix.api.core.dto.ai.ScanInput
-import com.ifmix.api.core.dto.ai.ScanMediaItem
 import com.ifmix.api.core.modules.ai.repo.ScanRecordRepository
 import org.springframework.stereotype.Component
 import java.time.Duration
@@ -24,9 +26,11 @@ class ScanAggHandler(
     private val objectStorage: ObjectStorage,
     private val scanRepo: ScanRecordRepository,
 ) {
-    /** 外部 AI 调用（无事务）+ 准备数据，返回记录 ID */
-    fun prepareNewScan(input: NewScanInput): UUID {
+    /** 外部 AI 调用（无事务）— 解析 images、运行 AI、返回结果 DTO */
+    fun runAiScan(opCtx: OperationContext, input: NewScanInput): AiScanResult {
         val scanId = UuidV7.generate()
+        val now = Instant.now()
+        val imageKeys = input.images.map { it.imageKey }
 
         val resolved = input.images.map { img ->
             ScanMediaItem(
@@ -37,48 +41,43 @@ class ScanAggHandler(
 
         val scanInput = ScanInput(
             items = resolved,
-            lang = null, // populated by caller from opCtx
-            country = null,
-            currency = null,
+            lang = opCtx.lang,
+            country = opCtx.country,
+            currency = opCtx.currency,
         )
-        return scanId
+        val basicResult = scanRunner.run(opCtx, scanInput)
+
+        return AiScanResult(
+            scanId = scanId,
+            appId = opCtx.mustGetAppId(),
+            lang = opCtx.lang,
+            country = opCtx.country,
+            currency = opCtx.currency,
+            clientIp = opCtx.clientIp,
+            imageKeys = imageKeys,
+            basicResult = basicResult,
+            createdAt = now,
+            updatedAt = now,
+        )
     }
 
-    /** 在事务内保存记录 */
-    fun saveNewScan(sc: ModuleCtx, scanId: UUID, input: NewScanInput): ScanRecord {
-        val appId = sc.op.appId!!
-        val now = Instant.now()
-
-        val resolved = input.images.map { img ->
-            ScanMediaItem(
-                imageUrl = objectStorage.getPublicUrl("ugc", img.imageKey),
-                mediaType = guessMediaType(img.imageKey, img.mediaType),
-            )
-        }
-
-        val scanInput = ScanInput(
-            items = resolved,
-            lang = sc.op.lang,
-            country = sc.op.country,
-            currency = sc.op.currency,
-        )
-        val result = scanRunner.run(sc.op, scanInput)
-
+    /** 在事务内将 AiScanResult 持久化为 ScanRecord */
+    fun saveNewScan(sc: ModuleCtx, result: AiScanResult): ScanRecord {
         val record = ScanRecord {
-            id = scanId
-            this.appId = appId
-            this.imageKeys = input.images.map { ImageRef(key = it.imageKey) }
-            this.basicResult = result
+            id = result.scanId
+            this.appId = result.appId
+            this.imageKeys = result.imageKeys.map { ImageRef(key = it) }
+            this.basicResult = result.basicResult
             this.status = 200
-            this.clientIp = sc.op.clientIp
-            this.lang = sc.op.lang
-            this.country = sc.op.country
-            this.currency = sc.op.currency
+            this.clientIp = result.clientIp
+            this.lang = result.lang
+            this.country = result.country
+            this.currency = result.currency
             this.userDisplayName = null
             this.userNotes = null
             this.collected = false
-            this.createdAt = now
-            this.updatedAt = now
+            this.createdAt = result.createdAt
+            this.updatedAt = result.updatedAt
         }
         scanRepo.save(sc, record)
         return record
@@ -126,8 +125,17 @@ class ScanAggHandler(
         objectStorage.getPublicUrl("ugc", objectKey)
 
     fun findByFilter(sc: ModuleCtx, filter: FilterGroup?, cursor: String?, limit: Int?): Page<ScanRecord> {
-        // ponytail: FilterGroup 解析暂未实现，fallback 到普通游标查询
-        return findByCursorFiltered(sc, cursor, limit, null)
+        val appId = sc.op.mustGetAppId()
+        val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
+        val cursorUuid = cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+        val items = scanRepo.findByFilter(sc, appId, filter, cursorUuid, effectiveLimit + 1)
+        val hasMore = items.size > effectiveLimit
+        val resultItems = items.take(effectiveLimit)
+        return Page(
+            items = resultItems,
+            nextCursor = resultItems.lastOrNull()?.id?.toString(),
+            hasMore = hasMore,
+        )
     }
 
     private fun guessMediaType(key: String, mediaType: String?): String =

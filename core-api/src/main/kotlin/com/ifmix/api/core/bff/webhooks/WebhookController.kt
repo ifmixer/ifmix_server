@@ -2,7 +2,7 @@ package com.ifmix.api.core.bff.webhooks
 
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.RequestContext
-import com.ifmix.api.core.modules.app.repo.AppConfigRepository
+import com.ifmix.api.core.modules.app.AppConfigFacade
 import com.ifmix.api.core.modules.payment.PaymentFacade
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.modules.payment.NotificationDecoder
@@ -35,8 +35,7 @@ class WebhookController(
     private val iapService: PaymentFacade,
     @Qualifier("appleDecoder") private val appleDecoder: NotificationDecoder,
     @Qualifier("googleDecoder") private val googleDecoder: NotificationDecoder,
-    private val appConfigRepo: AppConfigRepository,
-    private val mcFactory: com.ifmix.api.core.infra.db.ModuleCtxFactory,
+    private val appConfigFacade: AppConfigFacade,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -48,12 +47,6 @@ class WebhookController(
     private val jwksCacheTtl = java.time.Duration.ofHours(1)
 
     companion object {
-        private fun buildCtx(mcFactory: com.ifmix.api.core.infra.db.ModuleCtxFactory) = mcFactory.default(
-            com.ifmix.api.core.infra.http.OperationContext(
-                req = com.ifmix.api.core.infra.http.RequestContext()
-            )
-        )
-
         private const val APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
         private val SYSTEM_USER_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
     }
@@ -86,7 +79,7 @@ class WebhookController(
 
             // 4. 通过 bundleId 反查 appId
             val appId = if (bundleId != null) {
-                appConfigRepo.findByBundleId(buildCtx(mcFactory), bundleId)?.appId
+                appConfigFacade.findAppIdByBundleId(bundleId)
             } else null
 
             if (appId == null) {
@@ -119,7 +112,7 @@ class WebhookController(
 
             // 2. 通过 packageName 反查 appId
             val appId = if (packageName != null) {
-                appConfigRepo.findByAndroidPackage(buildCtx(mcFactory), packageName)?.appId
+                appConfigFacade.findAppIdByAndroidPackage(packageName)
             } else null
 
             if (appId == null) {

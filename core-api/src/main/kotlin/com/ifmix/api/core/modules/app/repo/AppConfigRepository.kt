@@ -20,7 +20,7 @@ class AppConfigRepository {
 
     fun findActiveByAppId(mc: ModuleCtx, appId: UUID): AppConfigRevision? {
         return mc.sql.createQuery(AppConfigRevision::class) {
-            where(table.get<UUID>("appId") eq appId)
+            where(table.appId eq appId)
             where(table.enabled eq true)
             orderBy(table.createdAt.desc())
             select(table)
@@ -35,9 +35,9 @@ class AppConfigRepository {
         }.limit(1).execute().firstOrNull()
     }
 
-    fun findByAndroidPackage(mc: ModuleCtx, pkg: String): AppConfigRevision? {
+    fun findByAndroidPackage(mc: ModuleCtx, packageName: String): AppConfigRevision? {
         return mc.sql.createQuery(AppConfigRevision::class) {
-            where(table.androidPackageName eq pkg)
+            where(table.androidPackageName eq packageName)
             where(table.enabled eq true)
             select(table)
         }.limit(1).execute().firstOrNull()
@@ -45,7 +45,7 @@ class AppConfigRepository {
 
     fun disableCurrentRevisions(mc: ModuleCtx, appId: UUID): Int {
         return mc.sql.createUpdate(AppConfigRevision::class) {
-            where(table.get<UUID>("appId") eq appId)
+            where(table.appId eq appId)
             where(table.enabled eq true)
             set(table.enabled, false)
         }.execute()

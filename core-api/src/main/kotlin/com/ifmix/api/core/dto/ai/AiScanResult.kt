@@ -1,0 +1,22 @@
+package com.ifmix.api.core.dto.ai
+
+import java.time.Instant
+import java.util.UUID
+
+/**
+ * AI scan 的外部结果 — 在事务外调用 AI 后返回，再由事务内方法持久化。
+ *
+ * 设计目的：将耗时外部 AI 调用从 globalTx 内移出，避免长时间持有 DB 连接。
+ */
+data class AiScanResult(
+    val scanId: UUID,
+    val appId: UUID,
+    val lang: String?,
+    val country: String?,
+    val currency: String?,
+    val clientIp: String?,
+    val imageKeys: List<String>,
+    val basicResult: Map<String, Any?>,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+)

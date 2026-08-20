@@ -47,6 +47,12 @@ class AppConfigAggHandler(
         return revision
     }
 
+    fun findAppIdByBundleId(mc: ModuleCtx, bundleId: String): UUID? =
+        revisionRepo.findByBundleId(mc, bundleId)?.appId
+
+    fun findAppIdByAndroidPackage(mc: ModuleCtx, packageName: String): UUID? =
+        revisionRepo.findByAndroidPackage(mc, packageName)?.appId
+
     fun toggleRevision(mc: ModuleCtx, revisionId: UUID, enabled: Boolean): AppConfigRevision {
         val appId = mc.appId!!
         val existing = revisionRepo.findById(mc, appId, revisionId)

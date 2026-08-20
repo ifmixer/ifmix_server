@@ -12,6 +12,8 @@ import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
+import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.jimmer.OperationContextHolder
 import com.ifmix.api.core.infra.tx.GlobalTxRunner
 import com.ifmix.api.core.entity.ai.ScanRecord
 import com.ifmix.api.core.modules.ai.AiFacade
@@ -34,18 +36,14 @@ import com.netflix.graphql.dgs.DgsDataLoader
 import com.netflix.graphql.dgs.DgsMutation
 import com.netflix.graphql.dgs.DgsQuery
 import com.netflix.graphql.dgs.InputArgument
-import org.dataloader.MappedBatchLoader
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CompletionStage
 
 @DgsComponent
 class AiFetcher(
     private val aiService: AiFacade,
     private val collectionService: ScanCollectionFacade,
     private val globalTx: GlobalTxRunner,
-    private val scanRecordRepo: ScanRecordRepository,
-    private val mcFactory: ModuleCtxFactory,
     private val ctxProvider: OperationContextProvider,
 ) {
     // --- Scan queries ---
@@ -93,12 +91,9 @@ class AiFetcher(
     fun scanRecord(dfe: DgsDataFetchingEnvironment): CompletableFuture<ScanRecord> {
         val itemId = dfe.getSource<ScanCollectionItem>()?.id
             ?: throw ApiError(ErrorCode.NOT_FOUND, "ScanCollectionItem has no id")
-        val opCtx = com.ifmix.api.core.infra.jimmer.OperationContextHolder.current()
-        val mc = mcFactory.forApp(opCtx)
-        val appId = opCtx.mustGetAppId()
-        val record = scanRecordRepo.findById(mc, appId, itemId)
-            ?: throw ApiError(ErrorCode.NOT_FOUND)
-        return CompletableFuture.completedFuture(record)
+        val loader = dfe.getDataLoader<UUID, ScanRecord>(ScanRecordsDataLoader.NAME)
+            ?: throw ApiError(ErrorCode.INTERNAL, "ScanRecordsDataLoader not registered")
+        return loader.load(itemId)
     }
 
     // --- Scan mutations ---
@@ -106,7 +101,11 @@ class AiFetcher(
     @DgsMutation(field = "mutation_ai_createScan")
     fun newScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: NewScanInput): NewScanPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        return globalTx.withTx(ctx) { txCtx -> NewScanPayload(scanRecord = aiService.newScan(txCtx, input)) }
+        // Step 1: AI 调用在事务外（耗时操作，不应占用 DB 连接）
+        val aiResult = aiService.runAiScan(ctx, input)
+        // Step 2: DB 写入在事务内
+        val record = globalTx.withTx(ctx) { txCtx -> aiService.saveScanRecord(txCtx, aiResult) }
+        return NewScanPayload(scanRecord = record)
     }
 
     @DgsMutation(field = "mutation_ai_updateScan")
@@ -153,13 +152,14 @@ class AiFetcher(
 class ScanRecordsDataLoader(
     private val scanRecordRepo: ScanRecordRepository,
     private val mcFactory: ModuleCtxFactory,
-) : MappedBatchLoader<UUID, ScanRecord> {
-    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanRecord>> {
-        val opCtx = com.ifmix.api.core.infra.jimmer.OperationContextHolder.current()
+) {
+    fun load(ids: Set<UUID>): CompletableFuture<Map<UUID, ScanRecord?>> {
+        val opCtx = OperationContextHolder.current()
         val mc = mcFactory.forApp(opCtx)
         val appId = opCtx.mustGetAppId()
-        val records = ids.map { id -> scanRecordRepo.findById(mc, appId, id) }
-        return CompletableFuture.completedFuture(ids.associateWith { id -> records[ids.indexOf(id)]!! })
+        val records = scanRecordRepo.findByIds(mc, appId, ids)
+        val map = records.associateBy { it.id }
+        return CompletableFuture.completedFuture(ids.associateWith { map[it] })
     }
 
     companion object {
