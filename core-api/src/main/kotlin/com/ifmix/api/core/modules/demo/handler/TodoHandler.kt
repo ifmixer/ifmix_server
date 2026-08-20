@@ -2,6 +2,12 @@ package com.ifmix.api.core.modules.demo.handler
 
 import com.ifmix.api.core.entity.todo.Todo
 import com.ifmix.api.core.entity.todo.TodoItem
+import com.ifmix.api.core.generated.types.CreateTodoItemForTodoInput
+import com.ifmix.api.core.generated.types.CreateTodoItemInput
+import com.ifmix.api.core.generated.types.FilterGroup
+import com.ifmix.api.core.generated.types.TodoFilter
+import com.ifmix.api.core.generated.types.UpdateTodoInput
+import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.modules.demo.repo.TodoItemRepository
@@ -10,23 +16,11 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.UUID
 
-import com.ifmix.api.core.generated.types.FilterGroup
-import com.ifmix.api.core.generated.types.TodoFilter
-
 @Component
 class TodoHandler(
     private val todoRepo: TodoRepository,
     private val todoItemRepo: TodoItemRepository,
 ) {
-    data class CreateItemInput(val content: String, val done: Boolean?, val note: String?)
-
-    data class BatchUpdateItemsInput(
-        val create: List<CreateItemForTodo>?,
-        val update: List<UpdateItemEntry>?,
-        val delete: List<UUID>?,
-    )
-    data class CreateItemForTodo(val todoId: UUID, val content: String, val done: Boolean?, val note: String?)
-    data class UpdateItemEntry(val id: UUID, val content: String?, val done: Boolean?, val note: String?)
 
     // --- Queries ---
 
@@ -44,7 +38,7 @@ class TodoHandler(
 
     // --- Mutations ---
 
-    fun create(sc: SvcCtx, title: String, done: Boolean?, note: String?, items: List<CreateItemInput>?): Todo {
+    fun create(sc: SvcCtx, title: String, done: Boolean?, note: String?, items: List<CreateTodoItemInput>?): Todo {
         val appId = sc.mustGetAppId()
         val now = Instant.now()
         val id = UuidV7.generate()
@@ -62,9 +56,8 @@ class TodoHandler(
         val saved = todoRepo.save(sc, todo)
 
         items?.forEach { item ->
-            val itemId = UuidV7.generate()
             val todoItem = TodoItem {
-                this.id = itemId
+                this.id = UuidV7.generate()
                 this.appId = appId
                 this.todoId = id
                 this.content = item.content
@@ -79,11 +72,11 @@ class TodoHandler(
         return saved
     }
 
-    fun partialUpdate(sc: SvcCtx, appId: UUID, id: UUID, title: String?, done: Boolean?, note: String?) {
-        todoRepo.partialUpdate(sc, appId, id, title, done, note)
+    fun partialUpdate(sc: SvcCtx, appId: UUID, input: UpdateTodoInput) {
+        todoRepo.partialUpdate(sc, appId, input)
     }
 
-    fun batchUpdateItems(sc: SvcCtx, appId: UUID, input: BatchUpdateItemsInput) {
+    fun batchUpdateItems(sc: SvcCtx, appId: UUID, input: UpdateTodoItemsMutationInput) {
         // Delete
         input.delete?.let { ids ->
             if (ids.isNotEmpty()) todoItemRepo.deleteByIds(sc, appId, ids)
@@ -91,23 +84,12 @@ class TodoHandler(
 
         // Create
         input.create?.forEach { item ->
-            val now = Instant.now()
-            val todoItem = TodoItem {
-                this.id = UuidV7.generate()
-                this.appId = appId
-                this.todoId = item.todoId
-                this.content = item.content
-                this.done = item.done ?: false
-                this.note = item.note
-                this.createdAt = now
-                this.updatedAt = now
-            }
-            todoItemRepo.save(sc, todoItem)
+            createItem(sc, appId, item)
         }
 
         // Update
         input.update?.forEach { entry ->
-            todoItemRepo.partialUpdate(sc, appId, entry.id, entry.content, entry.done, entry.note)
+            todoItemRepo.partialUpdate(sc, appId, entry)
         }
     }
 
@@ -116,4 +98,19 @@ class TodoHandler(
 
     fun batchDelete(sc: SvcCtx, appId: UUID, ids: List<UUID>): Int =
         todoRepo.deleteByIds(sc, appId, ids)
+
+    private fun createItem(sc: SvcCtx, appId: UUID, item: CreateTodoItemForTodoInput) {
+        val now = Instant.now()
+        val todoItem = TodoItem {
+            this.id = UuidV7.generate()
+            this.appId = appId
+            this.todoId = item.todoId
+            this.content = item.content
+            this.done = item.done ?: false
+            this.note = item.note
+            this.createdAt = now
+            this.updatedAt = now
+        }
+        todoItemRepo.save(sc, todoItem)
+    }
 }

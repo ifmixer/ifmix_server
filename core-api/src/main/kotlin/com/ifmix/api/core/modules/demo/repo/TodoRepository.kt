@@ -10,6 +10,7 @@ import com.ifmix.api.core.entity.todo.note
 import com.ifmix.api.core.entity.todo.userId
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
+import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.CrudRepoTemplate
 import com.ifmix.api.core.infra.repo.FilterGroupResolver
@@ -60,14 +61,15 @@ class TodoRepository {
         }.limit(limit).execute()
     }
 
-    fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, title: String?, done: Boolean?, note: String?) {
-        if (title == null && done == null && note == null) return
+    fun partialUpdate(ctx: SvcCtx, appId: UUID, input: UpdateTodoInput) {
+        val set = input.set ?: return
+        if (set.title == null && set.done == null && set.note == null) return
         ctx.sql.createUpdate(Todo::class) {
             where(table.appId eq appId)
-            where(table.id eq id)
-            title?.let { set(table.title, it) }
-            done?.let { set(table.done, it) }
-            note?.let { set(table.note, it) }
+            where(table.id eq input.id)
+            set.title?.let { set(table.title, it) }
+            set.done?.let { set(table.done, it) }
+            set.note?.let { set(table.note, it) }
         }.execute()
     }
 }

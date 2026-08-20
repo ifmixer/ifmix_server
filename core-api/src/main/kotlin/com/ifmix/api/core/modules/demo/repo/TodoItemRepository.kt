@@ -7,6 +7,7 @@ import com.ifmix.api.core.entity.todo.id
 import com.ifmix.api.core.entity.todo.content
 import com.ifmix.api.core.entity.todo.done
 import com.ifmix.api.core.entity.todo.note
+import com.ifmix.api.core.generated.types.UpdateTodoItemInput
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.repo.CrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -29,14 +30,15 @@ class TodoItemRepository {
         }.execute()
     }
 
-    fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, content: String?, done: Boolean?, note: String?) {
-        if (content == null && done == null && note == null) return
+    fun partialUpdate(ctx: SvcCtx, appId: UUID, input: UpdateTodoItemInput) {
+        val set = input.set ?: return
+        if (set.content == null && set.done == null && set.note == null) return
         ctx.sql.createUpdate(TodoItem::class) {
             where(table.appId eq appId)
-            where(table.id eq id)
-            content?.let { set(table.content, it) }
-            done?.let { set(table.done, it) }
-            note?.let { set(table.note, it) }
+            where(table.id eq input.id)
+            set.content?.let { set(table.content, it) }
+            set.done?.let { set(table.done, it) }
+            set.note?.let { set(table.note, it) }
         }.execute()
     }
 }

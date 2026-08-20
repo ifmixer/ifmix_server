@@ -3,7 +3,6 @@ package com.ifmix.api.core.bff.graphql.customer.todo
 import com.ifmix.api.core.generated.types.*
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.modules.demo.DemoFacade
-import com.ifmix.api.core.modules.demo.handler.TodoHandler
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
@@ -60,15 +59,14 @@ class TodoFetcher(
     @DgsMutation(field = "mutation_demo_createTodo")
     fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        val items = input.items?.map { TodoHandler.CreateItemInput(it.content, it.done, it.note) }
-        val todo = demoService.create(ctx, input.title, input.done, input.note, items)
+        val todo = demoService.create(ctx, input.title, input.done, input.note, input.items)
         return CreateTodoPayload(todo = todo.toDto())
     }
 
     @DgsMutation(field = "mutation_demo_updateTodo")
     fun updateTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoInput): UpdateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        demoService.partialUpdate(ctx, input.id, input.set?.title, input.set?.done, input.set?.note)
+        demoService.partialUpdate(ctx, input)
         val todo = demoService.findById(ctx, input.id)
         return UpdateTodoPayload(success = true, todo = todo?.toDto())
     }
@@ -76,12 +74,7 @@ class TodoFetcher(
     @DgsMutation(field = "mutation_demo_batchUpdateTodoItems")
     fun batchUpdateTodoItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoItemsMutationInput): UpdateTodoItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        val batchInput = TodoHandler.BatchUpdateItemsInput(
-            create = input.create?.map { TodoHandler.CreateItemForTodo(it.todoId, it.content, it.done, it.note) },
-            update = input.update?.map { TodoHandler.UpdateItemEntry(it.id, it.set?.content, it.set?.done, it.set?.note) },
-            delete = input.delete,
-        )
-        demoService.batchUpdateItems(ctx, batchInput)
+        demoService.batchUpdateItems(ctx, input)
         return UpdateTodoItemsPayload(success = true)
     }
 

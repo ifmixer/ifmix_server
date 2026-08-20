@@ -1,8 +1,11 @@
 package com.ifmix.api.core.modules.demo
 
 import com.ifmix.api.core.entity.todo.Todo
+import com.ifmix.api.core.generated.types.CreateTodoItemInput
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
+import com.ifmix.api.core.generated.types.UpdateTodoInput
+import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.tx.TxRunner
@@ -32,14 +35,14 @@ class DemoFacade(
 
     // --- Mutations (with tx) ---
 
-    fun create(ctx: OperationContext, title: String, done: Boolean?, note: String?, items: List<TodoHandler.CreateItemInput>?): Todo =
+    fun create(ctx: OperationContext, title: String, done: Boolean?, note: String?, items: List<CreateTodoItemInput>?): Todo =
         tx.withTx(svcCtxFactory.forApp(ctx)) { sc -> handler.create(sc, title, done, note, items) }
 
-    fun partialUpdate(ctx: OperationContext, id: UUID, title: String?, done: Boolean?, note: String?) {
-        tx.withTx(svcCtxFactory.forApp(ctx)) { sc -> handler.partialUpdate(sc, ctx.mustGetAppId(), id, title, done, note) }
+    fun partialUpdate(ctx: OperationContext, input: UpdateTodoInput) {
+        tx.withTx(svcCtxFactory.forApp(ctx)) { sc -> handler.partialUpdate(sc, ctx.mustGetAppId(), input) }
     }
 
-    fun batchUpdateItems(ctx: OperationContext, input: TodoHandler.BatchUpdateItemsInput) {
+    fun batchUpdateItems(ctx: OperationContext, input: UpdateTodoItemsMutationInput) {
         tx.withTx(svcCtxFactory.forApp(ctx)) { sc -> handler.batchUpdateItems(sc, ctx.mustGetAppId(), input) }
     }
 
