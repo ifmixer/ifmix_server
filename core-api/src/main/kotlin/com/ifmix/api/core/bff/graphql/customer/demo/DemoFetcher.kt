@@ -21,7 +21,7 @@ class DemoFetcher(
 ) {
 
     @DgsQuery(field = "q_demo_findTodoById")
-    fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): com.ifmix.api.core.entity.demo.Todo {
+    fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): com.ifmix.api.core.generated.mybatis.model.Todo {
         val ctx = ctxProvider.fromDfe(dfe)
         val todo = demoService.findById(ctx, id)
             ?: throw IllegalArgumentException("Todo not found: $id")
@@ -29,13 +29,13 @@ class DemoFetcher(
     }
 
     @DgsQuery(field = "q_demo_findTodosByIds")
-    fun findByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): List<com.ifmix.api.core.entity.demo.Todo> {
+    fun findByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): List<com.ifmix.api.core.generated.mybatis.model.Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
         return demoService.findByIds(ctx, ids)
     }
 
     @DgsQuery(field = "q_demo_findTodosByCursor")
-    fun findByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: TodoQueryInput?): Page<com.ifmix.api.core.entity.demo.Todo> {
+    fun findByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: TodoQueryInput?): Page<com.ifmix.api.core.generated.mybatis.model.Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
         val cursor = input?.cursor?.let { tryParseUuid(it) }
         val limit = (input?.limit ?: 20).coerceIn(1, 100)
@@ -49,7 +49,7 @@ class DemoFetcher(
         @InputArgument filter: FilterGroup?,
         @InputArgument cursor: String?,
         @InputArgument limit: Int?,
-    ): Page<com.ifmix.api.core.entity.demo.Todo> {
+    ): Page<com.ifmix.api.core.generated.mybatis.model.Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
         val parsedCursor = cursor?.let { tryParseUuid(it) }
         val pageSize = (limit ?: 20).coerceIn(1, 100)

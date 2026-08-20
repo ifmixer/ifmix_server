@@ -148,8 +148,8 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "DateTime" to "java.time.Instant",
         "JSON" to "kotlin.Any",
         // Entity output types → Domain Model data classes
-        "Todo" to "com.ifmix.api.core.entity.demo.Todo",
-        "TodoItem" to "com.ifmix.api.core.entity.demo.TodoItem",
+        "Todo" to "com.ifmix.api.core.generated.mybatis.model.Todo",
+        "TodoItem" to "com.ifmix.api.core.generated.mybatis.model.TodoItem",
         "ScanRecord" to "com.ifmix.api.core.entity.ai.ScanRecord",
         "ScanCollection" to "com.ifmix.api.core.entity.ai.ScanCollection",
         "ScanCollectionItem" to "com.ifmix.api.core.entity.ai.ScanCollectionItem",

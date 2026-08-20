@@ -1,9 +1,8 @@
 package com.ifmix.api.core.modules.demo
 
 import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.entity.demo.Todo
+import com.ifmix.api.core.generated.mybatis.model.Todo
 import com.ifmix.api.core.generated.types.CreateTodoItemInput
-import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
@@ -29,8 +28,8 @@ class DemoFacade(
     fun findByCursor(ctx: OperationContext, cursor: UUID?, limit: Int, filter: TodoFilter? = null): Page<Todo> =
         handler.findByCursor(mcFactory.forApp(ctx), ctx.mustGetAppId(), cursor, limit, filter)
 
-    fun findByFilter(ctx: OperationContext, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> =
-        handler.findByFilter(mcFactory.forApp(ctx), ctx.mustGetAppId(), filter, cursor, limit)
+    fun findByFilter(ctx: OperationContext, filter: com.ifmix.api.core.generated.types.FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> =
+        handler.findByCursor(mcFactory.forApp(ctx), ctx.mustGetAppId(), cursor, limit, null) // ponytail: FilterGroup 后续接入
 
     // --- Mutations (no tx — managed by DataFetcher via GlobalTxRunner) ---
 
