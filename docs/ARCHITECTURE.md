@@ -149,7 +149,7 @@ class ModuleCtxFactory(private val router: ClusterRouter) {
 
 ```kotlin
 // DataFetcher 层：mutation 包在全局事务内
-@DgsMutation(field = "mutation_demo_createTodo")
+@DgsMutation(field = "m_demo_createTodo")
 fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
     val ctx = ctxProvider.fromDfe(dfe)
     val todo = globalTx.withTx(ctx) { txCtx ->
@@ -326,13 +326,13 @@ class DemoFetcher(
     private val globalTx: GlobalTxRunner,
     private val ctxProvider: OperationContextProvider,
 ) {
-    @DgsQuery(field = "query_demo_findTodoById")
+    @DgsQuery(field = "q_demo_findTodoById")
     fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo {
         val ctx = ctxProvider.fromDfe(dfe)
         return demoService.findById(ctx, id) ?: throw IllegalArgumentException("Todo not found")
     }
 
-    @DgsMutation(field = "mutation_demo_createTodo")
+    @DgsMutation(field = "m_demo_createTodo")
     fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input.title, ...) }
@@ -473,7 +473,7 @@ Mutation DataFetcher:
 ```
 ${query|mutation}_${module}_${action}
 ```
-示例: `query_demo_findTodoById`, `mutation_ai_createScan`, `mutation_auth_loginGoogle`
+示例: `q_demo_findTodoById`, `m_ai_createScan`, `m_auth_loginGoogle`
 
 **约定：**
 - action 动词开头：find/create/update/delete/verify/login/logout
@@ -639,7 +639,40 @@ DB (via Jimmer KSqlClient)
 
 ## 待办
 
-- **Payload → Result 重命名**: 当前 mutation 返回类型仍为 `XxxPayload`，计划改为 `XxxResult`
-- **Operation 前缀缩短**: `query_` / `mutation_` → `q_` / `m_`（待定）
+### 🔴 需立即修复
+
+- **OperationContextHolder 未设置**: `OperationContextProvider.fromDfe()` 未调用 `OperationContextHolder.set(ctx)`，导致 DataLoader 和关联字段解析运行时抛 `IllegalStateException`。修复后需在请求结束时 `clear()`。
+- **newScan AI 调用在事务内**: `AiFetcher.newScan` 把 `aiService.newScan()` 整个包在 `globalTx.withTx` 内，而 `ScanAggHandler.saveNewScan()` 内部调用 `scanRunner.run()`（外部 HTTP AI 调用，耗时数秒）。应拆为：AI 调用在事务外 → DB 写入在事务内。
+
+### 🟠 分层违规
+
+- **AiFetcher 直接注入 repo + mcFactory**: 违反 "DataFetcher 只注入 Facade + GlobalTxRunner + ctxProvider" 约束。`scanRecord()` 关联字段应改走 DataLoader，DataLoader 通过 Facade 或直接 repo 加载。
+- **WebhookController 直接注入 AppConfigRepository**: 应通过 AppConfigFacade 暴露 `findAppIdByBundleId` / `findAppIdByAndroidPackage`。
+- **ScanRecordsDataLoader O(N) 查询**: 逐个 `findById` 应改为 `findByIds` 单次批量。
+
+### 🟡 业务逻辑
+
+- **partialUpdate unset 未实现**: GraphQL schema 已有 `unset` 字段定义，但 `ScanRecordRepository.partialUpdate` 只处理 `set`，忽略 `unset`。
+- **ai 模块 FilterGroup 未接入**: `ScanAggHandler.findByFilter` 是 stub（忽略 filter 参数），需接入 `FilterGroupResolver` + 声明 FILTERABLE 白名单。
+
+### 🟡 API 重命名（Breaking Change，需客户端配合）
+
+- **Payload → Result**: 当前 mutation 返回类型仍为 `XxxPayload`，计划改为 `XxxResult`
+- **Operation 前缀缩短**: `q_` / `m_` → `q_` / `m_`（待定）
+
+### 未来
+
 - **Admin GraphQL**: `/admin/graphql` endpoint
 - **Federation 预留**: 命名已兼容
+
+## 迁移历史
+
+| 日期 | 事项 | 状态 |
+|------|------|------|
+| 2026-08-18 | CrudRepoOps 实例级重构 | ✅ 完成（已演化为 CrudRepoTemplate） |
+| 2026-08-18 | Internal Service 参数统一改为 SvcCtx | ✅ 完成（已演化为 ModuleCtx） |
+| 2026-08-18 | Repo fetchInto + crud.insert 简化 | ✅ 完成（Jimmer 替代 jOOQ） |
+| 2026-08-19 | jOOQ → Jimmer 全量迁移 | ✅ 完成 |
+| 2026-08-19 | Jimmer Round 2 Review 修复 | ✅ 完成 |
+| 2026-08-19 | 架构对齐（命名重构 + 事务边界） | ✅ 完成 |
+| 2026-08-20 | 分层规范化（ModuleCtx + AggHandler + GlobalTx） | ✅ 主体完成，剩余见待办 |

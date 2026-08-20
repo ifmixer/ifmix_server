@@ -8,7 +8,7 @@
 | ClusterRouter KSqlClient→ClusterSqlPair | TxRunner + GlobalTxRunner need updates | Ruling: part of Phase 1 |
 | @Bean Config files (AuthConfig, AiConfig, IapConfig) | AuthConfig kept (infra security); IapConfig→@Component; AiConfig→@Component | Ruling: auth beans are infra, not module services |
 | CollectionFetcher cross-layer (repo + svcCtxFactory) | Fixed by merging into AiFetcher | Ruling: accept pattern for DataLoader |
-| GraphQL q_/m_ vs query_/mutation_ | Unified to query_/mutation_ prefix | Ruling: consistency with other modules |
+| GraphQL q_/m_ vs q_/m_ | Unified to q_/m_ prefix | Ruling: consistency with other modules |
 
 ## Task Status
 
@@ -59,7 +59,7 @@ Task 7: complete (commits 777209c..fb5a460)
 - AiFacade: removed TxRunner
 - ScanCollectionFacade: removed TxRunner
 - AiFetcher: merged scan+collection fetchers, globalTx for mutations
-- Schema: query_ai_/mutation_ai_ prefix aligned
+- Schema: q_ai_/m_ai_ prefix aligned
 
 Task 8: complete (commits 777209c..fb5a460)
 - AuthHandler → AuthAggHandler

@@ -115,7 +115,7 @@
 16. **枚举全链路 Int 透传** — GraphQL 不用 enum，灰度/多版本安全
 17. **枚举常量放 model class 嵌套 object** — 就近原则，跨模块的放 entity/shared/
 18. **KSP 输出在 build/generated/ksp/** — 不与手写源码混
-19. **Operation 命名含对象** — `query_todo_findTodoById` 而非 `query_todo_findById`
+19. **Operation 命名含对象** — `q_todo_findTodoById` 而非 `q_todo_findById`
 
 ## 工作方式
 

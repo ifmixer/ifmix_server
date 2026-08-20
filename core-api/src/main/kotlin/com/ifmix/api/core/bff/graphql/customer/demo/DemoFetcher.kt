@@ -20,7 +20,7 @@ class DemoFetcher(
     private val ctxProvider: OperationContextProvider,
 ) {
 
-    @DgsQuery(field = "query_demo_findTodoById")
+    @DgsQuery(field = "q_demo_findTodoById")
     fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): com.ifmix.api.core.entity.demo.Todo {
         val ctx = ctxProvider.fromDfe(dfe)
         val todo = demoService.findById(ctx, id)
@@ -28,13 +28,13 @@ class DemoFetcher(
         return todo
     }
 
-    @DgsQuery(field = "query_demo_findTodosByIds")
+    @DgsQuery(field = "q_demo_findTodosByIds")
     fun findByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): List<com.ifmix.api.core.entity.demo.Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
         return demoService.findByIds(ctx, ids)
     }
 
-    @DgsQuery(field = "query_demo_findTodosByCursor")
+    @DgsQuery(field = "q_demo_findTodosByCursor")
     fun findByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: TodoQueryInput?): Page<com.ifmix.api.core.entity.demo.Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
         val cursor = input?.cursor?.let { tryParseUuid(it) }
@@ -43,7 +43,7 @@ class DemoFetcher(
         return Page(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
     }
 
-    @DgsQuery(field = "query_demo_findTodos")
+    @DgsQuery(field = "q_demo_findTodos")
     fun findTodos(
         dfe: DgsDataFetchingEnvironment,
         @InputArgument filter: FilterGroup?,
@@ -57,14 +57,14 @@ class DemoFetcher(
         return Page(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
     }
 
-    @DgsMutation(field = "mutation_demo_createTodo")
+    @DgsMutation(field = "m_demo_createTodo")
     fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input.title, input.done, input.note, input.items) }
         return CreateTodoPayload(todo = todo)
     }
 
-    @DgsMutation(field = "mutation_demo_updateTodo")
+    @DgsMutation(field = "m_demo_updateTodo")
     fun updateTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoInput): UpdateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx -> demoService.partialUpdate(txCtx, input) }
@@ -72,21 +72,21 @@ class DemoFetcher(
         return UpdateTodoPayload(success = true, todo = todo)
     }
 
-    @DgsMutation(field = "mutation_demo_batchUpdateTodoItems")
+    @DgsMutation(field = "m_demo_batchUpdateTodoItems")
     fun batchUpdateTodoItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoItemsMutationInput): UpdateTodoItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx -> demoService.batchUpdateItems(txCtx, input) }
         return UpdateTodoItemsPayload(success = true)
     }
 
-    @DgsMutation(field = "mutation_demo_deleteTodo")
+    @DgsMutation(field = "m_demo_deleteTodo")
     fun deleteTodo(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DeleteTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx -> demoService.deleteById(txCtx, id) }
         return DeleteTodoPayload(success = true)
     }
 
-    @DgsMutation(field = "mutation_demo_batchDeleteTodos")
+    @DgsMutation(field = "m_demo_batchDeleteTodos")
     fun batchDeleteTodos(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): DeleteTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx -> demoService.batchDelete(txCtx, ids) }

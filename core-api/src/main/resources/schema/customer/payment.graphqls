@@ -13,5 +13,5 @@ type verifyIapPurchasePayload {
 }
 
 extend type Mutation {
-    mutation_payment_verifyIapPurchase(input: verifyIapPurchaseInput!): verifyIapPurchasePayload!
+    m_payment_verifyIapPurchase(input: verifyIapPurchaseInput!): verifyIapPurchasePayload!
 }

@@ -23,7 +23,7 @@ class AuthFetcher(
     private val ctxProvider: OperationContextProvider,
 ) {
 
-    @DgsQuery(field = "query_auth_me")
+    @DgsQuery(field = "q_auth_me")
     fun me(dfe: DgsDataFetchingEnvironment): MePayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = authService.me(ctx)
@@ -35,31 +35,31 @@ class AuthFetcher(
         )
     }
 
-    @DgsMutation(field = "mutation_auth_loginGoogle")
+    @DgsMutation(field = "m_auth_loginGoogle")
     fun loginGoogle(dfe: DgsDataFetchingEnvironment, @InputArgument input: ProviderLoginInput): LoginPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         return authService.loginWithIdToken(ctx, "google", ProviderLoginReq(idToken = input.idToken)).toPayload()
     }
 
-    @DgsMutation(field = "mutation_auth_loginApple")
+    @DgsMutation(field = "m_auth_loginApple")
     fun loginApple(dfe: DgsDataFetchingEnvironment, @InputArgument input: ProviderLoginInput): LoginPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         return authService.loginWithIdToken(ctx, "apple", ProviderLoginReq(idToken = input.idToken)).toPayload()
     }
 
-    @DgsMutation(field = "mutation_auth_loginWechat")
+    @DgsMutation(field = "m_auth_loginWechat")
     fun loginWechat(dfe: DgsDataFetchingEnvironment, @InputArgument input: WechatLoginInput): LoginPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         return authService.loginWithCode(ctx, "wechat", WechatLoginReq(code = input.code)).toPayload()
     }
 
-    @DgsMutation(field = "mutation_auth_loginAnonymous")
+    @DgsMutation(field = "m_auth_loginAnonymous")
     fun loginAnonymous(dfe: DgsDataFetchingEnvironment): LoginPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         return authService.anonymousLogin(ctx).toPayload()
     }
 
-    @DgsMutation(field = "mutation_auth_exchangeToken")
+    @DgsMutation(field = "m_auth_exchangeToken")
     fun exchange(dfe: DgsDataFetchingEnvironment, @InputArgument input: ExchangeInput): ExchangePayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = authService.exchange(ctx, ExchangeReq(deviceSecret = input.deviceSecret))
@@ -70,7 +70,7 @@ class AuthFetcher(
         )
     }
 
-    @DgsMutation(field = "mutation_auth_refreshToken")
+    @DgsMutation(field = "m_auth_refreshToken")
     fun refresh(dfe: DgsDataFetchingEnvironment, @InputArgument input: RefreshInput): RefreshPayload {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = authService.refresh(ctx, RefreshReq(refreshToken = input.refreshToken))
@@ -81,14 +81,14 @@ class AuthFetcher(
         )
     }
 
-    @DgsMutation(field = "mutation_auth_logout")
+    @DgsMutation(field = "m_auth_logout")
     fun logout(dfe: DgsDataFetchingEnvironment, @InputArgument input: LogoutInput): OperationResult {
         val ctx = ctxProvider.fromDfe(dfe)
         authService.logout(ctx, LogoutReq(refreshToken = input.refreshToken))
         return OperationResult(success = true)
     }
 
-    @DgsMutation(field = "mutation_auth_deleteAccount")
+    @DgsMutation(field = "m_auth_deleteAccount")
     fun deleteAccount(dfe: DgsDataFetchingEnvironment): OperationResult {
         val ctx = ctxProvider.fromDfe(dfe)
         authService.requestAccountDeletion(ctx)
