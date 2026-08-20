@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.demo
+package com.ifmix.api.core.entity.todo
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.MutableProps
@@ -11,8 +11,8 @@ interface TodoItem : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
-
     val todoId: UUID
     val content: String
     val done: Boolean
+    val note: String?
 }

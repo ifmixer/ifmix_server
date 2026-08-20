@@ -16,13 +16,13 @@ abstract class BaseCrudRepository<E : Any>(
 ) {
 
     open fun findById(ctx: SvcCtx, id: UUID): E? =
-        sql.entities.findById(entityType, id)
+        ctx.sql.entities.findById(entityType, id)
 
     open fun findByIds(ctx: SvcCtx, ids: Collection<UUID>): List<E> =
-        if (ids.isEmpty()) emptyList() else sql.entities.findByIds(entityType, ids.toList())
+        if (ids.isEmpty()) emptyList() else ctx.sql.entities.findByIds(entityType, ids.toList())
 
     open fun save(ctx: SvcCtx, entity: E): E =
-        sql.entities.save(entity).modifiedEntity
+        ctx.sql.entities.save(entity).modifiedEntity
 
     open fun batchSave(ctx: SvcCtx, entities: List<E>): List<E> {
         if (entities.isEmpty()) return emptyList()
@@ -30,7 +30,7 @@ abstract class BaseCrudRepository<E : Any>(
     }
 
     open fun deleteById(ctx: SvcCtx, id: UUID): Boolean {
-        val count = sql.createDelete(entityType) {
+        val count = ctx.sql.createDelete(entityType) {
             where(table.getId<UUID>() eq id)
         }.execute()
         return count > 0

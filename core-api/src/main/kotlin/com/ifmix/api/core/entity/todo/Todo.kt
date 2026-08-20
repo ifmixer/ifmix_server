@@ -1,9 +1,8 @@
-package com.ifmix.api.core.entity.demo
+package com.ifmix.api.core.entity.todo
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
-import java.time.Instant
 import java.util.UUID
 
 /**
@@ -15,9 +14,12 @@ interface Todo : AppScopedProps, SoftDeletableProps {
     @Id
     val id: UUID
 
-
     val installId: UUID?
     val userId: UUID?
     val title: String
     val done: Boolean
+    val note: String?
+
+    @Serialized
+    val meta: Map<String, Any?>?
 }

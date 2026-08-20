@@ -22,6 +22,12 @@ type TodoItem {
 input TodoQueryInput {
     cursor: String
     limit: Int
+    filter: TodoFilter
+}
+
+input TodoFilter {
+    done: Boolean
+    userId: UUID
 }
 
 type TodoPage {
