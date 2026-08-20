@@ -23,7 +23,7 @@
 | DataFetcher | `bff/graphql/customer/` | `@DgsComponent` | GraphQL 路由、构造 OperationContext、DataLoader |
 | Facade | `modules/*/XxxFacade.kt` | `@Service` | 业务编排、TxRunner 事务（只包写操作）、对外入口 |
 | Handler | `modules/*/handler/XxxHandler.kt` | `@Component` | 纯业务逻辑，接收 SvcCtx |
-| Repository | `modules/*/repo/` | `@Repository` | 纯数据访问、使用 Jimmer KSqlClient、接收 SvcCtx |
+| Repository | `modules/*/repo/` | `@Repository` | 纯数据访问、CrudRepoTemplate 组合、接收 SvcCtx |
 | Model | `entity/` | 无 | Jimmer interface entity，KSP 生成扩展属性和 Draft DSL |
 | Infra | `infra/` | `@Component`/`@Configuration` | 横切关注点、外部集成 |
 

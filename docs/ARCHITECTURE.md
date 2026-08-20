@@ -1,7 +1,7 @@
 # ifmix_server 架构文档
 
-> 最后更新: 2026-08-19
-> 状态: Jimmer 迁移已完成，GraphQL DGS 已就位
+> 最后更新: 2026-08-20
+> 状态: Jimmer 迁移已完成，GraphQL DGS 已就位，CrudRepoTemplate 组合模式已就位
 
 ## 项目概述
 
@@ -116,7 +116,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   ├── jooq/                   # CrudOps, TxRunner, AuditRecordListener, JooqConfig, InstantConverter
 │   ├── jimmer/                 # ClusterRegistry, ReadWriteRouting (迁移完后删除)
 │   ├── graphql/                # OperationContextProvider, scalars, ExceptionHandler, EndpointConfig
-│   ├── repo/                   # BaseCrudRepository, BaseAppCrudRepository (Jimmer 基类)
+│   ├── repo/                   # CrudRepoTemplate (组合模式), FilterGroupResolver
 │   ├── service/                # CrudServiceOps (通用 service 操作)
 │   ├── http/                   # Envelope, ApiError, ErrorCode, Interceptors, RequestContext
 │   ├── auth/                   # JWT 签发/验签, AuthInterceptor, Hashing
@@ -186,8 +186,79 @@ type XxxPayload {
 ### Entity 定义
 
 - Jimmer `interface` + KSP 注解（`@Entity`, `@MappedSuperclass`, `@Id`, `@Column`, `@ManyToOne`, `@Serialized` 等）
-- KSP 自动生成：包级扩展属性（`table.xxx`）、Draft DSL（`Xxx { ... }`）、IdView（`xxxId`）
+- KSP 自动生成：包级扩展属性（`table.xxx`）、Draft DSL（`Xxx { ... }`）、TypedProp（`TodoProps.TITLE`）
 - 不用手动维护 POJO，KSP 生成代码在 `build/generated/ksp/`
+
+### Repository — CrudRepoTemplate 组合模式
+
+Repository 不继承基类、不注入 `KSqlClient`，通过组合持有 `CrudRepoTemplate` 实例：
+
+```kotlin
+@Repository
+class TodoRepository {
+    companion object {
+        private val tpl = CrudRepoTemplate(Todo::class, appId = "appId")
+
+        /** 允许前端通过 FilterGroup 查询的字段（强类型白名单） */
+        val FILTERABLE = listOf(
+            TodoProps.TITLE,
+            TodoProps.DONE,
+            TodoProps.USER_ID,
+        )
+    }
+
+    fun findById(ctx: SvcCtx, appId: UUID, id: UUID) = tpl.findById(ctx, appId, id)
+    fun save(ctx: SvcCtx, entity: Todo) = tpl.save(ctx, entity)
+
+    // 自定义查询直接用 ctx.sql
+    fun findByCursor(ctx: SvcCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter?) =
+        tpl.findByCursor(ctx, appId, cursor, limit) {
+            filter?.done?.let { where(table.done eq it) }
+        }
+}
+```
+
+**CrudRepoTemplate** 提供：
+- `findById` / `findByIds` / `findByCursor`（返回 `Page<E>`）/ `exists`
+- `save` / `batchSave`
+- `deleteById` / `deleteByIds`
+- 所有方法通过 `ctx.sql` 执行（确保读写分离路由正确）
+- `findByCursor` 接受 where lambda 追加额外条件，内部自动 limit+1 判断 hasMore
+
+**设计原则：**
+- `tpl` 放 companion object（无状态、零实例开销）
+- 构造时指定字段名：`id`、`appId`（null 表示全局实体）
+- 自定义查询直接用 `ctx.sql.createQuery(...)`，不受 template 限制
+
+### FilterGroup — 动态条件查询
+
+通用 Filter DSL，支持 AND/OR 嵌套组合，类似 MongoDB 查询语法：
+
+```graphql
+input FilterGroup {
+  and: [FilterExpr!]
+  or: [FilterExpr!]
+}
+input FilterExpr {
+  field: FieldFilter
+  group: FilterGroup   # 嵌套
+}
+input FieldFilter {
+  field: String!       # 字段名（白名单校验）
+  op: FilterOp!        # EQ/NE/GT/GTE/LT/LTE/IN/NIN/LIKE/IS_NULL/IS_NOT_NULL
+  value: JSON
+  values: [JSON!]
+}
+```
+
+后端使用 `FilterGroupResolver` 将 FilterGroup 转为 Jimmer 谓词：
+- **白名单校验**：通过 `TypedProp.Scalar` 列表，不在白名单的字段直接 400
+- **类型自动转换**：根据 `prop.returnClass` 自动将 JSON 值转为 UUID/Instant/Boolean 等
+- 前端传参约定：UUID → 字符串, Instant → epoch millis, Boolean → true/false
+
+### Input 类型透传
+
+Repository/Handler 直接接受 DGS codegen 生成的 GraphQL input 类型（如 `UpdateTodoInput`、`UpdateTodoItemsMutationInput`），不自定义中间 DTO。GraphQL input 从 Fetcher 一路透传到 Repo。
 
 ### 事务管理 — TxRunner
 
@@ -199,14 +270,14 @@ fun createXxx(sc: SvcCtx, input) = tx.withTx(sc) { txSc ->
 ```
 - 不用 `@Transactional`（动态路由，Spring 注解绑固定 DataSource）
 - 传播行为: REQUIRED / REQUIRES_NEW / SUPPORTS / NOT_SUPPORTED
-- 事务边界在 Service 层
+- 事务边界在 Facade 层，只包写操作
 
 ### SvcCtx
 
 ```kotlin
 data class SvcCtx(
     val op: OperationContext,
-    val sql: KSqlClient,
+    val sql: KSqlClient,    // 路由后的实例，确保读写分离
 )
 ```
 
@@ -258,17 +329,19 @@ DB (via Jimmer KSqlClient)
 | 1 | GraphQL (DGS) 替代 REST | 移动端按需取字段、DataLoader 解决 N+1 |
 | 2 | Jimmer 替代 jOOQ | Interface entity + KSP 扩展属性 + Draft DSL + @MappedSuperclass 继承支持 |
 | 3 | TxRunner 替代 @Transactional | 多集群动态路由、显式控制 |
-| 4 | CrudOps 组合注入 | 灵活可测、不强制继承 |
+| 4 | CrudRepoTemplate 组合模式 | Repo 不继承基类、不注入 sql；tpl 放 companion object 无状态共享 |
 | 5 | DataLoader caching=false | 防 mutation 间脏读 |
 | 6 | CacheAside 显式调用 | 不用 @Cacheable 魔法 |
-| 7 | Domain Entity = data class | 可加方法、Jackson 直接序列化、无框架依赖 |
+| 7 | GraphQL input 全链路透传 | Fetcher→Facade→Handler→Repo 直接用 DGS codegen 生成的 input 类型，不自定义中间 DTO |
 | 8 | KSP 自动生成代码 | 无需手动 codegen，编译时自动处理 |
 | 9 | set/unset Update 语义 | 防 null vs undefined 歧义 |
 | 10 | AuthInterceptor 非阻塞 | 支持匿名+认证混合 |
 | 11 | presignUpload 不要求登录 | 已确定 |
 | 12 | 限流超限不删 Redis key | 自然 TTL 过期 |
 | 13 | Operation 命名: ${q\|m}_${module}_${action} | 清晰 + Federation 友好 |
-| 14 | Instant 统一时间类型 | 语义精确 |
+| 14 | FilterGroup 动态查询 | 通用 Filter DSL + TypedProp 强类型白名单 + 类型自动转换 |
+| 15 | findByCursor 返回 Page | 分页逻辑下沉到 Template，上层不关心 limit+1 细节 |
+| 16 | FILTERABLE 用 TypedProp 强类型 | 编译时检查，字段重命名自动跟随 |
 
 ## API 约定
 
@@ -326,13 +399,24 @@ DB (via Jimmer KSqlClient)
 - **Key 重试**: 每个模型遍历所有可用 key（内层循环）
 - **预扣配额**: 请求前扣减，失败归还
 
-## 迁移状态 (2026-08-19)
+## 迁移状态 (2026-08-20)
 
 Jimmer 迁移已完成。Entity 已转为 interface + 注解，KSP 生成扩展属性和 Draft DSL。
 
+**本次完成：**
+- Repository 从继承模式（BaseAppCrudRepository）改为组合模式（CrudRepoTemplate）
+- Entity package 目录与声明对齐（entity/todo/ → package entity.todo）
+- Entity 补全缺失字段（Todo.note/meta, TodoItem.note）
+- DemoFacade 加 TxRunner 事务控制
+- 补全 GraphQL schema 中未实现的 operation（findTodosByIds、batchUpdateTodoItems、findTodos）
+- 实现 FilterGroupResolver（通用动态查询 DSL → Jimmer 谓词）
+- Handler/Repo 全面使用 DGS codegen 生成的 input 类型，消除手写中间 DTO
+- findByCursor 返回 Page，分页逻辑下沉到 CrudRepoTemplate
+
 ## 待办
 
-- **RepoContext 从 OperationContext 剥离**: Service 自己决定集群路由 — 见 `plans/2026-08-18-remaining-cleanup.md`
+- **其他模块迁移到 CrudRepoTemplate**: auth/ai/payment/cms/storage/app 模块的 Repo 从 BaseAppCrudRepository 继承改为 CrudRepoTemplate 组合
+- **删除旧基类**: 所有模块迁移完后删除 BaseAppCrudRepository / BaseCrudRepository
 - **Admin GraphQL**: `/admin/graphql` endpoint
 - **Federation 预留**: 命名已兼容
 
