@@ -9,8 +9,8 @@ import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.mybatis.MyBatisTxRunner
 import com.ifmix.api.core.modules.demo.repo.TodoItemRepository
 import com.ifmix.api.core.modules.demo.repo.TodoRepository
-import com.ifmix.api.core.generated.mybatis.model.CoreTodo
-import com.ifmix.api.core.generated.mybatis.model.CoreTodoItem
+import com.ifmix.api.core.modules.demo.mybatis.model.CoreTodo
+import com.ifmix.api.core.modules.demo.mybatis.model.CoreTodoItem
 import com.ifmix.api.core.dto.common.Page
 import org.springframework.stereotype.Service
 import java.time.Instant

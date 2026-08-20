@@ -5,7 +5,7 @@ import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.modules.demo.service.DemoModuleService
-import com.ifmix.api.core.generated.mybatis.model.CoreTodo
+import com.ifmix.api.core.modules.demo.mybatis.model.CoreTodo
 import com.ifmix.api.core.dto.common.Page
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment

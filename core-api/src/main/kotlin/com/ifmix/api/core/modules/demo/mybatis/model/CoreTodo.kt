@@ -1,4 +1,4 @@
-package com.ifmix.api.core.generated.mybatis.model
+package com.ifmix.api.core.modules.demo.mybatis.model
 
 import com.ifmix.api.core.entity.demo.Meta
 import java.time.Instant

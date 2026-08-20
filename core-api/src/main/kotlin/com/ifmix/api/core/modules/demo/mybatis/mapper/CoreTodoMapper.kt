@@ -1,19 +1,19 @@
-package com.ifmix.api.core.generated.mybatis.mapper
+package com.ifmix.api.core.modules.demo.mybatis.mapper
 
 import com.ifmix.api.core.entity.demo.Meta
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.appId
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.coreTodo
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.createdAt
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.deletedAt
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.done
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.id
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.installId
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.meta
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.note
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.title
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.updatedAt
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.userId
-import com.ifmix.api.core.generated.mybatis.model.CoreTodo
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.appId
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.coreTodo
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.createdAt
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.deletedAt
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.done
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.id
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.installId
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.meta
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.note
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.title
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.updatedAt
+import com.ifmix.api.core.modules.demo.mybatis.mapper.CoreTodoDynamicSqlSupport.userId
+import com.ifmix.api.core.modules.demo.mybatis.model.CoreTodo
 import com.ifmix.api.core.infra.mybatis.MetaTypeHandler
 import java.time.Instant
 import java.util.UUID
@@ -44,22 +44,22 @@ import org.mybatis.dynamic.sql.util.mybatis3.CommonUpdateMapper
 
 @Mapper
 interface CoreTodoMapper : CommonCountMapper, CommonDeleteMapper, CommonInsertMapper<CoreTodo>, CommonUpdateMapper {
-    @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @Results(id="CoreTodoResult")
-    @Arg(column="id", jdbcType=JdbcType.OTHER, javaType=UUID::class, id=true)
-    @Arg(column="title", jdbcType=JdbcType.VARCHAR, javaType=String::class)
-    @Arg(column="done", jdbcType=JdbcType.BIT, javaType=Boolean::class)
-    @Arg(column="app_id", jdbcType=JdbcType.OTHER, javaType=UUID::class)
-    @Arg(column="created_at", jdbcType=JdbcType.OTHER, javaType=Instant::class)
-    @Arg(column="updated_at", jdbcType=JdbcType.OTHER, javaType=Instant::class)
-    @Arg(column="deleted_at", jdbcType=JdbcType.OTHER, javaType=Instant::class)
-    @Arg(column="install_id", jdbcType=JdbcType.OTHER, javaType=UUID::class)
-    @Arg(column="user_id", jdbcType=JdbcType.OTHER, javaType=UUID::class)
-    @Arg(column="meta", typeHandler=MetaTypeHandler::class, jdbcType=JdbcType.OTHER, javaType=Meta::class)
-    @Arg(column="note", jdbcType=JdbcType.VARCHAR, javaType=String::class)
+    @SelectProvider(type = SqlProviderAdapter::class, method = "select")
+    @Results(id = "CoreTodoResult")
+    @Arg(column = "id", jdbcType = JdbcType.OTHER, javaType = UUID::class, id = true)
+    @Arg(column = "title", jdbcType = JdbcType.VARCHAR, javaType = String::class)
+    @Arg(column = "done", jdbcType = JdbcType.BIT, javaType = Boolean::class)
+    @Arg(column = "app_id", jdbcType = JdbcType.OTHER, javaType = UUID::class)
+    @Arg(column = "created_at", jdbcType = JdbcType.OTHER, javaType = Instant::class)
+    @Arg(column = "updated_at", jdbcType = JdbcType.OTHER, javaType = Instant::class)
+    @Arg(column = "deleted_at", jdbcType = JdbcType.OTHER, javaType = Instant::class)
+    @Arg(column = "install_id", jdbcType = JdbcType.OTHER, javaType = UUID::class)
+    @Arg(column = "user_id", jdbcType = JdbcType.OTHER, javaType = UUID::class)
+    @Arg(column = "meta", typeHandler = MetaTypeHandler::class, jdbcType = JdbcType.OTHER, javaType = Meta::class)
+    @Arg(column = "note", jdbcType = JdbcType.VARCHAR, javaType = String::class)
     fun selectMany(selectStatement: SelectStatementProvider): List<CoreTodo>
 
-    @SelectProvider(type=SqlProviderAdapter::class, method="select")
+    @SelectProvider(type = SqlProviderAdapter::class, method = "select")
     @ResultMap("CoreTodoResult")
     fun selectOne(selectStatement: SelectStatementProvider): CoreTodo?
 }
