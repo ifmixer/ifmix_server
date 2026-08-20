@@ -89,3 +89,11 @@ f29ab42 refactor: demo module rename + entity direct output + globalTx mutations
 7993ac1 refactor: fix payment compilation and finalize task 6
 777209c refactor: ai module merge scan→ai, auth refactor, fix CollectionFetcher cross-layer
 fb5a460 refactor: final cleanup - AiFetcher globalTx, schema alignment, AiConfig @Component
+Task 2: complete (commits 8bb9ac6..f29ab42, review clean)
+Task 3: complete (commits 8bb9ac6..6173b23, review clean)
+Task 4: complete (commits 8bb9ac6..6173b23, review clean)
+Task 5: complete (commits 8bb9ac6..6173b23, review clean)
+Task 6: complete (commits 78fea6b..7993ac1, review clean)
+Task 7: complete (commits 777209c..fb5a460, review clean)
+Task 8: complete (commits 777209c, review clean)
+Task 9: complete (commits 9dbac6e..047ef57, review pending)
