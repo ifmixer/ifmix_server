@@ -58,9 +58,10 @@ dependencies {
     implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
     ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")
 
-    // === MyBatis Dynamic SQL (Phase 0: todo module) ===
+    // === MyBatis Dynamic SQL ===
     implementation("org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.4")
-    implementation("org.mybatis.dynamic-sql:mybatis-dynamic-sql:1.5.2")
+    implementation("org.mybatis.dynamic-sql:mybatis-dynamic-sql:2.0.0")
+    compileOnly("org.mybatis.generator:mybatis-generator-core:2.0.0") // for PgTypeResolver
 
     // UUIDv7 generator (cursor pagination requires time-ordered IDs)
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
@@ -100,6 +101,7 @@ kotlin {
     sourceSets {
         main {
             kotlin.srcDir("build/generated/ksp/main/kotlin")
+            kotlin.srcDir("src/generated/mybatis")
         }
     }
 }
@@ -159,4 +161,23 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "ScanRecordPage" to "com.ifmix.api.core.dto.common.Page",
         "ScanCollectionItemPage" to "com.ifmix.api.core.dto.common.Page",
     )
+}
+
+// ===== MyBatis Generator — Kotlin codegen from DB schema =====
+// 手动触发: ./gradlew :core-api:generateMybatis
+// 前提: PgTypeResolver 在 classpath 上（先编译一次 compileKotlin）
+val mybatisGenerator = configurations.create("mybatisGenerator") {
+    extendsFrom(configurations.getByName("compileClasspath"))
+}
+dependencies {
+    mybatisGenerator("org.mybatis.generator:mybatis-generator-core:2.0.0")
+    mybatisGenerator("org.postgresql:postgresql")
+}
+tasks.register<JavaExec>("generateMybatis") {
+    group = "mybatis"
+    description = "Run MyBatis Generator to generate Kotlin Dynamic SQL support classes"
+    mainClass.set("org.mybatis.generator.api.ShellRunner")
+    classpath = mybatisGenerator + files("${layout.buildDirectory.get()}/classes/kotlin/main")
+    args = listOf("-configfile", "${projectDir}/src/main/resources/mybatis-generator-config.xml", "-overwrite")
+    workingDir = projectDir
 }

@@ -1,0 +1,70 @@
+<!DOCTYPE generatorConfiguration PUBLIC
+        "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+
+<generatorConfiguration>
+    <context id="demo" targetRuntime="MyBatis3Kotlin">
+        <!-- 不生成注释 -->
+        <commentGenerator>
+            <property name="suppressAllComments" value="true"/>
+        </commentGenerator>
+
+        <!-- JDBC 连接 -->
+        <jdbcConnection driverClass="org.postgresql.Driver"
+                        connectionURL="jdbc:postgresql://localhost:5432/ifmix_core_local"
+                        userId="postgres"
+                        password="postgres"/>
+
+        <!-- 自定义类型解析：uuid→UUID, timestamptz→Instant, jsonb→String（默认） -->
+        <javaTypeResolver type="com.ifmix.api.core.infra.mybatis.PgTypeResolver"/>
+
+        <!-- Kotlin model -->
+        <modelGenerator targetPackage="com.ifmix.api.core.generated.mybatis.model"
+                        targetProject="src/generated/mybatis"/>
+
+        <!-- Mapper 接口 + 扩展函数 -->
+        <clientGenerator targetPackage="com.ifmix.api.core.generated.mybatis.mapper"
+                         targetProject="src/generated/mybatis"/>
+
+        <!-- ===== Phase 0: Todo 模块 ===== -->
+        <!-- core_todo: meta 列映射到领域对象 Meta -->
+        <table tableName="core_todo" domainObjectName="Todo">
+            <columnOverride column="meta" javaType="com.ifmix.api.core.entity.demo.Meta"
+                           typeHandler="com.ifmix.api.core.infra.mybatis.MetaTypeHandler"/>
+        </table>
+
+        <!-- core_todo_item: 无特殊列覆盖 -->
+        <table tableName="core_todo_item" domainObjectName="TodoItem"/>
+
+        <!-- ===== Phase 1: 其他模块（逐步取消注释） =====
+        <table tableName="core_scan_record" domainObjectName="CoreScanRecord">
+            <columnOverride column="image_keys" javaType="kotlin.collections.List"
+                           typeHandler="com.ifmix.api.core.infra.mybatis.ImageRefListTypeHandler"/>
+            <columnOverride column="basic_result" javaType="kotlin.collections.Map"
+                           typeHandler="com.ifmix.api.core.infra.mybatis.JsonMapTypeHandler"/>
+            <columnOverride column="premium_result" javaType="kotlin.collections.Map"
+                           typeHandler="com.ifmix.api.core.infra.mybatis.JsonMapTypeHandler"/>
+        </table>
+        <table tableName="core_scan_collection" domainObjectName="CoreScanCollection"/>
+        <table tableName="core_scan_collection_item" domainObjectName="CoreScanCollectionItem"/>
+        <table tableName="core_agnes_key" domainObjectName="CoreAgnesKey"/>
+        <table tableName="core_app_user" domainObjectName="CoreAppUser"/>
+        <table tableName="core_auth_identity" domainObjectName="CoreAuthIdentity"/>
+        <table tableName="core_auth_provider_identity" domainObjectName="CoreAuthProviderIdentity"/>
+        <table tableName="core_auth_device_secret" domainObjectName="CoreAuthDeviceSecret"/>
+        <table tableName="core_app_refresh_token" domainObjectName="CoreAppRefreshToken"/>
+        <table tableName="core_user_install_binding" domainObjectName="CoreUserInstallBinding"/>
+        <table tableName="core_auth_tenant" domainObjectName="CoreAuthTenant"/>
+        <table tableName="core_subscription" domainObjectName="CoreSubscription"/>
+        <table tableName="core_store_notification" domainObjectName="CoreStoreNotification"/>
+        <table tableName="core_feedback" domainObjectName="CoreFeedback"/>
+        <table tableName="core_upload_record" domainObjectName="CoreUploadRecord"/>
+        <table tableName="core_app_config_revision" domainObjectName="CoreAppConfigRevision">
+            <columnOverride column="content" javaType="com.ifmix.api.core.entity.app.ConfigContent"
+                           typeHandler="com.ifmix.api.core.infra.mybatis.ConfigContentTypeHandler"/>
+        </table>
+        <table tableName="core_app_info" domainObjectName="CoreAppInfo"/>
+        -->
+
+    </context>
+</generatorConfiguration>
