@@ -30,7 +30,6 @@ class ScanAggHandler(
     fun runAiScan(opCtx: OperationContext, input: NewScanInput): AiScanResult {
         val scanId = UuidV7.generate()
         val now = Instant.now()
-        val imageKeys = input.images.map { it.imageKey }
 
         val resolved = input.images.map { img ->
             ScanMediaItem(
@@ -45,7 +44,12 @@ class ScanAggHandler(
             country = opCtx.country,
             currency = opCtx.currency,
         )
-        val basicResult = scanRunner.run(opCtx, scanInput)
+        val aiResponse = scanRunner.run(opCtx, scanInput)
+
+        @Suppress("UNCHECKED_CAST")
+        val basicResult = aiResponse["basic_result"] as? Map<String, Any?> ?: aiResponse
+        @Suppress("UNCHECKED_CAST")
+        val premiumResult = aiResponse["premium_result"] as? Map<String, Any?>
 
         return AiScanResult(
             scanId = scanId,
@@ -54,8 +58,9 @@ class ScanAggHandler(
             country = opCtx.country,
             currency = opCtx.currency,
             clientIp = opCtx.clientIp,
-            imageKeys = imageKeys,
+            images = input.images,
             basicResult = basicResult,
+            premiumResult = premiumResult,
             createdAt = now,
             updatedAt = now,
         )
@@ -66,9 +71,9 @@ class ScanAggHandler(
         val record = ScanRecord {
             id = result.scanId
             this.appId = result.appId
-            this.imageKeys = result.imageKeys.map { ImageRef(key = it) }
+            this.images = result.images.map { ImageRef(key = it.imageKey) }
             this.basicResult = result.basicResult
-            this.premiumResult = null
+            this.premiumResult = result.premiumResult
             this.status = 200
             this.clientIp = result.clientIp
             this.lang = result.lang

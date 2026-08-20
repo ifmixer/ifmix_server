@@ -1,5 +1,6 @@
 package com.ifmix.api.core.dto.ai
 
+import com.ifmix.api.core.generated.types.NewScanImageInput
 import java.time.Instant
 import java.util.UUID
 
@@ -15,8 +16,9 @@ data class AiScanResult(
     val country: String?,
     val currency: String?,
     val clientIp: String?,
-    val imageKeys: List<String>,
+    val images: List<NewScanImageInput>,
     val basicResult: Map<String, Any?>,
+    val premiumResult: Map<String, Any?>?,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

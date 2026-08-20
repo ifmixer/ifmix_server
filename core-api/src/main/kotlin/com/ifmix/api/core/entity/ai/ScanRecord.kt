@@ -16,7 +16,7 @@ interface ScanRecord : AppScopedProps, SoftDeletableProps {
 
     @Serialized
     @Column(name = "image_keys")
-    val imageKeys: List<ImageRef>
+    val images: List<ImageRef>
 
     @Serialized
     @Column(name = "basic_result")
