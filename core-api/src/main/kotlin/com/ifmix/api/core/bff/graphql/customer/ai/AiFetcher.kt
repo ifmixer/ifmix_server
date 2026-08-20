@@ -38,6 +38,8 @@ import com.netflix.graphql.dgs.DgsQuery
 import com.netflix.graphql.dgs.InputArgument
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionStage
+import org.dataloader.MappedBatchLoader
 
 @DgsComponent
 class AiFetcher(
@@ -152,8 +154,8 @@ class AiFetcher(
 class ScanRecordsDataLoader(
     private val scanRecordRepo: ScanRecordRepository,
     private val mcFactory: ModuleCtxFactory,
-) {
-    fun load(ids: Set<UUID>): CompletableFuture<Map<UUID, ScanRecord?>> {
+) : MappedBatchLoader<UUID, ScanRecord?> {
+    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanRecord?>> {
         val opCtx = OperationContextHolder.current()
         val mc = mcFactory.forApp(opCtx)
         val appId = opCtx.mustGetAppId()
