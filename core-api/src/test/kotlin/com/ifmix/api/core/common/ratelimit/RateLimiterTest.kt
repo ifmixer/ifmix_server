@@ -1,6 +1,7 @@
 package com.ifmix.api.core.infra.ratelimit
 
 import com.ifmix.api.core.infra.http.OperationContext
+import com.ifmix.api.core.infra.http.RequestContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -24,7 +25,7 @@ class RateLimiterTest {
     private lateinit var ops: org.springframework.data.redis.core.ValueOperations<String, String>
 
     private lateinit var limiter: RateLimiter
-    private val ctx = OperationContext(appId = UUID.fromString("00000000-0000-0000-0000-000000000099"))
+    private val ctx = OperationContext(req = RequestContext(appId = UUID.fromString("00000000-0000-0000-0000-000000000099")))
 
     @BeforeEach
     fun setUp() {
