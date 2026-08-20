@@ -15,7 +15,7 @@ import com.ifmix.api.core.dto.payment.VerifyReq
 import com.ifmix.api.core.dto.payment.VerifyRes
 import com.ifmix.api.core.dto.payment.statusFromExpiry
 import com.ifmix.api.core.dto.payment.tierOf
-import com.ifmix.api.core.modules.app.repo.AppConfigRepository
+import com.ifmix.api.core.modules.app.AppConfigFacade
 import com.ifmix.api.core.modules.payment.repo.SubscriptionRepository
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
@@ -26,7 +26,7 @@ class PaymentAggHandler(
     @Qualifier("appleVerifier") private val appleVerifier: PurchaseVerifier,
     @Qualifier("googleVerifier") private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
-    private val appConfigRepo: AppConfigRepository,
+    private val appConfigFacade: AppConfigFacade,
 ) {
     private val verifierMap: Map<String, PurchaseVerifier> = hashMapOf(
         "APPLE" to appleVerifier,
@@ -41,7 +41,7 @@ class PaymentAggHandler(
     fun verifyAndUpsert(mc: ModuleCtx, req: VerifyReq, verifyResult: VerifyResult): VerifyRes {
         val appId = mc.op.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
-        val productTierMap = appConfigRepo.findActiveByAppId(mc, appId)
+        val productTierMap = appConfigFacade.findActiveByAppId(mc, appId)
             ?.content?.iap?.productTierMap
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val tier = tierOf(req.productId, productTierMap) ?: Tiers.FREE

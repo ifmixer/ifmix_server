@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.graphql.customer.cms
 
 import com.ifmix.api.core.generated.types.SubmitFeedbackInput
-import com.ifmix.api.core.generated.types.SubmitFeedbackPayload
+import com.ifmix.api.core.generated.types.SubmitFeedbackResult
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.tx.GlobalTxRunner
 import com.ifmix.api.core.dto.cms.SubmitFeedbackReq
@@ -24,10 +24,10 @@ class CmsFetcher(
 ) {
 
     @DgsMutation(field = "m_cms_submitFeedback")
-    fun submitFeedback(dfe: DgsDataFetchingEnvironment, @InputArgument input: SubmitFeedbackInput): SubmitFeedbackPayload {
+    fun submitFeedback(dfe: DgsDataFetchingEnvironment, @InputArgument input: SubmitFeedbackInput): SubmitFeedbackResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val id = globalTx.withTx(ctx) { txCtx -> cmsService.submit(txCtx, input.toReq()) }
-        return SubmitFeedbackPayload(id = id)
+        return SubmitFeedbackResult(id = id)
     }
 }
 

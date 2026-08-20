@@ -9,7 +9,7 @@ import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.modules.app.repo.AppConfigRepository
+import com.ifmix.api.core.modules.app.AppConfigFacade
 import com.ifmix.api.core.modules.auth.AuthLoggedInEvent
 import com.ifmix.api.core.modules.auth.ProviderVerifier
 import com.ifmix.api.core.modules.auth.repo.AppRefreshTokenRepository
@@ -97,7 +97,7 @@ data class DeleteAccountRes(
 
 @Component
 class AuthAggHandler(
-    private val appConfigRepo: AppConfigRepository,
+    private val appConfigFacade: AppConfigFacade,
     private val verifiers: Map<String, ProviderVerifier>,
     private val jwt: AuthJwtService,
     private val providerIdentityRepo: AuthProviderIdentityRepository,
@@ -115,7 +115,7 @@ class AuthAggHandler(
     }
 
     private fun tenantUUID(sc: ModuleCtx, appId: UUID): UUID =
-        appConfigRepo.findActiveByAppId(sc, appId)?.authTenantId
+        appConfigFacade.findActiveByAppId(sc, appId)?.authTenantId
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
     fun me(sc: ModuleCtx): MeRes {
@@ -143,7 +143,7 @@ class AuthAggHandler(
             ErrorCode.AUTH_PROVIDER_FAILED,
             "unsupported provider: $provider"
         )
-        val config = appConfigRepo.findActiveByAppId(sc, opCtx.appId!!) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
+        val config = appConfigFacade.findActiveByAppId(sc, opCtx.appId!!) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val verified = verifier.verify(config, opCtx.clientPlatform, credential)
 
         // 2. Find or create AuthIdentity

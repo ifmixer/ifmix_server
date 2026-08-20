@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.app
 
 import com.ifmix.api.core.entity.app.AppConfigRevision
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.RequestContext
@@ -25,4 +26,8 @@ class AppConfigFacade(
 
     fun findAppIdByAndroidPackage(packageName: String): UUID? =
         handler.findAppIdByAndroidPackage(mcFactory.default(OperationContext(req = RequestContext())), packageName)
+
+    /** 供外部模块按 appId 获取当前生效配置 */
+    fun findActiveByAppId(mc: ModuleCtx, appId: UUID): AppConfigRevision? =
+        handler.findActiveByAppId(mc, appId)
 }

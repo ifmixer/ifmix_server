@@ -6,12 +6,12 @@ input verifyIapPurchaseInput {
     purchaseToken: String
 }
 
-type verifyIapPurchasePayload {
+type VerifyIapPurchaseResult {
     "付费等级。100=FREE, 200=PRO, 300=ENTERPRISE"
     tier: Int!
     expiresAt: DateTime
 }
 
 extend type Mutation {
-    m_payment_verifyIapPurchase(input: verifyIapPurchaseInput!): verifyIapPurchasePayload!
+    m_pay_verifyIapPurchase(input: verifyIapPurchaseInput!): VerifyIapPurchaseResult!
 }

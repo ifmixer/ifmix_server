@@ -17,6 +17,11 @@ import java.util.UUID
 @Configuration
 class JacksonConfig {
 
+    /** Jimmer entity 序列化支持：跳过未加载字段，不抛 UnloadedException */
+    @Bean
+    fun jimmerImmutableModule(): JacksonModule =
+        org.babyfish.jimmer.jackson.v3.ImmutableModuleV3()
+
     @Bean
     fun instantEpochMillisModule(): JacksonModule = tools.jackson.databind.module.SimpleModule("InstantEpochMillis").apply {
         addSerializer(Instant::class.java, object : ValueSerializer<Instant>() {
