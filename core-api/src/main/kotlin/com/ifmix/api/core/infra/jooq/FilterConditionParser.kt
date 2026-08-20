@@ -1,5 +1,9 @@
 package com.ifmix.api.core.infra.jooq
 
+import com.ifmix.api.core.generated.types.FieldFilter
+import com.ifmix.api.core.generated.types.FilterExpr
+import com.ifmix.api.core.generated.types.FilterGroup
+import com.ifmix.api.core.generated.types.FilterOp
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.TableField
@@ -9,13 +13,13 @@ import java.time.Instant
 /**
  * 通用动态查询条件解析器。
  *
- * 将 GraphQL FilterGroup input 解析为 jOOQ Condition。
+ * 将 DGS codegen 生成的 FilterGroup 直接解析为 jOOQ Condition。
  * 通过 fieldMap（Kotlin 属性名 → jOOQ TableField）+ allowedKeys 控制可查字段。
  *
  * 用法：
  * ```
  * val parser = FilterConditionParser(
- *     fieldMap = ScanRecord.FIELDS,
+ *     fieldMap = ScanRecordRepository.FIELD_MAP,
  *     allowedKeys = setOf("status", "collected", "lang", "createdAt"),
  * )
  * val condition = parser.parse(filterGroup)
@@ -35,26 +39,21 @@ class FilterConditionParser(
     /**
      * 解析顶层 FilterGroup。null 输入返回 noCondition()。
      */
-    fun parse(filterGroup: Map<String, Any?>?): Condition {
-        if (filterGroup == null) return DSL.noCondition()
-        return parseGroup(filterGroup, depth = 0)
+    fun parse(filter: FilterGroup?): Condition {
+        if (filter == null) return DSL.noCondition()
+        return parseGroup(filter, depth = 0)
     }
 
-    private fun parseGroup(group: Map<String, Any?>, depth: Int): Condition {
+    private fun parseGroup(group: FilterGroup, depth: Int): Condition {
         check(depth < MAX_DEPTH) { "Filter nesting too deep (max $MAX_DEPTH)" }
 
-        @Suppress("UNCHECKED_CAST")
-        val andList = group["and"] as? List<Map<String, Any?>>
-        @Suppress("UNCHECKED_CAST")
-        val orList = group["or"] as? List<Map<String, Any?>>
-
         return when {
-            andList != null -> {
-                andList.map { parseExpr(it, depth + 1) }
+            group.and != null -> {
+                group.and.map { parseExpr(it, depth + 1) }
                     .fold(DSL.noCondition()) { acc, c -> acc.and(c) }
             }
-            orList != null -> {
-                val conditions = orList.map { parseExpr(it, depth + 1) }
+            group.or != null -> {
+                val conditions = group.or.map { parseExpr(it, depth + 1) }
                 if (conditions.isEmpty()) DSL.noCondition()
                 else conditions.reduce { acc, c -> acc.or(c) }
             }
@@ -62,91 +61,78 @@ class FilterConditionParser(
         }
     }
 
-    private fun parseExpr(expr: Map<String, Any?>, depth: Int): Condition {
-        @Suppress("UNCHECKED_CAST")
-        val fieldFilter = expr["field"] as? Map<String, Any?>
-        @Suppress("UNCHECKED_CAST")
-        val groupFilter = expr["group"] as? Map<String, Any?>
-
+    private fun parseExpr(expr: FilterExpr, depth: Int): Condition {
         return when {
-            fieldFilter != null -> parseFieldFilter(fieldFilter)
-            groupFilter != null -> parseGroup(groupFilter, depth)
+            expr.field != null -> parseFieldFilter(expr.field)
+            expr.group != null -> parseGroup(expr.group, depth)
             else -> DSL.noCondition()
         }
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun parseFieldFilter(filter: Map<String, Any?>): Condition {
-        val fieldName = filter["field"] as? String
-            ?: throw IllegalArgumentException("FieldFilter.field is required")
-        val opStr = filter["op"] as? String
-            ?: throw IllegalArgumentException("FieldFilter.op is required")
-
+    private fun parseFieldFilter(filter: FieldFilter): Condition {
+        val fieldName = filter.field
         require(fieldName in allowedKeys) { "Field '$fieldName' is not allowed for filtering" }
 
         val jooqField = fieldMap[fieldName]
             ?: throw IllegalArgumentException("Unknown field: $fieldName")
 
-        val value = filter["value"]
-        val values = filter["values"] as? List<*>
-
-        return buildCondition(jooqField as Field<Any?>, opStr, value, values)
+        return buildCondition(jooqField as Field<Any?>, filter.op, filter.value, filter.values)
     }
 
-    private fun buildCondition(field: Field<Any?>, op: String, value: Any?, values: List<*>?): Condition {
-        return when (op.uppercase()) {
-            "EQ" -> {
+    private fun buildCondition(field: Field<Any?>, op: FilterOp, value: Any?, values: List<Any>?): Condition {
+        return when (op) {
+            FilterOp.EQ -> {
                 requireNotNull(value) { "value required for EQ" }
                 field.eq(coerce(field, value))
             }
-            "NE" -> {
+            FilterOp.NE -> {
                 requireNotNull(value) { "value required for NE" }
                 field.ne(coerce(field, value))
             }
-            "GT" -> {
+            FilterOp.GT -> {
                 requireNotNull(value) { "value required for GT" }
                 @Suppress("UNCHECKED_CAST")
                 (field as Field<Comparable<Any>>).gt(coerce(field, value) as Comparable<Any>)
             }
-            "GTE" -> {
+            FilterOp.GTE -> {
                 requireNotNull(value) { "value required for GTE" }
                 @Suppress("UNCHECKED_CAST")
                 (field as Field<Comparable<Any>>).ge(coerce(field, value) as Comparable<Any>)
             }
-            "LT" -> {
+            FilterOp.LT -> {
                 requireNotNull(value) { "value required for LT" }
                 @Suppress("UNCHECKED_CAST")
                 (field as Field<Comparable<Any>>).lt(coerce(field, value) as Comparable<Any>)
             }
-            "LTE" -> {
+            FilterOp.LTE -> {
                 requireNotNull(value) { "value required for LTE" }
                 @Suppress("UNCHECKED_CAST")
                 (field as Field<Comparable<Any>>).le(coerce(field, value) as Comparable<Any>)
             }
-            "LIKE" -> {
+            FilterOp.LIKE -> {
                 requireNotNull(value) { "value required for LIKE" }
                 @Suppress("UNCHECKED_CAST")
                 (field as Field<String>).like(value.toString())
             }
-            "IN" -> {
+            FilterOp.IN -> {
                 requireNotNull(values) { "values required for IN" }
                 if (values.isEmpty()) DSL.falseCondition()
                 else field.`in`(values.map { coerce(field, it) })
             }
-            "NIN" -> {
+            FilterOp.NIN -> {
                 requireNotNull(values) { "values required for NIN" }
                 if (values.isEmpty()) DSL.noCondition()
                 else field.notIn(values.map { coerce(field, it) })
             }
-            "IS_NULL" -> field.isNull
-            "IS_NOT_NULL" -> field.isNotNull
-            else -> throw IllegalArgumentException("Unknown filter op: $op")
+            FilterOp.IS_NULL -> field.isNull
+            FilterOp.IS_NOT_NULL -> field.isNotNull
         }
     }
 
     /**
-     * 将 JSON 值转换为 jOOQ 字段期望的类型。
-     * GraphQL/Jackson 传进来的可能是 Int/Long/String/Boolean，需要适配。
+     * 将 GraphQL 传入的值转换为 jOOQ 字段期望的类型。
+     * Jackson 反序列化 Any 时：整数→Int、大整数→Long、小数→Double、字符串→String。
      */
     private fun coerce(field: Field<*>, value: Any?): Any? {
         if (value == null) return null
@@ -155,11 +141,11 @@ class FilterConditionParser(
             fieldType == java.util.UUID::class.java && value is String -> java.util.UUID.fromString(value)
             fieldType == Instant::class.java && value is String -> Instant.parse(value)
             fieldType == Instant::class.java && value is Number -> Instant.ofEpochMilli(value.toLong())
-            fieldType == Int::class.java && value is Number -> value.toInt()
-            fieldType == Long::class.java && value is Number -> value.toLong()
-            fieldType == Boolean::class.java && value is Boolean -> value
+            fieldType == Int::class.javaObjectType && value is Number -> value.toInt()
+            fieldType == Long::class.javaObjectType && value is Number -> value.toLong()
+            fieldType == Boolean::class.javaObjectType && value is Boolean -> value
             fieldType == String::class.java -> value.toString()
-            Number::class.java.isAssignableFrom(fieldType) && value is Number -> value
+            Number::class.java.isAssignableFrom(fieldType) && value is Number -> value.toInt()
             else -> value
         }
     }

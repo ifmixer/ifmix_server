@@ -86,10 +86,8 @@ class ScanRecordRepository(factory: CrudRepoOpsFactory) {
         ),
     )
 
-    @Suppress("UNCHECKED_CAST")
     fun findByFilter(ctx: SvcCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): List<ScanRecord> {
-        val filterMap = filter?.let { convertFilterGroupToMap(it) }
-        val dynamicCond = filterParser.parse(filterMap)
+        val dynamicCond = filterParser.parse(filter)
         var cond = CORE_SCAN_RECORD.APP_ID.eq(appId)
             .and(CORE_SCAN_RECORD.DELETED_AT.isNull)
             .and(dynamicCond)
@@ -100,37 +98,6 @@ class ScanRecordRepository(factory: CrudRepoOpsFactory) {
             .limit(limit)
             .fetch()
             .map { toModel(it) }
-    }
-
-    /**
-     * 将 DGS codegen 生成的 FilterGroup 对象转为 Map 结构（FilterConditionParser 的输入格式）。
-     */
-    @Suppress("UNCHECKED_CAST")
-    private fun convertFilterGroupToMap(group: FilterGroup): Map<String, Any?> {
-        val result = mutableMapOf<String, Any?>()
-        group.and?.let { list ->
-            result["and"] = list.map { expr -> convertExprToMap(expr) }
-        }
-        group.or?.let { list ->
-            result["or"] = list.map { expr -> convertExprToMap(expr) }
-        }
-        return result
-    }
-
-    private fun convertExprToMap(expr: com.ifmix.api.core.generated.types.FilterExpr): Map<String, Any?> {
-        val result = mutableMapOf<String, Any?>()
-        expr.field?.let { f ->
-            result["field"] = mapOf(
-                "field" to f.field,
-                "op" to f.op.name,
-                "value" to f.value,
-                "values" to f.values,
-            )
-        }
-        expr.group?.let { g ->
-            result["group"] = convertFilterGroupToMap(g)
-        }
-        return result
     }
 
     // =========================================================================
