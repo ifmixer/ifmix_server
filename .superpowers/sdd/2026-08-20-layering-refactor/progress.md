@@ -97,3 +97,23 @@ Task 6: complete (commits 78fea6b..7993ac1, review clean)
 Task 7: complete (commits 777209c..fb5a460, review clean)
 Task 8: complete (commits 777209c, review clean)
 Task 9: complete (commits 9dbac6e..047ef57, review pending)
+
+## Final Status
+
+Task 9: complete (commits 9dbac6e..3ab37ec, review pending)
+- Old base repos (BaseCrudRepository/BaseAppCrudRepository) still exist but 0 usages remain — marked for deletion in follow-up
+- IapConfig reduced to empty interface (stubs now @Component)
+- AiConfig converted to @Component
+- All compilation issues fixed
+
+## Verification Results
+- SvcCtx references: 0 ✓
+- toDto() references: 0 ✓
+- TxRunner in modules: 2 (comment-only references) ✓
+- All handlers: XxxAggHandler ✓
+- Entity dirs: ai, app, auth, cms, demo, payment, storage ✓
+- BFF dirs: ai, auth, cms, demo, payment, storage ✓
+- Old entity dirs (todo, feedback, iap, scan): all removed ✓
+- Old bff dirs (todo, feedback, iap, scan): all removed ✓
+- Compilation: BUILD SUCCESSFUL ✓
+- No cross-layer calls from DataFetchers ✓
