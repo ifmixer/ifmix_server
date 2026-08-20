@@ -4,7 +4,7 @@ import com.ifmix.api.core.dto.storage.PresignDownloadResult
 import com.ifmix.api.core.dto.storage.PresignUploadResult
 import com.ifmix.api.core.generated.types.PresignDownloadInput
 import com.ifmix.api.core.generated.types.PresignUploadInput
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.entity.storage.UploadRecord
@@ -18,7 +18,7 @@ class StorageHandler(
     private val uploadRecordRepo: UploadRecordRepository,
     private val objectStorage: ObjectStorage,
 ) {
-    fun presignUpload(sc: SvcCtx, input: PresignUploadInput): PresignUploadResult {
+    fun presignUpload(sc: ModuleCtx, input: PresignUploadInput): PresignUploadResult {
         val appId = sc.op.appId!!
         val installId = sc.op.installId!!
         val mediaId = UuidV7.generate()
@@ -62,7 +62,7 @@ class StorageHandler(
         )
     }
 
-    fun presignDownload(sc: SvcCtx, input: PresignDownloadInput): PresignDownloadResult {
+    fun presignDownload(sc: ModuleCtx, input: PresignDownloadInput): PresignDownloadResult {
         validateObjectKey(input.imageKey)
         val duration = Duration.ofSeconds((input.durationSeconds ?: 3600).toLong())
         val url = objectStorage.presignDownload("ugc", input.imageKey, duration)

@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.db.SvcCtxFactory
+import com.ifmix.api.core.infra.db.ModuleCtx
+import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.modules.auth.repo.UserInstallBindingRepository
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component
 @Component
 class MergeOnLoginListener(
     private val bindingRepo: UserInstallBindingRepository,
-    private val svcCtxFactory: SvcCtxFactory,
+    private val mcFactory: ModuleCtxFactory,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -27,7 +27,7 @@ class MergeOnLoginListener(
             // 记录 user-install 绑定
             if (e.installId != null) {
                 bindingRepo.recordBinding(
-                    ctx = svcCtxFactory.forApp(e.ctx),
+                    ctx = mcFactory.forApp(e.ctx),
                     appId = e.appId,
                     userId = e.appUserId,
                     installId = e.installId,

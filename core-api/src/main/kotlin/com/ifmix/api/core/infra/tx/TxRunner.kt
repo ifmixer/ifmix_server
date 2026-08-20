@@ -1,6 +1,8 @@
 package com.ifmix.api.core.infra.tx
 
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ClusterRouter
+import com.ifmix.api.core.infra.db.ModuleCtx
+import com.ifmix.api.core.infra.http.OperationContext
 import org.springframework.stereotype.Component
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Propagation
@@ -28,7 +30,7 @@ fun TxPropagation.toSpring(): Int = when (this) {
 }
 
 /**
- * 事务边界接缝。Service 通过 withTx 进入事务。
+ * 事务边界接缝。Facade 通过 withTx 进入事务。
  *
  * 默认 REQUIRED（和 Spring @Transactional 一致）：有事务则复用，无则新建。
  */
@@ -36,33 +38,33 @@ fun TxPropagation.toSpring(): Int = when (this) {
 class TxRunner(private val txManager: org.springframework.transaction.PlatformTransactionManager) {
 
     fun <R> withTx(
-        svcCtx: SvcCtx,
+        mc: ModuleCtx,
         propagation: TxPropagation = TxPropagation.REQUIRED,
-        body: (SvcCtx) -> R,
+        body: (ModuleCtx) -> R,
     ): R = when (propagation) {
         TxPropagation.REQUIRED -> {
-            if (svcCtx.inTransaction) body(svcCtx)
-            else newTx(svcCtx, body, TxPropagation.REQUIRED)
+            if (mc.inTransaction) body(mc)
+            else newTx(mc, body, TxPropagation.REQUIRED)
         }
         TxPropagation.REQUIRES_NEW -> {
-            newTx(svcCtx.copy(inTransaction = false), body, TxPropagation.REQUIRES_NEW)
+            newTx(mc.copy(inTransaction = false), body, TxPropagation.REQUIRES_NEW)
         }
         TxPropagation.SUPPORTS -> {
-            body(svcCtx)
+            body(mc)
         }
         TxPropagation.NOT_SUPPORTED -> {
-            if (svcCtx.inTransaction) {
-                body(svcCtx.copy(inTransaction = false))
+            if (mc.inTransaction) {
+                body(mc.copy(inTransaction = false))
             } else {
-                body(svcCtx)
+                body(mc)
             }
         }
     }
 
-    private fun <R> newTx(svcCtx: SvcCtx, body: (SvcCtx) -> R, prop: TxPropagation): R {
+    private fun <R> newTx(mc: ModuleCtx, body: (ModuleCtx) -> R, prop: TxPropagation): R {
         val template = TransactionTemplate(txManager).apply {
             this.propagationBehavior = prop.toSpring()
         }
-        return template.execute { body(svcCtx.copy(inTransaction = true)) }!!
+        return template.execute { body(mc.copy(inTransaction = true)) }!!
     }
 }

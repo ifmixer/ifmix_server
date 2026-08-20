@@ -7,7 +7,7 @@ import com.ifmix.api.core.entity.auth.updatedAt
 import com.ifmix.api.core.entity.auth.lastUsedAt
 import com.ifmix.api.core.entity.auth.revokedAt
 import com.ifmix.api.core.entity.auth.expiresAt
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
@@ -22,7 +22,7 @@ import com.ifmix.api.core.entity.auth.appId
 @Repository
 class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDeviceSecret>(sql, AuthDeviceSecret::class) {
 
-    fun findValidByHash(ctx: SvcCtx, secretHash: String): AuthDeviceSecret? {
+    fun findValidByHash(ctx: ModuleCtx, secretHash: String): AuthDeviceSecret? {
         val now = Instant.now()
         return ctx.sql.createQuery(AuthDeviceSecret::class) {
             where(table.secretHash eq secretHash)
@@ -37,7 +37,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDevic
         }.limit(1).execute().firstOrNull()
     }
 
-    fun touch(ctx: SvcCtx, id: UUID) {
+    fun touch(ctx: ModuleCtx, id: UUID) {
         ctx.sql.createUpdate(AuthDeviceSecret::class) {
             where(table.id eq id)
             set(table.lastUsedAt, Instant.now())
@@ -45,7 +45,7 @@ class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDevic
         }.execute()
     }
 
-    fun revoke(ctx: SvcCtx, id: UUID) {
+    fun revoke(ctx: ModuleCtx, id: UUID) {
         ctx.sql.createUpdate(AuthDeviceSecret::class) {
             where(table.id eq id)
             set(table.revokedAt, Instant.now())

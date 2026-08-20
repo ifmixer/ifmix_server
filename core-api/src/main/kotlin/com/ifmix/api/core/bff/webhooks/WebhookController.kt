@@ -4,7 +4,7 @@ import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.modules.app.repo.AppConfigRepository
 import com.ifmix.api.core.modules.payment.PaymentFacade
-import com.ifmix.api.core.infra.db.SvcCtxFactory
+import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.modules.payment.NotificationDecoder
 import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -36,7 +36,7 @@ class WebhookController(
     @Qualifier("appleDecoder") private val appleDecoder: NotificationDecoder,
     @Qualifier("googleDecoder") private val googleDecoder: NotificationDecoder,
     private val appConfigRepo: AppConfigRepository,
-    private val svcCtxFactory: com.ifmix.api.core.infra.db.SvcCtxFactory,
+    private val mcFactory: com.ifmix.api.core.infra.db.ModuleCtxFactory,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -48,7 +48,7 @@ class WebhookController(
     private val jwksCacheTtl = java.time.Duration.ofHours(1)
 
     companion object {
-        private fun buildCtx(svcCtxFactory: com.ifmix.api.core.infra.db.SvcCtxFactory) = svcCtxFactory.default(
+        private fun buildCtx(mcFactory: com.ifmix.api.core.infra.db.ModuleCtxFactory) = mcFactory.default(
             com.ifmix.api.core.infra.http.OperationContext(
                 req = com.ifmix.api.core.infra.http.RequestContext()
             )
@@ -86,7 +86,7 @@ class WebhookController(
 
             // 4. 通过 bundleId 反查 appId
             val appId = if (bundleId != null) {
-                appConfigRepo.findByBundleId(buildCtx(svcCtxFactory), bundleId)?.appId
+                appConfigRepo.findByBundleId(buildCtx(mcFactory), bundleId)?.appId
             } else null
 
             if (appId == null) {
@@ -119,7 +119,7 @@ class WebhookController(
 
             // 2. 通过 packageName 反查 appId
             val appId = if (packageName != null) {
-                appConfigRepo.findByAndroidPackage(buildCtx(svcCtxFactory), packageName)?.appId
+                appConfigRepo.findByAndroidPackage(buildCtx(mcFactory), packageName)?.appId
             } else null
 
             if (appId == null) {

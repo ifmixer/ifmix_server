@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.auth.repo
 import com.ifmix.api.core.entity.auth.AppUser
 import com.ifmix.api.core.entity.auth.appId
 import com.ifmix.api.core.entity.auth.authIdentityId
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import com.ifmix.api.core.infra.db.UuidV7
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -15,7 +15,7 @@ import java.util.UUID
 @Repository
 class AppUserRepository(sql: KSqlClient) : BaseAppCrudRepository<AppUser>(sql, AppUser::class) {
 
-    fun findByAppAndIdentity(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): AppUser? {
+    fun findByAppAndIdentity(ctx: ModuleCtx, appId: UUID, authIdentityId: UUID): AppUser? {
         return ctx.sql.createQuery(AppUser::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.authIdentityId eq authIdentityId)
@@ -23,7 +23,7 @@ class AppUserRepository(sql: KSqlClient) : BaseAppCrudRepository<AppUser>(sql, A
         }.limit(1).execute().firstOrNull()
     }
 
-    fun ensure(ctx: SvcCtx, appId: UUID, authIdentityId: UUID): UUID {
+    fun ensure(ctx: ModuleCtx, appId: UUID, authIdentityId: UUID): UUID {
         val existing = findByAppAndIdentity(ctx, appId, authIdentityId)
         if (existing != null) return existing.id
         val now = Instant.now()

@@ -1,7 +1,6 @@
 package com.ifmix.api.core.infra.graphql
 
 import com.ifmix.api.core.infra.auth.AuthInterceptor
-import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientIpResolver
 import com.ifmix.api.core.infra.http.ClientPlatform
@@ -22,7 +21,7 @@ class OperationContextProvider {
     /**
      * 从 DGS DataFetchingEnvironment 中提取 OperationContext。
      * 自动判断 query/mutation，构建 RequestContext（from headers）。
-     * SvcCtx 由 Service 层根据集群路由自行构建。
+     * ModuleCtx 由 Facade 层根据集群路由自行构建。
      */
     fun fromDfe(dfe: DgsDataFetchingEnvironment): OperationContext {
         val requestData = DgsContext.getRequestData(dfe) as? DgsWebMvcRequestData
@@ -53,6 +52,7 @@ class OperationContextProvider {
             req = reqCtx,
             opName = opName,
             isMutation = isMutation,
+            preferReader = !isMutation,
         )
     }
 

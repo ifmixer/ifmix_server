@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.auth.AuthDeviceSecret
 import com.ifmix.api.core.entity.auth.AuthIdentity
 import com.ifmix.api.core.infra.auth.AuthJwtService
 import com.ifmix.api.core.infra.auth.Hashing
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -114,11 +114,11 @@ class AuthHandler(
         private const val DEVICE_SECRET_TTL_DAYS = 365L
     }
 
-    private fun tenantUUID(sc: SvcCtx, appId: UUID): UUID =
+    private fun tenantUUID(sc: ModuleCtx, appId: UUID): UUID =
         appConfigRepo.findActiveByAppId(sc, appId)?.authTenantId
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
 
-    fun me(sc: SvcCtx): MeRes {
+    fun me(sc: ModuleCtx): MeRes {
         val userId = sc.op.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         val appUser = appUserRepo.findById(sc, sc.appId!!, userId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "user not found")
@@ -126,15 +126,15 @@ class AuthHandler(
         return MeRes(userId, identity?.email)
     }
 
-    fun loginWithIdToken(sc: SvcCtx, provider: String, req: ProviderLoginReq): LoginRes {
+    fun loginWithIdToken(sc: ModuleCtx, provider: String, req: ProviderLoginReq): LoginRes {
         return loginWithProvider(sc, provider, req.idToken, req.deviceSecret)
     }
 
-    fun loginWithCode(sc: SvcCtx, provider: String, req: WechatLoginReq): LoginRes {
+    fun loginWithCode(sc: ModuleCtx, provider: String, req: WechatLoginReq): LoginRes {
         return loginWithProvider(sc, provider, req.code, req.deviceSecret)
     }
 
-    fun loginWithProvider(sc: SvcCtx, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
+    fun loginWithProvider(sc: ModuleCtx, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
         val opCtx = sc.op
         val tenantId = tenantUUID(sc, opCtx.appId!!)
 
@@ -241,7 +241,7 @@ class AuthHandler(
         )
     }
 
-    fun exchange(sc: SvcCtx, req: ExchangeReq): ExchangeRes {
+    fun exchange(sc: ModuleCtx, req: ExchangeReq): ExchangeRes {
         val appId = sc.appId!!
 
         val secretHash = Hashing.sha256Base64Url(req.deviceSecret!!)
@@ -280,7 +280,7 @@ class AuthHandler(
         )
     }
 
-    fun refresh(sc: SvcCtx, req: RefreshReq): RefreshRes {
+    fun refresh(sc: ModuleCtx, req: RefreshReq): RefreshRes {
         val appId = sc.appId!!
 
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
@@ -317,7 +317,7 @@ class AuthHandler(
         )
     }
 
-    fun logout(sc: SvcCtx, req: LogoutReq): LogoutRes {
+    fun logout(sc: ModuleCtx, req: LogoutReq): LogoutRes {
         val appId = sc.appId!!
 
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
@@ -331,7 +331,7 @@ class AuthHandler(
         return LogoutRes(ok = true)
     }
 
-    fun anonymousLogin(sc: SvcCtx): LoginRes {
+    fun anonymousLogin(sc: ModuleCtx): LoginRes {
         val installId = sc.installId ?: throw ApiError(
             ErrorCode.INVALID_REQUEST,
             "x-install-id required for anonymous login"
@@ -339,7 +339,7 @@ class AuthHandler(
         return loginWithProvider(sc, "anonymous", "anon_$installId", null)
     }
 
-    fun requestAccountDeletion(sc: SvcCtx): DeleteAccountRes {
+    fun requestAccountDeletion(sc: ModuleCtx): DeleteAccountRes {
         val userId = sc.op.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         val scheduledAt = Instant.now().plusSeconds(30L * 24 * 3600).toEpochMilli()
         return DeleteAccountRes(accepted = true, scheduledAt = scheduledAt)
@@ -350,7 +350,7 @@ class AuthHandler(
     // =========================================================================
 
     private fun insertIdentity(
-        sc: SvcCtx,
+        sc: ModuleCtx,
         tenantId: UUID,
         rawEmail: String?,
         email: String?,

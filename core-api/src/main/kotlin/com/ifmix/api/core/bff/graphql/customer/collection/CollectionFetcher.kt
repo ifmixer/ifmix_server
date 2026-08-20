@@ -6,8 +6,8 @@ import com.ifmix.api.core.generated.types.ListScanCollectionItemsInput
 import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsInput
 import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsPayload
 import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.infra.db.SvcCtx
-import com.ifmix.api.core.infra.db.SvcCtxFactory
+import com.ifmix.api.core.infra.db.ModuleCtx
+import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.jimmer.OperationContextHolder
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
@@ -76,11 +76,11 @@ class CollectionFetcher(
 @DgsDataLoader(name = ScanRecordsDataLoader.NAME, caching = false)
 class ScanRecordsDataLoader(
     private val scanRecordRepo: ScanRecordRepository,
-    private val svcCtxFactory: SvcCtxFactory,
+    private val mcFactory: ModuleCtxFactory,
 ) : MappedBatchLoader<UUID, List<ScanRecord>> {
     override fun load(scanRecordIds: Set<UUID>): CompletionStage<Map<UUID, List<ScanRecord>>> {
         val opCtx = OperationContextHolder.current()
-        val sc = svcCtxFactory.forApp(opCtx)
+        val sc = mcFactory.forApp(opCtx)
         val appId = opCtx.mustGetAppId()
         val records = scanRecordIds.map { id -> scanRecordRepo.findById(sc, appId, id) }
         val grouped = records.filterNotNull().groupBy { it.id }

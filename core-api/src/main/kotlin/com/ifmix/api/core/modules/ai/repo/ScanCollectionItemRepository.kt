@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.entity.ai.ScanCollectionItem
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
@@ -23,7 +23,7 @@ import com.ifmix.api.core.entity.ai.updatedAt
 @Repository
 class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanCollectionItem>(sql, ScanCollectionItem::class) {
 
-    fun insertIfAbsent(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
+    fun insertIfAbsent(ctx: ModuleCtx, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
         val existing = ctx.sql.createQuery(ScanCollectionItem::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.get<UUID>("collectionId") eq collectionId)
@@ -46,7 +46,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
         return id
     }
 
-    fun softDeleteByScanIds(ctx: SvcCtx, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Int {
+    fun softDeleteByScanIds(ctx: ModuleCtx, appId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Int {
         if (scanRecordIds.isEmpty()) return 0
         return ctx.sql.createUpdate(ScanCollectionItem::class) {
             where(table.get<UUID>("appId") eq appId)
@@ -55,7 +55,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
         }.execute()
     }
 
-    fun findItemsByCursor(ctx: SvcCtx, appId: UUID, collectionId: UUID, limit: Int, cursor: UUID?): Page<ScanCollectionItem> {
+    fun findItemsByCursor(ctx: ModuleCtx, appId: UUID, collectionId: UUID, limit: Int, cursor: UUID?): Page<ScanCollectionItem> {
         val items = ctx.sql.createQuery(ScanCollectionItem::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.get<UUID>("collectionId") eq collectionId)
@@ -67,7 +67,7 @@ class ScanCollectionItemRepository(sql: KSqlClient) : BaseAppCrudRepository<Scan
         return Page.of(items, limit) { it.id.toString() }
     }
 
-    fun existsByScanRecordId(ctx: SvcCtx, collectionId: UUID, scanRecordId: UUID): Boolean {
+    fun existsByScanRecordId(ctx: ModuleCtx, collectionId: UUID, scanRecordId: UUID): Boolean {
         return ctx.sql.createQuery(ScanCollectionItem::class) {
             where(table.get<UUID>("collectionId") eq collectionId)
             where(table.get<UUID>("scanRecordId") eq scanRecordId)

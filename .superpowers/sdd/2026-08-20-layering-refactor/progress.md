@@ -1,0 +1,32 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-08-20-layering-refactor.md
+# BASE: 0ba8761c63618f3a7d4550de86b42efad20ebe1c0ba8761 refactor
+73752b6 docs
+36a4f96 up
+db0f376 up
+3cb3a3f up
+
+## Pre-flight scan (rulings before execution)
+
+| Row | Finding | Ruling |
+|-----|---------|--------|
+| SvcCtx→ModuleCtx rename across all files | Global rename; SvcCtxFactory→ModuleCtxFactory | Ruling: Straightforward; compile after each phase |
+| ClusterRouter: KSqlClient → ClusterSqlPair(writer, reader) | Current interface returns KSqlClient; need new data class | Ruling: Keep ClusterRegistry as-is (has both datasources); add writerSql/readerSql to ClusterRouter interface |
+| @Bean Config files: AuthConfig(infra), AiConfig(module), IapConfig(module) | AuthConfig has security infra beans (JwtDecoder, RestClient) — keep; AiConfig/IapConfig have module beans — convert to @Component | Ruling: Move agnesKeyStore/AgnesChatClientFactory to @Component beans in respective modules; IapConfig @Beans go to stub beans directly |
+| Entity dirs: scan/→merge into ai/ | plan says "antique+collection→ai", scan entity is separate from ai entity | Ruling: Move scan/ entities into ai/ and update imports; todo/→demo/, feedback/→cms/, iap/→payment/ |
+| CollectionFetcher uses SvcCtxFactory directly (cross-layer) | Fetcher imports repo + svcCtxFactory directly | Ruling: Must route through ScanCollectionFacade; fix in demo task |
+| GraphQL operation names already q_/m_ prefix | Current naming already matches | Ruling: No rename needed; 0 cost |
+| TodoFetcher uses toDto() | Only one file with toDto conversion | Ruling: Entity direct-output in demo task |
+| BaseCrudRepository / BaseAppCrudRepository exist | Old inheritance pattern, plan says delete in Phase 3 | Ruling: Leave for Phase 3 cleanup |
+
+
+## Todos
+- [ ] Task 1: Phase 1 — SvcCtx→ModuleCtx, ClusterRouter→ClusterSqlPair, OperationContext preferReader, ModuleCtxFactory chooseSql
+- [ ] Task 2: Phase 2 — demo module rename & refactor
+- [ ] Task 3: Phase 2 — cms module refactor
+- [ ] Task 4: Phase 2 — app module refactor
+- [ ] Task 5: Phase 2 — storage module refactor
+- [ ] Task 6: Phase 2 — payment module refactor
+- [ ] Task 7: Phase 2 — ai module refactor (merge scan→ai)
+- [ ] Task 8: Phase 2 — auth module refactor
+- [ ] Task 9: Phase 3 — cleanup (delete old repos, toDto, ARCHITECTURE.md update)
+

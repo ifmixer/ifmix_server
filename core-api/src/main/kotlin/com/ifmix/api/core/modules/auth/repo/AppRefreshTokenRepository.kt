@@ -8,7 +8,7 @@ import com.ifmix.api.core.entity.auth.revokedAt
 import com.ifmix.api.core.entity.auth.tokenHash
 import com.ifmix.api.core.entity.auth.expiresAt
 import com.ifmix.api.core.entity.auth.replacedBy
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
@@ -22,7 +22,7 @@ import java.util.UUID
 @Repository
 class AppRefreshTokenRepository(sql: KSqlClient) : BaseAppCrudRepository<AppRefreshToken>(sql, AppRefreshToken::class) {
 
-    fun findValidByHash(ctx: SvcCtx, appId: UUID, tokenHash: String): AppRefreshToken? {
+    fun findValidByHash(ctx: ModuleCtx, appId: UUID, tokenHash: String): AppRefreshToken? {
         val now = Instant.now()
         return ctx.sql.createQuery(AppRefreshToken::class) {
             where(table.get<UUID>("appId") eq appId)
@@ -38,7 +38,7 @@ class AppRefreshTokenRepository(sql: KSqlClient) : BaseAppCrudRepository<AppRefr
         }.limit(1).execute().firstOrNull()
     }
 
-    fun revoke(ctx: SvcCtx, id: UUID, replacedBy: UUID? = null) {
+    fun revoke(ctx: ModuleCtx, id: UUID, replacedBy: UUID? = null) {
         val now = Instant.now()
         if (replacedBy != null) {
             ctx.sql.createUpdate(AppRefreshToken::class) {

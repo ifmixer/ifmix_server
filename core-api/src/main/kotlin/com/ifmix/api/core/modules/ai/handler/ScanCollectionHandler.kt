@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.ai.handler
 
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.ai.ScanCollection
 import com.ifmix.api.core.entity.ai.ScanCollectionItem
@@ -20,7 +20,7 @@ open class ScanCollectionHandler(
     private val collectionRepo: ScanCollectionRepository,
     private val itemRepo: ScanCollectionItemRepository,
 ) {
-    fun createDefaultCollection(sc: SvcCtx): ScanCollection {
+    fun createDefaultCollection(sc: ModuleCtx): ScanCollection {
         val ctx = sc.op
         val now = Instant.now()
         val id = UuidV7.generate()
@@ -37,12 +37,12 @@ open class ScanCollectionHandler(
         return model
     }
 
-    fun addItem(sc: SvcCtx, collectionId: UUID, req: AddItemReq): AddItemRes {
+    fun addItem(sc: ModuleCtx, collectionId: UUID, req: AddItemReq): AddItemRes {
         val itemId = itemRepo.insertIfAbsent(sc, sc.appId!!, collectionId, req.scanRecordId)
         return AddItemRes(id = itemId)
     }
 
-    fun removeItems(sc: SvcCtx, collectionId: UUID, req: RemoveItemsReq): RemoveItemsRes {
+    fun removeItems(sc: ModuleCtx, collectionId: UUID, req: RemoveItemsReq): RemoveItemsRes {
         if (req.scanRecordIds.isEmpty()) throw com.ifmix.api.core.infra.http.ApiError(
             com.ifmix.api.core.infra.http.ErrorCode.INVALID_REQUEST, "scanRecordIds cannot be empty"
         )
@@ -50,13 +50,13 @@ open class ScanCollectionHandler(
         return RemoveItemsRes(removed = deletedCount.toInt())
     }
 
-    fun getDefault(sc: SvcCtx): ScanCollection? {
+    fun getDefault(sc: ModuleCtx): ScanCollection? {
         val ctx = sc.op
         val appId = ctx.appId!!
         return collectionRepo.findDefault(sc, appId, ctx.installId, ctx.userId)
     }
 
-    fun findItemsByCursor(sc: SvcCtx, collectionId: UUID, limit: Int?): Page<ScanCollectionItem> {
+    fun findItemsByCursor(sc: ModuleCtx, collectionId: UUID, limit: Int?): Page<ScanCollectionItem> {
         val appId = sc.op.appId!!
         val effectiveLimit = limit ?: 20
         val cursor = sc.op.installId // placeholder - actual cursor logic stays simple

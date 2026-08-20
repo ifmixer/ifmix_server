@@ -4,7 +4,7 @@ import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.storage.ObjectStorage
 import com.ifmix.api.core.entity.scan.ImageRef
@@ -45,7 +45,7 @@ class ScanHandler(
     }
 
     /** 在事务内保存记录 */
-    fun saveNewScan(sc: SvcCtx, scanId: UUID, input: NewScanInput): ScanRecord {
+    fun saveNewScan(sc: ModuleCtx, scanId: UUID, input: NewScanInput): ScanRecord {
         val appId = sc.op.appId!!
         val now = Instant.now()
 
@@ -84,7 +84,7 @@ class ScanHandler(
         return record
     }
 
-    fun updateScan(sc: SvcCtx, input: UpdateScanInput): Boolean {
+    fun updateScan(sc: ModuleCtx, input: UpdateScanInput): Boolean {
         val appId = sc.op.mustGetAppId()
         if (!scanRepo.exists(sc, appId, input.id)) throw com.ifmix.api.core.infra.http.ApiError(
             com.ifmix.api.core.infra.http.ErrorCode.NOT_FOUND
@@ -93,16 +93,16 @@ class ScanHandler(
         return true
     }
 
-    fun deleteScan(sc: SvcCtx, id: UUID): Boolean {
+    fun deleteScan(sc: ModuleCtx, id: UUID): Boolean {
         val appId = sc.op.mustGetAppId()
         scanRepo.deleteById(sc, appId, id)
         return true
     }
 
-    fun findById(sc: SvcCtx, id: UUID): ScanRecord? =
+    fun findById(sc: ModuleCtx, id: UUID): ScanRecord? =
         scanRepo.findById(sc, sc.op.mustGetAppId(), id)
 
-    fun findByCursorFiltered(sc: SvcCtx, cursor: String?, limit: Int?, collected: Boolean?): Page<ScanRecord> {
+    fun findByCursorFiltered(sc: ModuleCtx, cursor: String?, limit: Int?, collected: Boolean?): Page<ScanRecord> {
         val appId = sc.op.mustGetAppId()
         val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
         val cursorUuid = cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
@@ -116,16 +116,16 @@ class ScanHandler(
         )
     }
 
-    fun presignedUploadUrl(sc: SvcCtx, objectKey: String, contentType: String, duration: Duration): String =
+    fun presignedUploadUrl(sc: ModuleCtx, objectKey: String, contentType: String, duration: Duration): String =
         objectStorage.presignUpload("ugc", objectKey, contentType, duration)
 
-    fun presignedDownloadUrl(sc: SvcCtx, objectKey: String, duration: Duration): String =
+    fun presignedDownloadUrl(sc: ModuleCtx, objectKey: String, duration: Duration): String =
         objectStorage.presignDownload("ugc", objectKey, duration)
 
-    fun getPublicUrl(sc: SvcCtx, objectKey: String): String =
+    fun getPublicUrl(sc: ModuleCtx, objectKey: String): String =
         objectStorage.getPublicUrl("ugc", objectKey)
 
-    fun findByFilter(sc: SvcCtx, filter: FilterGroup?, cursor: String?, limit: Int?): Page<ScanRecord> {
+    fun findByFilter(sc: ModuleCtx, filter: FilterGroup?, cursor: String?, limit: Int?): Page<ScanRecord> {
         // ponytail: FilterGroup 解析暂未实现，fallback 到普通游标查询
         return findByCursorFiltered(sc, cursor, limit, null)
     }

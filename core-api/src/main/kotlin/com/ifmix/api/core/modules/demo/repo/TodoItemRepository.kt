@@ -8,7 +8,7 @@ import com.ifmix.api.core.entity.todo.content
 import com.ifmix.api.core.entity.todo.done
 import com.ifmix.api.core.entity.todo.note
 import com.ifmix.api.core.generated.types.UpdateTodoItemInput
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.CrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
@@ -18,10 +18,10 @@ import java.util.UUID
 class TodoItemRepository {
     private val tpl = CrudRepoTemplate(TodoItem::class, appId = "appId")
 
-    fun save(ctx: SvcCtx, entity: TodoItem): TodoItem = tpl.save(ctx, entity)
-    fun deleteByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(ctx, appId, ids)
+    fun save(ctx: ModuleCtx, entity: TodoItem): TodoItem = tpl.save(ctx, entity)
+    fun deleteByIds(ctx: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(ctx, appId, ids)
 
-    fun findByTodoIds(ctx: SvcCtx, appId: UUID, todoIds: Collection<UUID>): List<TodoItem> {
+    fun findByTodoIds(ctx: ModuleCtx, appId: UUID, todoIds: Collection<UUID>): List<TodoItem> {
         if (todoIds.isEmpty()) return emptyList()
         return ctx.sql.createQuery(TodoItem::class) {
             where(table.appId eq appId)
@@ -30,7 +30,7 @@ class TodoItemRepository {
         }.execute()
     }
 
-    fun partialUpdate(ctx: SvcCtx, appId: UUID, input: UpdateTodoItemInput) {
+    fun partialUpdate(ctx: ModuleCtx, appId: UUID, input: UpdateTodoItemInput) {
         val set = input.set ?: return
         if (set.content == null && set.done == null && set.note == null) return
         ctx.sql.createUpdate(TodoItem::class) {

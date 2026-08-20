@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.entity.ai.ScanRecord
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -19,7 +19,7 @@ import com.ifmix.api.core.entity.ai.userNotes
 @Repository
 class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(sql, ScanRecord::class) {
 
-    fun findByCursor(ctx: SvcCtx, appId: UUID, collected: Boolean?, cursor: UUID?, limit: Int): List<ScanRecord> {
+    fun findByCursor(ctx: ModuleCtx, appId: UUID, collected: Boolean?, cursor: UUID?, limit: Int): List<ScanRecord> {
         return ctx.sql.createQuery(ScanRecord::class) {
             where(table.get<UUID>("appId") eq appId)
             collected?.let { where(table.collected eq it) }
@@ -29,7 +29,7 @@ class ScanRecordRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanRecord>(
         }.limit(limit).execute()
     }
 
-    fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, req: UpdateScanInput) {
+    fun partialUpdate(ctx: ModuleCtx, appId: UUID, id: UUID, req: UpdateScanInput) {
         ctx.sql.createUpdate(ScanRecord::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.id eq id)

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.service
 
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.http.OperationContext
 
@@ -34,7 +34,7 @@ class CrudServiceOpsFactory(private val cache: CacheAside?) {
 
 /**
  * 绑定了实体类型 + 缓存配置的通用 CRUD Service 操作。
- * Service 持有一个实例，调用时只传 svcCtx + 业务参数。
+ * Service 持有一个实例，调用时只传 mc + 业务参数。
  */
 class CrudServiceOps<T : Any>(
     private val cache: CacheAside?,
@@ -46,45 +46,45 @@ class CrudServiceOps<T : Any>(
     // ===== Query =====
 
     fun findById(
-        svcCtx: SvcCtx,
+        mc: ModuleCtx,
         id: UUID,
-        loader: (SvcCtx, UUID, UUID) -> T?,
+        loader: (ModuleCtx, UUID, UUID) -> T?,
     ): T? {
-        val appId = svcCtx.mustGetAppId()
-        if (cache == null || !svcCtx.op.readCache) return loader(svcCtx, appId, id)
+        val appId = mc.mustGetAppId()
+        if (cache == null || !mc.op.readCache) return loader(mc, appId, id)
         return cache.getOrLoadNullable(cacheKey(appId, id), type) {
-            loader(svcCtx, appId, id)
+            loader(mc, appId, id)
         }
     }
 
     fun findByIds(
-        svcCtx: SvcCtx,
+        mc: ModuleCtx,
         ids: List<UUID>,
-        loader: (SvcCtx, UUID, Collection<UUID>) -> List<T>,
+        loader: (ModuleCtx, UUID, Collection<UUID>) -> List<T>,
     ): List<T> {
         if (ids.isEmpty()) return emptyList()
-        val appId = svcCtx.mustGetAppId()
-        if (cache == null || !svcCtx.op.readCache) return loader(svcCtx, appId, ids)
+        val appId = mc.mustGetAppId()
+        if (cache == null || !mc.op.readCache) return loader(mc, appId, ids)
         return cache.loadMany(
             ids = ids.map { it.toString() },
             keyOf = { cacheKey(appId, UUID.fromString(it)) },
             type = type,
             idOf = { idExtractor(it).toString() },
         ) { missIds ->
-            loader(svcCtx, appId, missIds.map { UUID.fromString(it) })
+            loader(mc, appId, missIds.map { UUID.fromString(it) })
         }
     }
 
     fun findByCursor(
-        svcCtx: SvcCtx,
+        mc: ModuleCtx,
         cursor: String?,
         limit: Int?,
-        loader: (SvcCtx, UUID, UUID?, Int) -> List<T>,
+        loader: (ModuleCtx, UUID, UUID?, Int) -> List<T>,
     ): Page<T> {
-        val appId = svcCtx.mustGetAppId()
+        val appId = mc.mustGetAppId()
         val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
         val cursorUuid = cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-        val items = loader(svcCtx, appId, cursorUuid, effectiveLimit + 1)
+        val items = loader(mc, appId, cursorUuid, effectiveLimit + 1)
         val hasMore = items.size > effectiveLimit
         val resultItems = items.take(effectiveLimit)
         return Page(
@@ -97,31 +97,31 @@ class CrudServiceOps<T : Any>(
     // ===== Delete + Evict =====
 
     fun deleteById(
-        svcCtx: SvcCtx,
+        mc: ModuleCtx,
         id: UUID,
-        deleter: (SvcCtx, UUID, UUID) -> Boolean,
+        deleter: (ModuleCtx, UUID, UUID) -> Boolean,
     ): Boolean {
-        val appId = svcCtx.mustGetAppId()
-        val deleted = deleter(svcCtx, appId, id)
+        val appId = mc.mustGetAppId()
+        val deleted = deleter(mc, appId, id)
         if (deleted) evict(appId, id)
         return deleted
     }
 
     fun deleteByIds(
-        svcCtx: SvcCtx,
+        mc: ModuleCtx,
         ids: Collection<UUID>,
-        deleter: (SvcCtx, UUID, Collection<UUID>) -> Int,
+        deleter: (ModuleCtx, UUID, Collection<UUID>) -> Int,
     ): Int {
         if (ids.isEmpty()) return 0
-        val appId = svcCtx.mustGetAppId()
-        val count = deleter(svcCtx, appId, ids)
+        val appId = mc.mustGetAppId()
+        val count = deleter(mc, appId, ids)
         ids.forEach { evict(appId, it) }
         return count
     }
 
     // ===== Evict =====
 
-    fun evict(svcCtx: SvcCtx, id: UUID) = evict(svcCtx.mustGetAppId(), id)
+    fun evict(mc: ModuleCtx, id: UUID) = evict(mc.mustGetAppId(), id)
 
     private fun evict(appId: UUID, id: UUID) {
         cache?.evict(cacheKey(appId, id))

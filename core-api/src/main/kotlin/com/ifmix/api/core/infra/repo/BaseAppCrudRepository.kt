@@ -1,7 +1,7 @@
 package com.ifmix.api.core.infra.repo
 
 import com.ifmix.api.core.entity.AppScopedProps
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import java.util.UUID
@@ -21,14 +21,14 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
     protected val entityType: KClass<E>,
 ) {
 
-    open fun findById(ctx: SvcCtx, appId: UUID, id: UUID): E? =
+    open fun findById(ctx: ModuleCtx, appId: UUID, id: UUID): E? =
         ctx.sql.createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
             select(table)
         }.limit(1).execute().firstOrNull()
 
-    open fun findByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): List<E> {
+    open fun findByIds(ctx: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<E> {
         if (ids.isEmpty()) return emptyList()
         return ctx.sql.createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
@@ -37,7 +37,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         }.execute()
     }
 
-    open fun findByCursor(ctx: SvcCtx, appId: UUID, cursor: UUID?, limit: Int): List<E> {
+    open fun findByCursor(ctx: ModuleCtx, appId: UUID, cursor: UUID?, limit: Int): List<E> {
         return ctx.sql.createQuery(entityType) {
             where(table.get<UUID>("appId") eq appId)
             cursor?.let { where(table.getId<UUID>() lt it) }
@@ -46,15 +46,15 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         }.limit(limit).execute()
     }
 
-    open fun save(ctx: SvcCtx, entity: E): E =
+    open fun save(ctx: ModuleCtx, entity: E): E =
         ctx.sql.entities.save(entity).modifiedEntity
 
-    open fun batchSave(ctx: SvcCtx, entities: List<E>): List<E> {
+    open fun batchSave(ctx: ModuleCtx, entities: List<E>): List<E> {
         if (entities.isEmpty()) return emptyList()
         return entities.map { save(ctx, it) }
     }
 
-    open fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean {
+    open fun deleteById(ctx: ModuleCtx, appId: UUID, id: UUID): Boolean {
         val count = ctx.sql.createDelete(entityType) {
             where(table.get<UUID>("appId") eq appId)
             where(table.getId<UUID>() eq id)
@@ -62,7 +62,7 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         return count > 0
     }
 
-    open fun deleteByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): Int {
+    open fun deleteByIds(ctx: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int {
         if (ids.isEmpty()) return 0
         return ctx.sql.createDelete(entityType) {
             where(table.get<UUID>("appId") eq appId)
@@ -70,6 +70,6 @@ abstract class BaseAppCrudRepository<E : AppScopedProps>(
         }.execute()
     }
 
-    open fun exists(ctx: SvcCtx, appId: UUID, id: UUID): Boolean =
+    open fun exists(ctx: ModuleCtx, appId: UUID, id: UUID): Boolean =
         findById(ctx, appId, id) != null
 }

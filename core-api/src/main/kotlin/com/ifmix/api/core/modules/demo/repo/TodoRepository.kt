@@ -12,7 +12,7 @@ import com.ifmix.api.core.entity.todo.userId
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
 import com.ifmix.api.core.generated.types.UpdateTodoInput
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.CrudRepoTemplate
 import com.ifmix.api.core.infra.repo.FilterGroupResolver
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -36,13 +36,13 @@ class TodoRepository {
         )
     }
 
-    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): Todo? = tpl.findById(ctx, appId, id)
-    fun findByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): List<Todo> = tpl.findByIds(ctx, appId, ids)
-    fun save(ctx: SvcCtx, entity: Todo): Todo = tpl.save(ctx, entity)
-    fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(ctx, appId, id)
-    fun deleteByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(ctx, appId, ids)
+    fun findById(ctx: ModuleCtx, appId: UUID, id: UUID): Todo? = tpl.findById(ctx, appId, id)
+    fun findByIds(ctx: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<Todo> = tpl.findByIds(ctx, appId, ids)
+    fun save(ctx: ModuleCtx, entity: Todo): Todo = tpl.save(ctx, entity)
+    fun deleteById(ctx: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(ctx, appId, id)
+    fun deleteByIds(ctx: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(ctx, appId, ids)
 
-    fun findByCursor(ctx: SvcCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): Page<Todo> {
+    fun findByCursor(ctx: ModuleCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): Page<Todo> {
         return tpl.findByCursor(ctx, appId, cursor, limit) {
             filter?.done?.let { where(table.done eq it) }
             filter?.userId?.let { where(table.userId eq it) }
@@ -52,7 +52,7 @@ class TodoRepository {
     /**
      * 基于 FilterGroup + cursor 的动态查询。
      */
-    fun findByFilter(ctx: SvcCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> {
+    fun findByFilter(ctx: ModuleCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> {
         val rows = ctx.sql.createQuery(Todo::class) {
             where(table.appId eq appId)
             FilterGroupResolver.apply(this, filter, FILTERABLE)
@@ -64,7 +64,7 @@ class TodoRepository {
         return Page.of(rows, limit) { it.id.toString() }
     }
 
-    fun partialUpdate(ctx: SvcCtx, appId: UUID, input: UpdateTodoInput) {
+    fun partialUpdate(ctx: ModuleCtx, appId: UUID, input: UpdateTodoInput) {
         val set = input.set ?: return
         if (set.title == null && set.done == null && set.note == null) return
         ctx.sql.createUpdate(Todo::class) {

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.payment.handler
 
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.modules.payment.NotificationDecoder
 import com.ifmix.api.core.modules.payment.NotificationType
@@ -16,15 +16,15 @@ class PaymentWebhookHandler(
     private val subscriptionRepo: SubscriptionRepository,
     private val storeNotificationRepo: StoreNotificationRepository,
 ) {
-    fun handleAppleNotification(sc: SvcCtx, rawPayload: String, decoder: NotificationDecoder) {
+    fun handleAppleNotification(sc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder) {
         handleNotification(sc, rawPayload, decoder, "APPLE")
     }
 
-    fun handleGoogleNotification(sc: SvcCtx, rawPayload: String, decoder: NotificationDecoder) {
+    fun handleGoogleNotification(sc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder) {
         handleNotification(sc, rawPayload, decoder, "GOOGLE")
     }
 
-    fun handleNotification(sc: SvcCtx, rawPayload: String, decoder: NotificationDecoder, platform: String) {
+    fun handleNotification(sc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder, platform: String) {
         val ctx = sc.op
         val appId = ctx.appId ?: return
 
@@ -59,7 +59,7 @@ class PaymentWebhookHandler(
     }
 
     private fun updateSubscription(
-        sc: SvcCtx,
+        sc: ModuleCtx,
         sub: com.ifmix.api.core.entity.iap.Subscription,
         active: Boolean? = null,
         subStatus: String? = null,
@@ -76,7 +76,7 @@ class PaymentWebhookHandler(
     }
 
     private fun createStoreNotification(
-        sc: SvcCtx,
+        sc: ModuleCtx,
         platform: String,
         subscriptionPxid: String,
         rawPayload: String,

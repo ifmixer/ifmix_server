@@ -17,8 +17,8 @@ import javax.sql.DataSource
  * 单集群数据源注册：一个 writer + 一个 reader。
  *
  * 提供：
- * - [sqlClient]：KSqlClient 实例，通过 Spring 管理的 DataSource 获取连接
- * - [routingDataSource]：用于注册 Spring TransactionManager
+ * - [writerSql] / [readerSql]：独立的 KSqlClient 实例，分别绑定 writer/reader DataSource
+ * - [routingDataSource]：路由 DataSource，供 Spring TransactionManager 使用
  * - [writerDataSource]：用于 Flyway migration
  */
 @Component
@@ -32,35 +32,38 @@ class ClusterRegistry(
     val readerDataSource: HikariDataSource by lazy { createDataSource(props.reader, "pg-reader") }
     val routingDataSource: ReadWriteRoutingDataSource by lazy { ReadWriteRoutingDataSource(writerDataSource, readerDataSource) }
 
-    /**
-     * 全局唯一的 KSqlClient。
-     * ConnectionManager 从 routingDataSource 获取连接，由 Spring TX 控制读写路由。
-     */
-    val sqlClient: KSqlClient by lazy {
-        newKSqlClient {
-            setConnectionManager {
-                val conn = routingDataSource.connection
-                try {
-                    proceed(conn)
-                } finally {
-                    conn.close()
-                }
-            }
-            setDialect(PostgresDialect())
-            if (showSql) {
-                setExecutor(Executor.log())
-                setExecutorContextPrefixes(listOf("com.ifmix.api.core"))
-            }
-            for (interceptor in draftInterceptors) {
-                addDraftInterceptor(interceptor)
-            }
-        }
-    }
+    /** writer KSqlClient — 用于写操作和全局事务 */
+    val writerSql: KSqlClient by lazy { createSqlClient(writerDataSource) }
+
+    /** reader KSqlClient — 用于读操作 */
+    val readerSql: KSqlClient by lazy { createSqlClient(readerDataSource) }
+
+    /** 向后兼容：返回 writerSql，供仍注入单一 sqlClient bean 的老代码使用 */
+    val sqlClient: KSqlClient get() = writerSql
 
     @PreDestroy
     fun destroy() {
         writerDataSource.close()
         readerDataSource.close()
+    }
+
+    private fun createSqlClient(dataSource: DataSource): KSqlClient = newKSqlClient {
+        setConnectionManager {
+            val conn = dataSource.connection
+            try {
+                proceed(conn)
+            } finally {
+                conn.close()
+            }
+        }
+        setDialect(PostgresDialect())
+        if (showSql) {
+            setExecutor(Executor.log())
+            setExecutorContextPrefixes(listOf("com.ifmix.api.core"))
+        }
+        for (interceptor in draftInterceptors) {
+            addDraftInterceptor(interceptor)
+        }
     }
 
     private fun createDataSource(props: ClusterProperties.DataSourceProps, poolName: String): HikariDataSource {

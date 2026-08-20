@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.iap.appId
 import com.ifmix.api.core.entity.iap.subscriptionPxid
 import com.ifmix.api.core.entity.iap.originalTransactionId
 import com.ifmix.api.core.entity.iap.active
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
@@ -16,7 +16,7 @@ import com.ifmix.api.core.entity.iap.id
 @Repository
 class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscription>(sql, Subscription::class) {
 
-    fun findActiveByPxid(ctx: SvcCtx, appId: UUID, pxid: String): Subscription? {
+    fun findActiveByPxid(ctx: ModuleCtx, appId: UUID, pxid: String): Subscription? {
         return ctx.sql.createQuery(Subscription::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.subscriptionPxid eq pxid)
@@ -25,7 +25,7 @@ class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscripti
         }.limit(1).execute().firstOrNull()
     }
 
-    fun findByPxid(ctx: SvcCtx, appId: UUID, pxid: String): Subscription? {
+    fun findByPxid(ctx: ModuleCtx, appId: UUID, pxid: String): Subscription? {
         return ctx.sql.createQuery(Subscription::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.subscriptionPxid eq pxid)
@@ -33,7 +33,7 @@ class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscripti
         }.limit(1).execute().firstOrNull()
     }
 
-    fun findByOriginalTxn(ctx: SvcCtx, appId: UUID, originalTxnId: String): Subscription? {
+    fun findByOriginalTxn(ctx: ModuleCtx, appId: UUID, originalTxnId: String): Subscription? {
         return ctx.sql.createQuery(Subscription::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.originalTransactionId eq originalTxnId)
@@ -41,7 +41,7 @@ class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscripti
         }.limit(1).execute().firstOrNull()
     }
 
-    fun upsertSubscription(ctx: SvcCtx, entity: Subscription) {
+    fun upsertSubscription(ctx: ModuleCtx, entity: Subscription) {
         ctx.sql.entities.save(entity) {
             setKeyProps(Subscription::subscriptionPxid)
         }

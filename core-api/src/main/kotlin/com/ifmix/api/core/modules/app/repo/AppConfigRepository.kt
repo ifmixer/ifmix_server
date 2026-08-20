@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.app.repo
 
 import com.ifmix.api.core.entity.app.AppConfigRevision
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.desc
@@ -18,7 +18,7 @@ import com.ifmix.api.core.entity.app.id
 @Repository
 class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevision>(sql, AppConfigRevision::class) {
 
-    fun findActiveByAppId(ctx: SvcCtx, appId: UUID): AppConfigRevision? {
+    fun findActiveByAppId(ctx: ModuleCtx, appId: UUID): AppConfigRevision? {
         return ctx.sql.createQuery(AppConfigRevision::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.enabled eq true)
@@ -27,7 +27,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
         }.limit(1).execute().firstOrNull()
     }
 
-    fun findByBundleId(ctx: SvcCtx, bundleId: String): AppConfigRevision? {
+    fun findByBundleId(ctx: ModuleCtx, bundleId: String): AppConfigRevision? {
         return ctx.sql.createQuery(AppConfigRevision::class) {
             where(table.appleBundleId eq bundleId)
             where(table.enabled eq true)
@@ -35,7 +35,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
         }.limit(1).execute().firstOrNull()
     }
 
-    fun findByAndroidPackage(ctx: SvcCtx, pkg: String): AppConfigRevision? {
+    fun findByAndroidPackage(ctx: ModuleCtx, pkg: String): AppConfigRevision? {
         return ctx.sql.createQuery(AppConfigRevision::class) {
             where(table.androidPackageName eq pkg)
             where(table.enabled eq true)
@@ -43,7 +43,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
         }.limit(1).execute().firstOrNull()
     }
 
-    fun disableCurrentRevisions(ctx: SvcCtx, appId: UUID): Int {
+    fun disableCurrentRevisions(ctx: ModuleCtx, appId: UUID): Int {
         return ctx.sql.createUpdate(AppConfigRevision::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.enabled eq true)
@@ -51,7 +51,7 @@ class AppConfigRepository(sql: KSqlClient) : BaseAppCrudRepository<AppConfigRevi
         }.execute()
     }
 
-    fun updateEnabled(ctx: SvcCtx, revisionId: UUID, enabled: Boolean): Int {
+    fun updateEnabled(ctx: ModuleCtx, revisionId: UUID, enabled: Boolean): Int {
         return ctx.sql.createUpdate(AppConfigRevision::class) {
             where(table.id eq revisionId)
             set(table.enabled, enabled)

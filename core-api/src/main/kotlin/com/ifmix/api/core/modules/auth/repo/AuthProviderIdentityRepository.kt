@@ -4,7 +4,7 @@ import com.ifmix.api.core.entity.auth.AuthProviderIdentity
 import com.ifmix.api.core.entity.auth.authTenant
 import com.ifmix.api.core.entity.auth.provider
 import com.ifmix.api.core.entity.auth.providerAccountId
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.repo.BaseCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -18,7 +18,7 @@ import com.ifmix.api.core.entity.auth.authTenantId
 @Repository
 class AuthProviderIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {
 
-    fun findByProviderAndAccountId(ctx: SvcCtx, tenantId: UUID, provider: String, providerAccountId: String): AuthProviderIdentity? {
+    fun findByProviderAndAccountId(ctx: ModuleCtx, tenantId: UUID, provider: String, providerAccountId: String): AuthProviderIdentity? {
         return ctx.sql.createQuery(AuthProviderIdentity::class) {
             where(table.authTenantId eq tenantId)
             where(table.provider eq provider)
@@ -28,7 +28,7 @@ class AuthProviderIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthP
     }
 
     fun upsert(
-        ctx: SvcCtx, tenantId: UUID, provider: String, providerAccountId: String,
+        ctx: ModuleCtx, tenantId: UUID, provider: String, providerAccountId: String,
         identityId: UUID, email: String?, emailVerified: Boolean, phone: String?,
         userMetadata: Map<String, Any?>?, providerMetadata: Map<String, Any?>?,
         loginIp: String?, loginInstallId: UUID?, loginAppId: UUID?,

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.payment.handler
 
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -38,7 +38,7 @@ class PaymentHandler(
      * 注意：外部 verifier 调用应在事务外由 Facade 编排，
      * 此方法仅处理 DB 写入逻辑（由调用方在 tx.withTx 内调用）。
      */
-    fun verifyAndUpsert(sc: SvcCtx, req: VerifyReq, verifyResult: VerifyResult): VerifyRes {
+    fun verifyAndUpsert(sc: ModuleCtx, req: VerifyReq, verifyResult: VerifyResult): VerifyRes {
         val appId = sc.op.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
         val productTierMap = appConfigRepo.findActiveByAppId(sc, appId)

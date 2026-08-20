@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.ai.service
 
 import com.ifmix.api.core.entity.ai.AgnesKey
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.modules.ai.repo.AgnesKeyRepository
@@ -28,7 +28,7 @@ class AiConfig(private val sqlClient: KSqlClient) {
         return AgnesKeyStore(
             redis = redis,
             loadKeys = {
-                val ctx = SvcCtx(op = OperationContext(req = RequestContext()), sql = sqlClient)
+                val ctx = ModuleCtx(op = OperationContext(req = RequestContext()), sql = sqlClient)
                 agnesKeyRepo.findAllEnabled(ctx).map { key ->
                     AgnesKeyStore.AgnesKeyDoc(
                         id = key.id.toString(),

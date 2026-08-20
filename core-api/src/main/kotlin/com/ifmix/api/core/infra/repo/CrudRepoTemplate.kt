@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.repo
 
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import java.util.UUID
 import kotlin.reflect.KClass
@@ -19,8 +19,8 @@ import com.ifmix.api.core.dto.common.Page
  * class TodoRepository {
  *     private val tpl = CrudRepoTemplate(Todo::class, appId = "appId")
  *
- *     fun findById(ctx: SvcCtx, appId: UUID, id: UUID) = tpl.findById(ctx, appId, id)
- *     fun save(ctx: SvcCtx, entity: Todo) = tpl.save(ctx, entity)
+ *     fun findById(ctx: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(ctx, appId, id)
+ *     fun save(ctx: ModuleCtx, entity: Todo) = tpl.save(ctx, entity)
  * }
  * ```
  */
@@ -34,20 +34,20 @@ class CrudRepoTemplate<E : Any>(
 
     // ===== Read =====
 
-    fun findById(ctx: SvcCtx, appId: UUID, id: UUID): E? =
+    fun findById(ctx: ModuleCtx, appId: UUID, id: UUID): E? =
         ctx.sql.createQuery(entityType) {
             where(table.get<UUID>(this@CrudRepoTemplate.appId!!) eq appId)
             where(table.get<UUID>(this@CrudRepoTemplate.id) eq id)
             select(table)
         }.limit(1).execute().firstOrNull()
 
-    fun findById(ctx: SvcCtx, id: UUID): E? =
+    fun findById(ctx: ModuleCtx, id: UUID): E? =
         ctx.sql.createQuery(entityType) {
             where(table.get<UUID>(this@CrudRepoTemplate.id) eq id)
             select(table)
         }.limit(1).execute().firstOrNull()
 
-    fun findByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): List<E> {
+    fun findByIds(ctx: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<E> {
         if (ids.isEmpty()) return emptyList()
         return ctx.sql.createQuery(entityType) {
             where(table.get<UUID>(this@CrudRepoTemplate.appId!!) eq appId)
@@ -56,7 +56,7 @@ class CrudRepoTemplate<E : Any>(
         }.execute()
     }
 
-    fun findByIds(ctx: SvcCtx, ids: Collection<UUID>): List<E> {
+    fun findByIds(ctx: ModuleCtx, ids: Collection<UUID>): List<E> {
         if (ids.isEmpty()) return emptyList()
         return ctx.sql.createQuery(entityType) {
             where(table.get<UUID>(this@CrudRepoTemplate.id) valueIn ids)
@@ -70,7 +70,7 @@ class CrudRepoTemplate<E : Any>(
      * @param where 额外 where 条件 lambda（在 appId 和 cursor 条件之后追加）。
      */
     fun findByCursor(
-        ctx: SvcCtx,
+        ctx: ModuleCtx,
         appId: UUID,
         cursor: UUID?,
         limit: Int,
@@ -96,22 +96,22 @@ class CrudRepoTemplate<E : Any>(
         return spi.__get(id)?.toString()
     }
 
-    fun exists(ctx: SvcCtx, appId: UUID, id: UUID): Boolean =
+    fun exists(ctx: ModuleCtx, appId: UUID, id: UUID): Boolean =
         findById(ctx, appId, id) != null
 
     // ===== Write =====
 
-    fun save(ctx: SvcCtx, entity: E): E =
+    fun save(ctx: ModuleCtx, entity: E): E =
         ctx.sql.entities.save(entity).modifiedEntity
 
-    fun batchSave(ctx: SvcCtx, entities: List<E>): List<E> {
+    fun batchSave(ctx: ModuleCtx, entities: List<E>): List<E> {
         if (entities.isEmpty()) return emptyList()
         return entities.map { ctx.sql.entities.save(it).modifiedEntity }
     }
 
     // ===== Delete =====
 
-    fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean {
+    fun deleteById(ctx: ModuleCtx, appId: UUID, id: UUID): Boolean {
         val count = ctx.sql.createDelete(entityType) {
             where(table.get<UUID>(this@CrudRepoTemplate.appId!!) eq appId)
             where(table.get<UUID>(this@CrudRepoTemplate.id) eq id)
@@ -119,14 +119,14 @@ class CrudRepoTemplate<E : Any>(
         return count > 0
     }
 
-    fun deleteById(ctx: SvcCtx, id: UUID): Boolean {
+    fun deleteById(ctx: ModuleCtx, id: UUID): Boolean {
         val count = ctx.sql.createDelete(entityType) {
             where(table.get<UUID>(this@CrudRepoTemplate.id) eq id)
         }.execute()
         return count > 0
     }
 
-    fun deleteByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): Int {
+    fun deleteByIds(ctx: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int {
         if (ids.isEmpty()) return 0
         return ctx.sql.createDelete(entityType) {
             where(table.get<UUID>(this@CrudRepoTemplate.appId!!) eq appId)
@@ -134,7 +134,7 @@ class CrudRepoTemplate<E : Any>(
         }.execute()
     }
 
-    fun deleteByIds(ctx: SvcCtx, ids: Collection<UUID>): Int {
+    fun deleteByIds(ctx: ModuleCtx, ids: Collection<UUID>): Int {
         if (ids.isEmpty()) return 0
         return ctx.sql.createDelete(entityType) {
             where(table.get<UUID>(this@CrudRepoTemplate.id) valueIn ids)

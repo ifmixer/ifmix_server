@@ -10,7 +10,7 @@ import com.ifmix.api.core.entity.auth.clientIp
 import com.ifmix.api.core.entity.auth.userId
 import com.ifmix.api.core.entity.auth.installId
 import com.ifmix.api.core.entity.auth.loginCount
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
@@ -22,7 +22,7 @@ import java.util.UUID
 class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<UserInstallBinding>(sql, UserInstallBinding::class) {
 
     fun recordBinding(
-        ctx: SvcCtx,
+        ctx: ModuleCtx,
         appId: UUID,
         userId: UUID,
         installId: UUID,

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.app.handler
 
-import com.ifmix.api.core.infra.db.SvcCtx
+import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -26,7 +26,7 @@ class AppConfigHandler(
         val note: String,
     )
 
-    fun createOneRevision(sc: SvcCtx, req: CreateRevisionInput): AppConfigRevision {
+    fun createOneRevision(sc: ModuleCtx, req: CreateRevisionInput): AppConfigRevision {
         val appId = sc.appId!!
         if (req.enabled) revisionRepo.disableCurrentRevisions(sc, appId)
         val now = java.time.Instant.now()
@@ -47,7 +47,7 @@ class AppConfigHandler(
         return revision
     }
 
-    fun toggleRevision(sc: SvcCtx, revisionId: UUID, enabled: Boolean): AppConfigRevision {
+    fun toggleRevision(sc: ModuleCtx, revisionId: UUID, enabled: Boolean): AppConfigRevision {
         val appId = sc.appId!!
         val existing = revisionRepo.findById(sc, appId, revisionId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "revision not found")
