@@ -19,7 +19,7 @@ import java.util.UUID
 class TodoItemRepository {
     private val tpl = CrudRepoTemplate(TodoItem::class, appId = "appId")
 
-    fun save(mc: ModuleCtx, entity: TodoItem): TodoItem = tpl.save(mc, entity)
+    fun save(mc: ModuleCtx, entity: TodoItem) = tpl.save(mc, entity)
     fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, appId, ids)
 
     fun findByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>): List<TodoItem> {
@@ -31,14 +31,14 @@ class TodoItemRepository {
         }.execute()
     }
 
-    fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoItemInput) {
+    fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoItemInput): Int {
         val set = input.set
         val unset = input.unset?.toSet() ?: emptySet()
 
         // 没有任何更新请求
-        if (set == null && unset.isEmpty()) return
+        if (set == null && unset.isEmpty()) return 0
 
-        mc.sql.createUpdate(TodoItem::class) {
+        return mc.sql.createUpdate(TodoItem::class) {
             where(table.appId eq appId)
             where(table.id eq input.id)
 

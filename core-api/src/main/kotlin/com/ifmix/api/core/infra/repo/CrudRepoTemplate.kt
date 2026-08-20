@@ -101,12 +101,12 @@ class CrudRepoTemplate<E : Any>(
 
     // ===== Write =====
 
-    fun save(ctx: ModuleCtx, entity: E): E =
-        ctx.sql.entities.save(entity).modifiedEntity
+    fun save(ctx: ModuleCtx, entity: E): Int =
+        ctx.sql.entities.save(entity).totalAffectedRowCount
 
-    fun batchSave(ctx: ModuleCtx, entities: List<E>): List<E> {
-        if (entities.isEmpty()) return emptyList()
-        return entities.map { ctx.sql.entities.save(it).modifiedEntity }
+    fun batchSave(ctx: ModuleCtx, entities: List<E>): Int {
+        if (entities.isEmpty()) return 0
+        return ctx.sql.entities.saveEntities(entities).totalAffectedRowCount
     }
 
     // ===== Delete =====

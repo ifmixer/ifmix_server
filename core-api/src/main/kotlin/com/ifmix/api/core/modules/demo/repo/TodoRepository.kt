@@ -39,7 +39,7 @@ class TodoRepository {
 
     fun findById(mc: ModuleCtx, appId: UUID, id: UUID): Todo? = tpl.findById(mc, appId, id)
     fun findByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<Todo> = tpl.findByIds(mc, appId, ids)
-    fun save(mc: ModuleCtx, entity: Todo): Todo = tpl.save(mc, entity)
+    fun save(mc: ModuleCtx, entity: Todo) = tpl.save(mc, entity)
     fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
     fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, appId, ids)
 
@@ -65,14 +65,14 @@ class TodoRepository {
         return Page.of(rows, limit) { it.id.toString() }
     }
 
-    fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoInput) {
+    fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoInput): Int {
         val set = input.set
         val unset = input.unset?.toSet() ?: emptySet()
 
         // 没有任何更新请求
-        if (set == null && unset.isEmpty()) return
+        if (set == null && unset.isEmpty()) return 0
 
-        mc.sql.createUpdate(Todo::class) {
+        return mc.sql.createUpdate(Todo::class) {
             where(table.appId eq appId)
             where(table.id eq input.id)
 

@@ -55,7 +55,7 @@ class TodoAggHandler(
             this.createdAt = now
             this.updatedAt = now
         }
-        val saved = todoRepo.save(mc, todo)
+        todoRepo.save(mc, todo)
 
         items?.forEach { item ->
             val todoItem = TodoItem {
@@ -71,7 +71,7 @@ class TodoAggHandler(
             todoItemRepo.save(mc, todoItem)
         }
 
-        return saved
+        return todoRepo.findById(mc, appId, id)!!
     }
 
     fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoInput) {

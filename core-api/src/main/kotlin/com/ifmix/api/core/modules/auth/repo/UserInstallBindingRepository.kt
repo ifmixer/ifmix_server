@@ -28,7 +28,7 @@ class UserInstallBindingRepository {
         installId: UUID,
         clientIp: String?,
         clientPlatform: String?,
-    ) {
+    ): Int {
         val existing = mc.sql.createQuery(UserInstallBinding::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.userId eq userId)
@@ -51,10 +51,10 @@ class UserInstallBindingRepository {
                 this.createdAt = now
                 this.updatedAt = now
             }
-            mc.sql.entities.save(entity)
+            return mc.sql.entities.save(entity).totalAffectedRowCount
         } else {
             val now = Instant.now()
-            mc.sql.createUpdate(UserInstallBinding::class) {
+            return mc.sql.createUpdate(UserInstallBinding::class) {
                 where(table.id eq existing.id)
                 set(table.lastSeenAt, now)
                 set(table.loginCount, existing.loginCount + 1)

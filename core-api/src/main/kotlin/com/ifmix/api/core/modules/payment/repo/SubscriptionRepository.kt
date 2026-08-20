@@ -41,10 +41,10 @@ class SubscriptionRepository {
         }.limit(1).execute().firstOrNull()
     }
 
-    fun upsertSubscription(mc: ModuleCtx, entity: Subscription) {
-        mc.sql.entities.save(entity) {
+    fun upsertSubscription(mc: ModuleCtx, entity: Subscription): Int {
+        return mc.sql.entities.save(entity) {
             setKeyProps(Subscription::subscriptionPxid)
-        }
+        }.totalAffectedRowCount
     }
 
     fun save(mc: ModuleCtx, entity: Subscription) = tpl.save(mc, entity)

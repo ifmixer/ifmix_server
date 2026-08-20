@@ -50,9 +50,9 @@ class ScanRecordRepository {
         }.limit(limit).execute()
     }
 
-    fun partialUpdate(mc: ModuleCtx, appId: UUID, id: UUID, req: UpdateScanInput) {
+    fun partialUpdate(mc: ModuleCtx, appId: UUID, id: UUID, req: UpdateScanInput): Int {
         val unset = req.unset?.toSet() ?: emptySet()
-        mc.sql.createUpdate(ScanRecord::class) {
+        return mc.sql.createUpdate(ScanRecord::class) {
             where(table.appId eq appId)
             where(table.id eq id)
             // unset 优先：如果字段同时出现在 set 和 unset，以 unset 为准

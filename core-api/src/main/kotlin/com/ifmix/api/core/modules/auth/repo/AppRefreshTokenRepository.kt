@@ -38,9 +38,9 @@ class AppRefreshTokenRepository {
         }.limit(1).execute().firstOrNull()
     }
 
-    fun revoke(mc: ModuleCtx, id: UUID, replacedBy: UUID? = null) {
+    fun revoke(mc: ModuleCtx, id: UUID, replacedBy: UUID? = null): Int {
         val now = Instant.now()
-        if (replacedBy != null) {
+        return if (replacedBy != null) {
             mc.sql.createUpdate(AppRefreshToken::class) {
                 where(table.id eq id)
                 set(table.revokedAt, now)

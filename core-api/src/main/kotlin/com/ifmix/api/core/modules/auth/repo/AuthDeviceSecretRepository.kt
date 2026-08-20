@@ -36,16 +36,16 @@ class AuthDeviceSecretRepository {
         }.limit(1).execute().firstOrNull()
     }
 
-    fun touch(mc: ModuleCtx, id: UUID) {
-        mc.sql.createUpdate(AuthDeviceSecret::class) {
+    fun touch(mc: ModuleCtx, id: UUID): Int {
+        return mc.sql.createUpdate(AuthDeviceSecret::class) {
             where(table.id eq id)
             set(table.lastUsedAt, Instant.now())
             set(table.updatedAt, Instant.now())
         }.execute()
     }
 
-    fun revoke(mc: ModuleCtx, id: UUID) {
-        mc.sql.createUpdate(AuthDeviceSecret::class) {
+    fun revoke(mc: ModuleCtx, id: UUID): Int {
+        return mc.sql.createUpdate(AuthDeviceSecret::class) {
             where(table.id eq id)
             set(table.revokedAt, Instant.now())
             set(table.updatedAt, Instant.now())

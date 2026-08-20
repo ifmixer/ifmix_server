@@ -38,8 +38,8 @@ class AgnesKeyRepository {
         }.execute()
     }
 
-    fun markUnavailable(mc: ModuleCtx, keyId: UUID, until: Instant) {
-        mc.sql.createUpdate(AgnesKey::class) {
+    fun markUnavailable(mc: ModuleCtx, keyId: UUID, until: Instant): Int {
+        return mc.sql.createUpdate(AgnesKey::class) {
             where(table.id eq keyId)
             set(table.unavailableUntil, until)
             set(table.updatedAt, Instant.now())
