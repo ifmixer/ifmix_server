@@ -83,3 +83,4 @@ build/
 *.class
 META-INF/
 org/
+.worktrees/
