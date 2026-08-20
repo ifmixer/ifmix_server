@@ -42,6 +42,8 @@ import java.util.concurrent.CompletionStage
 class AiFetcher(
     private val aiService: AiFacade,
     private val collectionService: ScanCollectionFacade,
+    private val scanRecordRepo: ScanRecordRepository,
+    private val mcFactory: ModuleCtxFactory,
     private val ctxProvider: OperationContextProvider,
 ) {
     // --- Scan queries ---
@@ -86,10 +88,15 @@ class AiFetcher(
     }
 
     @DgsData(parentType = "ScanCollectionItem", field = "scanRecord")
-    fun scanRecord(dfe: DgsDataFetchingEnvironment): CompletableFuture<ScanRecord?> {
-        val itemId = dfe.getSource<ScanCollectionItem>()?.id ?: return CompletableFuture.completedFuture(null)
-        // Load via DataLoader
-        return ScanRecordsDataLoader.load(itemId)
+    fun scanRecord(dfe: DgsDataFetchingEnvironment): CompletableFuture<ScanRecord> {
+        val itemId = dfe.getSource<ScanCollectionItem>()?.id
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "ScanCollectionItem has no id")
+        val opCtx = com.ifmix.api.core.infra.jimmer.OperationContextHolder.current()
+        val mc = mcFactory.forApp(opCtx)
+        val appId = opCtx.mustGetAppId()
+        val record = scanRecordRepo.findById(mc, appId, itemId)
+            ?: throw ApiError(ErrorCode.NOT_FOUND)
+        return CompletableFuture.completedFuture(record)
     }
 
     // --- Scan mutations ---
@@ -139,21 +146,16 @@ class AiFetcher(
 class ScanRecordsDataLoader(
     private val scanRecordRepo: ScanRecordRepository,
     private val mcFactory: ModuleCtxFactory,
-) : MappedBatchLoader<UUID, ScanRecord?> {
-    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanRecord?>> {
+) : MappedBatchLoader<UUID, ScanRecord> {
+    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanRecord>> {
         val opCtx = com.ifmix.api.core.infra.jimmer.OperationContextHolder.current()
         val mc = mcFactory.forApp(opCtx)
         val appId = opCtx.mustGetAppId()
         val records = ids.map { id -> scanRecordRepo.findById(mc, appId, id) }
-        return CompletableFuture.completedFuture(ids.associateWith { id -> records[ids.indexOf(id)] })
+        return CompletableFuture.completedFuture(ids.associateWith { id -> records[ids.indexOf(id)]!! })
     }
 
     companion object {
         const val NAME = "scanRecords"
-
-        fun load(id: UUID): CompletableFuture<ScanRecord?> {
-            // Single-item load convenience — callers use the DataLoader directly via DGS
-            throw UnsupportedOperationException("Use DataLoader registration, not direct load")
-        }
     }
 }
