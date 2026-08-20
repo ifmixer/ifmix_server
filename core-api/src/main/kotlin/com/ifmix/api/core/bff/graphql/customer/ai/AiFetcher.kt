@@ -86,8 +86,8 @@ class AiFetcher(
     }
 
     @DgsData(parentType = "ScanCollectionItem", field = "scanRecord")
-    fun scanRecord(dfe: DgsDataFetchingEnvironment): CompletableFuture<ScanRecord> {
-        val itemId = dfe.getSource<ScanCollectionItem>().id
+    fun scanRecord(dfe: DgsDataFetchingEnvironment): CompletableFuture<ScanRecord?> {
+        val itemId = dfe.getSource<ScanCollectionItem>()?.id ?: return CompletableFuture.completedFuture(null)
         // Load via DataLoader
         return ScanRecordsDataLoader.load(itemId)
     }
