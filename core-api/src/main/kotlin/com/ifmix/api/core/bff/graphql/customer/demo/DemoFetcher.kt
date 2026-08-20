@@ -60,14 +60,14 @@ class DemoFetcher(
     @DgsMutation(field = "mutation_demo_createTodo")
     fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        val todo = globalTx.withTx(ctx) { demoService.create(ctx, input.title, input.done, input.note, input.items) }
+        val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input.title, input.done, input.note, input.items) }
         return CreateTodoPayload(todo = todo)
     }
 
     @DgsMutation(field = "mutation_demo_updateTodo")
     fun updateTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoInput): UpdateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        globalTx.withTx(ctx) { demoService.partialUpdate(ctx, input) }
+        globalTx.withTx(ctx) { txCtx -> demoService.partialUpdate(txCtx, input) }
         val todo = if (dfe.selectionSet.fields.any { it.name == "todo" }) demoService.findById(ctx, input.id) else null
         return UpdateTodoPayload(success = true, todo = todo)
     }
@@ -75,21 +75,21 @@ class DemoFetcher(
     @DgsMutation(field = "mutation_demo_batchUpdateTodoItems")
     fun batchUpdateTodoItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoItemsMutationInput): UpdateTodoItemsPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        globalTx.withTx(ctx) { demoService.batchUpdateItems(ctx, input) }
+        globalTx.withTx(ctx) { txCtx -> demoService.batchUpdateItems(txCtx, input) }
         return UpdateTodoItemsPayload(success = true)
     }
 
     @DgsMutation(field = "mutation_demo_deleteTodo")
     fun deleteTodo(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DeleteTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        globalTx.withTx(ctx) { demoService.deleteById(ctx, id) }
+        globalTx.withTx(ctx) { txCtx -> demoService.deleteById(txCtx, id) }
         return DeleteTodoPayload(success = true)
     }
 
     @DgsMutation(field = "mutation_demo_batchDeleteTodos")
     fun batchDeleteTodos(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): DeleteTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        globalTx.withTx(ctx) { demoService.batchDelete(ctx, ids) }
+        globalTx.withTx(ctx) { txCtx -> demoService.batchDelete(txCtx, ids) }
         return DeleteTodoPayload(success = true)
     }
 

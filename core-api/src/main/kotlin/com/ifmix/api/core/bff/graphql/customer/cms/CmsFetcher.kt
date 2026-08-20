@@ -26,7 +26,7 @@ class CmsFetcher(
     @DgsMutation(field = "mutation_cms_submitFeedback")
     fun submitFeedback(dfe: DgsDataFetchingEnvironment, @InputArgument input: SubmitFeedbackInput): SubmitFeedbackPayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        val id = globalTx.withTx(ctx) { cmsService.submit(ctx, input.toReq()) }
+        val id = globalTx.withTx(ctx) { txCtx -> cmsService.submit(txCtx, input.toReq()) }
         return SubmitFeedbackPayload(id = id)
     }
 }
