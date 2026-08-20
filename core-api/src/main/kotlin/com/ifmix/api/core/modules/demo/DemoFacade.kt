@@ -1,6 +1,7 @@
 package com.ifmix.api.core.modules.demo
 
 import com.ifmix.api.core.entity.todo.Todo
+import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
 import com.ifmix.api.core.infra.db.SvcCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
@@ -25,6 +26,9 @@ class DemoFacade(
 
     fun findByCursor(ctx: OperationContext, cursor: UUID?, limit: Int, filter: TodoFilter? = null): List<Todo> =
         handler.findByCursor(svcCtxFactory.forApp(ctx), ctx.mustGetAppId(), cursor, limit, filter)
+
+    fun findByFilter(ctx: OperationContext, filter: FilterGroup?, cursor: UUID?, limit: Int): List<Todo> =
+        handler.findByFilter(svcCtxFactory.forApp(ctx), ctx.mustGetAppId(), filter, cursor, limit)
 
     // --- Mutations (with tx) ---
 

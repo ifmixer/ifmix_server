@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.UUID
 
+import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
 
 @Component
@@ -37,6 +38,9 @@ class TodoHandler(
 
     fun findByCursor(sc: SvcCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): List<Todo> =
         todoRepo.findByCursor(sc, appId, cursor, limit, filter)
+
+    fun findByFilter(sc: SvcCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): List<Todo> =
+        todoRepo.findByFilter(sc, appId, filter, cursor, limit)
 
     // --- Mutations ---
 

@@ -43,6 +43,20 @@ class TodoFetcher(
         return todos.toPage(limit)
     }
 
+    @DgsQuery(field = "query_demo_findTodos")
+    fun findTodos(
+        dfe: DgsDataFetchingEnvironment,
+        @InputArgument filter: FilterGroup?,
+        @InputArgument cursor: String?,
+        @InputArgument limit: Int?,
+    ): TodoPage {
+        val ctx = ctxProvider.fromDfe(dfe)
+        val parsedCursor = cursor?.let { tryParseUuid(it) }
+        val pageSize = (limit ?: 20).coerceIn(1, 100)
+        val todos = demoService.findByFilter(ctx, filter, parsedCursor, pageSize + 1)
+        return todos.toPage(pageSize)
+    }
+
     @DgsMutation(field = "mutation_demo_createTodo")
     fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
         val ctx = ctxProvider.fromDfe(dfe)
