@@ -1,7 +1,7 @@
 package com.ifmix.api.core.bff.graphql.customer.payment
 
 import com.ifmix.api.core.generated.types.verifyIapPurchaseInput
-import com.ifmix.api.core.generated.types.verifyIapPurchasePayload
+import com.ifmix.api.core.generated.types.VerifyIapPurchaseResult
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.dto.payment.VerifyReq
 import com.ifmix.api.core.modules.payment.PaymentFacade
@@ -18,7 +18,7 @@ class PaymentFetcher(
 ) {
 
     @DgsMutation(field = "m_pay_verifyIapPurchase")
-    fun verifyIapPurchase(dfe: DgsDataFetchingEnvironment, @InputArgument input: verifyIapPurchaseInput): verifyIapPurchasePayload {
+    fun verifyIapPurchase(dfe: DgsDataFetchingEnvironment, @InputArgument input: verifyIapPurchaseInput): VerifyIapPurchaseResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = paymentService.verifyIapPurchase(ctx, VerifyReq(
             platform = input.platform,
@@ -26,7 +26,7 @@ class PaymentFetcher(
             purchaseToken = input.purchaseToken,
             productId = input.productId,
         ))
-        return verifyIapPurchasePayload(
+        return VerifyIapPurchaseResult(
             tier = res.tier,
             expiresAt = res.expiresAt?.let { Instant.ofEpochMilli(it) },
         )

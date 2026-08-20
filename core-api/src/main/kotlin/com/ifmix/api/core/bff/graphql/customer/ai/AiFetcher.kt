@@ -1,13 +1,13 @@
 package com.ifmix.api.core.bff.graphql.customer.ai
 
-import com.ifmix.api.core.generated.types.DeleteScanPayload
+import com.ifmix.api.core.generated.types.DeleteScanResult
 import com.ifmix.api.core.generated.types.NewScanInput
-import com.ifmix.api.core.generated.types.NewScanPayload
+import com.ifmix.api.core.generated.types.NewScanResult
 import com.ifmix.api.core.generated.types.ScanQueryInput
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.UpdateScanInput
-import com.ifmix.api.core.generated.types.UpdateScanPayload
+import com.ifmix.api.core.generated.types.UpdateScanResult
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.infra.http.ApiError
@@ -20,10 +20,10 @@ import com.ifmix.api.core.modules.ai.AiFacade
 import com.ifmix.api.core.modules.ai.ScanCollectionFacade
 import com.ifmix.api.core.modules.ai.repo.ScanRecordRepository
 import com.ifmix.api.core.generated.types.AddScanCollectionItemInput
-import com.ifmix.api.core.generated.types.AddScanCollectionItemPayload
+import com.ifmix.api.core.generated.types.AddScanCollectionItemResult
 import com.ifmix.api.core.generated.types.ListScanCollectionItemsInput
 import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsInput
-import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsPayload
+import com.ifmix.api.core.generated.types.RemoveScanCollectionItemsResult
 import com.ifmix.api.core.dto.ai.AddItemReq
 import com.ifmix.api.core.dto.ai.ListItemsReq
 import com.ifmix.api.core.dto.ai.RemoveItemsReq
@@ -101,50 +101,50 @@ class AiFetcher(
     // --- Scan mutations ---
 
     @DgsMutation(field = "m_ai_createScan")
-    fun newScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: NewScanInput): NewScanPayload {
+    fun newScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: NewScanInput): NewScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        // Step 1: AI 调用在事务外（耗时操作，不应占用 DB 连接）
+        // Step 1: AI 调用在事务外
         val aiResult = aiService.runAiScan(ctx, input)
         // Step 2: DB 写入在事务内
         val record = globalTx.withTx(ctx) { txCtx -> aiService.saveScanRecord(txCtx, aiResult) }
-        return NewScanPayload(scanRecord = record)
+        return NewScanResult(scanRecord = record)
     }
 
     @DgsMutation(field = "m_ai_updateScan")
-    fun updateScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateScanInput): UpdateScanPayload {
+    fun updateScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateScanInput): UpdateScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
         return globalTx.withTx(ctx) { txCtx ->
             val success = aiService.updateScan(txCtx, input)
             val record = if (success && dfe.selectionSet.fields.any { it.name == "scanRecord" }) {
                 aiService.findById(txCtx, input.id)
             } else null
-            UpdateScanPayload(success = success, scanRecord = record)
+            UpdateScanResult(success = success, scanRecord = record)
         }
     }
 
     @DgsMutation(field = "m_ai_deleteScan")
-    fun deleteScanById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DeleteScanPayload {
+    fun deleteScanById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DeleteScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        return globalTx.withTx(ctx) { txCtx -> DeleteScanPayload(success = aiService.deleteScan(txCtx, id)) }
+        return globalTx.withTx(ctx) { txCtx -> DeleteScanResult(success = aiService.deleteScan(txCtx, id)) }
     }
 
     // --- Collection mutations ---
 
     @DgsMutation(field = "m_ai_addCollectionItem")
-    fun addItem(dfe: DgsDataFetchingEnvironment, @InputArgument input: AddScanCollectionItemInput): AddScanCollectionItemPayload {
+    fun addItem(dfe: DgsDataFetchingEnvironment, @InputArgument input: AddScanCollectionItemInput): AddScanCollectionItemResult {
         val ctx = ctxProvider.fromDfe(dfe)
         return globalTx.withTx(ctx) { txCtx ->
             val result = collectionService.addItem(txCtx, AddItemReq(scanRecordId = input.scanRecordId))
-            AddScanCollectionItemPayload(collectionId = result.id, alreadyExists = false)
+            AddScanCollectionItemResult(collectionId = result.id, alreadyExists = false)
         }
     }
 
     @DgsMutation(field = "m_ai_removeCollectionItems")
-    fun removeItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: RemoveScanCollectionItemsInput): RemoveScanCollectionItemsPayload {
+    fun removeItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: RemoveScanCollectionItemsInput): RemoveScanCollectionItemsResult {
         val ctx = ctxProvider.fromDfe(dfe)
         return globalTx.withTx(ctx) { txCtx ->
             val result = collectionService.removeItems(txCtx, RemoveItemsReq(scanRecordIds = input.scanRecordIds))
-            RemoveScanCollectionItemsPayload(removedCount = result.removed)
+            RemoveScanCollectionItemsResult(removedCount = result.removed)
         }
     }
 }

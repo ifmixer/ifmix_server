@@ -58,7 +58,7 @@ input CreateTodoItemInput {
     note: String
 }
 
-type CreateTodoPayload {
+type CreateTodoResult {
     todo: Todo!
 }
 
@@ -79,7 +79,7 @@ enum TodoUnsetField {
     NOTE
 }
 
-type UpdateTodoPayload {
+type UpdateTodoResult {
     success: Boolean!
     todo: Todo
 }
@@ -114,19 +114,19 @@ enum TodoItemUnsetField {
     NOTE
 }
 
-type UpdateTodoItemsPayload {
+type UpdateTodoItemsResult {
     success: Boolean!
 }
 
 # --- Mutation: Delete ---
-type DeleteTodoPayload {
+type DeleteTodoResult {
     success: Boolean!
 }
 
 extend type Mutation {
-    m_demo_createTodo(input: CreateTodoInput!): CreateTodoPayload!
-    m_demo_updateTodo(input: UpdateTodoInput!): UpdateTodoPayload!
-    m_demo_batchUpdateTodoItems(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsPayload!
-    m_demo_deleteTodo(id: UUID!): DeleteTodoPayload!
-    m_demo_batchDeleteTodos(ids: [UUID!]!): DeleteTodoPayload!
+    m_demo_createTodo(input: CreateTodoInput!): CreateTodoResult!
+    m_demo_updateTodo(input: UpdateTodoInput!): UpdateTodoResult!
+    m_demo_batchUpdateTodoItems(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsResult!
+    m_demo_deleteTodo(id: UUID!): DeleteTodoResult!
+    m_demo_batchDeleteTodos(ids: [UUID!]!): DeleteTodoResult!
 }

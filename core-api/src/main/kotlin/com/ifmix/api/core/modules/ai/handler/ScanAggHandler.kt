@@ -68,6 +68,7 @@ class ScanAggHandler(
             this.appId = result.appId
             this.imageKeys = result.imageKeys.map { ImageRef(key = it) }
             this.basicResult = result.basicResult
+            this.premiumResult = null
             this.status = 200
             this.clientIp = result.clientIp
             this.lang = result.lang

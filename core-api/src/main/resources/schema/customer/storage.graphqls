@@ -5,7 +5,7 @@ input PresignUploadInput {
     contentType: Int!
 }
 
-type PresignUploadPayload {
+type PresignUploadResult {
     mediaId: UUID!
     uploadUrl: String!
     imageKey: String!
@@ -17,11 +17,11 @@ input PresignDownloadInput {
     durationSeconds: Int
 }
 
-type PresignDownloadPayload {
+type PresignDownloadResult {
     url: String!
 }
 
 extend type Mutation {
-    m_media_presignUpload(input: PresignUploadInput!): PresignUploadPayload!
-    m_media_presignDownload(input: PresignDownloadInput!): PresignDownloadPayload!
+    m_media_presignUpload(input: PresignUploadInput!): PresignUploadResult!
+    m_media_presignDownload(input: PresignDownloadInput!): PresignDownloadResult!
 }

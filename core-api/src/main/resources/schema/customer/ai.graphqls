@@ -47,7 +47,7 @@ input NewScanImageInput {
     mediaType: String
 }
 
-type NewScanPayload {
+type NewScanResult {
     scanRecord: ScanRecord!
 }
 
@@ -65,12 +65,12 @@ input UpdateScanSetInput {
 
 enum ScanUnsetField { USER_DISPLAY_NAME, USER_NOTES }
 
-type UpdateScanPayload {
+type UpdateScanResult {
     success: Boolean!
     scanRecord: ScanRecord
 }
 
-type DeleteScanPayload {
+type DeleteScanResult {
     success: Boolean!
 }
 
@@ -103,7 +103,7 @@ input AddScanCollectionItemInput {
     scanRecordId: UUID!
 }
 
-type AddScanCollectionItemPayload {
+type AddScanCollectionItemResult {
     collectionId: UUID!
     alreadyExists: Boolean!
 }
@@ -112,7 +112,7 @@ input RemoveScanCollectionItemsInput {
     scanRecordIds: [UUID!]!
 }
 
-type RemoveScanCollectionItemsPayload {
+type RemoveScanCollectionItemsResult {
     removedCount: Int!
 }
 
@@ -130,9 +130,9 @@ extend type Query {
 # ==================== Mutation ====================
 
 extend type Mutation {
-    m_ai_createScan(input: NewScanInput!): NewScanPayload!
-    m_ai_updateScan(input: UpdateScanInput!): UpdateScanPayload!
-    m_ai_deleteScan(id: UUID!): DeleteScanPayload!
-    m_ai_addCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemPayload!
-    m_ai_removeCollectionItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsPayload!
+    m_ai_createScan(input: NewScanInput!): NewScanResult!
+    m_ai_updateScan(input: UpdateScanInput!): UpdateScanResult!
+    m_ai_deleteScan(id: UUID!): DeleteScanResult!
+    m_ai_addCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemResult!
+    m_ai_removeCollectionItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsResult!
 }

@@ -49,6 +49,7 @@ class TodoAggHandler(
             this.title = title
             this.done = done ?: false
             this.note = note
+            this.meta = null
             this.installId = mc.installId
             this.userId = mc.userId
             this.createdAt = now

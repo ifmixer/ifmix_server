@@ -24,10 +24,10 @@ class AuthFetcher(
 ) {
 
     @DgsQuery(field = "q_auth_me")
-    fun me(dfe: DgsDataFetchingEnvironment): MePayload {
+    fun me(dfe: DgsDataFetchingEnvironment): MeResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = authService.me(ctx)
-        return MePayload(
+        return MeResult(
             user = UserInfo(id = res.id, email = res.email),
             tier = res.tier,
             tierActive = res.active,
@@ -36,34 +36,34 @@ class AuthFetcher(
     }
 
     @DgsMutation(field = "m_auth_loginGoogle")
-    fun loginGoogle(dfe: DgsDataFetchingEnvironment, @InputArgument input: ProviderLoginInput): LoginPayload {
+    fun loginGoogle(dfe: DgsDataFetchingEnvironment, @InputArgument input: ProviderLoginInput): LoginResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        return authService.loginWithIdToken(ctx, "google", ProviderLoginReq(idToken = input.idToken)).toPayload()
+        return authService.loginWithIdToken(ctx, "google", ProviderLoginReq(idToken = input.idToken)).toResult()
     }
 
     @DgsMutation(field = "m_auth_loginApple")
-    fun loginApple(dfe: DgsDataFetchingEnvironment, @InputArgument input: ProviderLoginInput): LoginPayload {
+    fun loginApple(dfe: DgsDataFetchingEnvironment, @InputArgument input: ProviderLoginInput): LoginResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        return authService.loginWithIdToken(ctx, "apple", ProviderLoginReq(idToken = input.idToken)).toPayload()
+        return authService.loginWithIdToken(ctx, "apple", ProviderLoginReq(idToken = input.idToken)).toResult()
     }
 
     @DgsMutation(field = "m_auth_loginWechat")
-    fun loginWechat(dfe: DgsDataFetchingEnvironment, @InputArgument input: WechatLoginInput): LoginPayload {
+    fun loginWechat(dfe: DgsDataFetchingEnvironment, @InputArgument input: WechatLoginInput): LoginResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        return authService.loginWithCode(ctx, "wechat", WechatLoginReq(code = input.code)).toPayload()
+        return authService.loginWithCode(ctx, "wechat", WechatLoginReq(code = input.code)).toResult()
     }
 
     @DgsMutation(field = "m_auth_loginAnonymous")
-    fun loginAnonymous(dfe: DgsDataFetchingEnvironment): LoginPayload {
+    fun loginAnonymous(dfe: DgsDataFetchingEnvironment): LoginResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        return authService.anonymousLogin(ctx).toPayload()
+        return authService.anonymousLogin(ctx).toResult()
     }
 
     @DgsMutation(field = "m_auth_exchangeToken")
-    fun exchange(dfe: DgsDataFetchingEnvironment, @InputArgument input: ExchangeInput): ExchangePayload {
+    fun exchange(dfe: DgsDataFetchingEnvironment, @InputArgument input: ExchangeInput): ExchangeResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = authService.exchange(ctx, ExchangeReq(deviceSecret = input.deviceSecret))
-        return ExchangePayload(
+        return ExchangeResult(
             accessToken = res.accessToken,
             refreshToken = res.refreshToken,
             expiresIn = res.expiresIn.toInt(),
@@ -71,10 +71,10 @@ class AuthFetcher(
     }
 
     @DgsMutation(field = "m_auth_refreshToken")
-    fun refresh(dfe: DgsDataFetchingEnvironment, @InputArgument input: RefreshInput): RefreshPayload {
+    fun refresh(dfe: DgsDataFetchingEnvironment, @InputArgument input: RefreshInput): RefreshResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = authService.refresh(ctx, RefreshReq(refreshToken = input.refreshToken))
-        return RefreshPayload(
+        return RefreshResult(
             accessToken = res.accessToken,
             refreshToken = res.refreshToken,
             expiresIn = res.expiresIn.toInt(),
@@ -95,7 +95,7 @@ class AuthFetcher(
         return OperationResult(success = true)
     }
 
-    private fun LoginRes.toPayload() = LoginPayload(
+    private fun LoginRes.toResult() = LoginResult(
         accessToken = accessToken,
         refreshToken = refreshToken,
         expiresIn = expiresIn.toInt(),

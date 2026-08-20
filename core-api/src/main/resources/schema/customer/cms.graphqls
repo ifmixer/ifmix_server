@@ -5,10 +5,10 @@ input SubmitFeedbackInput {
     comment: String
 }
 
-type SubmitFeedbackPayload {
+type SubmitFeedbackResult {
     id: UUID!
 }
 
 extend type Mutation {
-    m_cms_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackPayload!
+    m_cms_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackResult!
 }
