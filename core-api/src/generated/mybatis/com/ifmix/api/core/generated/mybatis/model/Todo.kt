@@ -4,7 +4,7 @@ import com.ifmix.api.core.entity.demo.Meta
 import java.time.Instant
 import java.util.UUID
 
-data class CoreTodo(
+data class Todo(
     val id: UUID,
     val title: String,
     val done: Boolean,

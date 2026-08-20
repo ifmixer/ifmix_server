@@ -7,32 +7,32 @@ import java.util.UUID
 import org.mybatis.dynamic.sql.AliasableSqlTable
 import org.mybatis.dynamic.sql.util.kotlin.elements.column
 
-object CoreTodoDynamicSqlSupport {
-    val coreTodo = CoreTodo()
+object TodoDynamicSqlSupport {
+    val todo = Todo()
 
-    val id = coreTodo.id
+    val id = todo.id
 
-    val title = coreTodo.title
+    val title = todo.title
 
-    val done = coreTodo.done
+    val done = todo.done
 
-    val appId = coreTodo.appId
+    val appId = todo.appId
 
-    val createdAt = coreTodo.createdAt
+    val createdAt = todo.createdAt
 
-    val updatedAt = coreTodo.updatedAt
+    val updatedAt = todo.updatedAt
 
-    val deletedAt = coreTodo.deletedAt
+    val deletedAt = todo.deletedAt
 
-    val installId = coreTodo.installId
+    val installId = todo.installId
 
-    val userId = coreTodo.userId
+    val userId = todo.userId
 
-    val meta = coreTodo.meta
+    val meta = todo.meta
 
-    val note = coreTodo.note
+    val note = todo.note
 
-    class CoreTodo : AliasableSqlTable<CoreTodo>("core_todo", ::CoreTodo) {
+    class Todo : AliasableSqlTable<Todo>("core_todo", ::Todo) {
         val id = column<UUID>(name = "id", jdbcType = JDBCType.OTHER, javaProperty = "id")
 
         val title = column<String>(name = "title", jdbcType = JDBCType.VARCHAR, javaProperty = "title")

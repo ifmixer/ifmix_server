@@ -1,19 +1,19 @@
 package com.ifmix.api.core.generated.mybatis.mapper
 
 import com.ifmix.api.core.entity.demo.Meta
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.appId
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.coreTodo
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.createdAt
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.deletedAt
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.done
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.id
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.installId
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.meta
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.note
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.title
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.updatedAt
-import com.ifmix.api.core.generated.mybatis.mapper.CoreTodoDynamicSqlSupport.userId
-import com.ifmix.api.core.generated.mybatis.model.CoreTodo
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.appId
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.createdAt
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.deletedAt
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.done
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.id
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.installId
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.meta
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.note
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.title
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.todo
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.updatedAt
+import com.ifmix.api.core.generated.mybatis.mapper.TodoDynamicSqlSupport.userId
+import com.ifmix.api.core.generated.mybatis.model.Todo
 import com.ifmix.api.core.infra.mybatis.MetaTypeHandler
 import java.time.Instant
 import java.util.UUID
@@ -43,9 +43,9 @@ import org.mybatis.dynamic.sql.util.mybatis3.CommonInsertMapper
 import org.mybatis.dynamic.sql.util.mybatis3.CommonUpdateMapper
 
 @Mapper
-interface CoreTodoMapper : CommonCountMapper, CommonDeleteMapper, CommonInsertMapper<CoreTodo>, CommonUpdateMapper {
+interface TodoMapper : CommonCountMapper, CommonDeleteMapper, CommonInsertMapper<Todo>, CommonUpdateMapper {
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @Results(id="CoreTodoResult")
+    @Results(id="TodoResult")
     @Arg(column="id", jdbcType=JdbcType.OTHER, javaType=UUID::class, id=true)
     @Arg(column="title", jdbcType=JdbcType.VARCHAR, javaType=String::class)
     @Arg(column="done", jdbcType=JdbcType.BIT, javaType=Boolean::class)
@@ -57,26 +57,26 @@ interface CoreTodoMapper : CommonCountMapper, CommonDeleteMapper, CommonInsertMa
     @Arg(column="user_id", jdbcType=JdbcType.OTHER, javaType=UUID::class)
     @Arg(column="meta", typeHandler=MetaTypeHandler::class, jdbcType=JdbcType.OTHER, javaType=Meta::class)
     @Arg(column="note", jdbcType=JdbcType.VARCHAR, javaType=String::class)
-    fun selectMany(selectStatement: SelectStatementProvider): List<CoreTodo>
+    fun selectMany(selectStatement: SelectStatementProvider): List<Todo>
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @ResultMap("CoreTodoResult")
-    fun selectOne(selectStatement: SelectStatementProvider): CoreTodo?
+    @ResultMap("TodoResult")
+    fun selectOne(selectStatement: SelectStatementProvider): Todo?
 }
 
-fun CoreTodoMapper.count(completer: CountCompleter) =
-    countFrom(this::count, coreTodo, completer)
+fun TodoMapper.count(completer: CountCompleter) =
+    countFrom(this::count, todo, completer)
 
-fun CoreTodoMapper.delete(completer: DeleteCompleter) =
-    deleteFrom(this::delete, coreTodo, completer)
+fun TodoMapper.delete(completer: DeleteCompleter) =
+    deleteFrom(this::delete, todo, completer)
 
-fun CoreTodoMapper.deleteByPrimaryKey(id_: UUID) =
+fun TodoMapper.deleteByPrimaryKey(id_: UUID) =
     delete {
         where { id isEqualTo id_ }
     }
 
-fun CoreTodoMapper.insert(row: CoreTodo) =
-    insert(this::insert, row, coreTodo) {
+fun TodoMapper.insert(row: Todo) =
+    insert(this::insert, row, todo) {
         withMappedColumn(id)
         withMappedColumn(title)
         withMappedColumn(done)
@@ -90,8 +90,8 @@ fun CoreTodoMapper.insert(row: CoreTodo) =
         withMappedColumn(note)
     }
 
-fun CoreTodoMapper.insertMultiple(records: Collection<CoreTodo>) =
-    insertMultiple(this::insertMultiple, records, coreTodo) {
+fun TodoMapper.insertMultiple(records: Collection<Todo>) =
+    insertMultiple(this::insertMultiple, records, todo) {
         withMappedColumn(id)
         withMappedColumn(title)
         withMappedColumn(done)
@@ -105,11 +105,11 @@ fun CoreTodoMapper.insertMultiple(records: Collection<CoreTodo>) =
         withMappedColumn(note)
     }
 
-fun CoreTodoMapper.insertMultiple(vararg records: CoreTodo) =
+fun TodoMapper.insertMultiple(vararg records: Todo) =
     insertMultiple(records.toList())
 
-fun CoreTodoMapper.insertSelective(row: CoreTodo) =
-    insert(this::insert, row, coreTodo) {
+fun TodoMapper.insertSelective(row: Todo) =
+    insert(this::insert, row, todo) {
         withMappedColumn(id)
         withMappedColumn(title)
         withMappedColumn(done)
@@ -125,24 +125,24 @@ fun CoreTodoMapper.insertSelective(row: CoreTodo) =
 
 private val columnList = listOf(id, title, done, appId, createdAt, updatedAt, deletedAt, installId, userId, meta, note)
 
-fun CoreTodoMapper.select(completer: SelectCompleter) =
-    selectList(this::selectMany, columnList, coreTodo, completer)
+fun TodoMapper.select(completer: SelectCompleter) =
+    selectList(this::selectMany, columnList, todo, completer)
 
-fun CoreTodoMapper.selectOne(completer: SelectCompleter) =
-    selectOne(this::selectOne, columnList, coreTodo, completer)
+fun TodoMapper.selectOne(completer: SelectCompleter) =
+    selectOne(this::selectOne, columnList, todo, completer)
 
-fun CoreTodoMapper.selectDistinct(completer: SelectCompleter) =
-    selectDistinct(this::selectMany, columnList, coreTodo, completer)
+fun TodoMapper.selectDistinct(completer: SelectCompleter) =
+    selectDistinct(this::selectMany, columnList, todo, completer)
 
-fun CoreTodoMapper.selectByPrimaryKey(id_: UUID) =
+fun TodoMapper.selectByPrimaryKey(id_: UUID) =
     selectOne {
         where { id isEqualTo id_ }
     }
 
-fun CoreTodoMapper.update(completer: UpdateCompleter) =
-    update(this::update, coreTodo, completer)
+fun TodoMapper.update(completer: UpdateCompleter) =
+    update(this::update, todo, completer)
 
-fun CoreTodoMapper.updateByPrimaryKey(row: CoreTodo) =
+fun TodoMapper.updateByPrimaryKey(row: Todo) =
     update {
         set(title) equalTo row::title
         set(done) equalTo row::done
