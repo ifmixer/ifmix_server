@@ -6,13 +6,13 @@ import com.ifmix.api.core.generated.types.PresignDownloadInput
 import com.ifmix.api.core.generated.types.PresignUploadInput
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.storage.handler.StorageHandler
+import com.ifmix.api.core.modules.storage.handler.StorageAggHandler
 import org.springframework.stereotype.Service
 
 @Service
 class StorageFacade(
     private val mcFactory: ModuleCtxFactory,
-    private val handler: StorageHandler,
+    private val handler: StorageAggHandler,
 ) {
     fun presignUpload(opCtx: OperationContext, input: PresignUploadInput): PresignUploadResult =
         handler.presignUpload(mcFactory.forApp(opCtx), input)

@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.feedback
+package com.ifmix.api.core.entity.cms
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.CreatedAtProps

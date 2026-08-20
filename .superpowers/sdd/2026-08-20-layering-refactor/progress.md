@@ -41,3 +41,9 @@ Task 1: complete (commits 0ba8761..8bb9ac6, review clean)
 - GlobalTxRunner uses ClusterRouter
 - Compilation: BUILD SUCCESSFUL
 - Concerns noted: Handler param names keep `sc` (business code), AiConfig still @Configuration (deferred to Task 7), CollectionFetcher cross-layer (deferred to Task 7)
+Task 2: complete (commits 8bb9ac6..f29ab42, review pending)
+- entity/todo/ → entity/demo/, bff/todo/ → bff/demo/
+- TodoHandler → TodoAggHandler, params sc→mc
+- DemoFacade: removed TxRunner, uses ModuleCtxFactory only
+- DemoFetcher: removed toDto(), entity direct output, mutations use globalTx.withTx
+- build.gradle.kts: added Todo, TodoItem, TodoPage typeMappings
