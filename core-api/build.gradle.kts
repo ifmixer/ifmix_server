@@ -58,6 +58,10 @@ dependencies {
     implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
     ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")
 
+    // === MyBatis Dynamic SQL (Phase 0: todo module) ===
+    implementation("org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.4")
+    implementation("org.mybatis.dynamic-sql:mybatis-dynamic-sql:1.5.2")
+
     // UUIDv7 generator (cursor pagination requires time-ordered IDs)
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
 
