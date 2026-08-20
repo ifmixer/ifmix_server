@@ -38,8 +38,8 @@ class TodoFetcher(
         val ctx = ctxProvider.fromDfe(dfe)
         val cursor = input?.cursor?.let { tryParseUuid(it) }
         val limit = (input?.limit ?: 20).coerceIn(1, 100)
-        val todos = demoService.findByCursor(ctx, cursor, limit + 1, input?.filter)
-        return todos.toPage(limit)
+        val page = demoService.findByCursor(ctx, cursor, limit, input?.filter)
+        return page.toTodoPage()
     }
 
     @DgsQuery(field = "query_demo_findTodos")
@@ -52,8 +52,8 @@ class TodoFetcher(
         val ctx = ctxProvider.fromDfe(dfe)
         val parsedCursor = cursor?.let { tryParseUuid(it) }
         val pageSize = (limit ?: 20).coerceIn(1, 100)
-        val todos = demoService.findByFilter(ctx, filter, parsedCursor, pageSize + 1)
-        return todos.toPage(pageSize)
+        val page = demoService.findByFilter(ctx, filter, parsedCursor, pageSize)
+        return page.toTodoPage()
     }
 
     @DgsMutation(field = "mutation_demo_createTodo")
@@ -108,12 +108,9 @@ private fun com.ifmix.api.core.entity.todo.Todo.toDto(): Todo = Todo(
     updatedAt = updatedAt,
 )
 
-private fun List<com.ifmix.api.core.entity.todo.Todo>.toPage(limit: Int): TodoPage {
-    val hasMore = size > limit
-    val items = if (hasMore) dropLast(1) else this
-    return TodoPage(
+private fun com.ifmix.api.core.dto.common.Page<com.ifmix.api.core.entity.todo.Todo>.toTodoPage(): TodoPage =
+    TodoPage(
         items = items.map { it.toDto() },
-        nextCursor = if (hasMore && items.isNotEmpty()) items.last().id.toString() else null,
+        nextCursor = nextCursor,
         hasMore = hasMore,
     )
-}

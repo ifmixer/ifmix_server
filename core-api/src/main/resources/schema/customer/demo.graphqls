@@ -40,7 +40,7 @@ extend type Query {
     query_demo_findTodoById(id: UUID!): Todo!
     query_demo_findTodosByCursor(input: TodoQueryInput): TodoPage!
     query_demo_findTodosByIds(ids: [UUID!]!): [Todo!]!
-    "动态条件查询（FilterGroup + 游标分页）"
+    "动态条件查询（FilterGroup + 游标分页）。可过滤字段: title(String), done(Boolean), userId(UUID), note(String), createdAt(epochMillis), updatedAt(epochMillis)"
     query_demo_findTodos(filter: FilterGroup, cursor: String, limit: Int): TodoPage!
 }
 

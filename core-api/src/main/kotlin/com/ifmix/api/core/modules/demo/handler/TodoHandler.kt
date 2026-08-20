@@ -1,5 +1,6 @@
 package com.ifmix.api.core.modules.demo.handler
 
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.todo.Todo
 import com.ifmix.api.core.entity.todo.TodoItem
 import com.ifmix.api.core.generated.types.CreateTodoItemForTodoInput
@@ -30,10 +31,10 @@ class TodoHandler(
     fun findByIds(sc: SvcCtx, appId: UUID, ids: List<UUID>): List<Todo> =
         todoRepo.findByIds(sc, appId, ids)
 
-    fun findByCursor(sc: SvcCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): List<Todo> =
+    fun findByCursor(sc: SvcCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): Page<Todo> =
         todoRepo.findByCursor(sc, appId, cursor, limit, filter)
 
-    fun findByFilter(sc: SvcCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): List<Todo> =
+    fun findByFilter(sc: SvcCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> =
         todoRepo.findByFilter(sc, appId, filter, cursor, limit)
 
     // --- Mutations ---

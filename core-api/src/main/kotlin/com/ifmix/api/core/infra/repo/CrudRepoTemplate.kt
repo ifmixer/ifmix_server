@@ -5,6 +5,7 @@ import org.babyfish.jimmer.sql.kt.ast.expression.*
 import java.util.UUID
 import kotlin.reflect.KClass
 import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
+import com.ifmix.api.core.dto.common.Page
 
 /**
  * CRUD 操作模板（组合模式）。
@@ -64,7 +65,8 @@ class CrudRepoTemplate<E : Any>(
     }
 
     /**
-     * 游标分页查询。
+     * 游标分页查询，返回 Page。
+     * 内部自动多查 1 条判断 hasMore，调用方传实际 pageSize 即可。
      * @param where 额外 where 条件 lambda（在 appId 和 cursor 条件之后追加）。
      */
     fun findByCursor(
@@ -73,14 +75,26 @@ class CrudRepoTemplate<E : Any>(
         cursor: UUID?,
         limit: Int,
         where: (KMutableRootQuery.ForEntity<E>.() -> Unit)? = null,
-    ): List<E> =
-        ctx.sql.createQuery(entityType) {
+    ): Page<E> {
+        val rows = ctx.sql.createQuery(entityType) {
             where(table.get<UUID>(this@CrudRepoTemplate.appId!!) eq appId)
             cursor?.let { where(table.get<UUID>(this@CrudRepoTemplate.id) lt it) }
             where?.invoke(this)
             orderBy(table.get<UUID>(this@CrudRepoTemplate.id).desc())
             select(table)
-        }.limit(limit).execute()
+        }.limit(limit + 1).execute()
+
+        return Page.of(rows, limit) {
+            idExtractor(it)
+        }
+    }
+
+    /** 从实体中提取 id 字符串作为游标。 */
+    @Suppress("UNCHECKED_CAST")
+    private fun idExtractor(entity: E): String? {
+        val spi = entity as org.babyfish.jimmer.runtime.ImmutableSpi
+        return spi.__get(id)?.toString()
+    }
 
     fun exists(ctx: SvcCtx, appId: UUID, id: UUID): Boolean =
         findById(ctx, appId, id) != null

@@ -4,6 +4,8 @@ import com.ifmix.api.core.generated.types.FieldFilter
 import com.ifmix.api.core.generated.types.FilterExpr
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.FilterOp
+import com.ifmix.api.core.infra.http.ApiError
+import com.ifmix.api.core.infra.http.ErrorCode
 import org.babyfish.jimmer.meta.ImmutableProp
 import org.babyfish.jimmer.meta.TypedProp
 import org.babyfish.jimmer.sql.ast.LikeMode
@@ -73,7 +75,7 @@ object FilterGroupResolver {
     ): KNonNullExpression<Boolean> {
         val fieldName = filter.field
         val prop = allowed[fieldName]
-            ?: throw IllegalArgumentException("Field '$fieldName' is not allowed for filtering")
+            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "Field '$fieldName' is not allowed for filtering")
 
         val targetType = prop.returnClass
         val column = query.table.get<Comparable<Any>>(fieldName)

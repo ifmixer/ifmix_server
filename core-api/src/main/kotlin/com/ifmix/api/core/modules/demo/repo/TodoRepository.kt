@@ -1,5 +1,6 @@
 package com.ifmix.api.core.modules.demo.repo
 
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.todo.Todo
 import com.ifmix.api.core.entity.todo.TodoProps
 import com.ifmix.api.core.entity.todo.appId
@@ -41,7 +42,7 @@ class TodoRepository {
     fun deleteById(ctx: SvcCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(ctx, appId, id)
     fun deleteByIds(ctx: SvcCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(ctx, appId, ids)
 
-    fun findByCursor(ctx: SvcCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): List<Todo> {
+    fun findByCursor(ctx: SvcCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): Page<Todo> {
         return tpl.findByCursor(ctx, appId, cursor, limit) {
             filter?.done?.let { where(table.done eq it) }
             filter?.userId?.let { where(table.userId eq it) }
@@ -51,14 +52,16 @@ class TodoRepository {
     /**
      * 基于 FilterGroup + cursor 的动态查询。
      */
-    fun findByFilter(ctx: SvcCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): List<Todo> {
-        return ctx.sql.createQuery(Todo::class) {
+    fun findByFilter(ctx: SvcCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> {
+        val rows = ctx.sql.createQuery(Todo::class) {
             where(table.appId eq appId)
             FilterGroupResolver.apply(this, filter, FILTERABLE)
             cursor?.let { where(table.getId<UUID>() lt it) }
             orderBy(table.getId<UUID>().desc())
             select(table)
-        }.limit(limit).execute()
+        }.limit(limit + 1).execute()
+
+        return Page.of(rows, limit) { it.id.toString() }
     }
 
     fun partialUpdate(ctx: SvcCtx, appId: UUID, input: UpdateTodoInput) {
