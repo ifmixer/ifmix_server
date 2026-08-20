@@ -1,5 +1,7 @@
 package com.ifmix.api.core.modules.demo.repo.mybatis
 
+import com.ifmix.api.core.modules.demo.entity.TodoItemEntity
+import com.ifmix.api.core.modules.demo.entity.TodoEntity
 import org.apache.ibatis.annotations.*
 import org.mybatis.dynamic.sql.delete.render.DeleteStatementProvider
 import org.mybatis.dynamic.sql.insert.render.InsertStatementProvider
@@ -24,14 +26,14 @@ interface TodoMapper {
         Result(column = "updated_at", property = "updatedAt"),
         Result(column = "deleted_at", property = "deletedAt"),
     ])
-    fun selectMany(statement: SelectStatementProvider): List<TodoRecord>
+    fun selectMany(statement: SelectStatementProvider): List<TodoEntity>
 
     @SelectProvider(type = SqlProviderAdapter::class, method = "select")
     @ResultMap("TodoRecordResult")
-    fun selectOne(statement: SelectStatementProvider): TodoRecord?
+    fun selectOne(statement: SelectStatementProvider): TodoEntity?
 
     @InsertProvider(type = SqlProviderAdapter::class, method = "insert")
-    fun insert(statement: InsertStatementProvider<TodoRecord>): Int
+    fun insert(statement: InsertStatementProvider<TodoEntity>): Int
 
     @UpdateProvider(type = SqlProviderAdapter::class, method = "update")
     fun update(statement: UpdateStatementProvider): Int
@@ -54,14 +56,14 @@ interface TodoItemMapper {
         Result(column = "updated_at", property = "updatedAt"),
         Result(column = "deleted_at", property = "deletedAt"),
     ])
-    fun selectMany(statement: SelectStatementProvider): List<TodoItemRecord>
+    fun selectMany(statement: SelectStatementProvider): List<TodoItemEntity>
 
     @SelectProvider(type = SqlProviderAdapter::class, method = "select")
     @ResultMap("TodoItemRecordResult")
-    fun selectOne(statement: SelectStatementProvider): TodoItemRecord?
+    fun selectOne(statement: SelectStatementProvider): TodoItemEntity?
 
     @InsertProvider(type = SqlProviderAdapter::class, method = "insert")
-    fun insert(statement: InsertStatementProvider<TodoItemRecord>): Int
+    fun insert(statement: InsertStatementProvider<TodoItemEntity>): Int
 
     @UpdateProvider(type = SqlProviderAdapter::class, method = "update")
     fun update(statement: UpdateStatementProvider): Int

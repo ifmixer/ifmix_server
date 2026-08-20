@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.demo.repo.mybatis
+package com.ifmix.api.core.modules.demo.entity
 
 import java.time.Instant
 import java.util.UUID
@@ -7,7 +7,7 @@ import java.util.UUID
  * Todo record — 数据库行 1:1 映射。
  * Phase 0 临时放这里，全量迁移后替换 entity/demo/Todo（Jimmer interface）。
  */
-data class TodoRecord(
+data class TodoEntity(
     val id: UUID,
     val appId: UUID,
     val title: String,
@@ -21,7 +21,7 @@ data class TodoRecord(
     val deletedAt: Instant? = null,
 )
 
-data class TodoItemRecord(
+data class TodoItemEntity(
     val id: UUID,
     val appId: UUID,
     val todoId: UUID,

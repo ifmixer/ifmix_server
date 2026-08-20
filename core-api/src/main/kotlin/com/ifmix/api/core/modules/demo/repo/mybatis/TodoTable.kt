@@ -2,7 +2,6 @@ package com.ifmix.api.core.modules.demo.repo
 
 import com.ifmix.api.core.infra.mybatis.TableMeta
 import org.mybatis.dynamic.sql.SqlTable
-import org.mybatis.dynamic.sql.util.kotlin.elements.column
 import java.time.Instant
 import java.util.UUID
 
