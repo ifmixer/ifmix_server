@@ -117,3 +117,18 @@ Task 9: complete (commits 9dbac6e..3ab37ec, review pending)
 - Old bff dirs (todo, feedback, iap, scan): all removed ✓
 - Compilation: BUILD SUCCESSFUL ✓
 - No cross-layer calls from DataFetchers ✓
+
+## Post-Final-Review Update (after Task 9 agent completed)
+- BaseCrudRepository/BaseAppCrudRepository DELETED (17 repos migrated to CrudRepoTemplate)
+- IapConfig reduced to empty interface (stubs now @Component)
+- AiConfig converted to @Component
+- All compilation issues fixed
+- Total: 14 commits since BASE (0ba8761..10205ae)
+
+## Rulings Made During Execution
+1. `AuthConfig` kept as @Configuration — It's infra security config (JwtDecoder, RestClient), not module service registration. No change needed.
+2. `IapConfig` → `@Component` (stub verifiers now @Component directly)
+3. `AiConfig` → `@Component` (simplified)
+4. `CollectionFetcher` cross-layer fix: merged into AiFetcher, ScanRecordsDataLoader uses ModuleCtxFactory directly (acceptable for DataLoader pattern)
+5. Handler param names kept `sc` in business code — task brief specified not to rename business code params, only infra/imports
+6. No GraphQL schema changes made — correct per plan constraints (operations already used q_/m_ prefix)
