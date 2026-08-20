@@ -131,9 +131,15 @@ open class SpringAiScanRunner(
             cleaned
         }
 
-        val map = snakeCaseMapper.readValue(jsonOnly, Map::class.java) as? Map<String, Any?>
-            ?: throw ApiError(ErrorCode.AI_UNAVAILABLE, "AI returned non-JSON response")
-        return map
+        try {
+            val map = snakeCaseMapper.readValue(jsonOnly, Map::class.java) as? Map<String, Any?>
+                ?: throw ApiError(ErrorCode.AI_UNAVAILABLE, "AI returned non-JSON response")
+            return map
+        } catch (e: Exception) {
+            log.error("JSON parse failed. rawLength={}, cleanedLength={}, jsonOnlyLength={}, first200chars={}",
+                jsonText.length, cleaned.length, jsonOnly.length, jsonOnly.take(200))
+            throw e
+        }
     }
 
     private fun isRateLimitException(e: Exception): Boolean {

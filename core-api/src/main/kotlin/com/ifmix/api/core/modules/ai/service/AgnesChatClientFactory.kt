@@ -37,7 +37,16 @@ open class AgnesChatClientFactory(
         val chatModel = OpenAiChatModel.builder()
             .openAiClient(syncClient)
             .openAiClientAsync(asyncClient)
-            .options(OpenAiChatOptions.builder().model(model).build())
+            .options(
+                OpenAiChatOptions.builder()
+                    .model(model)
+                    .responseFormat(
+                        OpenAiChatModel.ResponseFormat.builder()
+                            .type(OpenAiChatModel.ResponseFormat.Type.JSON_OBJECT)
+                            .build()
+                    )
+                    .build()
+            )
             .build()
 
         return ChatClient.builder(chatModel).build()

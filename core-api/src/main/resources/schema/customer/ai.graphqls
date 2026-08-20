@@ -4,7 +4,7 @@
 
 type ScanRecord {
     id: UUID!
-    images: [ImageRef!]!
+    images: [ImageRef!]
     "基础扫描结果 (JSONB)"
     basicResult: JSON
     "高级扫描结果 (JSONB)"
@@ -48,7 +48,7 @@ input NewScanImageInput {
 }
 
 type NewScanResult {
-    scanRecord: ScanRecord!
+    scanRecord: ScanRecord
 }
 
 input UpdateScanInput {
