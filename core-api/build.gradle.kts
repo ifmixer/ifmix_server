@@ -142,12 +142,16 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "DateTime" to "java.time.Instant",
         "JSON" to "kotlin.Any",
         // Entity output types → Domain Model data classes
+        "Todo" to "com.ifmix.api.core.entity.demo.Todo",
+        "TodoItem" to "com.ifmix.api.core.entity.demo.TodoItem",
         "ScanRecord" to "com.ifmix.api.core.entity.ai.ScanRecord",
         "ScanCollection" to "com.ifmix.api.core.entity.ai.ScanCollection",
+        "ScanCollectionItem" to "com.ifmix.api.core.entity.ai.ScanCollectionItem",
         "ImageRef" to "com.ifmix.api.core.entity.scan.ImageRef",
         // OperationResult: 手写类型，不再由 codegen 生成
         "OperationResult" to "com.ifmix.api.core.dto.common.OperationResult",
         // Page types → 通用 Page<T>
+        "TodoPage" to "com.ifmix.api.core.dto.common.Page",
         "ScanRecordPage" to "com.ifmix.api.core.dto.common.Page",
         "ScanCollectionItemPage" to "com.ifmix.api.core.dto.common.Page",
     )

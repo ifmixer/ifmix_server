@@ -1,8 +1,8 @@
 package com.ifmix.api.core.modules.demo.handler
 
 import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.entity.todo.Todo
-import com.ifmix.api.core.entity.todo.TodoItem
+import com.ifmix.api.core.entity.demo.Todo
+import com.ifmix.api.core.entity.demo.TodoItem
 import com.ifmix.api.core.generated.types.CreateTodoItemForTodoInput
 import com.ifmix.api.core.generated.types.CreateTodoItemInput
 import com.ifmix.api.core.generated.types.FilterGroup
@@ -18,29 +18,29 @@ import java.time.Instant
 import java.util.UUID
 
 @Component
-class TodoHandler(
+class TodoAggHandler(
     private val todoRepo: TodoRepository,
     private val todoItemRepo: TodoItemRepository,
 ) {
 
     // --- Queries ---
 
-    fun findById(sc: ModuleCtx, appId: UUID, id: UUID): Todo? =
-        todoRepo.findById(sc, appId, id)
+    fun findById(mc: ModuleCtx, appId: UUID, id: UUID): Todo? =
+        todoRepo.findById(mc, appId, id)
 
-    fun findByIds(sc: ModuleCtx, appId: UUID, ids: List<UUID>): List<Todo> =
-        todoRepo.findByIds(sc, appId, ids)
+    fun findByIds(mc: ModuleCtx, appId: UUID, ids: List<UUID>): List<Todo> =
+        todoRepo.findByIds(mc, appId, ids)
 
-    fun findByCursor(sc: ModuleCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): Page<Todo> =
-        todoRepo.findByCursor(sc, appId, cursor, limit, filter)
+    fun findByCursor(mc: ModuleCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): Page<Todo> =
+        todoRepo.findByCursor(mc, appId, cursor, limit, filter)
 
-    fun findByFilter(sc: ModuleCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> =
-        todoRepo.findByFilter(sc, appId, filter, cursor, limit)
+    fun findByFilter(mc: ModuleCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> =
+        todoRepo.findByFilter(mc, appId, filter, cursor, limit)
 
     // --- Mutations ---
 
-    fun create(sc: ModuleCtx, title: String, done: Boolean?, note: String?, items: List<CreateTodoItemInput>?): Todo {
-        val appId = sc.mustGetAppId()
+    fun create(mc: ModuleCtx, title: String, done: Boolean?, note: String?, items: List<CreateTodoItemInput>?): Todo {
+        val appId = mc.mustGetAppId()
         val now = Instant.now()
         val id = UuidV7.generate()
         val todo = Todo {
@@ -49,12 +49,12 @@ class TodoHandler(
             this.title = title
             this.done = done ?: false
             this.note = note
-            this.installId = sc.installId
-            this.userId = sc.userId
+            this.installId = mc.installId
+            this.userId = mc.userId
             this.createdAt = now
             this.updatedAt = now
         }
-        val saved = todoRepo.save(sc, todo)
+        val saved = todoRepo.save(mc, todo)
 
         items?.forEach { item ->
             val todoItem = TodoItem {
@@ -67,40 +67,40 @@ class TodoHandler(
                 this.createdAt = now
                 this.updatedAt = now
             }
-            todoItemRepo.save(sc, todoItem)
+            todoItemRepo.save(mc, todoItem)
         }
 
         return saved
     }
 
-    fun partialUpdate(sc: ModuleCtx, appId: UUID, input: UpdateTodoInput) {
-        todoRepo.partialUpdate(sc, appId, input)
+    fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoInput) {
+        todoRepo.partialUpdate(mc, appId, input)
     }
 
-    fun batchUpdateItems(sc: ModuleCtx, appId: UUID, input: UpdateTodoItemsMutationInput) {
+    fun batchUpdateItems(mc: ModuleCtx, appId: UUID, input: UpdateTodoItemsMutationInput) {
         // Delete
         input.delete?.let { ids ->
-            if (ids.isNotEmpty()) todoItemRepo.deleteByIds(sc, appId, ids)
+            if (ids.isNotEmpty()) todoItemRepo.deleteByIds(mc, appId, ids)
         }
 
         // Create
         input.create?.forEach { item ->
-            createItem(sc, appId, item)
+            createItem(mc, appId, item)
         }
 
         // Update
         input.update?.forEach { entry ->
-            todoItemRepo.partialUpdate(sc, appId, entry)
+            todoItemRepo.partialUpdate(mc, appId, entry)
         }
     }
 
-    fun deleteById(sc: ModuleCtx, appId: UUID, id: UUID): Boolean =
-        todoRepo.deleteById(sc, appId, id)
+    fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean =
+        todoRepo.deleteById(mc, appId, id)
 
-    fun batchDelete(sc: ModuleCtx, appId: UUID, ids: List<UUID>): Int =
-        todoRepo.deleteByIds(sc, appId, ids)
+    fun batchDelete(mc: ModuleCtx, appId: UUID, ids: List<UUID>): Int =
+        todoRepo.deleteByIds(mc, appId, ids)
 
-    private fun createItem(sc: ModuleCtx, appId: UUID, item: CreateTodoItemForTodoInput) {
+    private fun createItem(mc: ModuleCtx, appId: UUID, item: CreateTodoItemForTodoInput) {
         val now = Instant.now()
         val todoItem = TodoItem {
             this.id = UuidV7.generate()
@@ -112,6 +112,6 @@ class TodoHandler(
             this.createdAt = now
             this.updatedAt = now
         }
-        todoItemRepo.save(sc, todoItem)
+        todoItemRepo.save(mc, todoItem)
     }
 }

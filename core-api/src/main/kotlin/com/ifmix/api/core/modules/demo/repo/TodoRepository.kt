@@ -1,14 +1,14 @@
 package com.ifmix.api.core.modules.demo.repo
 
 import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.entity.todo.Todo
-import com.ifmix.api.core.entity.todo.TodoProps
-import com.ifmix.api.core.entity.todo.appId
-import com.ifmix.api.core.entity.todo.id
-import com.ifmix.api.core.entity.todo.title
-import com.ifmix.api.core.entity.todo.done
-import com.ifmix.api.core.entity.todo.note
-import com.ifmix.api.core.entity.todo.userId
+import com.ifmix.api.core.entity.demo.Todo
+import com.ifmix.api.core.entity.demo.TodoProps
+import com.ifmix.api.core.entity.demo.appId
+import com.ifmix.api.core.entity.demo.id
+import com.ifmix.api.core.entity.demo.title
+import com.ifmix.api.core.entity.demo.done
+import com.ifmix.api.core.entity.demo.note
+import com.ifmix.api.core.entity.demo.userId
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
 import com.ifmix.api.core.generated.types.UpdateTodoInput
@@ -36,14 +36,14 @@ class TodoRepository {
         )
     }
 
-    fun findById(ctx: ModuleCtx, appId: UUID, id: UUID): Todo? = tpl.findById(ctx, appId, id)
-    fun findByIds(ctx: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<Todo> = tpl.findByIds(ctx, appId, ids)
-    fun save(ctx: ModuleCtx, entity: Todo): Todo = tpl.save(ctx, entity)
-    fun deleteById(ctx: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(ctx, appId, id)
-    fun deleteByIds(ctx: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(ctx, appId, ids)
+    fun findById(mc: ModuleCtx, appId: UUID, id: UUID): Todo? = tpl.findById(mc, appId, id)
+    fun findByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<Todo> = tpl.findByIds(mc, appId, ids)
+    fun save(mc: ModuleCtx, entity: Todo): Todo = tpl.save(mc, entity)
+    fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
+    fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, appId, ids)
 
-    fun findByCursor(ctx: ModuleCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): Page<Todo> {
-        return tpl.findByCursor(ctx, appId, cursor, limit) {
+    fun findByCursor(mc: ModuleCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): Page<Todo> {
+        return tpl.findByCursor(mc, appId, cursor, limit) {
             filter?.done?.let { where(table.done eq it) }
             filter?.userId?.let { where(table.userId eq it) }
         }
@@ -52,8 +52,8 @@ class TodoRepository {
     /**
      * 基于 FilterGroup + cursor 的动态查询。
      */
-    fun findByFilter(ctx: ModuleCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> {
-        val rows = ctx.sql.createQuery(Todo::class) {
+    fun findByFilter(mc: ModuleCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> {
+        val rows = mc.sql.createQuery(Todo::class) {
             where(table.appId eq appId)
             FilterGroupResolver.apply(this, filter, FILTERABLE)
             cursor?.let { where(table.getId<UUID>() lt it) }
@@ -64,10 +64,10 @@ class TodoRepository {
         return Page.of(rows, limit) { it.id.toString() }
     }
 
-    fun partialUpdate(ctx: ModuleCtx, appId: UUID, input: UpdateTodoInput) {
+    fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoInput) {
         val set = input.set ?: return
         if (set.title == null && set.done == null && set.note == null) return
-        ctx.sql.createUpdate(Todo::class) {
+        mc.sql.createUpdate(Todo::class) {
             where(table.appId eq appId)
             where(table.id eq input.id)
             set.title?.let { set(table.title, it) }

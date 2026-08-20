@@ -30,3 +30,14 @@ db0f376 up
 - [ ] Task 8: Phase 2 — auth module refactor
 - [ ] Task 9: Phase 3 — cleanup (delete old repos, toDto, ARCHITECTURE.md update)
 
+
+## Task Status
+
+Task 1: complete (commits 0ba8761..8bb9ac6, review clean)
+- SvcCtx→ModuleCtx rename done
+- ClusterRouter updated to return ClusterSqlPair
+- OperationContext has preferReader/globalTxSql/inGlobalTx
+- ModuleCtxFactory with chooseSql logic
+- GlobalTxRunner uses ClusterRouter
+- Compilation: BUILD SUCCESSFUL
+- Concerns noted: Handler param names keep `sc` (business code), AiConfig still @Configuration (deferred to Task 7), CollectionFetcher cross-layer (deferred to Task 7)

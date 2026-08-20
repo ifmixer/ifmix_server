@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.todo
+package com.ifmix.api.core.entity.demo
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.MutableProps

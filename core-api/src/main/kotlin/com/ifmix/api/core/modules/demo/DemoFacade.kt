@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.demo
 
 import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.entity.todo.Todo
+import com.ifmix.api.core.entity.demo.Todo
 import com.ifmix.api.core.generated.types.CreateTodoItemInput
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
@@ -9,16 +9,14 @@ import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.infra.tx.TxRunner
-import com.ifmix.api.core.modules.demo.handler.TodoHandler
+import com.ifmix.api.core.modules.demo.handler.TodoAggHandler
 import org.springframework.stereotype.Service
 import java.util.UUID
 
 @Service
 class DemoFacade(
     private val mcFactory: ModuleCtxFactory,
-    private val handler: TodoHandler,
-    private val tx: TxRunner,
+    private val handler: TodoAggHandler,
 ) {
     // --- Queries (no tx) ---
 
@@ -34,22 +32,22 @@ class DemoFacade(
     fun findByFilter(ctx: OperationContext, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> =
         handler.findByFilter(mcFactory.forApp(ctx), ctx.mustGetAppId(), filter, cursor, limit)
 
-    // --- Mutations (with tx) ---
+    // --- Mutations (no tx — managed by DataFetcher via GlobalTxRunner) ---
 
     fun create(ctx: OperationContext, title: String, done: Boolean?, note: String?, items: List<CreateTodoItemInput>?): Todo =
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.create(sc, title, done, note, items) }
+        handler.create(mcFactory.forApp(ctx), title, done, note, items)
 
     fun partialUpdate(ctx: OperationContext, input: UpdateTodoInput) {
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.partialUpdate(sc, ctx.mustGetAppId(), input) }
+        handler.partialUpdate(mcFactory.forApp(ctx), ctx.mustGetAppId(), input)
     }
 
     fun batchUpdateItems(ctx: OperationContext, input: UpdateTodoItemsMutationInput) {
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.batchUpdateItems(sc, ctx.mustGetAppId(), input) }
+        handler.batchUpdateItems(mcFactory.forApp(ctx), ctx.mustGetAppId(), input)
     }
 
     fun deleteById(ctx: OperationContext, id: UUID): Boolean =
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.deleteById(sc, ctx.mustGetAppId(), id) }
+        handler.deleteById(mcFactory.forApp(ctx), ctx.mustGetAppId(), id)
 
     fun batchDelete(ctx: OperationContext, ids: List<UUID>): Int =
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.batchDelete(sc, ctx.mustGetAppId(), ids) }
+        handler.batchDelete(mcFactory.forApp(ctx), ctx.mustGetAppId(), ids)
 }
