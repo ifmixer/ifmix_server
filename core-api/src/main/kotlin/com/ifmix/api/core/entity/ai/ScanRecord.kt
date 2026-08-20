@@ -1,7 +1,7 @@
 package com.ifmix.api.core.entity.ai
 
 import com.ifmix.api.core.entity.AppScopedProps
-import com.ifmix.api.core.entity.scan.ImageRef
+import com.ifmix.api.core.entity.ai.ImageRef
 import com.ifmix.api.core.entity.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
 import java.time.Instant

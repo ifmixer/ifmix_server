@@ -1,6 +1,8 @@
 package com.ifmix.api.core.modules.payment
 
 import com.ifmix.api.core.infra.db.UuidV7
+import org.springframework.stereotype.Component
+
 
 /**
  * 商店推送通知解码接缝：Apple Server Notifications / Google Play PubSub
@@ -45,6 +47,7 @@ enum class NotificationType {
  * 占位解码器：从 rawPayload 中提取 subscriptionPxid，其余填默认值。
  * 用于开发阶段验证 webhook 路由。
  */
+@Component
 class StubNotificationDecoder : NotificationDecoder {
     override fun decode(rawPayload: String, platform: Int): DecodedNotification {
         // 简单尝试提取 subscriptionPxid 字段，失败则用 UUID 兜底

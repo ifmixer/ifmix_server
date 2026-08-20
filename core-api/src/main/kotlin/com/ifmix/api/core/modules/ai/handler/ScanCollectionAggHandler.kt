@@ -16,7 +16,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Component
-open class ScanCollectionHandler(
+open class ScanCollectionAggHandler(
     private val collectionRepo: ScanCollectionRepository,
     private val itemRepo: ScanCollectionItemRepository,
 ) {

@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.iap
+package com.ifmix.api.core.entity.payment
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps

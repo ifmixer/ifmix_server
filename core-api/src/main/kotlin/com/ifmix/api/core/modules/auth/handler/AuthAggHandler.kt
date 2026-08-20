@@ -96,7 +96,7 @@ data class DeleteAccountRes(
 )
 
 @Component
-class AuthHandler(
+class AuthAggHandler(
     private val appConfigRepo: AppConfigRepository,
     private val verifiers: Map<String, ProviderVerifier>,
     private val jwt: AuthJwtService,

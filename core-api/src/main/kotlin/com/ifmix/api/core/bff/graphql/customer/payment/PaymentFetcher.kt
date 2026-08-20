@@ -1,4 +1,4 @@
-package com.ifmix.api.core.bff.graphql.customer.iap
+package com.ifmix.api.core.bff.graphql.customer.payment
 
 import com.ifmix.api.core.generated.types.verifyIapPurchaseInput
 import com.ifmix.api.core.generated.types.verifyIapPurchasePayload
@@ -12,15 +12,15 @@ import com.netflix.graphql.dgs.InputArgument
 import java.time.Instant
 
 @DgsComponent
-class IapFetcher(
-    private val iapService: PaymentFacade,
+class PaymentFetcher(
+    private val paymentService: PaymentFacade,
     private val ctxProvider: OperationContextProvider,
 ) {
 
     @DgsMutation(field = "mutation_payment_verifyIapPurchase")
     fun verifyIapPurchase(dfe: DgsDataFetchingEnvironment, @InputArgument input: verifyIapPurchaseInput): verifyIapPurchasePayload {
         val ctx = ctxProvider.fromDfe(dfe)
-        val res = iapService.verifyIapPurchase(ctx, VerifyReq(
+        val res = paymentService.verifyIapPurchase(ctx, VerifyReq(
             platform = input.platform,
             signedTransaction = input.signedTransaction,
             purchaseToken = input.purchaseToken,

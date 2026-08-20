@@ -16,16 +16,16 @@ class PaymentWebhookHandler(
     private val subscriptionRepo: SubscriptionRepository,
     private val storeNotificationRepo: StoreNotificationRepository,
 ) {
-    fun handleAppleNotification(sc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder) {
-        handleNotification(sc, rawPayload, decoder, "APPLE")
+    fun handleAppleNotification(mc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder) {
+        handleNotification(mc, rawPayload, decoder, "APPLE")
     }
 
-    fun handleGoogleNotification(sc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder) {
-        handleNotification(sc, rawPayload, decoder, "GOOGLE")
+    fun handleGoogleNotification(mc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder) {
+        handleNotification(mc, rawPayload, decoder, "GOOGLE")
     }
 
-    fun handleNotification(sc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder, platform: String) {
-        val ctx = sc.op
+    fun handleNotification(mc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder, platform: String) {
+        val ctx = mc.op
         val appId = ctx.appId ?: return
 
         val decodedPlatform = if (platform == "APPLE") com.ifmix.api.core.entity.shared.Platforms.APPLE else com.ifmix.api.core.entity.shared.Platforms.GOOGLE
@@ -33,50 +33,50 @@ class PaymentWebhookHandler(
 
         if (decoderResult.subscriptionPxid.isNullOrEmpty()) return
 
-        if (storeNotificationRepo.existsByPlatformAndToken(sc, platform, decoderResult.subscriptionPxid)) return
+        if (storeNotificationRepo.existsByPlatformAndToken(mc, platform, decoderResult.subscriptionPxid)) return
 
-        var subscription = subscriptionRepo.findActiveByPxid(sc, appId, decoderResult.subscriptionPxid)
+        var subscription = subscriptionRepo.findActiveByPxid(mc, appId, decoderResult.subscriptionPxid)
         if (subscription == null) {
-            subscription = subscriptionRepo.findByPxid(sc, appId, decoderResult.subscriptionPxid)
+            subscription = subscriptionRepo.findByPxid(mc, appId, decoderResult.subscriptionPxid)
         }
 
         if (subscription == null) {
-            createStoreNotification(sc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+            createStoreNotification(mc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
             return
         }
 
         when (decoderResult.type) {
-            NotificationType.REFUNDED -> updateSubscription(sc, subscription, active = false, subStatus = "refunded", expiryDate = null)
-            NotificationType.CANCELLED -> updateSubscription(sc, subscription, active = false, subStatus = "cancelled")
-            NotificationType.RENEWED -> updateSubscription(sc, subscription, active = true, subStatus = "renewed", expiryDate = decoderResult.timestamp.plus(Duration.ofDays(30)))
+            NotificationType.REFUNDED -> updateSubscription(mc, subscription, active = false, subStatus = "refunded", expiryDate = null)
+            NotificationType.CANCELLED -> updateSubscription(mc, subscription, active = false, subStatus = "cancelled")
+            NotificationType.RENEWED -> updateSubscription(mc, subscription, active = true, subStatus = "renewed", expiryDate = decoderResult.timestamp.plus(Duration.ofDays(30)))
             NotificationType.BILLING_RETRY -> {}
             NotificationType.GRACE_PERIOD_EXPIRED,
-            NotificationType.EXPIRED -> updateSubscription(sc, subscription, active = false, subStatus = decoderResult.type.name.lowercase())
+            NotificationType.EXPIRED -> updateSubscription(mc, subscription, active = false, subStatus = decoderResult.type.name.lowercase())
             else -> {}
         }
 
-        createStoreNotification(sc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+        createStoreNotification(mc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
     }
 
     private fun updateSubscription(
-        sc: ModuleCtx,
-        sub: com.ifmix.api.core.entity.iap.Subscription,
+        mc: ModuleCtx,
+        sub: com.ifmix.api.core.entity.payment.Subscription,
         active: Boolean? = null,
         subStatus: String? = null,
         expiryDate: Instant? = null,
     ) {
         val now = Instant.now()
-        val updated = com.ifmix.api.core.entity.iap.Subscription(sub) {
+        val updated = com.ifmix.api.core.entity.payment.Subscription(sub) {
             this.active = active ?: sub.active
             this.subStatus = subStatus ?: sub.subStatus
             this.expiryDate = expiryDate ?: sub.expiryDate
             this.updatedAt = now
         }
-        subscriptionRepo.upsertSubscription(sc, updated)
+        subscriptionRepo.upsertSubscription(mc, updated)
     }
 
     private fun createStoreNotification(
-        sc: ModuleCtx,
+        mc: ModuleCtx,
         platform: String,
         subscriptionPxid: String,
         rawPayload: String,
@@ -85,7 +85,7 @@ class PaymentWebhookHandler(
         processed: Boolean = false,
     ) {
         val now = Instant.now()
-        val notif = com.ifmix.api.core.entity.iap.StoreNotification {
+        val notif = com.ifmix.api.core.entity.payment.StoreNotification {
             this.id = UuidV7.generate()
             this.appId = appId
             this.platform = platform
@@ -98,6 +98,6 @@ class PaymentWebhookHandler(
             this.createdAt = now
             this.updatedAt = now
         }
-        storeNotificationRepo.save(sc, notif)
+        storeNotificationRepo.save(mc, notif)
     }
 }

@@ -1,17 +1,17 @@
 package com.ifmix.api.core.modules.payment.repo
 
-import com.ifmix.api.core.entity.iap.Subscription
-import com.ifmix.api.core.entity.iap.appId
-import com.ifmix.api.core.entity.iap.subscriptionPxid
-import com.ifmix.api.core.entity.iap.originalTransactionId
-import com.ifmix.api.core.entity.iap.active
+import com.ifmix.api.core.entity.payment.Subscription
+import com.ifmix.api.core.entity.payment.appId
+import com.ifmix.api.core.entity.payment.subscriptionPxid
+import com.ifmix.api.core.entity.payment.originalTransactionId
+import com.ifmix.api.core.entity.payment.active
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.util.UUID
-import com.ifmix.api.core.entity.iap.id
+import com.ifmix.api.core.entity.payment.id
 
 @Repository
 class SubscriptionRepository(sql: KSqlClient) : BaseAppCrudRepository<Subscription>(sql, Subscription::class) {

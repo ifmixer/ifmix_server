@@ -119,20 +119,20 @@ type RemoveScanCollectionItemsPayload {
 # ==================== Query ====================
 
 extend type Query {
-    query_ai_findScanById(id: UUID!): ScanRecord!
-    query_ai_findScansByCursor(input: ScanQueryInput): ScanRecordPage!
+    q_ai_findScanById(id: UUID!): ScanRecord!
+    q_ai_findScansByCursor(input: ScanQueryInput): ScanRecordPage!
     "通用动态过滤查询（支持 AND/OR 嵌套条件）"
-    query_ai_findScans(filter: FilterGroup, cursor: String, limit: Int): ScanRecordPage!
-    query_ai_getDefaultCollection: ScanCollection!
-    query_ai_findCollectionItemsByCursor(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
+    q_ai_findScans(filter: FilterGroup, cursor: String, limit: Int): ScanRecordPage!
+    q_ai_getDefaultCollection: ScanCollection!
+    q_ai_findCollectionItemsByCursor(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
 }
 
 # ==================== Mutation ====================
 
 extend type Mutation {
-    mutation_ai_createScan(input: NewScanInput!): NewScanPayload!
-    mutation_ai_updateScan(input: UpdateScanInput!): UpdateScanPayload!
-    mutation_ai_deleteScan(id: UUID!): DeleteScanPayload!
-    mutation_ai_addCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemPayload!
-    mutation_ai_removeCollectionItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsPayload!
+    m_ai_createScan(input: NewScanInput!): NewScanPayload!
+    m_ai_updateScan(input: UpdateScanInput!): UpdateScanPayload!
+    m_ai_deleteScan(id: UUID!): DeleteScanPayload!
+    m_ai_addCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemPayload!
+    m_ai_removeCollectionItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsPayload!
 }

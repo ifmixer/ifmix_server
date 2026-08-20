@@ -2,6 +2,7 @@ package com.ifmix.api.core.modules.payment
 
 import com.ifmix.api.core.dto.payment.SubStatus
 import com.ifmix.api.core.infra.db.UuidV7
+import org.springframework.stereotype.Component
 
 /**
  * 购买验证接缝：各商店（Apple / Google）的 verifyIapPurchase 实现不同，
@@ -36,6 +37,7 @@ data class VerifyResult(
  * 占位实现：返回一条"已验证"的结果，不真正调用商店 API。
  * 用于开发和集成测试。
  */
+@Component
 class StubPurchaseVerifier : PurchaseVerifier {
     override fun verify(input: VerifyInput): VerifyResult {
         return VerifyResult(

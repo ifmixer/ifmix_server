@@ -7,7 +7,7 @@ import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.storage.ObjectStorage
-import com.ifmix.api.core.entity.scan.ImageRef
+import com.ifmix.api.core.entity.ai.ImageRef
 import com.ifmix.api.core.entity.ai.ScanRecord
 import com.ifmix.api.core.modules.ai.ScanRunner
 import com.ifmix.api.core.dto.ai.ScanInput
@@ -19,7 +19,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Component
-class ScanHandler(
+class ScanAggHandler(
     private val scanRunner: ScanRunner,
     private val objectStorage: ObjectStorage,
     private val scanRepo: ScanRecordRepository,

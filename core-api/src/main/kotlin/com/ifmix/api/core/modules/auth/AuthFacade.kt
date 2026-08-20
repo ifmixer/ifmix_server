@@ -2,8 +2,7 @@ package com.ifmix.api.core.modules.auth
 
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.infra.tx.TxRunner
-import com.ifmix.api.core.modules.auth.handler.AuthHandler
+import com.ifmix.api.core.modules.auth.handler.AuthAggHandler
 import com.ifmix.api.core.modules.auth.handler.DeleteAccountRes
 import com.ifmix.api.core.modules.auth.handler.ExchangeReq
 import com.ifmix.api.core.modules.auth.handler.ExchangeRes
@@ -20,22 +19,21 @@ import org.springframework.stereotype.Service
 @Service
 class AuthFacade(
     private val mcFactory: ModuleCtxFactory,
-    private val handler: AuthHandler,
-    private val tx: TxRunner,
+    private val handler: AuthAggHandler,
 ) {
     fun me(ctx: OperationContext): MeRes = handler.me(mcFactory.forApp(ctx))
     fun loginWithIdToken(ctx: OperationContext, provider: String, req: ProviderLoginReq): LoginRes =
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.loginWithIdToken(sc, provider, req) }
+        handler.loginWithIdToken(mcFactory.forApp(ctx), provider, req)
     fun loginWithCode(ctx: OperationContext, provider: String, req: WechatLoginReq): LoginRes =
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.loginWithCode(sc, provider, req) }
+        handler.loginWithCode(mcFactory.forApp(ctx), provider, req)
     fun exchange(ctx: OperationContext, req: ExchangeReq): ExchangeRes =
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.exchange(sc, req) }
+        handler.exchange(mcFactory.forApp(ctx), req)
     fun refresh(ctx: OperationContext, req: RefreshReq): RefreshRes =
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.refresh(sc, req) }
+        handler.refresh(mcFactory.forApp(ctx), req)
     fun logout(ctx: OperationContext, req: LogoutReq): LogoutRes =
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.logout(sc, req) }
+        handler.logout(mcFactory.forApp(ctx), req)
     fun anonymousLogin(ctx: OperationContext): LoginRes =
-        tx.withTx(mcFactory.forApp(ctx)) { sc -> handler.anonymousLogin(sc) }
+        handler.anonymousLogin(mcFactory.forApp(ctx))
     fun requestAccountDeletion(ctx: OperationContext): DeleteAccountRes =
         handler.requestAccountDeletion(mcFactory.forApp(ctx))
 }

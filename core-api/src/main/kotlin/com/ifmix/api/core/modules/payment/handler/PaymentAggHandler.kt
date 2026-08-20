@@ -4,7 +4,7 @@ import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.entity.iap.Subscription
+import com.ifmix.api.core.entity.payment.Subscription
 import com.ifmix.api.core.entity.shared.Platforms
 import com.ifmix.api.core.entity.shared.Tiers
 import com.ifmix.api.core.modules.payment.PurchaseVerifier
@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 
 @Component
-class PaymentHandler(
+class PaymentAggHandler(
     @Qualifier("appleVerifier") private val appleVerifier: PurchaseVerifier,
     @Qualifier("googleVerifier") private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
@@ -38,10 +38,10 @@ class PaymentHandler(
      * 注意：外部 verifier 调用应在事务外由 Facade 编排，
      * 此方法仅处理 DB 写入逻辑（由调用方在 tx.withTx 内调用）。
      */
-    fun verifyAndUpsert(sc: ModuleCtx, req: VerifyReq, verifyResult: VerifyResult): VerifyRes {
-        val appId = sc.op.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
+    fun verifyAndUpsert(mc: ModuleCtx, req: VerifyReq, verifyResult: VerifyResult): VerifyRes {
+        val appId = mc.op.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
-        val productTierMap = appConfigRepo.findActiveByAppId(sc, appId)
+        val productTierMap = appConfigRepo.findActiveByAppId(mc, appId)
             ?.content?.iap?.productTierMap
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val tier = tierOf(req.productId, productTierMap) ?: Tiers.FREE
@@ -50,7 +50,7 @@ class PaymentHandler(
             "pxid-${req.platform}-${UuidV7.generate()}"
         }
 
-        val existingSub = subscriptionRepo.findActiveByPxid(sc, appId, subscriptionPxid)
+        val existingSub = subscriptionRepo.findActiveByPxid(mc, appId, subscriptionPxid)
         if (existingSub != null) {
             return VerifyRes(
                 expiresAt = existingSub.expiryDate?.toEpochMilli(),
@@ -97,7 +97,7 @@ class PaymentHandler(
             this.updatedAt = now
         }
 
-        subscriptionRepo.upsertSubscription(sc, subscription)
+        subscriptionRepo.upsertSubscription(mc, subscription)
         return VerifyRes(
             expiresAt = verifyResult.expiryDate?.toEpochMilli(),
             state = statusFromExpiry(verifyResult.expiryDate),
