@@ -1,25 +1,25 @@
 package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.entity.auth.AuthProviderIdentity
-import com.ifmix.api.core.entity.auth.authTenant
+import com.ifmix.api.core.entity.auth.authIdentityId
+import com.ifmix.api.core.entity.auth.authTenantId
+import com.ifmix.api.core.entity.auth.email
 import com.ifmix.api.core.entity.auth.provider
 import com.ifmix.api.core.entity.auth.providerAccountId
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.repo.BaseCrudRepository
-import org.babyfish.jimmer.sql.kt.KSqlClient
+import com.ifmix.api.core.infra.repo.CrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
-import com.ifmix.api.core.entity.auth.authIdentityId
-import com.ifmix.api.core.entity.auth.authTenantId
 
 @Repository
-class AuthProviderIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthProviderIdentity>(sql, AuthProviderIdentity::class) {
+class AuthProviderIdentityRepository {
+    companion object { private val tpl = CrudRepoTemplate(AuthProviderIdentity::class) }
 
-    fun findByProviderAndAccountId(ctx: ModuleCtx, tenantId: UUID, provider: String, providerAccountId: String): AuthProviderIdentity? {
-        return ctx.sql.createQuery(AuthProviderIdentity::class) {
+    fun findByProviderAndAccountId(mc: ModuleCtx, tenantId: UUID, provider: String, providerAccountId: String): AuthProviderIdentity? {
+        return mc.sql.createQuery(AuthProviderIdentity::class) {
             where(table.authTenantId eq tenantId)
             where(table.provider eq provider)
             where(table.providerAccountId eq providerAccountId)
@@ -28,12 +28,12 @@ class AuthProviderIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthP
     }
 
     fun upsert(
-        ctx: ModuleCtx, tenantId: UUID, provider: String, providerAccountId: String,
+        mc: ModuleCtx, tenantId: UUID, provider: String, providerAccountId: String,
         identityId: UUID, email: String?, emailVerified: Boolean, phone: String?,
         userMetadata: Map<String, Any?>?, providerMetadata: Map<String, Any?>?,
         loginIp: String?, loginInstallId: UUID?, loginAppId: UUID?,
     ): UUID {
-        val existing = findByProviderAndAccountId(ctx, tenantId, provider, providerAccountId)
+        val existing = findByProviderAndAccountId(mc, tenantId, provider, providerAccountId)
         val now = Instant.now()
         val id = existing?.id ?: UuidV7.generate()
 
@@ -54,7 +54,7 @@ class AuthProviderIdentityRepository(sql: KSqlClient) : BaseCrudRepository<AuthP
             this.createdAt = existing?.createdAt ?: now
             this.updatedAt = now
         }
-        save(ctx, entity)
+        mc.sql.entities.save(entity)
         return id
     }
 }

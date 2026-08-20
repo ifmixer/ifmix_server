@@ -164,7 +164,7 @@ class AuthAggHandler(
 
         // 3. Upsert AuthProviderIdentity
         providerIdentityRepo.upsert(
-            ctx = sc,
+            mc = sc,
             tenantId = tenantId,
             provider = provider,
             providerAccountId = verified.accountId,

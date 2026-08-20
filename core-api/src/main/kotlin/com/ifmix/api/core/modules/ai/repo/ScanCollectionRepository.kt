@@ -1,24 +1,24 @@
 package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.entity.ai.ScanCollection
+import com.ifmix.api.core.entity.ai.appId
+import com.ifmix.api.core.entity.ai.id
+import com.ifmix.api.core.entity.ai.installId
+import com.ifmix.api.core.entity.ai.isDefault
+import com.ifmix.api.core.entity.ai.userId
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
-import org.babyfish.jimmer.sql.kt.KSqlClient
+import com.ifmix.api.core.infra.repo.CrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.util.UUID
-import com.ifmix.api.core.entity.ai.appId
-import com.ifmix.api.core.entity.ai.userId
-import com.ifmix.api.core.entity.ai.installId
-import com.ifmix.api.core.entity.ai.isDefault
-import com.ifmix.api.core.entity.ai.id
 
 @Repository
-class ScanCollectionRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanCollection>(sql, ScanCollection::class) {
+class ScanCollectionRepository {
+    companion object { private val tpl = CrudRepoTemplate(ScanCollection::class, appId = "appId") }
 
-    fun findDefault(ctx: ModuleCtx, appId: UUID, installId: UUID?, userId: UUID?): ScanCollection? {
+    fun findDefault(mc: ModuleCtx, appId: UUID, installId: UUID?, userId: UUID?): ScanCollection? {
         if (userId != null) {
-            return ctx.sql.createQuery(ScanCollection::class) {
+            return mc.sql.createQuery(ScanCollection::class) {
                 where(table.get<UUID>("appId") eq appId)
                 where(table.isDefault eq true)
                 where(table.userId eq userId)
@@ -26,7 +26,7 @@ class ScanCollectionRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanColl
             }.limit(1).execute().firstOrNull()
         }
         if (installId != null) {
-            return ctx.sql.createQuery(ScanCollection::class) {
+            return mc.sql.createQuery(ScanCollection::class) {
                 where(table.get<UUID>("appId") eq appId)
                 where(table.isDefault eq true)
                 where(table.installId eq installId)
@@ -36,11 +36,8 @@ class ScanCollectionRepository(sql: KSqlClient) : BaseAppCrudRepository<ScanColl
         return null
     }
 
-    override fun findById(ctx: ModuleCtx, appId: UUID, id: UUID): ScanCollection? {
-        return ctx.sql.createQuery(ScanCollection::class) {
-            where(table.get<UUID>("appId") eq appId)
-            where(table.id eq id)
-            select(table)
-        }.limit(1).execute().firstOrNull()
-    }
+    fun save(mc: ModuleCtx, entity: ScanCollection) = tpl.save(mc, entity)
+    fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
+    fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
+    fun exists(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.exists(mc, appId, id)
 }

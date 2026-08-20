@@ -27,7 +27,7 @@ class MergeOnLoginListener(
             // 记录 user-install 绑定
             if (e.installId != null) {
                 bindingRepo.recordBinding(
-                    ctx = mcFactory.forApp(e.ctx),
+                    mc = mcFactory.forApp(e.ctx),
                     appId = e.appId,
                     userId = e.appUserId,
                     installId = e.installId,

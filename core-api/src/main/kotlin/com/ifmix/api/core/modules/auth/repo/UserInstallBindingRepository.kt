@@ -2,34 +2,34 @@ package com.ifmix.api.core.modules.auth.repo
 
 import com.ifmix.api.core.entity.auth.UserInstallBinding
 import com.ifmix.api.core.entity.auth.appId
-import com.ifmix.api.core.entity.auth.lastSeenAt
-import com.ifmix.api.core.entity.auth.id
-import com.ifmix.api.core.entity.auth.updatedAt
-import com.ifmix.api.core.entity.auth.clientPlatform
 import com.ifmix.api.core.entity.auth.clientIp
-import com.ifmix.api.core.entity.auth.userId
+import com.ifmix.api.core.entity.auth.clientPlatform
+import com.ifmix.api.core.entity.auth.id
 import com.ifmix.api.core.entity.auth.installId
+import com.ifmix.api.core.entity.auth.lastSeenAt
 import com.ifmix.api.core.entity.auth.loginCount
+import com.ifmix.api.core.entity.auth.updatedAt
+import com.ifmix.api.core.entity.auth.userId
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.BaseAppCrudRepository
-import org.babyfish.jimmer.sql.kt.KSqlClient
+import com.ifmix.api.core.infra.repo.CrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
 
 @Repository
-class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<UserInstallBinding>(sql, UserInstallBinding::class) {
+class UserInstallBindingRepository {
+    companion object { private val tpl = CrudRepoTemplate(UserInstallBinding::class, appId = "appId") }
 
     fun recordBinding(
-        ctx: ModuleCtx,
+        mc: ModuleCtx,
         appId: UUID,
         userId: UUID,
         installId: UUID,
         clientIp: String?,
         clientPlatform: String?,
     ) {
-        val existing = ctx.sql.createQuery(UserInstallBinding::class) {
+        val existing = mc.sql.createQuery(UserInstallBinding::class) {
             where(table.get<UUID>("appId") eq appId)
             where(table.userId eq userId)
             where(table.installId eq installId)
@@ -51,10 +51,10 @@ class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<User
                 this.createdAt = now
                 this.updatedAt = now
             }
-            save(ctx, entity)
+            mc.sql.entities.save(entity)
         } else {
             val now = Instant.now()
-            ctx.sql.createUpdate(UserInstallBinding::class) {
+            mc.sql.createUpdate(UserInstallBinding::class) {
                 where(table.id eq existing.id)
                 set(table.lastSeenAt, now)
                 set(table.loginCount, existing.loginCount + 1)
@@ -64,4 +64,9 @@ class UserInstallBindingRepository(sql: KSqlClient) : BaseAppCrudRepository<User
             }.execute()
         }
     }
+
+    fun save(mc: ModuleCtx, entity: UserInstallBinding) = tpl.save(mc, entity)
+    fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
+    fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
+    fun exists(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.exists(mc, appId, id)
 }

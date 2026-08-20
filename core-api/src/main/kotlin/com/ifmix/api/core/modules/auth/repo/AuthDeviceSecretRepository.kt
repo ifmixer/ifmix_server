@@ -8,8 +8,7 @@ import com.ifmix.api.core.entity.auth.lastUsedAt
 import com.ifmix.api.core.entity.auth.revokedAt
 import com.ifmix.api.core.entity.auth.expiresAt
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.BaseCrudRepository
-import org.babyfish.jimmer.sql.kt.KSqlClient
+import com.ifmix.api.core.infra.repo.CrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.gt
 import org.babyfish.jimmer.sql.kt.ast.expression.isNull
@@ -17,14 +16,14 @@ import org.babyfish.jimmer.sql.kt.ast.expression.or
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
-import com.ifmix.api.core.entity.auth.appId
 
 @Repository
-class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDeviceSecret>(sql, AuthDeviceSecret::class) {
+class AuthDeviceSecretRepository {
+    companion object { private val tpl = CrudRepoTemplate(AuthDeviceSecret::class) }
 
-    fun findValidByHash(ctx: ModuleCtx, secretHash: String): AuthDeviceSecret? {
+    fun findValidByHash(mc: ModuleCtx, secretHash: String): AuthDeviceSecret? {
         val now = Instant.now()
-        return ctx.sql.createQuery(AuthDeviceSecret::class) {
+        return mc.sql.createQuery(AuthDeviceSecret::class) {
             where(table.secretHash eq secretHash)
             where(table.revokedAt.isNull())
             where(
@@ -37,19 +36,21 @@ class AuthDeviceSecretRepository(sql: KSqlClient) : BaseCrudRepository<AuthDevic
         }.limit(1).execute().firstOrNull()
     }
 
-    fun touch(ctx: ModuleCtx, id: UUID) {
-        ctx.sql.createUpdate(AuthDeviceSecret::class) {
+    fun touch(mc: ModuleCtx, id: UUID) {
+        mc.sql.createUpdate(AuthDeviceSecret::class) {
             where(table.id eq id)
             set(table.lastUsedAt, Instant.now())
             set(table.updatedAt, Instant.now())
         }.execute()
     }
 
-    fun revoke(ctx: ModuleCtx, id: UUID) {
-        ctx.sql.createUpdate(AuthDeviceSecret::class) {
+    fun revoke(mc: ModuleCtx, id: UUID) {
+        mc.sql.createUpdate(AuthDeviceSecret::class) {
             where(table.id eq id)
             set(table.revokedAt, Instant.now())
             set(table.updatedAt, Instant.now())
         }.execute()
     }
+
+    fun save(mc: ModuleCtx, entity: AuthDeviceSecret) = tpl.save(mc, entity)
 }
