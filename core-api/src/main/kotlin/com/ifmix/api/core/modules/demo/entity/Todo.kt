@@ -31,3 +31,25 @@ data class TodoItemEntity(
     val updatedAt: Instant,
     val deletedAt: Instant? = null,
 )
+
+/**
+ * LEFT JOIN 扁平结果行 — todo 列 + item 列（nullable，因为 LEFT JOIN 无匹配时为 null）。
+ */
+data class TodoJoinRow(
+    // --- todo ---
+    val id: UUID,
+    val appId: UUID,
+    val title: String,
+    val done: Boolean,
+    val installId: UUID? = null,
+    val userId: UUID? = null,
+    val note: String? = null,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    // --- item (nullable) ---
+    val itemId: UUID? = null,
+    val itemContent: String? = null,
+    val itemDone: Boolean? = null,
+    val itemCreatedAt: Instant? = null,
+    val itemDeletedAt: Instant? = null,
+)

@@ -2,6 +2,7 @@ package com.ifmix.api.core.modules.demo.repo.mybatis
 
 import com.ifmix.api.core.modules.demo.entity.TodoItemEntity
 import com.ifmix.api.core.modules.demo.entity.TodoEntity
+import com.ifmix.api.core.modules.demo.entity.TodoJoinRow
 import org.apache.ibatis.annotations.*
 import org.mybatis.dynamic.sql.delete.render.DeleteStatementProvider
 import org.mybatis.dynamic.sql.insert.render.InsertStatementProvider
@@ -40,6 +41,25 @@ interface TodoMapper {
 
     @DeleteProvider(type = SqlProviderAdapter::class, method = "delete")
     fun delete(statement: DeleteStatementProvider): Int
+
+    @SelectProvider(type = SqlProviderAdapter::class, method = "select")
+    @Results(id = "TodoJoinRowResult", value = [
+        Result(column = "id", property = "id"),
+        Result(column = "app_id", property = "appId"),
+        Result(column = "title", property = "title"),
+        Result(column = "done", property = "done"),
+        Result(column = "install_id", property = "installId"),
+        Result(column = "user_id", property = "userId"),
+        Result(column = "note", property = "note"),
+        Result(column = "created_at", property = "createdAt"),
+        Result(column = "updated_at", property = "updatedAt"),
+        Result(column = "item_id", property = "itemId"),
+        Result(column = "item_content", property = "itemContent"),
+        Result(column = "item_done", property = "itemDone"),
+        Result(column = "item_created_at", property = "itemCreatedAt"),
+        Result(column = "item_deleted_at", property = "itemDeletedAt"),
+    ])
+    fun selectJoinRows(statement: SelectStatementProvider): List<TodoJoinRow>
 }
 
 @Mapper
