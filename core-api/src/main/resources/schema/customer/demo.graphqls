@@ -5,8 +5,29 @@ type Todo {
     note: String          # nullable — 演示 unset
     meta: JSON
     items: [TodoItem!]!
+    metrics: TodoMetrics!
+
+    # --- 演示: Jimmer @Transient 复合计算字段 ---
+    jimmerMetrics: TodoMetrics!
+
+    # --- 演示: Jimmer @Transient 独立计算字段 ---
+    jimmerFinishCount: Int!
+    jimmerPendingCount: Int!
+    jimmerCount: Int!
+
+    # --- 演示: DGS DataLoader 独立字段 ---
+    pendingCount: Int!
+    finishCount: Int!
+    itemCount: Int!
+
     createdAt: DateTime!
     updatedAt: DateTime
+}
+
+type TodoMetrics {
+    itemCount: Int!
+    pendingItemCount: Int!
+    finishedItemCount: Int!
 }
 
 type TodoItem {

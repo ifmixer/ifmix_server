@@ -31,6 +31,41 @@ class TodoItemRepository {
         }.execute()
     }
 
+    /**
+     * 批量统计 metrics：按 todoId 聚合 itemCount / pendingItemCount / finishedItemCount。
+     * DataLoader 用这个方法一次查出一批 todo 的统计。
+     *
+     * 使用 Jimmer case() + sum() 实现条件计数，等效于:
+     * ```sql
+     * SELECT todo_id, COUNT(*), SUM(CASE WHEN done=false THEN 1 ELSE 0 END), SUM(CASE WHEN done=true THEN 1 ELSE 0 END)
+     * FROM core_demo_item WHERE app_id = ? AND todo_id IN (...) GROUP BY todo_id
+     * ```
+     */
+    fun countByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>): Map<UUID, TodoItemMetricsCounts> {
+        if (todoIds.isEmpty()) return emptyMap()
+        return mc.sql.createQuery(TodoItem::class) {
+            where(table.appId eq appId)
+            where(table.todoId valueIn todoIds)
+            groupBy(table.todoId)
+            select(
+                table.todoId,
+                count(table.id),
+                sum(case()
+                    .match(table.done eq false, 1)
+                    .otherwise(0)),
+                sum(case()
+                    .match(table.done eq true, 1)
+                    .otherwise(0)),
+            )
+        }.execute().associate { (todoId, total, pending, finished) ->
+            todoId to TodoItemMetricsCounts(
+                itemCount = total.toInt(),
+                pendingItemCount = pending ?: 0,
+                finishedItemCount = finished ?: 0,
+            )
+        }
+    }
+
     fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoItemInput): Int {
         val set = input.set
         val unset = input.unset?.toSet() ?: emptySet()
@@ -59,3 +94,10 @@ class TodoItemRepository {
         }.execute()
     }
 }
+
+/** DataLoader 批量统计的返回值 */
+data class TodoItemMetricsCounts(
+    val itemCount: Int,
+    val pendingItemCount: Int,
+    val finishedItemCount: Int,
+)
