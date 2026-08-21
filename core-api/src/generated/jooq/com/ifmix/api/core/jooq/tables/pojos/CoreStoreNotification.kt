@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreStoreNotification
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,19 +15,19 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreStoreNotification(
-    var id: UUID,
-    var appId: UUID,
-    var platform: String? = null,
-    var subscriptionPxid: String? = null,
-    var purchaseToken: String? = null,
-    var notificationType: String? = null,
-    var rawPayload: String? = null,
-    var processed: Boolean? = null,
-    var processedAt: Instant? = null,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null,
-    var deletedAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var appId: UUID,
+    override var platform: String? = null,
+    override var subscriptionPxid: String? = null,
+    override var purchaseToken: String? = null,
+    override var notificationType: String? = null,
+    override var rawPayload: String? = null,
+    override var processed: Boolean? = null,
+    override var processedAt: Instant? = null,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null,
+    override var deletedAt: Instant? = null
+): ICoreStoreNotification {
 
 
     override fun equals(other: Any?): Boolean {
@@ -140,5 +141,29 @@ data class CoreStoreNotification(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreStoreNotification) {
+        this.id = from.id
+        this.appId = from.appId
+        this.platform = from.platform
+        this.subscriptionPxid = from.subscriptionPxid
+        this.purchaseToken = from.purchaseToken
+        this.notificationType = from.notificationType
+        this.rawPayload = from.rawPayload
+        this.processed = from.processed
+        this.processedAt = from.processedAt
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+        this.deletedAt = from.deletedAt
+    }
+
+    override fun <E : ICoreStoreNotification> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

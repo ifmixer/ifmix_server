@@ -5,8 +5,8 @@ package com.ifmix.api.core.jooq.tables.pojos
 
 
 import com.ifmix.api.core.entity.ImageRef
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreScanRecord
 
-import java.io.Serializable
 import java.time.Instant
 import java.util.UUID
 
@@ -19,23 +19,23 @@ import kotlin.collections.Map
  */
 @Suppress("warnings")
 data class CoreScanRecord(
-    var id: UUID,
-    var appId: UUID,
-    var status: Int? = null,
-    var clientIp: String? = null,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null,
-    var deletedAt: Instant? = null,
-    var imageKeys: List<ImageRef>? = null,
-    var userDisplayName: String? = null,
-    var userNotes: String? = null,
-    var collected: Boolean? = null,
-    var lang: String? = null,
-    var country: String? = null,
-    var currency: String? = null,
-    var basicResult: Map<kotlin.String, kotlin.Any?>? = null,
-    var premiumResult: Map<kotlin.String, kotlin.Any?>? = null
-): Serializable {
+    override var id: UUID,
+    override var appId: UUID,
+    override var status: Int? = null,
+    override var clientIp: String? = null,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null,
+    override var deletedAt: Instant? = null,
+    override var imageKeys: List<ImageRef>? = null,
+    override var userDisplayName: String? = null,
+    override var userNotes: String? = null,
+    override var collected: Boolean? = null,
+    override var lang: String? = null,
+    override var country: String? = null,
+    override var currency: String? = null,
+    override var basicResult: Map<kotlin.String, kotlin.Any?>? = null,
+    override var premiumResult: Map<kotlin.String, kotlin.Any?>? = null
+): ICoreScanRecord {
 
 
     override fun equals(other: Any?): Boolean {
@@ -181,5 +181,33 @@ data class CoreScanRecord(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreScanRecord) {
+        this.id = from.id
+        this.appId = from.appId
+        this.status = from.status
+        this.clientIp = from.clientIp
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+        this.deletedAt = from.deletedAt
+        this.imageKeys = from.imageKeys
+        this.userDisplayName = from.userDisplayName
+        this.userNotes = from.userNotes
+        this.collected = from.collected
+        this.lang = from.lang
+        this.country = from.country
+        this.currency = from.currency
+        this.basicResult = from.basicResult
+        this.premiumResult = from.premiumResult
+    }
+
+    override fun <E : ICoreScanRecord> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

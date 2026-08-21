@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreTodoItem
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,15 +15,15 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreTodoItem(
-    var id: UUID,
-    var todoId: UUID,
-    var appId: UUID,
-    var content: String,
-    var done: Boolean? = null,
-    var createdAt: Instant,
-    var updatedAt: Instant,
-    var deletedAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var todoId: UUID,
+    override var appId: UUID,
+    override var content: String,
+    override var done: Boolean? = null,
+    override var createdAt: Instant,
+    override var updatedAt: Instant,
+    override var deletedAt: Instant? = null
+): ICoreTodoItem {
 
 
     override fun equals(other: Any?): Boolean {
@@ -88,5 +89,25 @@ data class CoreTodoItem(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreTodoItem) {
+        this.id = from.id
+        this.todoId = from.todoId
+        this.appId = from.appId
+        this.content = from.content
+        this.done = from.done
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+        this.deletedAt = from.deletedAt
+    }
+
+    override fun <E : ICoreTodoItem> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreAppInfo
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,13 +15,13 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreAppInfo(
-    var id: UUID,
-    var name: String? = null,
-    var description: String? = null,
-    var slug: String,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var name: String? = null,
+    override var description: String? = null,
+    override var slug: String,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null
+): ICoreAppInfo {
 
 
     override fun equals(other: Any?): Boolean {
@@ -86,5 +87,23 @@ data class CoreAppInfo(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreAppInfo) {
+        this.id = from.id
+        this.name = from.name
+        this.description = from.description
+        this.slug = from.slug
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+    }
+
+    override fun <E : ICoreAppInfo> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

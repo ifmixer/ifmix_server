@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreAuthProviderIdentity
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,22 +15,22 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreAuthProviderIdentity(
-    var id: UUID,
-    var authTenantId: UUID,
-    var authIdentityId: UUID,
-    var provider: String,
-    var providerAccountId: String,
-    var email: String? = null,
-    var emailVerified: Boolean? = null,
-    var phone: String? = null,
-    var userMetadata: String? = null,
-    var providerMetadata: String? = null,
-    var loginIp: String? = null,
-    var loginInstallId: UUID? = null,
-    var loginAppId: UUID? = null,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var authTenantId: UUID,
+    override var authIdentityId: UUID,
+    override var provider: String,
+    override var providerAccountId: String,
+    override var email: String? = null,
+    override var emailVerified: Boolean? = null,
+    override var phone: String? = null,
+    override var userMetadata: String? = null,
+    override var providerMetadata: String? = null,
+    override var loginIp: String? = null,
+    override var loginInstallId: UUID? = null,
+    override var loginAppId: UUID? = null,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null
+): ICoreAuthProviderIdentity {
 
 
     override fun equals(other: Any?): Boolean {
@@ -155,5 +156,32 @@ data class CoreAuthProviderIdentity(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreAuthProviderIdentity) {
+        this.id = from.id
+        this.authTenantId = from.authTenantId
+        this.authIdentityId = from.authIdentityId
+        this.provider = from.provider
+        this.providerAccountId = from.providerAccountId
+        this.email = from.email
+        this.emailVerified = from.emailVerified
+        this.phone = from.phone
+        this.userMetadata = from.userMetadata
+        this.providerMetadata = from.providerMetadata
+        this.loginIp = from.loginIp
+        this.loginInstallId = from.loginInstallId
+        this.loginAppId = from.loginAppId
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+    }
+
+    override fun <E : ICoreAuthProviderIdentity> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

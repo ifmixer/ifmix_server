@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreAgnesKey
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,19 +15,19 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreAgnesKey(
-    var id: UUID,
-    var appId: UUID,
-    var key: String,
-    var email: String? = null,
-    var rateLimit: Long? = null,
-    var windowSec: Long? = null,
-    var models: String? = null,
-    var unavailableUntil: Instant? = null,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null,
-    var deletedAt: Instant? = null,
-    var type: Int? = null
-): Serializable {
+    override var id: UUID,
+    override var appId: UUID,
+    override var key: String,
+    override var email: String? = null,
+    override var rateLimit: Long? = null,
+    override var windowSec: Long? = null,
+    override var models: String? = null,
+    override var unavailableUntil: Instant? = null,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null,
+    override var deletedAt: Instant? = null,
+    override var type: Int? = null
+): ICoreAgnesKey {
 
 
     override fun equals(other: Any?): Boolean {
@@ -136,5 +137,29 @@ data class CoreAgnesKey(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreAgnesKey) {
+        this.id = from.id
+        this.appId = from.appId
+        this.key = from.key
+        this.email = from.email
+        this.rateLimit = from.rateLimit
+        this.windowSec = from.windowSec
+        this.models = from.models
+        this.unavailableUntil = from.unavailableUntil
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+        this.deletedAt = from.deletedAt
+        this.type = from.type
+    }
+
+    override fun <E : ICoreAgnesKey> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

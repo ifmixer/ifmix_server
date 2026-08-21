@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreAuthIdentity
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,20 +15,20 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreAuthIdentity(
-    var id: UUID,
-    var authTenantId: UUID,
-    var rawEmail: String? = null,
-    var email: String? = null,
-    var rawPhone: String? = null,
-    var phone: String? = null,
-    var contactEmail: String? = null,
-    var displayName: String? = null,
-    var passwordHash: String? = null,
-    var profile: String? = null,
-    var metadata: String? = null,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var authTenantId: UUID,
+    override var rawEmail: String? = null,
+    override var email: String? = null,
+    override var rawPhone: String? = null,
+    override var phone: String? = null,
+    override var contactEmail: String? = null,
+    override var displayName: String? = null,
+    override var passwordHash: String? = null,
+    override var profile: String? = null,
+    override var metadata: String? = null,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null
+): ICoreAuthIdentity {
 
 
     override fun equals(other: Any?): Boolean {
@@ -149,5 +150,30 @@ data class CoreAuthIdentity(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreAuthIdentity) {
+        this.id = from.id
+        this.authTenantId = from.authTenantId
+        this.rawEmail = from.rawEmail
+        this.email = from.email
+        this.rawPhone = from.rawPhone
+        this.phone = from.phone
+        this.contactEmail = from.contactEmail
+        this.displayName = from.displayName
+        this.passwordHash = from.passwordHash
+        this.profile = from.profile
+        this.metadata = from.metadata
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+    }
+
+    override fun <E : ICoreAuthIdentity> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

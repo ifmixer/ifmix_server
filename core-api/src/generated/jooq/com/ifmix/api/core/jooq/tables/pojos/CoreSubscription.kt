@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreSubscription
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,21 +15,21 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreSubscription(
-    var id: UUID,
-    var appId: UUID,
-    var subscriptionPxid: String? = null,
-    var originalTransactionId: String? = null,
-    var productId: String? = null,
-    var platform: Int? = null,
-    var active: Boolean? = null,
-    var subStatus: String? = null,
-    var expiryDate: Instant? = null,
-    var purchaseToken: String? = null,
-    var rawResponse: String? = null,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null,
-    var deletedAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var appId: UUID,
+    override var subscriptionPxid: String? = null,
+    override var originalTransactionId: String? = null,
+    override var productId: String? = null,
+    override var platform: Int? = null,
+    override var active: Boolean? = null,
+    override var subStatus: String? = null,
+    override var expiryDate: Instant? = null,
+    override var purchaseToken: String? = null,
+    override var rawResponse: String? = null,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null,
+    override var deletedAt: Instant? = null
+): ICoreSubscription {
 
 
     override fun equals(other: Any?): Boolean {
@@ -158,5 +159,31 @@ data class CoreSubscription(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreSubscription) {
+        this.id = from.id
+        this.appId = from.appId
+        this.subscriptionPxid = from.subscriptionPxid
+        this.originalTransactionId = from.originalTransactionId
+        this.productId = from.productId
+        this.platform = from.platform
+        this.active = from.active
+        this.subStatus = from.subStatus
+        this.expiryDate = from.expiryDate
+        this.purchaseToken = from.purchaseToken
+        this.rawResponse = from.rawResponse
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+        this.deletedAt = from.deletedAt
+    }
+
+    override fun <E : ICoreSubscription> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

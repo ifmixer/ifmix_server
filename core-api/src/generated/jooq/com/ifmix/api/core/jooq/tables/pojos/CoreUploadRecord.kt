@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreUploadRecord
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,16 +15,16 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreUploadRecord(
-    var id: UUID,
-    var appId: UUID,
-    var installId: UUID? = null,
-    var userId: UUID? = null,
-    var objectKey: String,
-    var contentType: String,
-    var category: String,
-    var clientIp: String? = null,
-    var createdAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var appId: UUID,
+    override var installId: UUID? = null,
+    override var userId: UUID? = null,
+    override var objectKey: String,
+    override var contentType: String,
+    override var category: String,
+    override var clientIp: String? = null,
+    override var createdAt: Instant? = null
+): ICoreUploadRecord {
 
 
     override fun equals(other: Any?): Boolean {
@@ -101,5 +102,26 @@ data class CoreUploadRecord(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreUploadRecord) {
+        this.id = from.id
+        this.appId = from.appId
+        this.installId = from.installId
+        this.userId = from.userId
+        this.objectKey = from.objectKey
+        this.contentType = from.contentType
+        this.category = from.category
+        this.clientIp = from.clientIp
+        this.createdAt = from.createdAt
+    }
+
+    override fun <E : ICoreUploadRecord> into(into: E): E {
+        into.from(this)
+        return into
     }
 }
