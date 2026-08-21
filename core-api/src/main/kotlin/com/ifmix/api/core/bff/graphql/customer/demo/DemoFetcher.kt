@@ -3,6 +3,8 @@ package com.ifmix.api.core.bff.graphql.customer.demo
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.demo.Todo
 import com.ifmix.api.core.entity.demo.TodoItem
+import com.ifmix.api.core.entity.demo.TodoMetrics
+import com.ifmix.api.core.entity.demo.TodoWithStats
 import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.CreateTodoPayload
 import com.ifmix.api.core.generated.types.DeleteTodoPayload
@@ -50,6 +52,12 @@ class DemoFetcher(
         return demoService.findTodosByIds(ctx, ids)
     }
 
+    @DgsQuery(field = "query_demo_findTodosWithStats")
+    fun findTodosWithStats(dfe: DgsDataFetchingEnvironment, @InputArgument input: TodoQueryInput?): Page<TodoWithStats> {
+        val ctx = ctxProvider.fromDfe(dfe)
+        return demoService.findTodosWithStats(ctx, input?.cursor, input?.limit)
+    }
+
     // ===== Mutation =====
 
     @DgsMutation(field = "mutation_demo_createTodo")
@@ -95,6 +103,43 @@ class DemoFetcher(
         val dataLoader = dfe.getDataLoader<UUID, List<TodoItem>>(TodoItemsDataLoader.NAME)!!
         return dataLoader.load(todo.id)
     }
+
+    // ===== Field Resolver: Todo.metrics via DataLoader =====
+
+    @DgsData(parentType = "Todo", field = "metrics")
+    fun todoMetrics(dfe: DgsDataFetchingEnvironment): CompletableFuture<TodoMetrics> {
+        val todo = dfe.getSource<Todo>()!!
+        val dataLoader = dfe.getDataLoader<UUID, TodoMetrics>(TodoMetricsDataLoader.NAME)!!
+        return dataLoader.load(todo.id)
+    }
+
+    // ===== Field Resolver: 独立字段演示（共享同一个 DataLoader） =====
+    // 无论客户端请求了 itemCount / pendingCount / finishCount 中的哪几个，
+    // DataLoader 都只触发一次 SQL（DGS 在同一 dispatch cycle 内去重）。
+
+    @DgsData(parentType = "Todo", field = "itemCount")
+    fun todoItemCount(dfe: DgsDataFetchingEnvironment): CompletableFuture<Int> {
+        val todo = dfe.getSource<Todo>()!!
+        return dfe.getDataLoader<UUID, TodoMetrics>(TodoMetricsDataLoader.NAME)!!
+            .load(todo.id)
+            .thenApply { it.itemCount }
+    }
+
+    @DgsData(parentType = "Todo", field = "pendingCount")
+    fun todoPendingCount(dfe: DgsDataFetchingEnvironment): CompletableFuture<Int> {
+        val todo = dfe.getSource<Todo>()!!
+        return dfe.getDataLoader<UUID, TodoMetrics>(TodoMetricsDataLoader.NAME)!!
+            .load(todo.id)
+            .thenApply { it.pendingItemCount }
+    }
+
+    @DgsData(parentType = "Todo", field = "finishCount")
+    fun todoFinishCount(dfe: DgsDataFetchingEnvironment): CompletableFuture<Int> {
+        val todo = dfe.getSource<Todo>()!!
+        return dfe.getDataLoader<UUID, TodoMetrics>(TodoMetricsDataLoader.NAME)!!
+            .load(todo.id)
+            .thenApply { it.finishedItemCount }
+    }
 }
 
 @DgsDataLoader(name = TodoItemsDataLoader.NAME, caching = false)
@@ -112,5 +157,29 @@ class TodoItemsDataLoader(
 
     companion object {
         const val NAME = "todoItems"
+    }
+}
+
+/**
+ * DataLoader 演示：批量聚合 Todo 子项统计。
+ *
+ * 一个 GraphQL 请求中无论查了多少个 Todo，metrics 字段只触发一次 SQL：
+ * SELECT todo_id, COUNT(*), COUNT(*) FILTER(...) FROM core_todo_item WHERE todo_id IN (?) GROUP BY todo_id
+ */
+@DgsDataLoader(name = TodoMetricsDataLoader.NAME, caching = false)
+class TodoMetricsDataLoader(
+    private val todoItemRepo: com.ifmix.api.core.modules.demo.repo.TodoItemRepository,
+) : MappedBatchLoader<UUID, TodoMetrics> {
+
+    override fun load(todoIds: Set<UUID>): CompletionStage<Map<UUID, TodoMetrics>> {
+        val sc = com.ifmix.api.core.infra.db.SvcCtx.DEFAULT
+        val metricsMap = todoItemRepo.aggregateMetricsByTodoIds(sc, todoIds)
+        // 没有 item 的 todo 返回零值
+        val result = todoIds.associateWith { metricsMap[it] ?: TodoMetrics() }
+        return CompletableFuture.completedFuture(result)
+    }
+
+    companion object {
+        const val NAME = "todoMetrics"
     }
 }

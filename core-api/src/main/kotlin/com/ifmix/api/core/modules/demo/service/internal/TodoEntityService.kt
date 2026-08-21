@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.demo.service.internal
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.demo.Todo
 import com.ifmix.api.core.entity.demo.TodoItem
+import com.ifmix.api.core.entity.demo.TodoWithStats
 import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.CreateTodoItemForTodoInput
 import com.ifmix.api.core.generated.types.TodoItemUnsetField
@@ -157,6 +158,15 @@ class TodoEntityService(
         if (!deletes.isNullOrEmpty()) {
             todoItemRepo.deleteByIds(sc, appId, deletes)
         }
+    }
+
+    // ===== JOIN 演示 =====
+
+    fun findTodosWithStats(sc: SvcCtx, cursor: String?, limit: Int?): Page<TodoWithStats> {
+        val appId = sc.mustGetAppId()
+        val effectiveLimit = limit ?: 20
+        val cursorUuid = cursor?.let { UUID.fromString(it) }
+        return todoRepo.findWithStatsByCursor(sc, appId, cursorUuid, effectiveLimit)
     }
 
     // ===== DataLoader support =====

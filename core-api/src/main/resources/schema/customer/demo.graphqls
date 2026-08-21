@@ -5,8 +5,21 @@ type Todo {
     note: String          # nullable — 演示 unset
     meta: JSON
     items: [TodoItem!]!
+    """DataLoader 演示：嵌套对象方式"""
+    metrics: TodoMetrics!
+    """DataLoader 演示：独立字段方式（三个字段共享同一个 DataLoader 实例）"""
+    itemCount: Int!
+    pendingCount: Int!
+    finishCount: Int!
     createdAt: DateTime!
     updatedAt: DateTime
+}
+
+"""Todo 子项统计指标（由 field resolver + DataLoader 批量解析）"""
+type TodoMetrics {
+    itemCount: Int!
+    pendingItemCount: Int!
+    finishedItemCount: Int!
 }
 
 type TodoItem {
@@ -30,10 +43,29 @@ type TodoPage {
     hasMore: Boolean!
 }
 
+"""JOIN 演示：Todo + item 聚合统计"""
+type TodoWithStats {
+    id: UUID!
+    title: String!
+    done: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime
+    itemCount: Int!           # 子项总数
+    pendingItemCount: Int!    # 未完成子项数
+}
+
+type TodoWithStatsPage {
+    items: [TodoWithStats!]!
+    nextCursor: String
+    hasMore: Boolean!
+}
+
 extend type Query {
     query_demo_findTodoById(id: UUID!): Todo!
     query_demo_findTodosByCursor(input: TodoQueryInput): TodoPage!
     query_demo_findTodosByIds(ids: [UUID!]!): [Todo!]!
+    """JOIN 演示：LEFT JOIN core_todo_item + GROUP BY，返回每个 Todo 附带 item 统计"""
+    query_demo_findTodosWithStats(input: TodoQueryInput): TodoWithStatsPage!
 }
 
 # --- Mutation: Create ---

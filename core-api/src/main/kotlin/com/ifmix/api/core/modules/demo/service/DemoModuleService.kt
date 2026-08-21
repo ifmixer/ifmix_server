@@ -3,6 +3,7 @@ package com.ifmix.api.core.modules.demo.service
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.demo.Todo
 import com.ifmix.api.core.entity.demo.TodoItem
+import com.ifmix.api.core.entity.demo.TodoWithStats
 import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.CreateTodoItemForTodoInput
 import com.ifmix.api.core.generated.types.UpdateTodoInput
@@ -41,6 +42,11 @@ class DemoModuleService(
     fun findTodosByCursor(ctx: OperationContext, cursor: String?, limit: Int?): Page<Todo> {
         val sc = svcCtxFactory.forApp(ctx)
         return entityService.findTodosByCursor(sc, cursor, limit)
+    }
+
+    fun findTodosWithStats(ctx: OperationContext, cursor: String?, limit: Int?): Page<TodoWithStats> {
+        val sc = svcCtxFactory.forApp(ctx)
+        return entityService.findTodosWithStats(sc, cursor, limit)
     }
 
     fun deleteTodo(ctx: OperationContext, id: UUID): Boolean =

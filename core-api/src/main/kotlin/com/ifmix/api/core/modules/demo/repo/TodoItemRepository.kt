@@ -1,10 +1,12 @@
 package com.ifmix.api.core.modules.demo.repo
 
 import com.ifmix.api.core.entity.demo.TodoItem
+import com.ifmix.api.core.entity.demo.TodoMetrics
 import com.ifmix.api.core.infra.db.SvcCtx
 import com.ifmix.api.core.infra.jooq.CrudRepoOpsFactory
 import com.ifmix.api.core.jooq.tables.CoreTodoItem.Companion.CORE_TODO_ITEM
 import org.jooq.TableField
+import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
@@ -82,4 +84,43 @@ class TodoItemRepository(factory: CrudRepoOpsFactory) {
 
     fun partialUpdate(ctx: SvcCtx, appId: UUID, id: UUID, block: org.jooq.UpdateSetMoreStep<org.jooq.Record>.() -> Unit) =
         crud.partialUpdate(ctx, appId, id, block)
+
+    // ===== DataLoader: 批量聚合统计 =====
+
+    /**
+     * 按 todoId 批量聚合 item 统计。
+     *
+     * SQL:
+     * ```sql
+     * SELECT todo_id,
+     *        COUNT(*)                          AS item_count,
+     *        COUNT(*) FILTER (WHERE done = false) AS pending_item_count,
+     *        COUNT(*) FILTER (WHERE done = true)  AS finished_item_count
+     * FROM core_todo_item
+     * WHERE todo_id IN (?) AND deleted_at IS NULL
+     * GROUP BY todo_id
+     * ```
+     */
+    fun aggregateMetricsByTodoIds(ctx: SvcCtx, todoIds: Collection<UUID>): Map<UUID, TodoMetrics> {
+        if (todoIds.isEmpty()) return emptyMap()
+
+        val itemCount = DSL.count().`as`("item_count")
+        val pendingCount = DSL.count().filterWhere(CORE_TODO_ITEM.DONE.eq(false)).`as`("pending_count")
+        val finishedCount = DSL.count().filterWhere(CORE_TODO_ITEM.DONE.eq(true)).`as`("finished_count")
+
+        return ctx.dsl
+            .select(CORE_TODO_ITEM.TODO_ID, itemCount, pendingCount, finishedCount)
+            .from(CORE_TODO_ITEM)
+            .where(CORE_TODO_ITEM.TODO_ID.`in`(todoIds))
+            .and(CORE_TODO_ITEM.DELETED_AT.isNull)
+            .groupBy(CORE_TODO_ITEM.TODO_ID)
+            .fetch()
+            .associate { r ->
+                r[CORE_TODO_ITEM.TODO_ID]!! to TodoMetrics(
+                    itemCount = r[itemCount] ?: 0,
+                    pendingItemCount = r[pendingCount] ?: 0,
+                    finishedItemCount = r[finishedCount] ?: 0,
+                )
+            }
+    }
 }
