@@ -4,30 +4,28 @@ type Todo {
     done: Boolean!
     note: String          # nullable — 演示 unset
     meta: JSON
+    recommend: TodoRecommend
     items: [TodoItem!]!
-    metrics: TodoMetrics!
-
-    # --- 演示: Jimmer @Transient 复合计算字段 ---
-    jimmerMetrics: TodoMetrics!
-
-    # --- 演示: Jimmer @Transient 独立计算字段 ---
-    jimmerFinishCount: Int!
-    jimmerPendingCount: Int!
-    jimmerCount: Int!
-
-    # --- 演示: DGS DataLoader 独立字段 ---
+    itemCount: Int!
     pendingCount: Int!
     finishCount: Int!
-    itemCount: Int!
-
     createdAt: DateTime!
     updatedAt: DateTime
 }
 
-type TodoMetrics {
-    itemCount: Int!
-    pendingItemCount: Int!
-    finishedItemCount: Int!
+type TodoRecommend {
+    sectionId: UUID!
+    sectionName: String!
+    viewCount: Int
+    recItems: [TodoRecItem!]
+}
+
+type TodoRecItem {
+    recId: UUID!
+    title: String
+    priority: Int!
+    createdAt: DateTime!
+    updatedAt: DateTime
 }
 
 type TodoItem {
@@ -70,6 +68,7 @@ input CreateTodoInput {
     title: String!
     done: Boolean
     note: String
+    recommend: TodoRecommendInput
     items: [CreateTodoItemInput!]   # 嵌入子实体
 }
 
@@ -77,6 +76,21 @@ input CreateTodoItemInput {
     content: String!
     done: Boolean
     note: String
+}
+
+input TodoRecommendInput {
+    sectionId: UUID!
+    sectionName: String!
+    viewCount: Int
+    recItems: [TodoRecItemInput!]
+}
+
+input TodoRecItemInput {
+    recId: UUID!
+    title: String
+    priority: Int!
+    createdAt: DateTime!
+    updatedAt: DateTime
 }
 
 type CreateTodoResult {
@@ -94,10 +108,12 @@ input UpdateTodoSetInput {
     title: String
     done: Boolean
     note: String
+    recommend: TodoRecommendInput
 }
 
 enum TodoUnsetField {
     NOTE
+    RECOMMEND
 }
 
 type UpdateTodoResult {

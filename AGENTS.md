@@ -116,6 +116,11 @@
 17. **枚举常量放 model class 嵌套 object** — 就近原则，跨模块的放 entity/shared/
 18. **KSP 输出在 build/generated/ksp/** — 不与手写源码混
 19. **Operation 命名含对象** — `q_todo_findTodoById` 而非 `q_todo_findById`
+20. **CrudRepoTemplate 分两类** — `CrudRepoTemplate`(全局无 appId) + `AppCrudRepoTemplate`(强制 appId)，类型安全防漏传
+21. **Template 单条操作返回 Boolean** — save/deleteById 返回 Boolean；batch 操作(batchSave/deleteByIds)返回 Int
+22. **Template 必须提供 batch 对应方法** — findByIds/existsByIds/batchSave/deleteByIds，每个单条操作都有批量版本
+23. **GraphQL input 全链路透传** — Fetcher→Facade→Handler 直传 input 对象，不逐字段粘贴
+24. **JSONB 值对象 = data class + @Serialized** — 领域模型定义在 entity/ 下，toDomain() 转换放同文件
 
 ## 工作方式
 

@@ -50,7 +50,7 @@
 │  Jimmer/CacheAside/TxRunner/GlobalTxRunner/Auth/RateLimit/Storage    │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Data: PostgreSQL (Writer + Reader) | Redis | S3                     │
-│  Flyway V1-V24 | UUIDv7 时间有序 ID                                  │
+│  Flyway V1-V26 | UUIDv7 时间有序 ID                                  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -153,7 +153,7 @@ class ModuleCtxFactory(private val router: ClusterRouter) {
 fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
     val ctx = ctxProvider.fromDfe(dfe)
     val todo = globalTx.withTx(ctx) { txCtx ->
-        demoService.create(txCtx, input.title, input.done, input.note, input.items)
+        demoService.create(txCtx, input)
     }
     return CreateTodoPayload(todo = todo)
 }
@@ -260,7 +260,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   ├── jimmer/                 # ClusterRegistry, ClusterProperties, ClusterInitializer, JimmerConfig
 │   │                           # ReadWriteRoutingDataSource, AppScopedFilter, TimestampDraftInterceptor
 │   │                           # OperationContextHolder
-│   ├── repo/                   # CrudRepoTemplate, FilterGroupResolver
+│   ├── repo/                   # CrudRepoTemplate, AppCrudRepoTemplate, FilterGroupResolver
 │   ├── service/                # CrudServiceOps (缓存层)
 │   ├── graphql/                # OperationContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
 │   ├── http/                   # OperationContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
@@ -299,9 +299,9 @@ class DemoFacade(
     fun findById(ctx: OperationContext, id: UUID): Todo? =
         handler.findById(mcFactory.forApp(ctx), ctx.mustGetAppId(), id)
 
-    // Mutations — 无 TxRunner（事务由 DataFetcher 层 GlobalTxRunner 管理）
-    fun create(ctx: OperationContext, title: String, ...): Todo =
-        handler.create(mcFactory.forApp(ctx), title, ...)
+    // Mutations — 直传 GraphQL input，不逐字段粘贴
+    fun create(ctx: OperationContext, input: CreateTodoInput): Todo =
+        handler.create(mcFactory.forApp(ctx), input)
 }
 
 // ======================== TodoAggHandler ========================
@@ -313,9 +313,10 @@ class TodoAggHandler(
     fun findById(mc: ModuleCtx, appId: UUID, id: UUID): Todo? =
         todoRepo.findById(mc, appId, id)
 
-    fun create(mc: ModuleCtx, title: String, ...): Todo {
+    fun create(mc: ModuleCtx, input: CreateTodoInput): Todo {
         val todo = Todo { ... }
-        return todoRepo.save(mc, todo)
+        todoRepo.save(mc, todo)
+        return todo
     }
 }
 
@@ -333,10 +334,10 @@ class DemoFetcher(
     }
 
     @DgsMutation(field = "m_demo_createTodo")
-    fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoPayload {
+    fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input.title, ...) }
-        return CreateTodoPayload(todo = todo)
+        val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input) }
+        return CreateTodoResult(todo = todo)
     }
 }
 ```
@@ -367,11 +368,23 @@ interface Todo : AppScopedProps, MutableProps {
 
 ### Repository — CrudRepoTemplate 组合模式
 
+两个模板类，按是否需要租户隔离选用：
+
+| 模板 | 适用场景 | 签名特征 |
+|------|---------|----------|
+| `CrudRepoTemplate<E>` | 全局实体（AppInfo, AuthTenant 等） | `findById(ctx, id)` |
+| `AppCrudRepoTemplate<E>` | App 级实体（Todo, ScanRecord 等） | `findById(ctx, appId, id)` |
+
+两者都提供：
+- **Read**: `findById` / `findByIds` / `exists` / `existsByIds` / `findByCursor`
+- **Write**: `save`(→Boolean) / `batchSave`(→Int)
+- **Delete**: `deleteById`(→Boolean) / `deleteByIds`(→Int)
+
 ```kotlin
 @Repository
 class TodoRepository {
     companion object {
-        private val tpl = CrudRepoTemplate(Todo::class, appId = "appId")
+        private val tpl = AppCrudRepoTemplate(Todo::class)
 
         val FILTERABLE = listOf(
             TodoProps.TITLE,
@@ -394,16 +407,17 @@ class TodoRepository {
 }
 ```
 
-**CrudRepoTemplate** 提供：
-- `findById` / `findByIds` / `findByCursor`（返回 `Page<E>`）/ `exists`
-- `save` / `batchSave`
-- `deleteById` / `deleteByIds`
+**CrudRepoTemplate / AppCrudRepoTemplate** 提供：
+- `findById` / `findByIds` / `findByCursor`（返回 `Page<E>`）/ `exists` / `existsByIds`
+- `save`(→Boolean) / `batchSave`(→Int)
+- `deleteById`(→Boolean) / `deleteByIds`(→Int)
 - 所有方法通过 `mc.sql` 执行（确保读写分离路由正确）
 - `findByCursor` 接受 where lambda 追加额外条件，内部自动 limit+1 判断 hasMore
 
 **设计原则：**
 - `tpl` 放 companion object（无状态、零实例开销）
-- 构造时指定字段名：`id`、`appId`（null 表示全局实体）
+- `CrudRepoTemplate` 用于全局实体（无 appId）；`AppCrudRepoTemplate` 用于 app 级实体（所有操作强制 appId 参数）
+- 单条操作返回 Boolean（成功/失败），batch 操作返回 Int（影响行数）
 - 自定义查询直接用 `mc.sql.createQuery(...)`，不受 template 限制
 
 ### FilterGroup — 动态条件查询
@@ -554,7 +568,7 @@ DB (via Jimmer KSqlClient)
 | 7 | Entity 直出 GraphQL | 零 DTO 转换，Jimmer Jackson Module 跳过未加载字段 |
 | 8 | DataLoader caching=false | 防 mutation 间脏读 |
 | 9 | CacheAside 显式调用 | 不用 @Cacheable 魔法 |
-| 10 | GraphQL input 全链路透传 | DGS codegen 生成 input，Fetcher→Facade→Handler→Repo 无中间 DTO |
+| 10 | GraphQL input 全链路透传 | DGS codegen 生成 input，Fetcher→Facade→Handler 直传 input 对象，不逐字段粘贴 |
 | 11 | Context 三层 | RequestContext → OperationContext → ModuleCtx，职责清晰 |
 | 12 | ModuleCtxFactory chooseSql | globalTxSql > preferReader 决策，统一读写分离逻辑 |
 | 13 | set/unset Update 语义 | 防 null vs undefined 歧义 |
@@ -564,6 +578,11 @@ DB (via Jimmer KSqlClient)
 | 17 | Operation 命名: ${q\|m}_${module}_${action} | 清晰 + Federation 友好 |
 | 18 | 枚举全链路 Int 透传 | GraphQL 不用 enum，灰度/多版本安全 |
 | 19 | @Service/@Component 直注册 | 不在 Config 间接注册 |
+| 20 | CrudRepoTemplate 分两类 | `CrudRepoTemplate`(全局) + `AppCrudRepoTemplate`(强制 appId)，类型安全防漏传 |
+| 21 | Template 单条操作返回 Boolean | save/deleteById 返回 Boolean；batch 操作返回 Int(影响行数) |
+| 22 | Template 必须提供 batch 对应方法 | findByIds/existsByIds/batchSave/deleteByIds — 每个单条操作都有批量版本 |
+| 23 | JSONB 值对象 = data class + @Serialized | 领域模型定义在 entity/ 下，toDomain() 转换放同文件 |
+
 
 ## API 约定
 
@@ -579,7 +598,7 @@ DB (via Jimmer KSqlClient)
 - **游标分页**: `WHERE id < cursor ORDER BY id DESC LIMIT n+1`
 - **读写分离**: ClusterRegistry + ClusterRouter + ReadWriteRoutingDataSource
 - **软删除**: `deletedAt` 列（继承 SoftDeletableProps）
-- **Flyway**: V1-V24, 不可回退
+- **Flyway**: V1-V26, 不可回退
 
 ### UUID 表示
 

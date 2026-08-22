@@ -3,8 +3,10 @@ package com.ifmix.api.core.modules.demo.handler
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.demo.Todo
 import com.ifmix.api.core.entity.demo.TodoItem
+import com.ifmix.api.core.entity.demo.TodoRecommend
+import com.ifmix.api.core.entity.demo.toDomain
+import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.CreateTodoItemForTodoInput
-import com.ifmix.api.core.generated.types.CreateTodoItemInput
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
 import com.ifmix.api.core.generated.types.UpdateTodoInput
@@ -37,19 +39,26 @@ class TodoAggHandler(
     fun findByFilter(mc: ModuleCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> =
         todoRepo.findByFilter(mc, appId, filter, cursor, limit)
 
+    fun findItemsByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>): List<TodoItem> =
+        todoItemRepo.findByTodoIds(mc, appId, todoIds)
+
+    fun countItemsByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>) =
+        todoItemRepo.countByTodoIds(mc, appId, todoIds)
+
     // --- Mutations ---
 
-    fun create(mc: ModuleCtx, title: String, done: Boolean?, note: String?, items: List<CreateTodoItemInput>?): Todo {
+    fun create(mc: ModuleCtx, input: CreateTodoInput): Todo {
         val appId = mc.mustGetAppId()
         val now = Instant.now()
         val id = UuidV7.generate()
         val todo = Todo {
             this.id = id
             this.appId = appId
-            this.title = title
-            this.done = done ?: false
-            this.note = note
+            this.title = input.title
+            this.done = input.done ?: false
+            this.note = input.note
             this.meta = null
+            this.recommend = input.recommend?.toDomain()
             this.installId = mc.installId
             this.userId = mc.userId
             this.createdAt = now
@@ -57,7 +66,7 @@ class TodoAggHandler(
         }
         todoRepo.save(mc, todo)
 
-        items?.forEach { item ->
+        input.items?.forEach { item ->
             val todoItem = TodoItem {
                 this.id = UuidV7.generate()
                 this.appId = appId

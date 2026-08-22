@@ -9,9 +9,6 @@ spring:
       url: ${REDIS_URL:redis://localhost:6379}
   graphql:
     path: /customer/core/gql
-    graphiql:
-      enabled: true
-      path: /apidocs/core/customer/gql
     schema:
       locations: classpath:schema/common/,classpath:schema/customer/
 

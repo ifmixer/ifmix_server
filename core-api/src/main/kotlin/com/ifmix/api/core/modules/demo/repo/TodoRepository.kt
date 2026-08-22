@@ -3,16 +3,20 @@ package com.ifmix.api.core.modules.demo.repo
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.demo.Todo
 import com.ifmix.api.core.entity.demo.TodoItem
+import com.ifmix.api.core.entity.demo.TodoRecommend
 import com.ifmix.api.core.entity.demo.TodoProps
+import com.ifmix.api.core.entity.demo.toDomain
 import com.ifmix.api.core.entity.demo.appId
 import com.ifmix.api.core.entity.demo.id
 import com.ifmix.api.core.entity.demo.title
 import com.ifmix.api.core.entity.demo.done
 import com.ifmix.api.core.entity.demo.note
+import com.ifmix.api.core.entity.demo.recommend
 import com.ifmix.api.core.entity.demo.userId
 import com.ifmix.api.core.entity.demo.todoId
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
+import com.ifmix.api.core.generated.types.TodoRecommendInput
 import com.ifmix.api.core.generated.types.TodoUnsetField
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.infra.db.ModuleCtx
@@ -87,11 +91,14 @@ class TodoRepository {
                 set?.note?.let { set(table.note, it) }
             }
 
-            if (TodoUnsetField.NOTE !in unset) {
-                set?.title?.let { set(table.title, it) }
+            if (TodoUnsetField.RECOMMEND in unset) {
+                set(table.recommend, null as TodoRecommend?)
+            } else {
+                set?.recommend?.let { set(table.recommend, it.toDomain()) }
             }
 
-            if (TodoUnsetField.NOTE !in unset) {
+            if (TodoUnsetField.NOTE !in unset && TodoUnsetField.RECOMMEND !in unset) {
+                set?.title?.let { set(table.title, it) }
                 set?.done?.let { set(table.done, it) }
             }
         }.execute()

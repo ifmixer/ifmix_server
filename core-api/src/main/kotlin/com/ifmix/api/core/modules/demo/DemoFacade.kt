@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.demo
 
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.demo.Todo
-import com.ifmix.api.core.generated.types.CreateTodoItemInput
+import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.TodoFilter
 import com.ifmix.api.core.generated.types.UpdateTodoInput
@@ -32,10 +32,16 @@ class DemoFacade(
     fun findByFilter(ctx: OperationContext, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> =
         handler.findByFilter(mcFactory.forApp(ctx), ctx.mustGetAppId(), filter, cursor, limit)
 
+    fun findItemsByTodoIds(ctx: OperationContext, todoIds: Collection<UUID>): List<com.ifmix.api.core.entity.demo.TodoItem> =
+        handler.findItemsByTodoIds(mcFactory.forApp(ctx), ctx.mustGetAppId(), todoIds)
+
+    fun countItemsByTodoIds(ctx: OperationContext, todoIds: Collection<UUID>) =
+        handler.countItemsByTodoIds(mcFactory.forApp(ctx), ctx.mustGetAppId(), todoIds)
+
     // --- Mutations (no tx — managed by DataFetcher via GlobalTxRunner) ---
 
-    fun create(ctx: OperationContext, title: String, done: Boolean?, note: String?, items: List<CreateTodoItemInput>?): Todo =
-        handler.create(mcFactory.forApp(ctx), title, done, note, items)
+    fun create(ctx: OperationContext, input: CreateTodoInput): Todo =
+        handler.create(mcFactory.forApp(ctx), input)
 
     fun partialUpdate(ctx: OperationContext, input: UpdateTodoInput) {
         handler.partialUpdate(mcFactory.forApp(ctx), ctx.mustGetAppId(), input)

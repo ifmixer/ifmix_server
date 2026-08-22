@@ -60,7 +60,7 @@ class DemoFetcher(
     @DgsMutation(field = "m_demo_createTodo")
     fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input.title, input.done, input.note, input.items) }
+        val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input) }
         return CreateTodoResult(todo = todo)
     }
 
