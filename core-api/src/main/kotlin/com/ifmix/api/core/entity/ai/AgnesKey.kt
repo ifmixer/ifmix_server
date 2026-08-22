@@ -1,7 +1,6 @@
 package com.ifmix.api.core.entity.ai
 
-import com.ifmix.api.core.entity.AppScopedProps
-import com.ifmix.api.core.entity.MutableProps
+import com.ifmix.api.core.entity.BaseAppEntity
 import org.babyfish.jimmer.sql.*
 import java.time.Instant
 import java.util.UUID
@@ -11,9 +10,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "ai_agnes_key")
-interface AgnesKey : AppScopedProps, MutableProps {
-    @Id
-    val id: UUID
+interface AgnesKey : BaseAppEntity {
 
 
     val key: String

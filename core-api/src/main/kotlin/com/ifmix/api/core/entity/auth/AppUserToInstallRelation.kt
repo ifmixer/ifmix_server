@@ -1,7 +1,6 @@
 package com.ifmix.api.core.entity.auth
 
-import com.ifmix.api.core.entity.AppScopedProps
-import com.ifmix.api.core.entity.MutableProps
+import com.ifmix.api.core.entity.BaseAppEntity
 import org.babyfish.jimmer.sql.*
 import java.time.Instant
 import java.util.UUID
@@ -11,14 +10,12 @@ import java.util.UUID
  * 每次登录成功时 upsert，记录用户使用了哪些设备/安装实例。
  */
 @Entity
-@Table(name = "auth_user_install_binding")
-interface UserInstallBinding : AppScopedProps, MutableProps {
-
-    @Id
-    val id: UUID
+@Table(name = "auth_appuser_to_install_relation")
+interface AppUserToInstallRelation : BaseAppEntity {
 
 
-    val userId: UUID
+
+    val appUserId: UUID
 
     val installId: UUID
 

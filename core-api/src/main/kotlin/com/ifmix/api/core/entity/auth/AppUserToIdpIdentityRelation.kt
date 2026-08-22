@@ -1,7 +1,6 @@
 package com.ifmix.api.core.entity.auth
 
-import com.ifmix.api.core.entity.AppScopedProps
-import com.ifmix.api.core.entity.MutableProps
+import com.ifmix.api.core.entity.BaseAppEntity
 import com.ifmix.api.core.entity.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
@@ -12,9 +11,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "auth_appuser_to_idpidentity_relation")
-interface AppUserToIdpIdentityRelation : AppScopedProps, MutableProps, SoftDeletableProps {
-    @Id
-    val id: UUID
+interface AppUserToIdpIdentityRelation : BaseAppEntity, SoftDeletableProps {
 
     /** 逻辑外键 → user_appuser（跨模块） */
     val appUserId: UUID

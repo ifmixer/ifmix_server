@@ -1,6 +1,6 @@
 package com.ifmix.api.core.entity.app
 
-import com.ifmix.api.core.entity.MutableProps
+import com.ifmix.api.core.entity.BaseEntity
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
@@ -9,9 +9,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "app_info")
-interface AppInfo : MutableProps {
-    @Id
-    val id: UUID
+interface AppInfo : BaseEntity {
 
     val name: String?
     val description: String?

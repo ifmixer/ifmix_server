@@ -1,6 +1,6 @@
 package com.ifmix.api.core.entity.pay
 
-import com.ifmix.api.core.entity.AppScopedProps
+import com.ifmix.api.core.entity.BaseAppEntity
 import com.ifmix.api.core.entity.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
 import java.time.Instant
@@ -8,10 +8,8 @@ import java.util.UUID
 
 @Entity
 @Table(name = "pay_store_notification")
-interface StoreNotification : AppScopedProps, SoftDeletableProps {
+interface StoreNotification : BaseAppEntity, SoftDeletableProps {
 
-    @Id
-    val id: UUID
 
 
     val platform: String?

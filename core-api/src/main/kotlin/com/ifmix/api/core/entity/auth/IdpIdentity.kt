@@ -1,6 +1,6 @@
 package com.ifmix.api.core.entity.auth
 
-import com.ifmix.api.core.entity.MutableProps
+import com.ifmix.api.core.entity.BaseEntity
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
@@ -10,9 +10,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "auth_idpidentity")
-interface IdpIdentity : MutableProps {
-    @Id
-    val id: UUID
+interface IdpIdentity : BaseEntity {
 
     /** 逻辑外键 → auth_idp */
     val idpId: UUID

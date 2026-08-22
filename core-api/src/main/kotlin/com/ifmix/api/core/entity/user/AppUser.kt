@@ -1,7 +1,6 @@
 package com.ifmix.api.core.entity.user
 
-import com.ifmix.api.core.entity.AppScopedProps
-import com.ifmix.api.core.entity.MutableProps
+import com.ifmix.api.core.entity.BaseAppEntity
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
@@ -10,9 +9,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "user_appuser")
-interface AppUser : AppScopedProps, MutableProps {
-    @Id
-    val id: UUID
+interface AppUser : BaseAppEntity {
 
     @Serialized
     val metadata: Map<String, Any?>?

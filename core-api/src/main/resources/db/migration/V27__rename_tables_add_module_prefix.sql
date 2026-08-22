@@ -13,7 +13,7 @@ ALTER TABLE core_app_info RENAME TO app_info;
 ALTER TABLE core_auth_tenant RENAME TO auth_tenant;
 ALTER TABLE core_auth_device_secret RENAME TO auth_device_secret;
 ALTER TABLE core_app_user RENAME TO user_app_user;
-ALTER TABLE core_user_install_binding RENAME TO auth_user_install_binding;
+ALTER TABLE core_user_install_binding RENAME TO auth_appuser_to_install_relation;
 ALTER TABLE core_auth_identity RENAME TO auth_identity;
 ALTER TABLE core_auth_provider_identity RENAME TO auth_provider_identity;
 ALTER TABLE core_app_refresh_token RENAME TO auth_refresh_token;
