@@ -7,7 +7,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Table(name = "core_scan_collection_item")
+@Table(name = "ai_scan_collection_item")
 interface ScanCollectionItem : AppScopedProps, MutableProps {
     @Id
     val id: UUID

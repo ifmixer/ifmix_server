@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.storage.handler
+package com.ifmix.api.core.modules.media.handler
 
 import com.ifmix.api.core.dto.storage.PresignDownloadResult
 import com.ifmix.api.core.dto.storage.PresignUploadResult
@@ -7,8 +7,8 @@ import com.ifmix.api.core.generated.types.PresignUploadInput
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.storage.ObjectStorage
-import com.ifmix.api.core.entity.storage.UploadRecord
-import com.ifmix.api.core.modules.storage.repo.UploadRecordRepository
+import com.ifmix.api.core.entity.media.UploadRecord
+import com.ifmix.api.core.modules.media.repo.UploadRecordRepository
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.Instant

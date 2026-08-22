@@ -1,10 +1,10 @@
-package com.ifmix.api.core.bff.graphql.customer.payment
+package com.ifmix.api.core.bff.graphql.customer.pay
 
 import com.ifmix.api.core.generated.types.verifyIapPurchaseInput
 import com.ifmix.api.core.generated.types.VerifyIapPurchaseResult
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
 import com.ifmix.api.core.dto.payment.VerifyReq
-import com.ifmix.api.core.modules.payment.PaymentFacade
+import com.ifmix.api.core.modules.pay.PaymentFacade
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation

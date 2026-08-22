@@ -1,8 +1,8 @@
-package com.ifmix.api.core.modules.auth.repo
+package com.ifmix.api.core.modules.user.repo
 
-import com.ifmix.api.core.entity.auth.AppUser
-import com.ifmix.api.core.entity.auth.appId
-import com.ifmix.api.core.entity.auth.authIdentityId
+import com.ifmix.api.core.entity.user.AppUser
+import com.ifmix.api.core.entity.user.appId
+import com.ifmix.api.core.entity.user.authIdentityId
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate

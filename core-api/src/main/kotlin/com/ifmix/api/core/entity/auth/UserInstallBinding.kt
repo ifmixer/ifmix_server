@@ -11,7 +11,7 @@ import java.util.UUID
  * 每次登录成功时 upsert，记录用户使用了哪些设备/安装实例。
  */
 @Entity
-@Table(name = "core_user_install_binding")
+@Table(name = "auth_user_install_binding")
 interface UserInstallBinding : AppScopedProps, MutableProps {
 
     @Id

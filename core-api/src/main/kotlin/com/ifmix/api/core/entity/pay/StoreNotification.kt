@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.payment
+package com.ifmix.api.core.entity.pay
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.SoftDeletableProps
@@ -7,7 +7,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Table(name = "core_store_notification")
+@Table(name = "pay_store_notification")
 interface StoreNotification : AppScopedProps, SoftDeletableProps {
 
     @Id

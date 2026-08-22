@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.payment
+package com.ifmix.api.core.modules.pay
 
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.entity.shared.Tiers

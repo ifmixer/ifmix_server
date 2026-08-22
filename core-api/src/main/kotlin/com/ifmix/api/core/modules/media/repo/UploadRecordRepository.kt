@@ -1,6 +1,6 @@
-package com.ifmix.api.core.modules.storage.repo
+package com.ifmix.api.core.modules.media.repo
 
-import com.ifmix.api.core.entity.storage.UploadRecord
+import com.ifmix.api.core.entity.media.UploadRecord
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.springframework.stereotype.Repository

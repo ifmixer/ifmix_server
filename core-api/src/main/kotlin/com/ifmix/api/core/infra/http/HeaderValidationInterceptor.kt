@@ -11,6 +11,8 @@ import java.util.UUID
 class HeaderValidationInterceptor : HandlerInterceptor {
 
     override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
+        if (request.method == "OPTIONS") return true
+
         val appId = request.getHeader(RequestHeaders.APP_ID)
         if (appId.isNullOrBlank()) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "${RequestHeaders.APP_ID}: required")

@@ -1,11 +1,11 @@
-package com.ifmix.api.core.modules.payment.repo
+package com.ifmix.api.core.modules.pay.repo
 
-import com.ifmix.api.core.entity.payment.Subscription
-import com.ifmix.api.core.entity.payment.appId
-import com.ifmix.api.core.entity.payment.active
-import com.ifmix.api.core.entity.payment.id
-import com.ifmix.api.core.entity.payment.originalTransactionId
-import com.ifmix.api.core.entity.payment.subscriptionPxid
+import com.ifmix.api.core.entity.pay.Subscription
+import com.ifmix.api.core.entity.pay.appId
+import com.ifmix.api.core.entity.pay.active
+import com.ifmix.api.core.entity.pay.id
+import com.ifmix.api.core.entity.pay.originalTransactionId
+import com.ifmix.api.core.entity.pay.subscriptionPxid
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq

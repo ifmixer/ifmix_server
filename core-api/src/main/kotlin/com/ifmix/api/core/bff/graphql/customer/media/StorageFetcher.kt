@@ -1,11 +1,11 @@
-package com.ifmix.api.core.bff.graphql.customer.storage
+package com.ifmix.api.core.bff.graphql.customer.media
 
 import com.ifmix.api.core.generated.types.PresignDownloadInput
 import com.ifmix.api.core.generated.types.PresignDownloadResult
 import com.ifmix.api.core.generated.types.PresignUploadInput
 import com.ifmix.api.core.generated.types.PresignUploadResult
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
-import com.ifmix.api.core.modules.storage.StorageFacade
+import com.ifmix.api.core.modules.media.StorageFacade
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation

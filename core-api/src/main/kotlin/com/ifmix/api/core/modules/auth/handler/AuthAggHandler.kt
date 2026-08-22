@@ -13,7 +13,7 @@ import com.ifmix.api.core.modules.app.AppConfigFacade
 import com.ifmix.api.core.modules.auth.AuthLoggedInEvent
 import com.ifmix.api.core.modules.auth.ProviderVerifier
 import com.ifmix.api.core.modules.auth.repo.AppRefreshTokenRepository
-import com.ifmix.api.core.modules.auth.repo.AppUserRepository
+import com.ifmix.api.core.modules.user.repo.AppUserRepository
 import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretRepository
 import com.ifmix.api.core.modules.auth.repo.AuthIdentityRepository
 import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityRepository

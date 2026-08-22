@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.payment
+package com.ifmix.api.core.modules.pay
 
 import com.ifmix.api.core.dto.payment.SubStatus
 import com.ifmix.api.core.infra.db.UuidV7

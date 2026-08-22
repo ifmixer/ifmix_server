@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.payment
+package com.ifmix.api.core.modules.pay
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

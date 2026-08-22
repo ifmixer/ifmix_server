@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.storage
+package com.ifmix.api.core.entity.media
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.CreatedAtProps
@@ -9,7 +9,7 @@ import java.util.UUID
  * 上传记录 — 每次 presignUpload 写入一条，用于后续校验/清理/统计。
  */
 @Entity
-@Table(name = "core_upload_record")
+@Table(name = "media_upload_record")
 interface UploadRecord : AppScopedProps, CreatedAtProps {
 
     @Id

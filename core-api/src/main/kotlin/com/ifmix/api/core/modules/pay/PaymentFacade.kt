@@ -1,11 +1,11 @@
-package com.ifmix.api.core.modules.payment
+package com.ifmix.api.core.modules.pay
 
 import com.ifmix.api.core.dto.payment.VerifyReq
 import com.ifmix.api.core.dto.payment.VerifyRes
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.payment.handler.PaymentAggHandler
-import com.ifmix.api.core.modules.payment.handler.PaymentWebhookHandler
+import com.ifmix.api.core.modules.pay.handler.PaymentAggHandler
+import com.ifmix.api.core.modules.pay.handler.PaymentWebhookHandler
 import org.springframework.stereotype.Service
 
 @Service

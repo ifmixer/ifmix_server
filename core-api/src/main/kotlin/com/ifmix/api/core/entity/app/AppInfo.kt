@@ -8,7 +8,7 @@ import java.util.UUID
  * 全局应用注册表（不按 appId 分片，id 即 appId）。
  */
 @Entity
-@Table(name = "core_app_info")
+@Table(name = "app_info")
 interface AppInfo : MutableProps {
     @Id
     val id: UUID

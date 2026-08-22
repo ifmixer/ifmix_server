@@ -9,7 +9,7 @@ import java.util.UUID
  * Todo 领域模型 (Jimmer entity)。
  */
 @Entity
-@Table(name = "core_todo")
+@Table(name = "demo_todo")
 interface Todo : AppScopedProps, SoftDeletableProps {
     @Id
     val id: UUID

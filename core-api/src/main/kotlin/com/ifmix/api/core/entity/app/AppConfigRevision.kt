@@ -9,7 +9,7 @@ import java.util.UUID
  * per-app 配置版本。追加式；enabled=true 的为当前生效版本。
  */
 @Entity
-@Table(name = "core_app_config_revision")
+@Table(name = "app_config_revision")
 interface AppConfigRevision : AppScopedProps, CreatedAtProps {
     @Id
     val id: UUID

@@ -9,7 +9,7 @@ import java.util.UUID
  * 设备密钥。
  */
 @Entity
-@Table(name = "core_auth_device_secret")
+@Table(name = "auth_device_secret")
 interface AuthDeviceSecret : MutableProps {
     @Id
     val id: UUID

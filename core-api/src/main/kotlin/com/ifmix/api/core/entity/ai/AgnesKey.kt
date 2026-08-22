@@ -10,7 +10,7 @@ import java.util.UUID
  * Agnes AI Key 实体。
  */
 @Entity
-@Table(name = "core_agnes_key")
+@Table(name = "ai_agnes_key")
 interface AgnesKey : AppScopedProps, MutableProps {
     @Id
     val id: UUID

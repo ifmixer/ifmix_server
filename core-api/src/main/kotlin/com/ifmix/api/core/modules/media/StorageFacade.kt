@@ -1,4 +1,4 @@
-package com.ifmix.api.core.modules.storage
+package com.ifmix.api.core.modules.media
 
 import com.ifmix.api.core.dto.storage.PresignDownloadResult
 import com.ifmix.api.core.dto.storage.PresignUploadResult
@@ -6,7 +6,7 @@ import com.ifmix.api.core.generated.types.PresignDownloadInput
 import com.ifmix.api.core.generated.types.PresignUploadInput
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.modules.storage.handler.StorageAggHandler
+import com.ifmix.api.core.modules.media.handler.StorageAggHandler
 import org.springframework.stereotype.Service
 
 @Service

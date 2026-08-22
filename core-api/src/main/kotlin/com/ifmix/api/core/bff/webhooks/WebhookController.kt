@@ -3,9 +3,9 @@ package com.ifmix.api.core.bff.webhooks
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.modules.app.AppConfigFacade
-import com.ifmix.api.core.modules.payment.PaymentFacade
+import com.ifmix.api.core.modules.pay.PaymentFacade
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
-import com.ifmix.api.core.modules.payment.NotificationDecoder
+import com.ifmix.api.core.modules.pay.NotificationDecoder
 import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.jwk.ECKey

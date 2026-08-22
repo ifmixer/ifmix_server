@@ -1,11 +1,11 @@
-package com.ifmix.api.core.modules.payment.handler
+package com.ifmix.api.core.modules.pay.handler
 
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.modules.payment.NotificationDecoder
-import com.ifmix.api.core.modules.payment.NotificationType
-import com.ifmix.api.core.modules.payment.repo.StoreNotificationRepository
-import com.ifmix.api.core.modules.payment.repo.SubscriptionRepository
+import com.ifmix.api.core.modules.pay.NotificationDecoder
+import com.ifmix.api.core.modules.pay.NotificationType
+import com.ifmix.api.core.modules.pay.repo.StoreNotificationRepository
+import com.ifmix.api.core.modules.pay.repo.SubscriptionRepository
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.Instant
@@ -60,13 +60,13 @@ class PaymentWebhookHandler(
 
     private fun updateSubscription(
         mc: ModuleCtx,
-        sub: com.ifmix.api.core.entity.payment.Subscription,
+        sub: com.ifmix.api.core.entity.pay.Subscription,
         active: Boolean? = null,
         subStatus: String? = null,
         expiryDate: Instant? = null,
     ) {
         val now = Instant.now()
-        val updated = com.ifmix.api.core.entity.payment.Subscription(sub) {
+        val updated = com.ifmix.api.core.entity.pay.Subscription(sub) {
             this.active = active ?: sub.active
             this.subStatus = subStatus ?: sub.subStatus
             this.expiryDate = expiryDate ?: sub.expiryDate
@@ -85,7 +85,7 @@ class PaymentWebhookHandler(
         processed: Boolean = false,
     ) {
         val now = Instant.now()
-        val notif = com.ifmix.api.core.entity.payment.StoreNotification {
+        val notif = com.ifmix.api.core.entity.pay.StoreNotification {
             this.id = UuidV7.generate()
             this.appId = appId
             this.platform = platform

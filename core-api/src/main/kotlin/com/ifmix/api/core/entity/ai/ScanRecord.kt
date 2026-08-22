@@ -8,7 +8,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Table(name = "core_scan_record")
+@Table(name = "ai_scan_record")
 interface ScanRecord : AppScopedProps, SoftDeletableProps {
     @Id
     val id: UUID
