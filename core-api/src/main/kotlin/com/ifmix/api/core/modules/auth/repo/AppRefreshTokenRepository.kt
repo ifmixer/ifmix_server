@@ -9,7 +9,7 @@ import com.ifmix.api.core.entity.auth.replacedBy
 import com.ifmix.api.core.entity.auth.tokenHash
 import com.ifmix.api.core.entity.auth.updatedAt
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.gt
 import org.babyfish.jimmer.sql.kt.ast.expression.isNull
@@ -20,7 +20,7 @@ import java.util.UUID
 
 @Repository
 class AppRefreshTokenRepository {
-    companion object { private val tpl = CrudRepoTemplate(AppRefreshToken::class, appId = "appId") }
+    companion object { private val tpl = AppCrudRepoTemplate(AppRefreshToken::class) }
 
     fun findValidByHash(mc: ModuleCtx, appId: UUID, tokenHash: String): AppRefreshToken? {
         val now = Instant.now()

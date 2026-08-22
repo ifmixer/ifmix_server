@@ -2,13 +2,13 @@ package com.ifmix.api.core.modules.storage.repo
 
 import com.ifmix.api.core.entity.storage.UploadRecord
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
 class UploadRecordRepository {
-    companion object { private val tpl = CrudRepoTemplate(UploadRecord::class, appId = "appId") }
+    companion object { private val tpl = AppCrudRepoTemplate(UploadRecord::class) }
 
     fun save(mc: ModuleCtx, entity: UploadRecord) = tpl.save(mc, entity)
 }

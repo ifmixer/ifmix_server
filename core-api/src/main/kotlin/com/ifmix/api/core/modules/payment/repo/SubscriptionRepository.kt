@@ -7,14 +7,14 @@ import com.ifmix.api.core.entity.payment.id
 import com.ifmix.api.core.entity.payment.originalTransactionId
 import com.ifmix.api.core.entity.payment.subscriptionPxid
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
 class SubscriptionRepository {
-    companion object { private val tpl = CrudRepoTemplate(Subscription::class, appId = "appId") }
+    companion object { private val tpl = AppCrudRepoTemplate(Subscription::class) }
 
     fun findActiveByPxid(mc: ModuleCtx, appId: UUID, pxid: String): Subscription? {
         return mc.sql.createQuery(Subscription::class) {

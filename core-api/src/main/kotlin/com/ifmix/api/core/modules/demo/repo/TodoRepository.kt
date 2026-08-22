@@ -16,7 +16,7 @@ import com.ifmix.api.core.generated.types.TodoFilter
 import com.ifmix.api.core.generated.types.TodoUnsetField
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import com.ifmix.api.core.infra.repo.FilterGroupResolver
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
@@ -28,7 +28,7 @@ import java.util.UUID
 class TodoRepository {
 
     companion object {
-        private val tpl = CrudRepoTemplate(Todo::class, appId = "appId")
+        private val tpl = AppCrudRepoTemplate(Todo::class)
 
         /** 允许前端通过 FilterGroup 查询的字段（强类型白名单） */
         val FILTERABLE = listOf(

@@ -10,7 +10,7 @@ import com.ifmix.api.core.entity.ai.userNotes
 import com.ifmix.api.core.generated.types.ScanUnsetField
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import com.ifmix.api.core.infra.repo.FilterGroupResolver
 import org.babyfish.jimmer.sql.kt.ast.expression.desc
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
@@ -21,7 +21,7 @@ import java.util.UUID
 @Repository
 class ScanRecordRepository {
     companion object {
-        private val tpl = CrudRepoTemplate(ScanRecord::class, appId = "appId")
+        private val tpl = AppCrudRepoTemplate(ScanRecord::class)
         val FILTERABLE = listOf(
             ScanRecordProps.STATUS,
             ScanRecordProps.COLLECTED,

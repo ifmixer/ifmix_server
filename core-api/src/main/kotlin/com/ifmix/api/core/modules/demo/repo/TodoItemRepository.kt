@@ -10,14 +10,14 @@ import com.ifmix.api.core.entity.demo.note
 import com.ifmix.api.core.generated.types.TodoItemUnsetField
 import com.ifmix.api.core.generated.types.UpdateTodoItemInput
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
 class TodoItemRepository {
-    private val tpl = CrudRepoTemplate(TodoItem::class, appId = "appId")
+    private val tpl = AppCrudRepoTemplate(TodoItem::class)
 
     fun save(mc: ModuleCtx, entity: TodoItem) = tpl.save(mc, entity)
     fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, appId, ids)

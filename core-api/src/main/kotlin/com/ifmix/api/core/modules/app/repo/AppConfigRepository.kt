@@ -8,7 +8,7 @@ import com.ifmix.api.core.entity.app.createdAt
 import com.ifmix.api.core.entity.app.enabled
 import com.ifmix.api.core.entity.app.id
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.desc
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
@@ -16,7 +16,7 @@ import java.util.UUID
 
 @Repository
 class AppConfigRepository {
-    companion object { private val tpl = CrudRepoTemplate(AppConfigRevision::class, appId = "appId") }
+    companion object { private val tpl = AppCrudRepoTemplate(AppConfigRevision::class) }
 
     fun findActiveByAppId(mc: ModuleCtx, appId: UUID): AppConfigRevision? {
         return mc.sql.createQuery(AppConfigRevision::class) {

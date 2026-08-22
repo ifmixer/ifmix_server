@@ -11,7 +11,7 @@ import com.ifmix.api.core.entity.auth.loginCount
 import com.ifmix.api.core.entity.auth.updatedAt
 import com.ifmix.api.core.entity.auth.userId
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.time.Instant
@@ -19,7 +19,7 @@ import java.util.UUID
 
 @Repository
 class UserInstallBindingRepository {
-    companion object { private val tpl = CrudRepoTemplate(UserInstallBinding::class, appId = "appId") }
+    companion object { private val tpl = AppCrudRepoTemplate(UserInstallBinding::class) }
 
     fun recordBinding(
         mc: ModuleCtx,

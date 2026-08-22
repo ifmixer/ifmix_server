@@ -5,7 +5,7 @@ import com.ifmix.api.core.entity.auth.appId
 import com.ifmix.api.core.entity.auth.authIdentityId
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.time.Instant
@@ -13,7 +13,7 @@ import java.util.UUID
 
 @Repository
 class AppUserRepository {
-    companion object { private val tpl = CrudRepoTemplate(AppUser::class, appId = "appId") }
+    companion object { private val tpl = AppCrudRepoTemplate(AppUser::class) }
 
     fun findByAppAndIdentity(mc: ModuleCtx, appId: UUID, authIdentityId: UUID): AppUser? {
         return mc.sql.createQuery(AppUser::class) {

@@ -9,7 +9,7 @@ import com.ifmix.api.core.entity.ai.scanRecordId
 import com.ifmix.api.core.entity.ai.updatedAt
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.desc
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
@@ -20,7 +20,7 @@ import java.util.UUID
 
 @Repository
 class ScanCollectionItemRepository {
-    companion object { private val tpl = CrudRepoTemplate(ScanCollectionItem::class, appId = "appId") }
+    companion object { private val tpl = AppCrudRepoTemplate(ScanCollectionItem::class) }
 
     fun insertIfAbsent(mc: ModuleCtx, appId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
         val existing = mc.sql.createQuery(ScanCollectionItem::class) {

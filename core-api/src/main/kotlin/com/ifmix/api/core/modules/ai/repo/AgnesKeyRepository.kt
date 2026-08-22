@@ -6,7 +6,7 @@ import com.ifmix.api.core.entity.ai.id
 import com.ifmix.api.core.entity.ai.unavailableUntil
 import com.ifmix.api.core.entity.ai.updatedAt
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.isNull
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
@@ -17,7 +17,7 @@ import java.util.UUID
 
 @Repository
 class AgnesKeyRepository {
-    companion object { private val tpl = CrudRepoTemplate(AgnesKey::class, appId = "appId") }
+    companion object { private val tpl = AppCrudRepoTemplate(AgnesKey::class) }
 
     fun findAllEnabled(mc: ModuleCtx): List<AgnesKey> =
         mc.sql.createQuery(AgnesKey::class) {

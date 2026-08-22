@@ -7,14 +7,14 @@ import com.ifmix.api.core.entity.ai.installId
 import com.ifmix.api.core.entity.ai.isDefault
 import com.ifmix.api.core.entity.ai.userId
 import com.ifmix.api.core.infra.db.ModuleCtx
-import com.ifmix.api.core.infra.repo.CrudRepoTemplate
+import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
 class ScanCollectionRepository {
-    companion object { private val tpl = CrudRepoTemplate(ScanCollection::class, appId = "appId") }
+    companion object { private val tpl = AppCrudRepoTemplate(ScanCollection::class) }
 
     fun findDefault(mc: ModuleCtx, appId: UUID, installId: UUID?, userId: UUID?): ScanCollection? {
         if (userId != null) {
