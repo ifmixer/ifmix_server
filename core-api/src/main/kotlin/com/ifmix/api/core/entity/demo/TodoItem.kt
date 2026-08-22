@@ -6,7 +6,7 @@ import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 @Entity
-@Table(name = "core_demo_item")
+@Table(name = "core_todo_item")
 interface TodoItem : AppScopedProps, MutableProps {
     @Id
     val id: UUID
