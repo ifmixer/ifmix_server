@@ -1,7 +1,7 @@
 package com.ifmix.api.core.infra.jimmer
 
 import com.ifmix.api.core.entity.common.MutableProps
-import com.ifmix.api.core.entity.MutablePropsDraft
+import com.ifmix.api.core.entity.common.MutablePropsDraft
 import org.babyfish.jimmer.kt.isLoaded
 import org.babyfish.jimmer.sql.DraftInterceptor
 import org.springframework.stereotype.Component
