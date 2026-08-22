@@ -1,0 +1,1 @@
+ALTER TABLE demo_todo_item ADD COLUMN IF NOT EXISTS note TEXT;
