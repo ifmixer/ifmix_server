@@ -2,28 +2,21 @@ package com.ifmix.api.core.entity.auth
 
 import com.ifmix.api.core.entity.AppScopedProps
 import com.ifmix.api.core.entity.MutableProps
-import com.ifmix.api.core.entity.user.AppUser
 import org.babyfish.jimmer.sql.*
 import java.time.Instant
 import java.util.UUID
 
 /**
- * Refresh Token.
+ * Refresh Token（app 级）。
  */
 @Entity
-@Table(name = "auth_refresh_token")
-interface AppRefreshToken : AppScopedProps, MutableProps {
+@Table(name = "auth_appuser_refreshtoken")
+interface AppUserRefreshToken : AppScopedProps, MutableProps {
     @Id
     val id: UUID
 
-
-    @ManyToOne
-    @JoinColumn(name = "app_user_id")
-    val appUser: AppUser
-
-    @ManyToOne
-    @JoinColumn(name = "device_secret_id")
-    val deviceSecret: AuthDeviceSecret?
+    /** 逻辑外键 → user_appuser（跨模块） */
+    val appUserId: UUID
 
     val tokenHash: String
     val loginInstallId: UUID?

@@ -16,7 +16,6 @@ class AppConfigAggHandler(
     private val revisionRepo: AppConfigRepository,
 ) {
     data class CreateRevisionInput(
-        val authTenantId: UUID? = null,
         val appleBundleId: String? = null,
         val androidPackageName: String? = null,
         val content: ConfigContent,
@@ -33,7 +32,6 @@ class AppConfigAggHandler(
         val revision = AppConfigRevision {
             id = UuidV7.generate()
             this.appId = appId
-            this.authTenantId = req.authTenantId
             this.appleBundleId = req.appleBundleId
             this.androidPackageName = req.androidPackageName
             this.revisionNumber = req.revisionNumber

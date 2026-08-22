@@ -1,8 +1,6 @@
 type UserInfo {
     id: UUID!
     email: String
-    displayName: String
-    avatarUrl: String
 }
 
 type LoginResult {
@@ -10,7 +8,6 @@ type LoginResult {
     refreshToken: String!
     expiresIn: Int!
     user: UserInfo!
-    deviceSecret: String
 }
 
 type MeResult {
@@ -27,23 +24,9 @@ type RefreshResult {
     expiresIn: Int!
 }
 
-type ExchangeResult {
-    accessToken: String!
-    refreshToken: String!
-    expiresIn: Int!
-}
-
-input ProviderLoginInput {
-    idToken: String!
-}
-
-input WechatLoginInput {
-    code: String!
-}
-
-input ExchangeInput {
-    deviceSecret: String!
-    targetAppId: UUID!
+input IdpLoginInput {
+    idpId: UUID!
+    credential: String!
 }
 
 input RefreshInput {
@@ -59,11 +42,7 @@ extend type Query {
 }
 
 extend type Mutation {
-    m_auth_loginGoogle(input: ProviderLoginInput!): LoginResult!
-    m_auth_loginApple(input: ProviderLoginInput!): LoginResult!
-    m_auth_loginWechat(input: WechatLoginInput!): LoginResult!
-    m_auth_loginAnonymous: LoginResult!
-    m_auth_exchangeToken(input: ExchangeInput!): ExchangeResult!
+    m_auth_login(input: IdpLoginInput!): LoginResult!
     m_auth_refreshToken(input: RefreshInput!): RefreshResult!
     m_auth_logout(input: LogoutInput!): OperationResult!
     m_auth_deleteAccount: OperationResult!

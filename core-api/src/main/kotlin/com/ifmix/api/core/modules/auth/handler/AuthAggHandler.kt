@@ -1,22 +1,22 @@
 package com.ifmix.api.core.modules.auth.handler
 
-import com.ifmix.api.core.entity.auth.AppRefreshToken
-import com.ifmix.api.core.entity.auth.AuthDeviceSecret
-import com.ifmix.api.core.entity.auth.AuthIdentity
+import com.ifmix.api.core.entity.auth.AppUserRefreshToken
+import com.ifmix.api.core.entity.auth.AppUserToIdpIdentityRelation
+import com.ifmix.api.core.entity.auth.IdpIdentity
 import com.ifmix.api.core.infra.auth.AuthJwtService
 import com.ifmix.api.core.infra.auth.Hashing
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
-import com.ifmix.api.core.modules.app.AppConfigFacade
 import com.ifmix.api.core.modules.auth.AuthLoggedInEvent
 import com.ifmix.api.core.modules.auth.ProviderVerifier
-import com.ifmix.api.core.modules.auth.repo.AppRefreshTokenRepository
+import com.ifmix.api.core.modules.auth.repo.AppToIdpRelationRepository
+import com.ifmix.api.core.modules.auth.repo.AppUserRefreshTokenRepository
+import com.ifmix.api.core.modules.auth.repo.AppUserToIdpIdentityRelationRepository
+import com.ifmix.api.core.modules.auth.repo.IdpIdentityRepository
+import com.ifmix.api.core.modules.auth.repo.IdpRepository
 import com.ifmix.api.core.modules.user.repo.AppUserRepository
-import com.ifmix.api.core.modules.auth.repo.AuthDeviceSecretRepository
-import com.ifmix.api.core.modules.auth.repo.AuthIdentityRepository
-import com.ifmix.api.core.modules.auth.repo.AuthProviderIdentityRepository
 import com.ifmix.api.core.dto.payment.SubscriptionState
 import com.ifmix.api.core.entity.shared.Tiers
 import org.springframework.beans.factory.annotation.Value
@@ -26,34 +26,17 @@ import java.time.Instant
 import java.util.UUID
 
 // ============================================================================
-// Internal DTOs
+// DTOs
 // ============================================================================
 
 data class UserDto(val id: UUID, val email: String?)
 
-/** Google / Apple 登录请求。idToken 必填。 */
-data class ProviderLoginReq(
-    val idToken: String,
-    val deviceSecret: String? = null,
-)
-
-/** 微信登录请求。code 必填。 */
-data class WechatLoginReq(
-    val code: String,
-    val deviceSecret: String? = null,
+data class LoginReq(
+    val idpId: UUID,
+    val credential: String,
 )
 
 data class LoginRes(
-    val accessToken: String,
-    val refreshToken: String,
-    val refreshExpiresAt: Instant,
-    val deviceSecret: String,
-    val expiresIn: Long,
-    val user: UserDto,
-)
-
-data class ExchangeReq(val deviceSecret: String)
-data class ExchangeRes(
     val accessToken: String,
     val refreshToken: String,
     val refreshExpiresAt: Instant,
@@ -75,194 +58,91 @@ data class LogoutRes(val ok: Boolean)
 data class MeRes(
     val id: UUID,
     val email: String?,
-    /** 当前订阅档位 */
     val tier: Int = Tiers.FREE,
-    /** 订阅是否有效 */
     val active: Boolean = false,
     val state: SubscriptionState = SubscriptionState.EXPIRED,
-    /** 订阅过期时间（epoch millis），永久权益为 null */
     val expiresAt: Long? = null,
-    /** 是否为匿名用户。匿名用户 email 为 null、tier 为 FREE。 */
     val isAnonymous: Boolean = false,
-    /** 账号删除请求的预计处理时间（epoch millis）。未请求删除时为 null。 */
     val deletionScheduledAt: Long? = null,
 )
 
 data class DeleteAccountRes(
-    /** 删除请求已接受 */
     val accepted: Boolean = true,
-    /** 预计处理时间（epoch millis） */
     val scheduledAt: Long,
 )
 
 @Component
 class AuthAggHandler(
-    private val appConfigFacade: AppConfigFacade,
     private val verifiers: Map<String, ProviderVerifier>,
     private val jwt: AuthJwtService,
-    private val providerIdentityRepo: AuthProviderIdentityRepository,
+    private val idpRepo: IdpRepository,
+    private val idpIdentityRepo: IdpIdentityRepository,
+    private val appToIdpRepo: AppToIdpRelationRepository,
+    private val appUserToIdpIdentityRepo: AppUserToIdpIdentityRelationRepository,
+    private val refreshTokenRepo: AppUserRefreshTokenRepository,
     private val appUserRepo: AppUserRepository,
-    private val deviceSecretRepo: AuthDeviceSecretRepository,
-    private val refreshRepo: AppRefreshTokenRepository,
-    private val identityRepo: AuthIdentityRepository,
     private val events: ApplicationEventPublisher,
     @Value("\${app.auth.access-ttl-sec:900}")
     private val accessTtlSec: Long,
 ) {
     companion object {
         private const val REFRESH_TTL_DAYS = 30L
-        private const val DEVICE_SECRET_TTL_DAYS = 365L
     }
 
-    private fun tenantUUID(sc: ModuleCtx, appId: UUID): UUID =
-        appConfigFacade.findActiveByAppId(sc, appId)?.authTenantId
-            ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
-
-    fun me(sc: ModuleCtx): MeRes {
-        val userId = sc.op.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
-        val appUser = appUserRepo.findById(sc, sc.appId!!, userId)
+    fun me(mc: ModuleCtx): MeRes {
+        val userId = mc.op.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+        val appId = mc.appId!!
+        val appUser = appUserRepo.findById(mc, appId, userId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "user not found")
-        val identity = identityRepo.findById(sc, appUser.authIdentity.id)
-        return MeRes(userId, identity?.email)
+        // 查该用户绑定的第一个 idpIdentity 拿 email
+        val email = findPrimaryEmail(mc, appId, userId)
+        return MeRes(userId, email)
     }
 
-    fun loginWithIdToken(sc: ModuleCtx, provider: String, req: ProviderLoginReq): LoginRes {
-        return loginWithProvider(sc, provider, req.idToken, req.deviceSecret)
-    }
+    fun login(mc: ModuleCtx, req: LoginReq): LoginRes {
+        val appId = mc.appId!!
 
-    fun loginWithCode(sc: ModuleCtx, provider: String, req: WechatLoginReq): LoginRes {
-        return loginWithProvider(sc, provider, req.code, req.deviceSecret)
-    }
+        // 1. 验证 app 是否启用了该 IDP
+        appToIdpRepo.findByAppAndIdp(mc, appId, req.idpId)
+            ?: throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "IDP not enabled for this app")
 
-    fun loginWithProvider(sc: ModuleCtx, provider: String, credential: String, deviceSecret: String? = null): LoginRes {
-        val opCtx = sc.op
-        val tenantId = tenantUUID(sc, opCtx.appId!!)
+        // 2. 加载 IDP 配置，验证 credential
+        val idp = idpRepo.findById(mc, req.idpId)
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "IDP not found")
+        val providerKey = providerKeyForType(idp.providerType)
+        val verifier = verifiers[providerKey]
+            ?: throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unsupported provider type: ${idp.providerType}")
+        val verified = verifier.verifyWithIdpConfig(idp, mc.op.clientPlatform, req.credential)
 
-        // 1. Verify credential
-        val verifier = verifiers[provider] ?: throw ApiError(
-            ErrorCode.AUTH_PROVIDER_FAILED,
-            "unsupported provider: $provider"
-        )
-        val config = appConfigFacade.findActiveByAppId(sc, opCtx.appId!!) ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
-        val verified = verifier.verify(config, opCtx.clientPlatform, credential)
+        // 3. 找/建 IdpIdentity（全局）
+        val idpIdentity = idpIdentityRepo.findByIdpAndIdentityId(mc, req.idpId, verified.accountId)
+            ?: createIdpIdentity(mc, req.idpId, verified)
 
-        // 2. Find or create AuthIdentity
-        val normalizedEmail = verified.email?.lowercase()
-        val identity: AuthIdentity = if (normalizedEmail != null) {
-            identityRepo.findByTenantAndEmail(sc, tenantId, normalizedEmail)
-                ?: insertIdentity(sc, tenantId, verified.email, normalizedEmail, verified.phone, verified.userMetadata)
+        // 4. 通过 relation 查该 idpIdentity 在此 app 下绑了哪个 appUser
+        val relation = appUserToIdpIdentityRepo.findByAppAndIdpIdentity(mc, appId, idpIdentity.id)
+        val appUserId: UUID = if (relation != null) {
+            relation.appUserId
         } else {
-            val existingProvider = providerIdentityRepo.findByProviderAndAccountId(
-                sc, tenantId, provider, verified.accountId
-            )
-            if (existingProvider != null) {
-                identityRepo.findById(sc, existingProvider.authIdentity.id)!!
-            } else {
-                insertIdentity(sc, tenantId, null, null, verified.phone, verified.userMetadata)
-            }
+            // 创建 AppUser + 绑定 relation
+            val newUserId = appUserRepo.createAppUser(mc, appId)
+            createRelation(mc, appId, newUserId, req.idpId, idpIdentity.id)
+            newUserId
         }
 
-        // 3. Upsert AuthProviderIdentity
-        providerIdentityRepo.upsert(
-            mc = sc,
-            tenantId = tenantId,
-            provider = provider,
-            providerAccountId = verified.accountId,
-            identityId = identity.id,
-            email = verified.email,
-            emailVerified = verified.emailVerified,
-            phone = verified.phone,
-            userMetadata = verified.userMetadata,
-            providerMetadata = null,
-            loginIp = opCtx.clientIp,
-            loginInstallId = opCtx.installId,
-            loginAppId = opCtx.appId,
-        )
+        // 5. 更新 idpIdentity 登录信息
+        updateIdpIdentityLogin(mc, idpIdentity.id, verified, mc.op.clientIp, mc.op.installId)
 
-        // 4. Ensure AppUser
-        val appUserId = appUserRepo.ensure(sc, opCtx.appId!!, identity.id)
-
-        // 5. Issue device secret
+        // 6. 签发 refresh token + access token
         val now = Instant.now()
-        val rawDeviceSecret = Hashing.randomTokenBase64Url()
-        val deviceSecretHash = Hashing.sha256Base64Url(rawDeviceSecret)
-        deviceSecretRepo.save(sc, AuthDeviceSecret {
-            id = UuidV7.generate()
-            authTenant { id = tenantId }
-            authIdentity { id = identity.id }
-            secretHash = deviceSecretHash
-            loginInstallId = opCtx.installId
-            expiresAt = now.plusSeconds(DEVICE_SECRET_TTL_DAYS * 86400)
-            revokedAt = null
-            lastUsedAt = now
-            createdAt = now
-            updatedAt = now
-        })
-
-        // 6. Issue refresh token
         val rawRefreshToken = Hashing.randomTokenBase64Url()
         val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
         val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
-        refreshRepo.save(sc, AppRefreshToken {
-            this.id = UuidV7.generate()
-            this.appId = opCtx.appId!!
-            appUser { id = appUserId }
-            this.deviceSecretId = null
-            this.tokenHash = refreshTokenHash
-            this.loginInstallId = opCtx.installId
-            this.expiresAt = refreshExpiresAt
-            this.revokedAt = null
-            this.replacedBy = null
-            this.createdAt = now
-            this.updatedAt = now
-        })
-
-        // 7. Sign access token
-        val accessToken = jwt.signAccess(appUserId.toString(), opCtx.appId!!.toString())
-
-        // 8. Publish event
-        events.publishEvent(AuthLoggedInEvent(
-            appId = opCtx.appId!!,
-            authIdentityId = identity.id.toString(),
-            appUserId = appUserId,
-            installId = opCtx.installId,
-            clientIp = opCtx.clientIp,
-            clientPlatform = opCtx.clientPlatform?.name,
-            ctx = opCtx,
-        ))
-
-        return LoginRes(
-            accessToken = accessToken,
-            refreshToken = rawRefreshToken,
-            refreshExpiresAt = refreshExpiresAt,
-            deviceSecret = rawDeviceSecret,
-            expiresIn = accessTtlSec,
-            user = UserDto(id = appUserId, email = identity.email),
-        )
-    }
-
-    fun exchange(sc: ModuleCtx, req: ExchangeReq): ExchangeRes {
-        val appId = sc.appId!!
-
-        val secretHash = Hashing.sha256Base64Url(req.deviceSecret!!)
-        val foundSecret = deviceSecretRepo.findValidByHash(sc, secretHash)
-            ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or expired device secret")
-
-        deviceSecretRepo.touch(sc, foundSecret.id)
-        val identityId = foundSecret.authIdentity.id
-        val appUserId = appUserRepo.ensure(sc, appId, identityId)
-
-        val rawRefreshToken = Hashing.randomTokenBase64Url()
-        val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
-        val now = Instant.now()
-        val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
-        refreshRepo.save(sc, AppRefreshToken {
+        refreshTokenRepo.save(mc, AppUserRefreshToken {
             this.id = UuidV7.generate()
             this.appId = appId
-            appUser { id = appUserId }
-            deviceSecret { id = foundSecret.id }
+            this.appUserId = appUserId
             this.tokenHash = refreshTokenHash
-            this.loginInstallId = sc.installId
+            this.loginInstallId = mc.op.installId
             this.expiresAt = refreshExpiresAt
             this.revokedAt = null
             this.replacedBy = null
@@ -271,32 +151,43 @@ class AuthAggHandler(
         })
 
         val accessToken = jwt.signAccess(appUserId.toString(), appId.toString())
-        return ExchangeRes(
+
+        // 7. Publish event
+        events.publishEvent(AuthLoggedInEvent(
+            appId = appId,
+            authIdentityId = idpIdentity.id.toString(),
+            appUserId = appUserId,
+            installId = mc.op.installId,
+            clientIp = mc.op.clientIp,
+            clientPlatform = mc.op.clientPlatform?.name,
+            ctx = mc.op,
+        ))
+
+        return LoginRes(
             accessToken = accessToken,
             refreshToken = rawRefreshToken,
             refreshExpiresAt = refreshExpiresAt,
             expiresIn = accessTtlSec,
-            user = UserDto(id = appUserId, email = identityRepo.findById(sc, identityId)?.email),
+            user = UserDto(id = appUserId, email = verified.email),
         )
     }
 
-    fun refresh(sc: ModuleCtx, req: RefreshReq): RefreshRes {
-        val appId = sc.appId!!
-
-        val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
-        val oldToken = refreshRepo.findValidByHash(sc, appId, tokenHash)
+    fun refresh(mc: ModuleCtx, req: RefreshReq): RefreshRes {
+        val appId = mc.appId!!
+        val tokenHash = Hashing.sha256Base64Url(req.refreshToken)
+        val oldToken = refreshTokenRepo.findValidByHash(mc, appId, tokenHash)
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or expired refresh token")
 
+        val now = Instant.now()
         val rawNewToken = Hashing.randomTokenBase64Url()
         val newTokenHash = Hashing.sha256Base64Url(rawNewToken)
-        val now = Instant.now()
         val newExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         val newTokenId = UuidV7.generate()
 
-        refreshRepo.save(sc, AppRefreshToken {
+        refreshTokenRepo.save(mc, AppUserRefreshToken {
             this.id = newTokenId
             this.appId = appId
-            appUser { id = oldToken.appUser.id }
+            this.appUserId = oldToken.appUserId
             this.tokenHash = newTokenHash
             this.loginInstallId = oldToken.loginInstallId
             this.expiresAt = newExpiresAt
@@ -305,10 +196,9 @@ class AuthAggHandler(
             this.createdAt = now
             this.updatedAt = now
         })
-        refreshRepo.revoke(sc, oldToken.id, replacedBy = newTokenId)
+        refreshTokenRepo.revoke(mc, oldToken.id, replacedBy = newTokenId)
 
-        val appUserId = oldToken.appUser.id
-        val accessToken = jwt.signAccess(appUserId.toString(), appId.toString())
+        val accessToken = jwt.signAccess(oldToken.appUserId.toString(), appId.toString())
         return RefreshRes(
             accessToken = accessToken,
             refreshToken = rawNewToken,
@@ -317,30 +207,18 @@ class AuthAggHandler(
         )
     }
 
-    fun logout(sc: ModuleCtx, req: LogoutReq): LogoutRes {
-        val appId = sc.appId!!
-
-        val tokenHash = Hashing.sha256Base64Url(req.refreshToken!!)
-        val token = refreshRepo.findValidByHash(sc, appId, tokenHash)
+    fun logout(mc: ModuleCtx, req: LogoutReq): LogoutRes {
+        val appId = mc.appId!!
+        val tokenHash = Hashing.sha256Base64Url(req.refreshToken)
+        val token = refreshTokenRepo.findValidByHash(mc, appId, tokenHash)
         if (token != null) {
-            refreshRepo.revoke(sc, token.id)
-            token.deviceSecret?.id?.let { dsId ->
-                deviceSecretRepo.revoke(sc, dsId)
-            }
+            refreshTokenRepo.revoke(mc, token.id)
         }
         return LogoutRes(ok = true)
     }
 
-    fun anonymousLogin(sc: ModuleCtx): LoginRes {
-        val installId = sc.installId ?: throw ApiError(
-            ErrorCode.INVALID_REQUEST,
-            "x-install-id required for anonymous login"
-        )
-        return loginWithProvider(sc, "anonymous", "anon_$installId", null)
-    }
-
-    fun requestAccountDeletion(sc: ModuleCtx): DeleteAccountRes {
-        val userId = sc.op.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+    fun requestAccountDeletion(mc: ModuleCtx): DeleteAccountRes {
+        mc.op.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         val scheduledAt = Instant.now().plusSeconds(30L * 24 * 3600).toEpochMilli()
         return DeleteAccountRes(accepted = true, scheduledAt = scheduledAt)
     }
@@ -349,31 +227,66 @@ class AuthAggHandler(
     // Internal helpers
     // =========================================================================
 
-    private fun insertIdentity(
-        sc: ModuleCtx,
-        tenantId: UUID,
-        rawEmail: String?,
-        email: String?,
-        phone: String?,
-        userMetadata: Map<String, Any?>?,
-    ): AuthIdentity {
+    private fun providerKeyForType(providerType: Int): String = when (providerType) {
+        10 -> "apple"
+        20 -> "google"
+        else -> throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unknown provider type: $providerType")
+    }
+
+    private fun createIdpIdentity(mc: ModuleCtx, idpId: UUID, verified: ProviderVerifier.VerifiedResult): IdpIdentity {
         val now = Instant.now()
-        val identity = AuthIdentity {
+        val entity = IdpIdentity {
             this.id = UuidV7.generate()
-            this.authTenant { this.id = tenantId }
-            this.rawEmail = rawEmail
-            this.email = email
-            this.rawPhone = phone
-            this.phone = phone
-            this.contactEmail = email
-            this.displayName = userMetadata?.get("name") as? String
-            this.passwordHash = null
-            this.profile = null
-            this.metadata = null
+            this.idpId = idpId
+            this.idpIdentityId = verified.accountId
+            this.email = verified.email
+            this.emailVerified = verified.emailVerified
+            this.phone = verified.phone
+            this.profile = verified.userMetadata
+            this.loginIp = mc.op.clientIp
+            this.loginInstallId = mc.op.installId
             this.createdAt = now
             this.updatedAt = now
         }
-        identityRepo.save(sc, identity)
-        return identity
+        idpIdentityRepo.save(mc, entity)
+        return entity
+    }
+
+    private fun createRelation(mc: ModuleCtx, appId: UUID, appUserId: UUID, idpId: UUID, idpIdentityId: UUID) {
+        val now = Instant.now()
+        appUserToIdpIdentityRepo.save(mc, AppUserToIdpIdentityRelation {
+            this.id = UuidV7.generate()
+            this.appId = appId
+            this.appUserId = appUserId
+            this.idpId = idpId
+            this.idpIdentityId = idpIdentityId
+            this.createdAt = now
+            this.updatedAt = now
+        })
+    }
+
+    private fun updateIdpIdentityLogin(mc: ModuleCtx, id: UUID, verified: ProviderVerifier.VerifiedResult, ip: String?, installId: UUID?) {
+        val now = Instant.now()
+        val entity = IdpIdentity {
+            this.id = id
+            this.idpId = verified.accountId.let { /* keep existing */ mc.let { ctx -> idpIdentityRepo.findById(ctx, id)!!.idpId } }
+            this.idpIdentityId = verified.accountId
+            this.email = verified.email
+            this.emailVerified = verified.emailVerified
+            this.phone = verified.phone
+            this.profile = verified.userMetadata
+            this.loginIp = ip
+            this.loginInstallId = installId
+            this.updatedAt = now
+            this.createdAt = now // won't change on upsert
+        }
+        idpIdentityRepo.save(mc, entity)
+    }
+
+    private fun findPrimaryEmail(mc: ModuleCtx, appId: UUID, appUserId: UUID): String? {
+        // ponytail: 简单实现，后续可优化为专门查询
+        val relation = appUserToIdpIdentityRepo.findFirstByAppUser(mc, appId, appUserId) ?: return null
+        val idpIdentity = idpIdentityRepo.findById(mc, relation.idpIdentityId) ?: return null
+        return idpIdentity.email
     }
 }

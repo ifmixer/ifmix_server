@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.entity.app.AppConfigRevision
+import com.ifmix.api.core.entity.auth.Idp
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
@@ -8,22 +8,20 @@ import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtDecoder
 
 /**
- * 第三方 provider 的 id_token 验证器。
- *
- * Google / Apple 各自有自己的 JWKS endpoint，
- * 通过 spring-security-oauth2-jose 的 NimbusJwtDecoder 自动验证签名 + claims。
+ * 第三方 provider 的 credential 验证器。
+ * 每种 providerType 注册一个实现，通过 Idp.config JSONB 获取验证所需配置。
  */
-data class VerifiedProvider(
-    val accountId: String,
-    val email: String?,
-    val emailVerified: Boolean,
-    val phone: String?,
-    val userMetadata: Map<String, Any?>,
-)
-
 interface ProviderVerifier {
-    val provider: String
-    fun verify(config: AppConfigRevision, platform: ClientPlatform?, idToken: String): VerifiedProvider
+
+    data class VerifiedResult(
+        val accountId: String,
+        val email: String?,
+        val emailVerified: Boolean,
+        val phone: String?,
+        val userMetadata: Map<String, Any?>?,
+    )
+
+    fun verifyWithIdpConfig(idp: Idp, platform: ClientPlatform?, credential: String): VerifiedResult
 }
 
 private fun decodeOrFail(decoder: JwtDecoder, idToken: String): Jwt = try {
@@ -32,7 +30,7 @@ private fun decodeOrFail(decoder: JwtDecoder, idToken: String): Jwt = try {
     throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, e.message ?: "provider verify failed")
 }
 
-private fun Jwt.toVerified(): VerifiedProvider = VerifiedProvider(
+private fun Jwt.toVerifiedResult(): ProviderVerifier.VerifiedResult = ProviderVerifier.VerifiedResult(
     accountId = subject ?: "",
     email = getClaimAsString("email"),
     emailVerified = (getClaim("email_verified") as? Boolean) ?: false,
@@ -47,43 +45,27 @@ private fun requireAud(jwt: Jwt, expected: String?) {
 }
 
 class GoogleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
-    override val provider = "google"
-    override fun verify(config: AppConfigRevision, platform: ClientPlatform?, idToken: String): VerifiedProvider {
-        val jwt = decodeOrFail(decoder, idToken)
-        val clientIds = config.content.google.clientIds
+    override fun verifyWithIdpConfig(idp: Idp, platform: ClientPlatform?, credential: String): ProviderVerifier.VerifiedResult {
+        val jwt = decodeOrFail(decoder, credential)
+        val config = idp.config
+        @Suppress("UNCHECKED_CAST")
+        val clientIds = config["clientIds"] as? Map<String, String> ?: emptyMap()
         val aud = when (platform) {
-            ClientPlatform.IOS -> clientIds.ios
-            ClientPlatform.ANDROID -> clientIds.android
-            ClientPlatform.WEB, null -> clientIds.web
+            ClientPlatform.IOS -> clientIds["ios"]
+            ClientPlatform.ANDROID -> clientIds["android"]
+            ClientPlatform.WEB, null -> clientIds["web"]
         }
         requireAud(jwt, aud)
-        return jwt.toVerified()
+        return jwt.toVerifiedResult()
     }
 }
 
 class AppleVerifier(private val decoder: JwtDecoder) : ProviderVerifier {
-    override val provider = "apple"
-    override fun verify(config: AppConfigRevision, platform: ClientPlatform?, idToken: String): VerifiedProvider {
-        val jwt = decodeOrFail(decoder, idToken)
-        val aud = if (platform == ClientPlatform.WEB) config.content.apple.servicesId else config.appleBundleId
+    override fun verifyWithIdpConfig(idp: Idp, platform: ClientPlatform?, credential: String): ProviderVerifier.VerifiedResult {
+        val jwt = decodeOrFail(decoder, credential)
+        val config = idp.config
+        val aud = if (platform == ClientPlatform.WEB) config["servicesId"] as? String else config["bundleId"] as? String
         requireAud(jwt, aud)
-        return jwt.toVerified()
-    }
-}
-
-/**
- * 匿名登录验证器。credential 即 "anon_{installId}"，直接信任。
- * 不走外部验证，仅生成一个固定结构的 VerifiedProvider。
- */
-class AnonymousVerifier : ProviderVerifier {
-    override val provider = "anonymous"
-    override fun verify(config: AppConfigRevision, platform: ClientPlatform?, idToken: String): VerifiedProvider {
-        return VerifiedProvider(
-            accountId = idToken,
-            email = "$idToken@anonymous.local",
-            emailVerified = false,
-            phone = null,
-            userMetadata = emptyMap(),
-        )
+        return jwt.toVerifiedResult()
     }
 }

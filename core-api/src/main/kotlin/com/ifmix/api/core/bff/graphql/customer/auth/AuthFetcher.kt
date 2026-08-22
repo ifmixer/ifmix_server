@@ -3,23 +3,24 @@ package com.ifmix.api.core.bff.graphql.customer.auth
 import com.ifmix.api.core.dto.common.OperationResult
 import com.ifmix.api.core.generated.types.*
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
+import com.ifmix.api.core.infra.tx.GlobalTxRunner
 import com.ifmix.api.core.modules.auth.AuthFacade
-import com.ifmix.api.core.modules.auth.handler.ExchangeReq
+import com.ifmix.api.core.modules.auth.handler.LoginReq
 import com.ifmix.api.core.modules.auth.handler.LoginRes
 import com.ifmix.api.core.modules.auth.handler.LogoutReq
-import com.ifmix.api.core.modules.auth.handler.ProviderLoginReq
 import com.ifmix.api.core.modules.auth.handler.RefreshReq
-import com.ifmix.api.core.modules.auth.handler.WechatLoginReq
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsMutation
 import com.netflix.graphql.dgs.DgsQuery
 import com.netflix.graphql.dgs.InputArgument
 import java.time.Instant
+import java.util.UUID
 
 @DgsComponent
 class AuthFetcher(
     private val authService: AuthFacade,
+    private val globalTx: GlobalTxRunner,
     private val ctxProvider: OperationContextProvider,
 ) {
 
@@ -35,45 +36,21 @@ class AuthFetcher(
         )
     }
 
-    @DgsMutation(field = "m_auth_loginGoogle")
-    fun loginGoogle(dfe: DgsDataFetchingEnvironment, @InputArgument input: ProviderLoginInput): LoginResult {
+    @DgsMutation(field = "m_auth_login")
+    fun login(dfe: DgsDataFetchingEnvironment, @InputArgument input: IdpLoginInput): LoginResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        return authService.loginWithIdToken(ctx, "google", ProviderLoginReq(idToken = input.idToken)).toResult()
-    }
-
-    @DgsMutation(field = "m_auth_loginApple")
-    fun loginApple(dfe: DgsDataFetchingEnvironment, @InputArgument input: ProviderLoginInput): LoginResult {
-        val ctx = ctxProvider.fromDfe(dfe)
-        return authService.loginWithIdToken(ctx, "apple", ProviderLoginReq(idToken = input.idToken)).toResult()
-    }
-
-    @DgsMutation(field = "m_auth_loginWechat")
-    fun loginWechat(dfe: DgsDataFetchingEnvironment, @InputArgument input: WechatLoginInput): LoginResult {
-        val ctx = ctxProvider.fromDfe(dfe)
-        return authService.loginWithCode(ctx, "wechat", WechatLoginReq(code = input.code)).toResult()
-    }
-
-    @DgsMutation(field = "m_auth_loginAnonymous")
-    fun loginAnonymous(dfe: DgsDataFetchingEnvironment): LoginResult {
-        val ctx = ctxProvider.fromDfe(dfe)
-        return authService.anonymousLogin(ctx).toResult()
-    }
-
-    @DgsMutation(field = "m_auth_exchangeToken")
-    fun exchange(dfe: DgsDataFetchingEnvironment, @InputArgument input: ExchangeInput): ExchangeResult {
-        val ctx = ctxProvider.fromDfe(dfe)
-        val res = authService.exchange(ctx, ExchangeReq(deviceSecret = input.deviceSecret))
-        return ExchangeResult(
-            accessToken = res.accessToken,
-            refreshToken = res.refreshToken,
-            expiresIn = res.expiresIn.toInt(),
-        )
+        val res = globalTx.withTx(ctx) { txCtx ->
+            authService.login(txCtx, LoginReq(idpId = input.idpId, credential = input.credential))
+        }
+        return res.toResult()
     }
 
     @DgsMutation(field = "m_auth_refreshToken")
     fun refresh(dfe: DgsDataFetchingEnvironment, @InputArgument input: RefreshInput): RefreshResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        val res = authService.refresh(ctx, RefreshReq(refreshToken = input.refreshToken))
+        val res = globalTx.withTx(ctx) { txCtx ->
+            authService.refresh(txCtx, RefreshReq(refreshToken = input.refreshToken))
+        }
         return RefreshResult(
             accessToken = res.accessToken,
             refreshToken = res.refreshToken,
@@ -84,7 +61,9 @@ class AuthFetcher(
     @DgsMutation(field = "m_auth_logout")
     fun logout(dfe: DgsDataFetchingEnvironment, @InputArgument input: LogoutInput): OperationResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        authService.logout(ctx, LogoutReq(refreshToken = input.refreshToken))
+        globalTx.withTx(ctx) { txCtx ->
+            authService.logout(txCtx, LogoutReq(refreshToken = input.refreshToken))
+        }
         return OperationResult(success = true)
     }
 
@@ -100,6 +79,5 @@ class AuthFetcher(
         refreshToken = refreshToken,
         expiresIn = expiresIn.toInt(),
         user = UserInfo(id = user.id, email = user.email),
-        deviceSecret = deviceSecret,
     )
 }

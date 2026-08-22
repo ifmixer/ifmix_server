@@ -14,8 +14,6 @@ interface AppConfigRevision : AppScopedProps, CreatedAtProps {
     @Id
     val id: UUID
 
-
-    val authTenantId: UUID?
     val appleBundleId: String?
     val androidPackageName: String?
 

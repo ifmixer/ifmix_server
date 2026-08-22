@@ -5,13 +5,10 @@ import com.ifmix.api.core.infra.auth.AuthJwtService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
-import org.springframework.web.client.RestClient
-import java.time.Duration
 
 /**
  * 认证模块 bean 装配。
@@ -39,29 +36,12 @@ class AuthConfig {
         }
 
     @Bean
-    fun wechatRestClient(
-        @Value("\${app.auth.wechat-api-url:https://api.weixin.qq.com}") baseUrl: String,
-    ): RestClient {
-        val factory = SimpleClientHttpRequestFactory().apply {
-            setConnectTimeout(Duration.ofSeconds(5))
-            setReadTimeout(Duration.ofSeconds(30))
-        }
-        return RestClient.builder()
-            .baseUrl(baseUrl)
-            .requestFactory(factory)
-            .build()
-    }
-
-    @Bean
     fun providerVerifiers(
         googleJwtDecoder: JwtDecoder,
         appleJwtDecoder: JwtDecoder,
-        wechatRestClient: RestClient,
     ): Map<String, ProviderVerifier> = mapOf(
-        "google" to GoogleVerifier(googleJwtDecoder),
         "apple" to AppleVerifier(appleJwtDecoder),
-        "wechat" to WechatVerifier(wechatRestClient),
-        "anonymous" to AnonymousVerifier(),
+        "google" to GoogleVerifier(googleJwtDecoder),
     )
 
     @Bean

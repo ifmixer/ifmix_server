@@ -1,11 +1,11 @@
 package com.ifmix.api.core.modules.auth.repo
 
-import com.ifmix.api.core.entity.auth.AppRefreshToken
+import com.ifmix.api.core.entity.auth.AppUserRefreshToken
 import com.ifmix.api.core.entity.auth.appId
 import com.ifmix.api.core.entity.auth.expiresAt
 import com.ifmix.api.core.entity.auth.id
-import com.ifmix.api.core.entity.auth.revokedAt
 import com.ifmix.api.core.entity.auth.replacedBy
+import com.ifmix.api.core.entity.auth.revokedAt
 import com.ifmix.api.core.entity.auth.tokenHash
 import com.ifmix.api.core.entity.auth.updatedAt
 import com.ifmix.api.core.infra.db.ModuleCtx
@@ -19,13 +19,13 @@ import java.time.Instant
 import java.util.UUID
 
 @Repository
-class AppRefreshTokenRepository {
-    companion object { private val tpl = AppCrudRepoTemplate(AppRefreshToken::class) }
+class AppUserRefreshTokenRepository {
+    companion object { private val tpl = AppCrudRepoTemplate(AppUserRefreshToken::class) }
 
-    fun findValidByHash(mc: ModuleCtx, appId: UUID, tokenHash: String): AppRefreshToken? {
+    fun findValidByHash(mc: ModuleCtx, appId: UUID, tokenHash: String): AppUserRefreshToken? {
         val now = Instant.now()
-        return mc.sql.createQuery(AppRefreshToken::class) {
-            where(table.get<UUID>("appId") eq appId)
+        return mc.sql.createQuery(AppUserRefreshToken::class) {
+            where(table.appId eq appId)
             where(table.tokenHash eq tokenHash)
             where(table.revokedAt.isNull())
             where(
@@ -39,23 +39,13 @@ class AppRefreshTokenRepository {
     }
 
     fun revoke(mc: ModuleCtx, id: UUID, replacedBy: UUID? = null): Int {
-        val now = Instant.now()
-        return if (replacedBy != null) {
-            mc.sql.createUpdate(AppRefreshToken::class) {
-                where(table.id eq id)
-                set(table.revokedAt, now)
-                set(table.updatedAt, now)
-                set(table.replacedBy, replacedBy)
-            }.execute()
-        } else {
-            mc.sql.createUpdate(AppRefreshToken::class) {
-                where(table.id eq id)
-                set(table.revokedAt, now)
-                set(table.updatedAt, now)
-            }.execute()
-        }
+        return mc.sql.createUpdate(AppUserRefreshToken::class) {
+            where(table.id eq id)
+            set(table.revokedAt, Instant.now())
+            set(table.updatedAt, Instant.now())
+            if (replacedBy != null) set(table.replacedBy, replacedBy)
+        }.execute()
     }
 
-    fun save(mc: ModuleCtx, entity: AppRefreshToken) = tpl.save(mc, entity)
-    fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
+    fun save(mc: ModuleCtx, entity: AppUserRefreshToken) = tpl.save(mc, entity)
 }
