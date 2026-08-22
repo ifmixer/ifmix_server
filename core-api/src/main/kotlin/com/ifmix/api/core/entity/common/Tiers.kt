@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.shared
+package com.ifmix.api.core.entity.common
 
 /**
  * 限额档位编码。

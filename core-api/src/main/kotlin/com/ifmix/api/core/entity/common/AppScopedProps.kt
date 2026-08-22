@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity
+package com.ifmix.api.core.entity.common
 
 import org.babyfish.jimmer.sql.MappedSuperclass
 import java.util.UUID

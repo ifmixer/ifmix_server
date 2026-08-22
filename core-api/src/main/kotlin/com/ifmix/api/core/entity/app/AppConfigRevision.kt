@@ -1,10 +1,10 @@
 package com.ifmix.api.core.entity.app
 
-import com.ifmix.api.core.entity.AppScopedProps
-import com.ifmix.api.core.entity.UUIDProps
-import com.ifmix.api.core.entity.CreatedAtProps
+import com.ifmix.api.core.entity.common.AppScopedProps
+import com.ifmix.api.core.entity.common.UUIDProps
+import com.ifmix.api.core.entity.common.CreatedAtProps
 import org.babyfish.jimmer.sql.*
-import java.util.UUID
+
 /**
  * per-app 配置版本。追加式；enabled=true 的为当前生效版本。
  */

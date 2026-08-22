@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.ratelimit
 
-import com.ifmix.api.core.entity.shared.Tiers
+import com.ifmix.api.core.entity.common.Tiers
 import com.ifmix.api.core.infra.http.OperationContext
 
 /** 将请求上下文映射为一个 Tier。默认实现一律返回 FREE。 */

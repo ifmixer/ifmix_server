@@ -18,7 +18,7 @@ import com.ifmix.api.core.modules.auth.repo.IdpIdentityRepository
 import com.ifmix.api.core.modules.auth.repo.IdpRepository
 import com.ifmix.api.core.modules.user.repo.AppUserRepository
 import com.ifmix.api.core.dto.payment.SubscriptionState
-import com.ifmix.api.core.entity.shared.Tiers
+import com.ifmix.api.core.entity.common.Tiers
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component

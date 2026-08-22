@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.iap
 import com.ifmix.api.core.dto.payment.SubscriptionState
 import com.ifmix.api.core.dto.payment.statusFromExpiry
 import com.ifmix.api.core.dto.payment.tierOf
-import com.ifmix.api.core.entity.shared.Tiers
+import com.ifmix.api.core.entity.common.Tiers
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.Instant

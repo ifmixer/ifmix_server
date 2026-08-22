@@ -1,9 +1,9 @@
 package com.ifmix.api.core.entity.auth
 
-import com.ifmix.api.core.entity.CreatedAtProps
-import com.ifmix.api.core.entity.UUIDProps
+import com.ifmix.api.core.entity.common.CreatedAtProps
+import com.ifmix.api.core.entity.common.UUIDProps
 import org.babyfish.jimmer.sql.*
-import java.util.UUID
+
 /**
  * 身份提供商（全局，跨 app）。
  * 一旦创建只能改 name/desc。

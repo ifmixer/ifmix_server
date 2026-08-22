@@ -5,8 +5,8 @@ import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.entity.pay.Subscription
-import com.ifmix.api.core.entity.shared.Platforms
-import com.ifmix.api.core.entity.shared.Tiers
+import com.ifmix.api.core.entity.common.Platforms
+import com.ifmix.api.core.entity.common.Tiers
 import com.ifmix.api.core.modules.pay.PurchaseVerifier
 import com.ifmix.api.core.modules.pay.VerifyInput
 import com.ifmix.api.core.modules.pay.VerifyResult

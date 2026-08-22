@@ -1,7 +1,7 @@
 package com.ifmix.api.core.modules.pay
 
 import com.ifmix.api.core.infra.http.OperationContext
-import com.ifmix.api.core.entity.shared.Tiers
+import com.ifmix.api.core.entity.common.Tiers
 import com.ifmix.api.core.infra.ratelimit.TierResolver
 
 /**

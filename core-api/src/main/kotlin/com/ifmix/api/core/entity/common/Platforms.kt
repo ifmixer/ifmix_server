@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.shared
+package com.ifmix.api.core.entity.common
 
 /**
  * IAP 购买平台编码。

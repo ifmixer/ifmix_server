@@ -1,6 +1,6 @@
 package com.ifmix.api.core.entity.demo
 
-import com.ifmix.api.core.entity.BaseAppEntity
+import com.ifmix.api.core.entity.common.BaseAppEntity
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 

@@ -1,8 +1,7 @@
 package com.ifmix.api.core.entity.app
 
-import com.ifmix.api.core.entity.BaseEntity
+import com.ifmix.api.core.entity.common.BaseEntity
 import org.babyfish.jimmer.sql.*
-import java.util.UUID
 
 /**
  * 全局应用注册表（不按 appId 分片，id 即 appId）。

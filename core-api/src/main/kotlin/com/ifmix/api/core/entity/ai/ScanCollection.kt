@@ -1,8 +1,7 @@
 package com.ifmix.api.core.entity.ai
 
-import com.ifmix.api.core.entity.BaseAppEntity
+import com.ifmix.api.core.entity.common.BaseAppEntity
 import org.babyfish.jimmer.sql.*
-import java.time.Instant
 import java.util.UUID
 
 @Entity

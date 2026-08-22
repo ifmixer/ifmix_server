@@ -28,7 +28,7 @@ class PaymentWebhookHandler(
         val ctx = mc.op
         val appId = ctx.appId ?: return
 
-        val decodedPlatform = if (platform == "APPLE") com.ifmix.api.core.entity.shared.Platforms.APPLE else com.ifmix.api.core.entity.shared.Platforms.GOOGLE
+        val decodedPlatform = if (platform == "APPLE") com.ifmix.api.core.entity.common.Platforms.APPLE else com.ifmix.api.core.entity.common.Platforms.GOOGLE
         val decoderResult = decoder.decode(rawPayload, decodedPlatform)
 
         if (decoderResult.subscriptionPxid.isNullOrEmpty()) return

@@ -1,6 +1,6 @@
 package com.ifmix.api.core.infra.ratelimit
 
-import com.ifmix.api.core.entity.shared.Tiers
+import com.ifmix.api.core.entity.common.Tiers
 import org.springframework.boot.context.properties.ConfigurationProperties
 
 /**
