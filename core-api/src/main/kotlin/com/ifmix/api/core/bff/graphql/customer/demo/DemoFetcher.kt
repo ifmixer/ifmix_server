@@ -3,7 +3,6 @@ package com.ifmix.api.core.bff.graphql.customer.demo
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.generated.types.*
 import com.ifmix.api.core.infra.graphql.OperationContextProvider
-import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.tx.GlobalTxRunner
 import com.ifmix.api.core.modules.demo.DemoFacade
 import com.netflix.graphql.dgs.DgsComponent
@@ -34,26 +33,13 @@ class DemoFetcher(
         return demoService.findByIds(ctx, ids)
     }
 
-    @DgsQuery(field = "q_demo_findTodosByCursor")
-    fun findByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: TodoQueryInput?): Page<com.ifmix.api.core.entity.demo.Todo> {
-        val ctx = ctxProvider.fromDfe(dfe)
-        val cursor = input?.cursor?.let { tryParseUuid(it) }
-        val limit = (input?.limit ?: 20).coerceIn(1, 100)
-        val page = demoService.findByCursor(ctx, cursor, limit, input?.filter)
-        return Page(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
-    }
-
     @DgsQuery(field = "q_demo_findTodos")
     fun findTodos(
         dfe: DgsDataFetchingEnvironment,
-        @InputArgument filter: FilterGroup?,
-        @InputArgument cursor: String?,
-        @InputArgument limit: Int?,
+        @InputArgument options: com.ifmix.api.core.generated.types.FindOptions?,
     ): Page<com.ifmix.api.core.entity.demo.Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
-        val parsedCursor = cursor?.let { tryParseUuid(it) }
-        val pageSize = (limit ?: 20).coerceIn(1, 100)
-        val page = demoService.findByFilter(ctx, filter, parsedCursor, pageSize)
+        val page = demoService.findTodos(ctx, options)
         return Page(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
     }
 
@@ -89,7 +75,7 @@ class DemoFetcher(
     @DgsMutation(field = "m_demo_batchDeleteTodos")
     fun batchDeleteTodos(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): DeleteTodoResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        globalTx.withTx(ctx) { txCtx -> demoService.batchDelete(txCtx, ids) }
+        globalTx.withTx(ctx) { txCtx -> demoService.deleteByIds(txCtx, ids) }
         return DeleteTodoResult(success = true)
     }
 

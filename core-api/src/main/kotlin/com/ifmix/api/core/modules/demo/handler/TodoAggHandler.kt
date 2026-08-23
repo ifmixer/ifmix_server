@@ -3,12 +3,10 @@ package com.ifmix.api.core.modules.demo.handler
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.demo.Todo
 import com.ifmix.api.core.entity.demo.TodoItem
-import com.ifmix.api.core.entity.demo.TodoRecommend
 import com.ifmix.api.core.entity.demo.toDomain
 import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.CreateTodoItemForTodoInput
-import com.ifmix.api.core.generated.types.FilterGroup
-import com.ifmix.api.core.generated.types.TodoFilter
+import com.ifmix.api.core.generated.types.FindOptions
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.infra.db.ModuleCtx
@@ -33,11 +31,8 @@ class TodoAggHandler(
     fun findByIds(mc: ModuleCtx, appId: UUID, ids: List<UUID>): List<Todo> =
         todoRepo.findByIds(mc, appId, ids)
 
-    fun findByCursor(mc: ModuleCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter? = null): Page<Todo> =
-        todoRepo.findByCursor(mc, appId, cursor, limit, filter)
-
-    fun findByFilter(mc: ModuleCtx, appId: UUID, filter: FilterGroup?, cursor: UUID?, limit: Int): Page<Todo> =
-        todoRepo.findByFilter(mc, appId, filter, cursor, limit)
+    fun findTodos(mc: ModuleCtx, appId: UUID, options: FindOptions?): Page<Todo> =
+        todoRepo.findByOptions(mc, appId, options)
 
     fun findItemsByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>): List<TodoItem> =
         todoItemRepo.findByTodoIds(mc, appId, todoIds)
@@ -107,7 +102,7 @@ class TodoAggHandler(
     fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean =
         todoRepo.deleteById(mc, appId, id)
 
-    fun batchDelete(mc: ModuleCtx, appId: UUID, ids: List<UUID>): Int =
+    fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: List<UUID>): Int =
         todoRepo.deleteByIds(mc, appId, ids)
 
     private fun createItem(mc: ModuleCtx, appId: UUID, item: CreateTodoItemForTodoInput) {
