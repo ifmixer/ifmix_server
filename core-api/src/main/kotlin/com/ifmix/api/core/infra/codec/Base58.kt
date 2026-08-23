@@ -41,6 +41,41 @@ object Base58 {
         val buf = ByteBuffer.wrap(padded)
         return UUID(buf.getLong(), buf.getLong())
     }
+
+    /** 任意字符串 → Base58（UTF-8 bytes 编码）。 */
+    fun encodeString(text: String): String {
+        val data = text.toByteArray(Charsets.UTF_8)
+        if (data.isEmpty()) return ""
+        // 计算前导零字节数
+        val leadingZeros = data.takeWhile { it == 0.toByte() }.size
+        var num = BigInteger(1, data)
+        val sb = StringBuilder()
+        while (num > BigInteger.ZERO) {
+            val (div, rem) = num.divideAndRemainder(BASE)
+            sb.append(ALPHABET[rem.toInt()])
+            num = div
+        }
+        // 前导零用 '1' 表示
+        repeat(leadingZeros) { sb.append('1') }
+        return sb.reverse().toString()
+    }
+
+    /** Base58 → 原始字符串（UTF-8）。 */
+    fun decodeString(encoded: String): String {
+        if (encoded.isEmpty()) return ""
+        val leadingOnes = encoded.takeWhile { it == '1' }.length
+        var num = BigInteger.ZERO
+        for (c in encoded) {
+            val digit = ALPHABET.indexOf(c)
+            require(digit >= 0) { "invalid Base58 character: $c" }
+            num = num.multiply(BASE).add(BigInteger.valueOf(digit.toLong()))
+        }
+        val bytes = num.toByteArray()
+        // BigInteger 可能添加前导 0x00 符号位
+        val stripped = if (bytes.size > 1 && bytes[0] == 0.toByte()) bytes.copyOfRange(1, bytes.size) else bytes
+        val result = ByteArray(leadingOnes) + stripped
+        return String(result, Charsets.UTF_8)
+    }
 }
 
 fun UUID.toBase58(): String = Base58.encode(this)

@@ -2,11 +2,9 @@
 
 ## 项目上下文
 
-本项目是 **ifmix_server** — 一个面向移动端的后端 API 服务（古物扫描 + AI 图像识别 + 收藏管理 + 社交登录 + IAP）。
+本项目是 **ifmix_server** — 面向移动端的后端 API 服务（古物扫描 + AI 图像识别 + 收藏管理 + 社交登录 + IAP）。
 
-**在开始任何工作之前，请先阅读架构文档:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-
-## 技术栈速查
+## 技术栈
 
 - Kotlin 2.3.10 / JDK 25 (Virtual Threads)
 - Spring Boot 4.1.0 / Jimmer 0.11.5 (KSP) / PostgreSQL / Redis
@@ -14,125 +12,62 @@
 - Jackson 3 (`tools.jackson`) / Spring AI 2.0 / EdDSA JWT
 - Gradle 9.6.1
 
-## 代码约定
+## 文档索引
+
+| 文档 | 内容 |
+|------|------|
+| [架构总览](docs/ARCHITECTURE.md) | 分层、模块职责、设计决策、API 约定 |
+| [编码指南](docs/CODING_GUIDE.md) | 每层怎么写、Context 模型、事务、示例代码 |
+| [认证设计](docs/AUTH_DESIGN.md) | IDP 模型、登录流程 |
+| [数据库约定](docs/DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup |
+
+## 代码约定速查
 
 ### 分层规则
 
 | 层 | 包路径 | 注解 | 职责 |
 |----|--------|------|------|
-| DataFetcher | `bff/graphql/customer/` | `@DgsComponent` | GraphQL 路由、构造 OperationContext、DataLoader |
-| Facade | `modules/*/XxxFacade.kt` | `@Service` | 业务编排、TxRunner 事务（只包写操作）、对外入口 |
-| Handler | `modules/*/handler/XxxHandler.kt` | `@Component` | 纯业务逻辑，接收 SvcCtx |
-| Repository | `modules/*/repo/` | `@Repository` | 纯数据访问、CrudRepoTemplate 组合、接收 SvcCtx |
-| Model | `entity/` | 无 | Jimmer interface entity，KSP 生成扩展属性和 Draft DSL |
-| Infra | `infra/` | `@Component`/`@Configuration` | 横切关注点、外部集成 |
+| DataFetcher | `bff/graphql/customer/` | `@DgsComponent` | GraphQL 路由、GlobalTxRunner 包事务 |
+| Facade | `modules/*/XxxFacade.kt` | `@Service` | 构造 ModuleCtx + 转发 |
+| Handler | `modules/*/handler/` | `@Component` | 纯业务逻辑，接收 ModuleCtx |
+| Repository | `modules/*/repo/` | `@Repository` | 纯数据访问、CrudRepoTemplate 组合 |
+| Entity | `entity/` | 无 | Jimmer interface entity |
+| Infra | `infra/` | `@Component`/`@Configuration` | 横切关注点 |
 
-### DI 风格
-- **组合优于继承**: Service/Repository 使用构造器注入，不用 `@Autowired`
-- **Config 类仅创建基础设施 bean**: JwtDecoder、Stub 实现、条件 bean
-- **Service 是 `@Service`，不是 Config 里的 `@Bean`**
+### 禁止跨级
 
-### API 风格
-- **GraphQL**: `POST /customer/graphql` (主 API)
-- **Operation 命名**: `${query|mutation}_${module}_${action}`
-- **Webhook (REST)**: `POST /webhooks/iap/*`
-- 请求头必带 `x-app-id` (UUID)
+- DataFetcher 不能 import handler/repo
+- Facade 不能 import repo
+- Handler 不能 import facade（可注入其他模块 Facade）
+- DataLoader/Resolver 通过 Facade 调用，不直接注入 repo
 
-### 认证
-- `AuthInterceptor` 是**非阻塞**的（无效 token 不拦截，只是不填充 userId）
-- 需要强认证的接口由 Service 层自行判断 `ctx.userId ?: throw ApiError(UNAUTHORIZED)`
-- 这是有意设计，不要改成阻塞式
+### 关键约定
 
-### 数据库
-- 使用 Jimmer（interface entity + KSP 扩展属性 + Draft DSL）
-- **所有表名带 `core_` 前缀**（如 `core_todo`, `core_app_user`, `core_scan_record`）
-- UUIDv7 作为主键（时间有序，支持游标分页）
-- **UUID 字符串用原始 36 字符格式**
-  - PG/Jimmer 层：原生 UUID 类型
-  - API / Redis / 前端：原始 36 字符格式
-  - objectKey（URL 场景）：22 位 Base58（短、URL-safe）— 仅此场景使用
-- 游标分页: `WHERE id < cursor ORDER BY id DESC LIMIT n+1`
-- 读写分离: mutation → 主库, query → 从库
-- **枚举字段用 SMALLINT 存数字编码**（不用 VARCHAR、不用 PG ENUM）
-  - Kotlin 用 `enum class Xxx(val code: Int)`，手动指定编码
-  - 0 保留不用；同组连续（100,110,120）；不同组间隔 100
-  - 对外 API 输出字符串名（`"COMPLETED"`），不暴露数字
+- GraphQL input 全链路透传（不逐字段粘贴）
+- `@Service`/`@Component` 直注册，不在 Config 里 `@Bean`
+- CrudRepoTemplate 分两类：全局 / App 级
+- 单条操作返回 Boolean，batch 返回 Int
+- AuthInterceptor 非阻塞（无效 token 不拦截）
+- DateTime 统一 ISO-8601 字符串
+- 枚举全链路 Int 透传
+- 跨模块用逻辑外键 UUID，不用 `@ManyToOne`
 
-### 事务管理
-- **TxRunner** 替代 `@Transactional`
-- 事务边界最小化：只包写操作，读操作在事务外
-- 传播行为: REQUIRED (默认) / REQUIRES_NEW / SUPPORTS / NOT_SUPPORTED
-- **反模式**: 外部 IO（HTTP/AI调用）不能在事务内
+### Jimmer 注意事项
 
-### 存储上传
-- objectKey 格式: `app_{appId}/i_{installId}/...` 或 `app_{appId}/u_{userId}/...`
-- presignUpload 不要求登录
-- presignDownload 暂不做权限验证
-
-### 限流
-- Redis 日固定窗口，超限后**不删除 key**（防止重置绕过）
-- 配额支持 refund（下游失败归还）
+1. 普通查询优先使用 Jimmer Kotlin SQL DSL
+2. PostgreSQL-specific expression：使用 `sql(...) + %e/%v`
+3. 不要在 native expression 中硬编码表名/字段名
+4. 如果 SQL 特性影响 FROM/JOIN 结构且 Jimmer 无法表达：使用 JdbcClient
+5. 不要自行创建复杂 Jimmer extension DSL
 
 ## 常用命令
 
 ```bash
-# 编译（含 KSP）
-./gradlew :core-api:compileKotlin
-
-# 测试
-./gradlew :core-api:test
-
-# 运行 (需要 PostgreSQL + Redis)
-./gradlew :core-api:bootRun
+./gradlew :core-api:compileKotlin    # 编译（含 KSP）
+./gradlew :core-api:test              # 测试
+./gradlew :core-api:bootRun           # 运行 (需 PG + Redis)
 ```
-
-## 参考文档
-
-- [架构全貌](docs/ARCHITECTURE.md) — **必读**
-- [E2E 测试方案](docs/E2E_TESTING.md)
-- [剩余整理任务](docs/superpowers/plans/2026-08-18-remaining-cleanup.md)
-
-## 重要设计决策
-
-以下是已确定的设计决策，除非有充分理由否则不要推翻：
-
-1. **GraphQL (DGS) 作为 API 层** — 替代旧 REST BFF
-2. **Jimmer 替代 jOOQ** — interface entity + KSP 扩展属性 + Draft DSL
-3. **TxRunner 替代 @Transactional** — 支持多集群动态路由
-4. **AuthInterceptor 非阻塞** — 支持匿名+认证混合接口
-5. **presignUpload 不要求登录** — 后续通过行为验证增强
-6. **Service 用 @Service + 构造器注入** — 不在 Config 里手动 new
-7. **Repository 用 @Repository** — 启用 Spring 异常翻译
-8. **AI ScanRunner 每个模型遍历所有 key** — 不是只试一个就跳下一个模型
-9. **限流超限不删 Redis key** — 让 key 自然 TTL 过期
-10. **objectKey 强格式校验** — `app_{appId}/(i_|u_)/...`，防路径遍历
-11. **Webhook 必须验签** — Apple JWS / Google 通过 packageName 反查 appId
-12. **DataLoader caching=false** — 只 batching，防 mutation 间脏读
-13. **CacheAside 显式调用** — 不用 @Cacheable 魔法
-14. **Entity = Jimmer interface + 注解** — KSP 生成扩展属性和 Draft DSL
-15. **set/unset Update 语义** — 防 null vs undefined 歧义
-16. **枚举全链路 Int 透传** — GraphQL 不用 enum，灰度/多版本安全
-17. **枚举常量放 model class 嵌套 object** — 就近原则，跨模块的放 entity/shared/
-18. **KSP 输出在 build/generated/ksp/** — 不与手写源码混
-19. **Operation 命名含对象** — `q_todo_findTodoById` 而非 `q_todo_findById`
-20. **CrudRepoTemplate 分两类** — `CrudRepoTemplate`(全局无 appId) + `AppCrudRepoTemplate`(强制 appId)，类型安全防漏传
-21. **Template 单条操作返回 Boolean** — save/deleteById 返回 Boolean；batch 操作(batchSave/deleteByIds)返回 Int
-22. **Template 必须提供 batch 对应方法** — findByIds/existsByIds/batchSave/deleteByIds，每个单条操作都有批量版本
-23. **GraphQL input 全链路透传** — Fetcher→Facade→Handler 直传 input 对象，不逐字段粘贴
-24. **JSONB 值对象 = data class + @Serialized** — 领域模型定义在 entity/ 下，toDomain() 转换放同文件
 
 ## 工作方式
 
-- **写计划 vs 直接做**: 如果直接做 token 消耗更少（改动明确、文件数少、不需要跨模块协调），优先直接做。不确定时问用户。
-
-## 使用 Jimmer 的注意事项
-
-1. 普通查询优先使用 Jimmer Kotlin SQL DSL。
-2. 不要为了 PostgreSQL 特有函数寻找复杂的 Jimmer API。
-3. PostgreSQL-specific expression：
-   使用 Jimmer sql(...) + %e/%v。
-4. 不要在 native expression 中硬编码普通表名/字段名；
-   column 使用 %e，参数使用 %v。
-5. 如果 SQL 特性影响 FROM/JOIN 结构且 Jimmer 无法表达：
-   使用 JdbcClient 写完整 SQL。
-6. 不要自行创建复杂 Jimmer extension DSL, 想要创建之前先确认.
+- **写计划 vs 直接做**: 改动明确、文件数少时优先直接做。不确定时问用户。

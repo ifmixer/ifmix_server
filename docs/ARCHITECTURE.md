@@ -1,7 +1,6 @@
 # ifmix_server 架构文档
 
 > 最后更新: 2026-08-23
-> 状态: Auth IDP 重设计完成，模块包名重命名完成（payment→pay, storage→media）
 
 ## 项目概述
 
@@ -68,123 +67,23 @@ Repo         →  持有 CrudRepoTemplate（companion object）
 - Facade 不能 import repo 包
 - Handler 不能 import facade 包（可注入其他模块的 Facade）
 - DataLoader/Resolver 通过 Facade 调用，不直接注入 repo
-- 跨模块调用：Facade 可注入其他模块的 Facade
 
-## Context 三层模型
+> 详细编码示例和 Context 模型见 [编码指南](CODING_GUIDE.md)
 
-```
-RequestContext      HTTP 请求级    构造于: AuthInterceptor / Header 解析
-    ↓
-OperationContext    Operation 级   构造于: DataFetcher (ctxProvider.fromDfe)
-    ↓
-ModuleCtx           模块调用级     构造于: Facade (ModuleCtxFactory.forApp)
-```
+## 模块职责
 
-### RequestContext
+| 模块 | 功能 |
+|------|------|
+| auth | IDP 登录(Apple/Google)、AppUser↔IDP 绑定、Refresh Token 轮转、Access Token(EdDSA) |
+| user | AppUser CRUD |
+| ai | 古物扫描、AI 识别(Spring AI 多模态)、Key 轮换+模型 fallback、收藏管理 |
+| demo | Todo 清单 CRUD、嵌入 items、游标分页、FilterGroup 示例 |
+| pay | Apple/Google 购买验证、订阅管理、Webhook(JWS 验签)、Tier 映射 |
+| cms | 用户反馈 |
+| media | 预签名上传/下载 |
+| app | AppConfig 版本管理、AppInfo |
 
-```kotlin
-data class RequestContext(
-    val appId: UUID?, val installId: UUID?, val userId: UUID?,
-    val lang: String?, val currency: String?, val country: String?,
-    val clientPlatform: ClientPlatform?, val clientIp: String?,
-)
-```
-
-### OperationContext
-
-```kotlin
-data class OperationContext(
-    val req: RequestContext,
-    val opName: String? = null,
-    val isMutation: Boolean = false,
-    val preferReader: Boolean = !isMutation,
-    val globalTxSql: KSqlClient? = null,   // GlobalTxRunner 设置
-    val inGlobalTx: Boolean = false,
-)
-```
-
-### ModuleCtx
-
-```kotlin
-data class ModuleCtx(
-    val op: OperationContext,
-    val sql: KSqlClient,           // 路由后的实例（writer/reader/globalTx）
-    val clusterId: String = "default",
-    val inTransaction: Boolean = false,
-) {
-    val appId get() = op.appId
-    val userId get() = op.userId
-    val installId get() = op.installId
-    val readCache get() = op.readCache
-}
-```
-
-参数名缩写：`mc`（ModuleCtx）
-
-### ModuleCtxFactory
-
-```kotlin
-@Component
-class ModuleCtxFactory(private val router: ClusterRouter) {
-    fun forApp(opCtx: OperationContext): ModuleCtx { ... }
-
-    private fun chooseSql(opCtx, pair): KSqlClient = when {
-        opCtx.globalTxSql != null -> opCtx.globalTxSql  // 全局事务内，复用
-        opCtx.preferReader -> pair.reader
-        else -> pair.writer
-    }
-}
-```
-
-## 事务管理
-
-### 两层事务
-
-| 层 | Runner | 位置 | 职责 |
-|---|---|---|---|
-| **GlobalTx** | `GlobalTxRunner` | DataFetcher 层 | 整个 mutation field 一个事务 |
-| **ModuleTx** | `TxRunner` | 预留 Facade 层 | 当前不用，将来拆分 module 时加 |
-
-### GlobalTxRunner（当前主要使用）
-
-```kotlin
-// DataFetcher 层：mutation 包在全局事务内
-@DgsMutation(field = "m_demo_createTodo")
-fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoResult {
-    val ctx = ctxProvider.fromDfe(dfe)
-    val todo = globalTx.withTx(ctx) { txCtx ->
-        demoService.create(txCtx, input)
-    }
-    return CreateTodoResult(todo = todo)
-}
-```
-
-**关键机制：** `GlobalTxRunner.withTx` 开启事务后设置 `opCtx.globalTxSql = pair.writer` 和 `inGlobalTx = true`。后续 `ModuleCtxFactory.chooseSql` 检测到 `globalTxSql != null` 时复用事务连接，不嵌套新事务。
-
-### TxRunner（模块级，预留）
-
-```kotlin
-@Component
-class TxRunner(private val txManager: PlatformTransactionManager) {
-    fun <R> withTx(mc: ModuleCtx, propagation: TxPropagation = REQUIRED, body: (ModuleCtx) -> R): R
-}
-```
-
-支持传播行为：REQUIRED / REQUIRES_NEW / SUPPORTS / NOT_SUPPORTED
-
-### 反模式
-
-```kotlin
-// ❌ 外部 IO 在事务内
-globalTx.withTx(ctx) {
-    val result = externalApi.call()  // 网络 IO 占住事务连接
-    repo.save(mc, entity)
-}
-
-// ✅ 先做 IO，再开事务
-val result = externalApi.call()
-globalTx.withTx(ctx) { txCtx -> facade.save(txCtx, entity) }
-```
+> 认证详细设计见 [AUTH_DESIGN.md](AUTH_DESIGN.md)
 
 ## 目录结构
 
@@ -202,7 +101,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   ├── webhooks/               # WebhookController (Apple/Google IAP REST)
 │   └── wellknown/              # JwksController
 ├── entity/                      # Jimmer interface entity (直出 GraphQL)
-│   ├── common/                 # 基类: BaseEntity, BaseAppEntity, UUIDProps, MutableProps, etc.
+│   ├── common/                 # 基类: BaseEntity, BaseAppEntity, UUIDProps, MutableProps, SoftDeletableProps
 │   ├── ai/                     # ScanRecord, ScanCollection, ScanCollectionItem, AgnesKey, ImageRef
 │   ├── auth/                   # Idp, IdpIdentity, AppToIdpRelation, AppUserToIdpIdentityRelation, AppUserRefreshToken, AppUserToInstallRelation
 │   ├── pay/                    # Subscription, StoreNotification
@@ -226,7 +125,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   │   ├── AiFacade.kt, ScanCollectionFacade.kt
 │   │   ├── handler/ScanAggHandler.kt, ScanCollectionAggHandler.kt
 │   │   ├── repo/
-│   │   └── service/            # AI infra（SpringAiScanRunner, AgnesKeyStore, etc.）
+│   │   └── service/            # AI infra（SpringAiScanRunner, AgnesKeyStore, AgnesChatClientFactory）
 │   ├── pay/
 │   │   ├── PayFacade.kt
 │   │   ├── handler/PayAggHandler.kt, PayWebhookHandler.kt
@@ -236,8 +135,8 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   │   ├── handler/FeedbackAggHandler.kt
 │   │   └── repo/
 │   ├── media/
-│   │   ├── MediaFacade.kt
-│   │   ├── handler/MediaAggHandler.kt
+│   │   ├── StorageFacade.kt
+│   │   ├── handler/StorageAggHandler.kt
 │   │   └── repo/
 │   ├── app/
 │   │   ├── AppConfigFacade.kt
@@ -247,7 +146,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │       ├── DemoFacade.kt
 │       ├── handler/TodoAggHandler.kt
 │       └── repo/
-├── dto/                         # 共享 DTO (Page, OperationResult, 模块间 req/resp)
+├── dto/                         # 共享 DTO (Page, OperationResult, CursorQueryInput)
 ├── infra/
 │   ├── db/                     # ModuleCtx, ModuleCtxFactory, ClusterRouter, ClusterSqlPair, UuidV7
 │   ├── tx/                     # TxRunner, GlobalTxRunner, TxPropagation
@@ -255,7 +154,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   │                           # ReadWriteRoutingDataSource, AppScopedFilter, TimestampDraftInterceptor
 │   │                           # OperationContextHolder
 │   ├── repo/                   # CrudRepoTemplate, AppCrudRepoTemplate, FilterGroupResolver
-│   ├── service/                # CrudServiceOps (缓存层)
+│   ├── codec/                  # Base58 (UUID ↔ 22-char URL-safe)
 │   ├── graphql/                # OperationContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
 │   ├── http/                   # OperationContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
 │   ├── auth/                   # AuthInterceptor, AuthJwtService, AuthJwtKeys, Hashing
@@ -264,325 +163,30 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 │   ├── storage/                # ObjectStorage (interface), S3ObjectStorage, StorageConfig
 │   └── config/                 # WebConfig, JacksonConfig, TransactionConfig
 └── resources/
-    ├── schema/common/          # GraphQL 公共 scalars
-    ├── schema/customer/        # GraphQL Customer schema
+    ├── schema/common/          # GraphQL 公共 scalars + CommonFindOptions
+    ├── schema/customer/        # GraphQL Customer schema (auth, ai, demo, pay, media, cms)
     ├── db/migration/           # Flyway V1-V28
     ├── prompts/                # AI scan prompts
     └── application.yml + application-local.yml
 ```
 
-## 模块分层约定（Facade + AggHandler）
-
-### 规则
-
-| 层 | 文件 | 注解 | 职责 |
-|---|---|---|---|
-| **Facade** | `XxxFacade.kt` (模块根) | `@Service` | 构造 ModuleCtx + 简单转发（不含 TxRunner/Cache） |
-| **AggHandler** | `handler/XxxAggHandler.kt` | `@Component` | 纯业务逻辑，接收 ModuleCtx |
-
-### 完整示例 — Demo 模块
-
-```kotlin
-// ======================== DemoFacade ========================
-@Service
-class DemoFacade(
-    private val mcFactory: ModuleCtxFactory,
-    private val handler: TodoAggHandler,
-) {
-    // Queries — 无事务，Facade 只构造 mc 转发
-    fun findById(ctx: OperationContext, id: UUID): Todo? =
-        handler.findById(mcFactory.forApp(ctx), ctx.mustGetAppId(), id)
-
-    // Mutations — 直传 GraphQL input，不逐字段粘贴
-    fun create(ctx: OperationContext, input: CreateTodoInput): Todo =
-        handler.create(mcFactory.forApp(ctx), input)
-}
-
-// ======================== TodoAggHandler ========================
-@Component
-class TodoAggHandler(
-    private val todoRepo: TodoRepository,
-    private val todoItemRepo: TodoItemRepository,
-) {
-    fun findById(mc: ModuleCtx, appId: UUID, id: UUID): Todo? =
-        todoRepo.findById(mc, appId, id)
-
-    fun create(mc: ModuleCtx, input: CreateTodoInput): Todo {
-        val todo = Todo { ... }
-        todoRepo.save(mc, todo)
-        return todo
-    }
-}
-
-// ======================== DemoFetcher ========================
-@DgsComponent
-class DemoFetcher(
-    private val demoService: DemoFacade,
-    private val globalTx: GlobalTxRunner,
-    private val ctxProvider: OperationContextProvider,
-) {
-    @DgsQuery(field = "q_demo_findTodoById")
-    fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo {
-        val ctx = ctxProvider.fromDfe(dfe)
-        return demoService.findById(ctx, id) ?: throw IllegalArgumentException("Todo not found")
-    }
-
-    @DgsMutation(field = "m_demo_createTodo")
-    fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoResult {
-        val ctx = ctxProvider.fromDfe(dfe)
-        val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input) }
-        return CreateTodoResult(todo = todo)
-    }
-}
-```
-
-## 认证架构（IDP 模型）
-
-### 核心概念
-
-```
-Idp (全局)                          — 身份提供商配置（Apple/Google），一旦创建只改 name/desc
-IdpIdentity (全局)                  — IDP 下的用户身份，按 (idpId, idpIdentityId) 唯一
-AppToIdpRelation (app 级)           — App 启用了哪些 IDP
-AppUser (app 级, user 模块)         — App 内的用户
-AppUserToIdpIdentityRelation (app)  — AppUser 绑定了哪些 IDP 身份
-AppUserRefreshToken (app)           — Refresh Token
-```
-
-### 登录流程
-
-```
-1. 客户端传 idpId + credential (id_token)
-2. 验证 app 是否启用了该 IDP (auth_app_to_idp_relation)
-3. 加载 IDP 配置 (auth_idp.config)，验证 credential → 得到 accountId
-4. 找/建 IdpIdentity（全局，按 idpId + accountId 唯一）
-5. 通过 auth_appuser_to_idpidentity_relation 查该 identity 在此 app 下绑了哪个 AppUser
-   - 有 → 拿到 appUserId
-   - 没有 → 创建 AppUser → 建 relation
-6. 签发 refresh token + access token
-```
-
-### providerType 编码
-
-| 编码 | Provider |
-|------|----------|
-| 10 | Apple |
-| 20 | Google |
-
-### AuthInterceptor
-
-- **非阻塞设计**：无效 token 不拦截，只是不填充 userId
-- 需要强认证的接口由 Handler 层判断 `mc.userId ?: throw ApiError(UNAUTHORIZED)`
-- OPTIONS 请求自动跳过（CORS preflight）
-
-## 数据访问层 (Jimmer)
-
-### Entity — 直出 GraphQL
-
-Jimmer interface entity 直出为 GraphQL output type。DGS PropertyDataFetcher 按 selection set 取字段，`select(table)` 保证标量全 loaded，零转换层。
-
-```kotlin
-@Entity
-@Table(name = "demo_todo")
-interface Todo : BaseAppEntity, SoftDeletableProps {
-    val title: String
-    val done: Boolean
-    val note: String?
-    @Serialized
-    val recommend: TodoRecommend?
-}
-```
-
-- 不写 `toDto()`，DataFetcher 直返 entity
-- Schema 不声明的字段（appId, deletedAt 等）不暴露
-- UUID 通过 GraphQL 透传原始格式
-- 关联字段走 DataLoader，不走 entity getter
-- 跨模块字段用逻辑外键 `val xxxId: UUID`，不用 `@ManyToOne`
-- 模块内可用 `@ManyToOne`
-
-### Entity 基类
-
-| 基类 | 包含字段 | 用于 |
-|------|---------|------|
-| `BaseAppEntity` | `id: UUID` + `appId: UUID` + `createdAt` + `updatedAt` | 大部分 app 级实体 |
-| `BaseEntity` | `id: UUID` + `createdAt` + `updatedAt` | 全局实体（有 updatedAt） |
-| `UUIDProps` | `@Id val id: UUID` | 只需要 ID 的组合场景 |
-
-### JSONB 值对象
-
-- `data class` + `@Serialized` 注解
-- 领域模型定义在 `entity/` 下
-- `toDomain()` 转换函数放同文件
-- DateTime 在 JSONB 中存为 ISO-8601 字符串（Jimmer 默认 Jackson 行为）
-
-### Repository — CrudRepoTemplate 组合模式
-
-两个模板类，按是否需要租户隔离选用：
-
-| 模板 | 适用场景 | 签名特征 |
-|------|---------|----------|
-| `CrudRepoTemplate<E>` | 全局实体（Idp, IdpIdentity, AppInfo） | `findById(ctx, id)` |
-| `AppCrudRepoTemplate<E>` | App 级实体（Todo, AppUser 等） | `findById(ctx, appId, id)` |
-
-两者都提供：
-- **Read**: `findById` / `findByIds` / `exists` / `existsByIds` / `findByCursor`
-- **Write**: `save`(→Boolean) / `batchSave`(→Int)
-- **Delete**: `deleteById`(→Boolean) / `deleteByIds`(→Int)
-
-```kotlin
-@Repository
-class TodoRepository {
-    companion object {
-        private val tpl = AppCrudRepoTemplate(Todo::class)
-        val FILTERABLE = listOf(TodoProps.TITLE, TodoProps.DONE, TodoProps.USER_ID)
-    }
-
-    fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
-    fun findByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>) = tpl.findByIds(mc, appId, ids)
-    fun save(mc: ModuleCtx, entity: Todo) = tpl.save(mc, entity)
-    fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.deleteById(mc, appId, id)
-    fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>) = tpl.deleteByIds(mc, appId, ids)
-
-    // 自定义查询直接用 mc.sql
-    fun findByCursor(mc: ModuleCtx, appId: UUID, cursor: UUID?, limit: Int, filter: TodoFilter?) =
-        tpl.findByCursor(mc, appId, cursor, limit) {
-            filter?.done?.let { where(table.done eq it) }
-        }
-}
-```
-
-**设计原则：**
-- `tpl` 放 companion object（无状态、零实例开销）
-- `CrudRepoTemplate` 用于全局实体（无 appId）；`AppCrudRepoTemplate` 用于 app 级实体（所有操作强制 appId 参数）
-- 单条操作返回 Boolean（成功/失败），batch 操作返回 Int（影响行数）
-- 自定义查询直接用 `mc.sql.createQuery(...)`，不受 template 限制
-
-### FilterGroup — 动态条件查询
-
-通用 Filter DSL，支持 AND/OR 嵌套组合：
-
-```graphql
-input FilterGroup {
-  and: [FilterExpr!]
-  or: [FilterExpr!]
-}
-input FilterExpr {
-  field: FieldFilter
-  group: FilterGroup   # 嵌套
-}
-input FieldFilter {
-  field: String!       # 字段名（白名单校验）
-  op: FilterOp!        # EQ/NE/GT/GTE/LT/LTE/IN/NIN/LIKE/IS_NULL/IS_NOT_NULL
-  value: JSON
-  values: [JSON!]
-}
-```
-
-后端使用 `FilterGroupResolver` 将 FilterGroup 转为 Jimmer 谓词：
-- **白名单校验**：通过 `TypedProp.Scalar` 列表，不在白名单的字段直接 400
-- **类型自动转换**：根据 `prop.returnClass` 自动将 JSON 值转为 UUID/Instant/Boolean 等
-
-## 多集群路由 + 读写分离
-
-### 模型
-
-每个集群有一对 KSqlClient（writer + reader）。
-
-```kotlin
-data class ClusterSqlPair(val writer: KSqlClient, val reader: KSqlClient)
-
-interface ClusterRouter {
-    fun forApp(appId: UUID): ClusterSqlPair
-}
-```
-
-### 数据流
-
-```
-Query DataFetcher:
-  opCtx.preferReader = true (默认)
-  → ModuleCtxFactory.chooseSql → pair.reader
-
-Mutation DataFetcher:
-  opCtx.preferReader = false
-  globalTx.withTx(opCtx):
-    → router.forApp(appId) → ClusterSqlPair
-    → pair.writer 开事务 → opCtx.globalTxSql = pair.writer
-    → ModuleCtxFactory.chooseSql 检测 globalTxSql != null → 复用事务 writer
-```
-
 ## GraphQL 设计
 
-### Endpoint & Schema
-
-- **Customer**: `POST /customer/core/gql` — schema 从 `schema/common/` + `schema/customer/` 合并
-- **GraphiQL**: `/apidocs/core/customer/gql`（开发环境）
-- **Admin**: `POST /admin/graphql` — 未来实现
-
-### Operation 命名
-
-```
-${query|mutation}_${module}_${action}
-```
-示例: `q_demo_findTodoById`, `m_ai_createScan`, `m_auth_login`
-
-**约定：**
-- action 动词开头：find/create/update/delete/verify/login/logout
-- 复数：`findXxxs` / `findXxxsByCursor`
-- 单个：`findXxxById`
-- batch：`batchDeleteTodos`
-
-### DateTime Scalar
-
-- **输出**: ISO-8601 UTC 字符串（`"2026-08-22T04:50:00Z"`）
-- **输入**: 接受 ISO-8601 字符串或 epoch millis 数字（兼容）
-- **JSONB 存储**: 也是 ISO-8601（Jimmer 默认 Jackson 行为，一致）
+- **Endpoint**: `POST /customer/core/gql`（需 `x-app-id` header）
+- **GraphiQL**: `/apidocs/core/customer/gql`
+- **Operation 命名**: `${q|m}_${module}_${action}`（如 `q_demo_findTodos`, `m_auth_login`）
+- **DateTime**: ISO-8601 UTC 字符串（输入接受 ISO 或 epoch millis）
+- **input 全链路透传**: Fetcher→Facade→Handler 直传 input 对象
+- **Update 语义**: set/unset 防 null vs undefined 歧义
+- **Mutation 返回**: `XxxResult { success, xxx? }`
+- **DataLoader**: caching=false，通过 Facade 调用
+- **CommonFindOptions**: 通用列表查询（filter + cursor + sortBy + sortDirection + limit）
 
 ### DGS Codegen
 
 - 从 `.graphqls` 生成 Kotlin input/payload/enum types
 - output types 通过 `typeMapping` 映射到 Jimmer entity（entity 直出）
 - 生成代码包: `com.ifmix.api.core.generated`
-
-### Update Input — set/unset 防呆
-
-```graphql
-input UpdateXxxInput {
-    id: UUID!
-    set: UpdateXxxSetInput    # 有值 → SET col = value
-    unset: [XxxUnsetField!]   # 列出 → SET col = NULL
-}
-# 都没出现 → 不动 | 冲突 → unset 优先
-```
-
-### GraphQL input 全链路透传
-
-```kotlin
-// Fetcher → Facade → Handler 直传 input 对象，不逐字段粘贴
-@DgsMutation(field = "m_demo_createTodo")
-fun createTodo(..., @InputArgument input: CreateTodoInput): CreateTodoResult {
-    val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input) }
-    return CreateTodoResult(todo = todo)
-}
-```
-
-### Mutation Result
-
-```graphql
-type XxxResult {
-    success: Boolean!
-    xxx: Xxx          # 客户端 select 了才回查
-}
-```
-
-DataFetcher 按 `selectionSet` 判断是否回查 entity，避免无用查询。
-
-### DataLoader
-
-- `caching = false`（只 batching，防 mutation 间脏读）
-- 关联字段走 DataLoader 批量加载
-- DataLoader 通过 Facade 调用，不直接注入 repo
-- mutation 中 DataLoader 走 globalTxSql（writer），确保读到最新
 
 ## 缓存分层
 
@@ -598,86 +202,18 @@ DB (via Jimmer KSqlClient)
   → mutation: preferReader=false → 主库（通过 GlobalTxRunner 走 writer）
 ```
 
-## 数据库约定
-
-### 表名规则
-
-- 模块前缀: `{module}_`（如 `auth_`, `demo_`, `pay_`）
-- 实体名小写下划线
-- 关系表: `{module}_{from}_to_{to}_relation`
-
-### 全部表
-
-| 模块 | 表名 | 级别 | Entity |
-|------|------|------|--------|
-| auth | `auth_idp` | 全局 | Idp |
-| auth | `auth_idpidentity` | 全局 | IdpIdentity |
-| auth | `auth_app_to_idp_relation` | app | AppToIdpRelation |
-| auth | `auth_appuser_to_idpidentity_relation` | app | AppUserToIdpIdentityRelation |
-| auth | `auth_appuser_refreshtoken` | app | AppUserRefreshToken |
-| auth | `auth_appuser_to_install_relation` | app | AppUserToInstallRelation |
-| user | `user_appuser` | app | AppUser |
-| demo | `demo_todo` | app | Todo |
-| demo | `demo_todo_item` | app | TodoItem |
-| app | `app_config_revision` | app | AppConfigRevision |
-| app | `app_info` | 全局 | AppInfo |
-| ai | `ai_scan_record` | app | ScanRecord |
-| ai | `ai_scan_collection` | app | ScanCollection |
-| ai | `ai_scan_collection_item` | app | ScanCollectionItem |
-| ai | `ai_agnes_key` | app | AgnesKey |
-| pay | `pay_subscription` | app | Subscription |
-| pay | `pay_store_notification` | app | StoreNotification |
-| media | `media_upload_record` | app | UploadRecord |
-| cms | `cms_feedback` | app | Feedback |
-
-### 其他约定
-
-- **主键**: UUIDv7 (时间有序，支持游标分页)
-- **游标分页**: `WHERE id < cursor ORDER BY id DESC LIMIT n+1`
-- **读写分离**: ClusterRegistry + ClusterRouter + ReadWriteRoutingDataSource
-- **软删除**: `deletedAt` 列（继承 SoftDeletableProps）
-- **Flyway**: V1-V28, 不可回退
-
-### UUID 表示
-
-- **PG/Jimmer**: 原生 UUID (16 bytes)
-- **API 输出**: 原始 36 字符格式（如 `01a0284c-e957-732a-9c00-0d3738224dab`）
-- **objectKey（URL 场景）**: 22 位 Base58（短、URL-safe）— 待实现
-
-### 枚举
-
-- **GraphQL**: input/output 全部 `Int`，schema 注释写含义
-- **PG**: SMALLINT
-- **Kotlin Model**: `val status: Int`
-- **内部辅助常量**: 放 model class 嵌套 object（如 `ScanRecord.Status.COMPLETED`）
-- **跨模块共享**: 放 `entity/shared/`
-- **编码规则**: 0 保留不用，从 10 开始步长 10（已有编码不变）
-
-## 模块职责
-
-| 模块 | 功能 |
-|------|------|
-| auth | IDP 登录(Apple/Google)、AppUser↔IDP 绑定、Refresh Token 轮转、Access Token(EdDSA) |
-| user | AppUser CRUD |
-| ai | 古物扫描创建(限流+预签名上传)、AI 识别(Spring AI 多模态)、Key 轮换+模型 fallback、收藏管理 |
-| demo | Todo 清单 CRUD、嵌入 items、游标分页、FilterGroup 示例 |
-| pay | Apple/Google 购买验证、订阅管理、Webhook(JWS 验签)、Tier 映射 |
-| cms | 用户反馈 |
-| media | 预签名上传/下载 |
-| app | AppConfig 版本管理、AppInfo |
-
 ## 存储上传
 
-- objectKey 格式: `app_{appId}/i_{installId}/...` 或 `app_{appId}/u_{userId}/...`
-- 强制格式校验，禁止路径遍历 (`..`)
-- `presignUpload` 不要求登录
-- `presignDownload` 暂不做权限验证
+- objectKey: `app/{base58_appId}/{category}/install/{base58_installId}/{base58_mediaId}.{ext}`
+- Base58 仅用于 objectKey（URL 场景）
+- presignUpload 不要求登录
+- 格式校验防路径遍历
 
 ## AI 扫描
 
-- **模型 fallback**: 主模型 → fallback 列表
-- **Key 重试**: 每个模型遍历所有可用 key（内层循环）
-- **预扣配额**: 请求前扣减，失败归还
+- 模型 fallback: 主模型 → fallback 列表
+- Key 重试: 每个模型遍历所有可用 key
+- 预扣配额: 请求前扣减，失败归还
 
 ## 关键设计决策
 
@@ -711,28 +247,36 @@ DB (via Jimmer KSqlClient)
 | 26 | objectKey 强格式校验 | 防路径遍历 |
 | 27 | Webhook 必须验签 | Apple JWS / Google 通过 packageName 反查 appId |
 | 28 | CacheAside 显式调用 | 不用 @Cacheable 魔法 |
+| 29 | objectKey UUID 用 Base58 | URL 场景缩短路径 |
+| 30 | CommonFindOptions + findByOptions | 通用分页查询模板（filter/cursor/sort/limit） |
 
 ## API 约定
 
-- **GraphQL endpoint**: `/customer/core/gql` (需 `x-app-id` header)
-- **GraphiQL**: `/apidocs/core/customer/gql`（DGS 提供）
-- **Webhook (REST)**: `POST /webhooks/iap/*` (JWS 验签)
-- **JWKS (REST)**: `GET /.well-known/jwks`
-- **所有 REST 响应包装**: `Envelope<T>` (`{code, msg, data}`)
+- GraphQL: `/customer/core/gql`（`x-app-id` 必填）
+- Webhook: `POST /webhooks/iap/*`（JWS 验签）
+- JWKS: `GET /.well-known/jwks`
+- REST 响应: `Envelope<T>` (`{code, msg, data}`)
 
 ## 环境变量
 
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
 | `PG_WRITER_URL` | PostgreSQL 主库 | `jdbc:postgresql://localhost:5432/ifmix_core_local` |
-| `PG_READER_URL` | PostgreSQL 从库 | 同主库 |
-| `PG_USERNAME` / `PG_PASSWORD` | 数据库凭证 | `postgres` |
+| `PG_READER_URL` | 从库 | 同主库 |
+| `PG_USERNAME`/`PG_PASSWORD` | 凭证 | `postgres` |
 | `REDIS_URL` | Redis | `redis://localhost:6379` |
-| `STORAGE_TYPE` | 存储类型 | `none` (启用: `s3`) |
-| `SPRING_AI_OPENAI_API_KEY` | AI API Key | placeholder |
-| `SPRING_AI_OPENAI_BASE_URL` | AI 端点 | OpenAI |
+| `STORAGE_TYPE` | 存储 | `none` |
+| `SPRING_AI_OPENAI_API_KEY` | AI Key | placeholder |
 | `AUTH_ISSUER` | JWT issuer | `ifmix` |
-| `PORT` | 服务端口 | `3001` |
+| `PORT` | 端口 | `3001` |
+
+## 详细文档
+
+| 文档 | 内容 |
+|------|------|
+| [编码指南](CODING_GUIDE.md) | Context 模型、事务管理、分层示例代码、Entity 设计、CrudRepoTemplate |
+| [认证设计](AUTH_DESIGN.md) | IDP 模型、登录流程、providerType |
+| [数据库约定](DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup、游标分页 |
 
 ## 构建与测试
 
@@ -749,15 +293,13 @@ DB (via Jimmer KSqlClient)
 
 ## 迁移历史
 
-| 日期 | 事项 | 状态 |
-|------|------|------|
-| 2026-08-18 | CrudRepoOps → CrudRepoTemplate | ✅ |
-| 2026-08-19 | jOOQ → Jimmer 全量迁移 | ✅ |
-| 2026-08-20 | 分层规范化（ModuleCtx + AggHandler + GlobalTx） | ✅ |
-| 2026-08-22 | CrudRepoTemplate 分 Global/App 两类 | ✅ |
-| 2026-08-22 | 表名重命名（去 core_ 加模块前缀）| ✅ |
-| 2026-08-22 | payment→pay, storage→media 包名重命名 | ✅ |
-| 2026-08-22 | DateTime 统一为 ISO-8601 字符串 | ✅ |
-| 2026-08-23 | Auth 重设计：去掉 AuthTenant，引入 IDP 模型 | ✅ |
-| 2026-08-23 | BaseEntity / BaseAppEntity / UUIDProps 基类 | ✅ |
-| 2026-08-23 | user 模块独立（AppUser 从 auth 移出）| ✅ |
+| 日期 | 事项 |
+|------|------|
+| 2026-08-19 | jOOQ → Jimmer |
+| 2026-08-20 | 分层规范化（ModuleCtx + AggHandler + GlobalTx） |
+| 2026-08-22 | CrudRepoTemplate 分两类 |
+| 2026-08-22 | 表名重命名 + payment→pay, storage→media |
+| 2026-08-22 | DateTime 统一 ISO-8601 |
+| 2026-08-23 | Auth 重设计：IDP 模型 |
+| 2026-08-23 | BaseEntity/BaseAppEntity 基类 |
+| 2026-08-23 | CommonFindOptions 通用查询 |

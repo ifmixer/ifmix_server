@@ -3,6 +3,7 @@ package com.ifmix.api.core.infra.repo
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.generated.types.CommonFindOptions
 import com.ifmix.api.core.generated.types.SortDirection
+import com.ifmix.api.core.infra.codec.Base58
 import com.ifmix.api.core.infra.db.ModuleCtx
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
@@ -189,8 +190,9 @@ class AppCrudRepoTemplate<E : Any>(
         }
         val desc = options?.sortDirection != SortDirection.ASC
 
-        // 解析复合 cursor: sortBy==id → "{id}", 否则 → "{sortValue},{id}"
-        val cursorParts = options?.cursor?.split(",", limit = 2)
+        // 解析复合 cursor（整体 Base58 编码）: 解码后 sortBy==id → "{id}", 否则 → "{sortValue},{id}"
+        val rawCursor = options?.cursor?.let { runCatching { Base58.decodeString(it) }.getOrNull() }
+        val cursorParts = rawCursor?.split(",", limit = 2)
         val cursorId: UUID?
         val cursorSortValue: String?
         if (sortBy == this.id) {
@@ -249,11 +251,12 @@ class AppCrudRepoTemplate<E : Any>(
         }.limit(limit + 1).execute()
 
         return Page.of(rows, limit) { entity ->
-            if (sortBy == this.id) {
+            val raw = if (sortBy == this.id) {
                 extractId(entity).toString()
             } else {
                 "${extractField(entity, sortBy)},${extractId(entity)}"
             }
+            Base58.encodeString(raw)
         }
     }
 
