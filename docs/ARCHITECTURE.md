@@ -395,7 +395,7 @@ interface Todo : BaseAppEntity, SoftDeletableProps {
 
 - 不写 `toDto()`，DataFetcher 直返 entity
 - Schema 不声明的字段（appId, deletedAt 等）不暴露
-- UUID 通过 Jackson 全局模块自动转 Base58
+- UUID 通过 GraphQL 透传原始格式
 - 关联字段走 DataLoader，不走 entity getter
 - 跨模块字段用逻辑外键 `val xxxId: UUID`，不用 `@ManyToOne`
 - 模块内可用 `@ManyToOne`
@@ -641,9 +641,8 @@ DB (via Jimmer KSqlClient)
 ### UUID 表示
 
 - **PG/Jimmer**: 原生 UUID (16 bytes)
-- **API/Redis/前端**: 22 位 Base58 (Bitcoin 字母表, URL-safe)
-- **Jackson**: 全局模块自动转换 (`JacksonConfig.uuidBase58Module`)
-- **工具**: `infra/codec/Base58.kt` — `uuid.toBase58()` / `str.toUuidFromBase58()`
+- **API 输出**: 原始 36 字符格式（如 `01a0284c-e957-732a-9c00-0d3738224dab`）
+- **objectKey（URL 场景）**: 22 位 Base58（短、URL-safe）— 待实现
 
 ### 枚举
 

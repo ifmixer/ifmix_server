@@ -4,6 +4,7 @@ import com.ifmix.api.core.dto.storage.PresignDownloadResult
 import com.ifmix.api.core.dto.storage.PresignUploadResult
 import com.ifmix.api.core.generated.types.PresignDownloadInput
 import com.ifmix.api.core.generated.types.PresignUploadInput
+import com.ifmix.api.core.infra.codec.toBase58
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.storage.ObjectStorage
@@ -37,7 +38,7 @@ class StorageAggHandler(
             else -> throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
         }
 
-        val objectKey = "app/$appId/$category/install/$installId/$mediaId.$ext"
+        val objectKey = "app/${appId.toBase58()}/$category/install/${installId.toBase58()}/${mediaId.toBase58()}.$ext"
         val uploadUrl = objectStorage.presignUpload("ugc", objectKey, mimeType, Duration.ofSeconds(300))
         val downloadUrl = objectStorage.getPublicUrl("ugc", objectKey)
 

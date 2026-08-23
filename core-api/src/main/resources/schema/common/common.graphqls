@@ -1,4 +1,4 @@
-scalar UUID       # 22-char Base58
+scalar UUID       # 36-char standard format
 scalar DateTime   # ISO-8601 UTC string
 scalar JSON       # 透传 JSONB
 
