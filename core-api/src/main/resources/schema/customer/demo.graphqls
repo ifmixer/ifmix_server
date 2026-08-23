@@ -23,6 +23,7 @@ type TodoRecommend {
 type TodoRecItem {
     recId: UUID!
     title: String
+    priority: Int!
     createdAt: DateTime!
     updatedAt: DateTime
 }
@@ -76,6 +77,7 @@ input TodoRecommendInput {
 input TodoRecItemInput {
     recId: UUID!
     title: String
+    priority: Int!
     createdAt: DateTime!
     updatedAt: DateTime
 }
