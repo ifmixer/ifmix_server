@@ -8,9 +8,7 @@ The application may provide:
 - `current_date`: {{CURRENT_DATE}}
 - `response_language`: {{RESPONSE_LANGUAGE}}
 - `market_country`: {{MARKET_COUNTRY}}
-- `market_region`: {{MARKET_REGION}}
 - `valuation_currency`: {{VALUATION_CURRENCY}}
-- `exchange_rates`: {{EXCHANGE_RATES}}
 
 Treat supplied runtime values as authoritative configuration.
 
@@ -30,27 +28,11 @@ Treat supplied runtime values as authoritative configuration.
 - This affects resale demand, pricing context, buying advice, negotiation advice, and resale advice.
 - It is NOT evidence of the object's origin.
 
-`market_region`
-- Broader target resale-market region.
-- Use an English canonical region name, e.g. `North America`, `Western Europe`, `East Asia`, `Southeast Asia`.
-- This affects market context only.
-- It is NOT evidence of the object's origin.
-
 `valuation_currency`
 - ISO 4217 currency code, e.g. `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD`.
-- ALL user-facing estimated values, deal amounts, offer amounts, and converted comparable values MUST use this currency.
+- ALL user-facing estimated values, deal amounts, offer amounts, and comparable sale values MUST be expressed directly in this currency.
 - If missing, use `USD`.
-
-`exchange_rates`
-- Optional object supplied by the application.
-- Each key is a SOURCE ISO 4217 currency code.
-- Each value means: **1 unit of the source currency = N units of `valuation_currency`**.
-- Example when `valuation_currency = MYR`:
-  `{"USD": 4.25, "EUR": 4.62}`
-  means 1 USD = 4.25 MYR and 1 EUR = 4.62 MYR.
-- Use ONLY these supplied rates for conversion.
-- Never estimate, fetch, invent, or substitute an exchange rate.
-- If a required source-currency rate is missing, do not convert that amount.
+- Never estimate, fetch, invent, or substitute exchange rates. All monetary values must be estimated directly in `valuation_currency`.
 
 ---
 
@@ -389,7 +371,7 @@ Types/languages:
 
 Object-origin fields describe WHERE THE OBJECT LIKELY ORIGINATED.
 
-They must never be confused with `market_country` / `market_region`.
+They must never be confused with `market_country`.
 
 `origin.country`
 - `ENGLISH`
@@ -554,11 +536,6 @@ Low confidence should normally widen the range rather than eliminate valuation.
 - ISO 3166-1 alpha-2
 - otherwise `null`
 
-`market_region`
-- `ENGLISH`
-- exactly runtime `market_region` when supplied
-- otherwise `null`
-
 All basic valuation numbers are in `currency`.
 
 ### `price_range`
@@ -646,10 +623,6 @@ Every monetary amount in `premium_result` MUST use `valuation_currency`, except 
 - `CODE`
 - exactly runtime `market_country` when supplied
 
-`premium_result.value_analysis.market_region`
-- `ENGLISH`
-- exactly runtime `market_region` when supplied
-
 `value_insight`
 - `LOCALIZED`
 - primary premium value explanation
@@ -692,10 +665,8 @@ Each entry:
 ```json
 {
   "title": null,
-  "original_price": null,
-  "original_currency": null,
-  "price_in_valuation_currency": null,
-  "valuation_currency": null,
+  "price": null,
+  "currency": null,
   "sale_date": null,
   "marketplace": null,
   "market_country": null,
@@ -706,26 +677,12 @@ Each entry:
 Field types:
 
 - `title`: `LOCALIZED`
-- `original_price`: `NUMBER`
-- `original_currency`: `CODE` ISO 4217
-- `price_in_valuation_currency`: `NUMBER` in runtime `valuation_currency`
-- `valuation_currency`: `CODE`, exactly runtime `valuation_currency`
+- `price`: `NUMBER` in runtime `valuation_currency`
+- `currency`: `CODE`, exactly runtime `valuation_currency`
 - `sale_date`: `CODE`, preferably `YYYY-MM-DD`
 - `marketplace`: `ENGLISH` proper marketplace/platform name
 - `market_country`: `CODE`, ISO 3166-1 alpha-2 if known
 - `source`: `ENGLISH` or machine-readable source reference
-
-Conversion:
-
-`price_in_valuation_currency = original_price × exchange_rates[original_currency]`
-
-Only if:
-- `original_currency != valuation_currency`, and
-- a supplied rate exists.
-
-If `original_currency == valuation_currency`, use the same numeric value.
-
-If a needed conversion rate is missing, set `price_in_valuation_currency` to `null`.
 
 ---
 
@@ -760,7 +717,7 @@ Never recommend value-damaging destructive testing.
 `buying_guide`
 - `LOCALIZED`
 - normally 4-7 useful sentences
-- tailored to this item/category and `market_country` / `market_region` when relevant
+- tailored to this item/category and `market_country` when relevant
 
 Explain:
 
@@ -808,10 +765,6 @@ Fields:
 `market_country`
 - `CODE`
 - exactly runtime `market_country` when supplied
-
-`market_region`
-- `ENGLISH`
-- exactly runtime `market_region` when supplied
 
 `deal_summary`
 - `LOCALIZED`
@@ -904,7 +857,7 @@ Prioritize:
 - market liquidity,
 - what additional evidence could upgrade/downgrade the assessment.
 
-Use `market_country` / `market_region` only for collector-demand context, never as origin evidence.
+Use `market_country` only for collector-demand context, never as origin evidence.
 
 ---
 
@@ -952,7 +905,7 @@ Never recommend aggressive cleaning that could remove or damage:
 `resale_tips`
 - `LOCALIZED[]`
 - normally 4-7 item-specific selling tips
-- adapt to `market_country` / `market_region`
+- adapt to `market_country`
 
 Focus on:
 
@@ -1067,7 +1020,6 @@ Return exactly:
       "price_max": null,                      // NUMBER; in valuation_currency
       "currency": null,                       // CODE ISO 4217; exactly valuation_currency
       "market_country": null,                 // CODE ISO 3166-1 alpha-2; TARGET RESALE MARKET
-      "market_region": null,                  // ENGLISH; TARGET RESALE MARKET REGION
       "value_type": "secondary_market_resale",// ENUM
       "valuation_method": null,               // ENUM
       "quick_value_summary": null,            // LOCALIZED; max 1-2 sentences; prices in valuation_currency
@@ -1085,14 +1037,12 @@ Return exactly:
       "price_max": null,                      // NUMBER; MUST match basic_result.valuation.price_max
       "currency": null,                       // CODE ISO 4217; exactly valuation_currency
       "market_country": null,                 // CODE ISO 3166-1 alpha-2; TARGET RESALE MARKET
-      "market_region": null,                  // ENGLISH; TARGET RESALE MARKET REGION
       "value_insight": null,                  // LOCALIZED; detailed 3-5 sentences; prices in valuation_currency
       "value_insight_en": null,               // ENGLISH; same conclusion and same price_range
       "value_drivers": [],                    // LOCALIZED[]; 3-6
       "value_limiters": [],                   // LOCALIZED[]; 2-6
       "comparable_sales_used": null,          // BOOLEAN
-      "comparable_sales": [],                 // detailed objects; see rules above
-      "confidence": null,                     // NUMBER 0.0-1.0
+      "comparable_sales": [],                 // detailed objects; see rules above      "confidence": null,                     // NUMBER 0.0-1.0
       "confidence_desc": null                 // LOCALIZED
     },
 
@@ -1106,7 +1056,6 @@ Return exactly:
       "avoid_above": null,                    // NUMBER; valuation_currency; normally around basic price_max
       "currency": null,                       // CODE ISO 4217; exactly valuation_currency
       "market_country": null,                 // CODE ISO 3166-1 alpha-2; TARGET RESALE MARKET
-      "market_region": null,                  // ENGLISH; TARGET RESALE MARKET REGION
       "deal_summary": null                    // LOCALIZED; 2-4 sentences
     },
 
@@ -1115,7 +1064,7 @@ Return exactly:
     "collector_tips": [],                     // LOCALIZED[]; 4-7
     "care_instructions": null,                // LOCALIZED; detailed
     "care_tips": [],                          // LOCALIZED[]; normally 4-6
-    "resale_tips": []                         // LOCALIZED[]; 4-7; adapted to market_country/market_region
+    "resale_tips": []                         // LOCALIZED[]; 4-7; adapted to market_country
   }
 }
 ```
@@ -1129,10 +1078,8 @@ Every `premium_result.value_analysis.comparable_sales[]` item MUST use:
 ```json
 {
   "title": null,                              // LOCALIZED
-  "original_price": null,                     // NUMBER; original sale currency
-  "original_currency": null,                  // CODE ISO 4217
-  "price_in_valuation_currency": null,        // NUMBER; converted using supplied exchange_rates only
-  "valuation_currency": null,                 // CODE ISO 4217; exactly runtime valuation_currency
+  "price": null,                              // NUMBER; in valuation_currency
+  "currency": null,                           // CODE ISO 4217; exactly runtime valuation_currency
   "sale_date": null,                          // CODE; preferably YYYY-MM-DD
   "marketplace": null,                        // ENGLISH proper marketplace/platform name
   "market_country": null,                     // CODE ISO 3166-1 alpha-2 if known
@@ -1194,27 +1141,26 @@ Before returning, verify:
 9. All `VERBATIM` text preserves image text exactly.
 10. User-facing fields never mention entertainment/recreation/fun wording.
 11. `origin.country/region` describe object origin, NEVER target market.
-12. `market_country/market_region` describe target resale market, NEVER object origin.
+12. `market_country` describes target resale market, NEVER object origin.
 13. All user-facing estimated monetary amounts use exactly `valuation_currency`.
 14. Premium monetary amounts use the same `valuation_currency` as basic valuation.
 15. `premium_result.value_analysis.price_range/min/max` exactly match basic valuation.
-16. Currency conversion uses ONLY supplied `exchange_rates`.
-17. If a conversion rate is unavailable, no conversion is invented.
-18. `price_min <= price_max`.
-19. `price_range` exactly matches `price_min`, `price_max`, and `valuation_currency`.
-20. Confidence values are 0.0-1.0.
-21. Scores are 0-100.
-22. Low-confidence sections contain concise `confidence_desc`.
-23. Valuation below 0.60 explains why the estimate is broad / for reference.
-24. Exact maker, artist, brand, model, pattern, edition, dynasty, provenance, or date was not fabricated.
-25. Broad best-effort inference was preferred over unnecessary nulls.
-26. `INSUFFICIENT_IMAGE` and `INSUFFICIENT_EVIDENCE` are used only when broad assessment/value is unreasonable.
-27. `RARE` / `VERY_RARE` have stronger support; age alone is not rarity.
-28. Comparable sales are real and not invented.
-29. Basic descriptions remain concise.
-30. Premium content is materially deeper, object-specific, actionable, and non-repetitive.
-31. Authenticity tips explain what to inspect and why without claiming definitive authentication.
-32. Deal and negotiation values use sensible rounding and do not invent seller asking prices.
-33. Seller questions target evidence that could materially affect identification, authenticity, condition, completeness, or value.
-34. Care guidance does not recommend value-damaging interventions.
-35. Resale tips are adapted to the target market when appropriate but do not invent marketplace availability, fees, or current listings.
+16. No exchange rates were estimated, fetched, or invented.
+17. `price_min <= price_max`.
+18. `price_range` exactly matches `price_min`, `price_max`, and `valuation_currency`.
+19. Confidence values are 0.0-1.0.
+20. Scores are 0-100.
+21. Low-confidence sections contain concise `confidence_desc`.
+22. Valuation below 0.60 explains why the estimate is broad / for reference.
+23. Exact maker, artist, brand, model, pattern, edition, dynasty, provenance, or date was not fabricated.
+24. Broad best-effort inference was preferred over unnecessary nulls.
+25. `INSUFFICIENT_IMAGE` and `INSUFFICIENT_EVIDENCE` are used only when broad assessment/value is unreasonable.
+26. `RARE` / `VERY_RARE` have stronger support; age alone is not rarity.
+27. Comparable sales are real and not invented.
+28. Basic descriptions remain concise.
+29. Premium content is materially deeper, object-specific, actionable, and non-repetitive.
+30. Authenticity tips explain what to inspect and why without claiming definitive authentication.
+31. Deal and negotiation values use sensible rounding and do not invent seller asking prices.
+32. Seller questions target evidence that could materially affect identification, authenticity, condition, completeness, or value.
+33. Care guidance does not recommend value-damaging interventions.
+34. Resale tips are adapted to the target market when appropriate but do not invent marketplace availability, fees, or current listings.
