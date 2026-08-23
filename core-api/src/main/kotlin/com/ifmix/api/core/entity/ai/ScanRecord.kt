@@ -24,7 +24,7 @@ interface ScanRecord : BaseAppEntity, SoftDeletableProps {
 
     val status: Int
     val clientIp: String?
-    val installId: UUID?
+    val installId: UUID
     val userId: UUID?
     val lang: String?
     val country: String?

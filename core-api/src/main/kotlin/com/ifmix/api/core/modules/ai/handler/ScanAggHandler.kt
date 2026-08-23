@@ -77,7 +77,7 @@ class ScanAggHandler(
             this.premiumResult = result.premiumResult
             this.status = 200
             this.clientIp = result.clientIp
-            this.installId = sc.op.installId
+            this.installId = sc.op.mustGetInstallId()
             this.userId = sc.op.userId
             this.lang = result.locale
             this.country = result.country

@@ -12,10 +12,12 @@ ModuleCtx           模块调用级     构造于: Facade (ModuleCtxFactory.forA
 
 ### RequestContext
 
+从 HTTP 请求头解析的纯请求信息。
+
 ```kotlin
 data class RequestContext(
     val appId: UUID?, val installId: UUID?, val userId: UUID?,
-    val lang: String?, val currency: String?, val country: String?,
+    val locale: String?, val currency: String?, val country: String?,
     val clientPlatform: ClientPlatform?, val clientIp: String?,
 )
 ```

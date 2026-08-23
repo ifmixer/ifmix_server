@@ -10,7 +10,7 @@ import com.ifmix.api.core.dto.ai.ScanInput
  */
 object ScanPrompt {
 
-    private val template: String = loadResource("prompts/scan-system-simple.md")
+    private val template: String = loadResource("prompts/scan-system_20260823.md")
 
     private fun loadResource(path: String): String =
         ScanPrompt::class.java.classLoader.getResourceAsStream(path)
@@ -27,8 +27,8 @@ object ScanPrompt {
 
         val prompt = template
             .replace("{{CURRENT_DATE}}", input.date.toString())
-            .replace("{{RESPONSE_LANGUAGE}}", resolvedLang)
-            .replace("{{MARKET_COUNTRY}}", resolvedRegion)
+            .replace("{{RESPONSE_LOCALE}}", resolvedLang)
+            .replace("{{MARKET_REGION}}", resolvedRegion)
             .replace("{{VALUATION_CURRENCY}}", resolvedCurrency)
 
         return prompt

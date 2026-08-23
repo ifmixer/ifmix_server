@@ -257,6 +257,19 @@ DB (via Jimmer KSqlClient)
 - JWKS: `GET /.well-known/jwks`
 - REST 响应: `Envelope<T>` (`{code, msg, data}`)
 
+### 请求头
+
+| Header | 格式 | 说明 |
+|--------|------|------|
+| `x-app-id` | UUID | 应用 ID（必填） |
+| `x-install-id` | UUID | 设备安装 ID |
+| `x-locale` | IETF BCP 47 | 用户语言偏好，如 `zh-CN`, `en-US`, `ja-JP` |
+| `x-country` | ISO 3166-1 alpha-2, 大写 | 用户所在国家，如 `US`, `GB`, `JP`, `MY`, `SG`, `CN` |
+| `x-currency` | ISO 4217, 大写 | 用户货币偏好，如 `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD` |
+| `x-client-platform` | `ios` \| `android` | 客户端平台 |
+| `x-native-version` | 字符串 | 原生版本号 |
+| `x-js-version` | 字符串 | JS Bundle 版本号 |
+
 ## 环境变量
 
 | 变量 | 用途 | 默认值 |
