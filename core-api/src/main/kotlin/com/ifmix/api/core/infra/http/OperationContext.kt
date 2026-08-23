@@ -24,7 +24,7 @@ data class OperationContext(
     val appId get() = req.appId
     val installId get() = req.installId
     val userId get() = req.userId
-    val lang get() = req.lang
+    val locale get() = req.locale
     val currency get() = req.currency
     val country get() = req.country
     val clientPlatform get() = req.clientPlatform

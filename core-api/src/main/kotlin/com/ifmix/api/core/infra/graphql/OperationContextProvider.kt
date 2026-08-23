@@ -40,7 +40,7 @@ class OperationContextProvider {
         val reqCtx = RequestContext(
             appId = parseUuid(servletRequest.getHeader("x-app-id")),
             installId = parseUuid(servletRequest.getHeader("x-install-id")),
-            lang = servletRequest.getHeader("x-lang").takeIf { !it.isNullOrBlank() },
+            locale = servletRequest.getHeader("x-locale").takeIf { !it.isNullOrBlank() },
             currency = servletRequest.getHeader("x-currency").takeIf { !it.isNullOrBlank() },
             country = servletRequest.getHeader("x-country").takeIf { !it.isNullOrBlank() },
             clientPlatform = ClientPlatform.fromHeader(servletRequest.getHeader("x-client-platform")),

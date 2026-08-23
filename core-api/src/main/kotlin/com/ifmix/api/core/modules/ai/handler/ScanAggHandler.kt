@@ -41,7 +41,7 @@ class ScanAggHandler(
         val scanInput = ScanInput(
             scanId=scanId,
             items = resolved,
-            lang = opCtx.lang,
+            locale = opCtx.locale,
             country = opCtx.country,
             currency = opCtx.currency,
         )
@@ -55,7 +55,7 @@ class ScanAggHandler(
         return AiScanResult(
             scanId = scanId,
             appId = opCtx.mustGetAppId(),
-            lang = opCtx.lang,
+            locale = opCtx.locale,
             country = opCtx.country,
             currency = opCtx.currency,
             clientIp = opCtx.clientIp,
@@ -79,7 +79,7 @@ class ScanAggHandler(
             this.clientIp = result.clientIp
             this.installId = sc.op.installId
             this.userId = sc.op.userId
-            this.lang = result.lang
+            this.lang = result.locale
             this.country = result.country
             this.currency = result.currency
             this.userDisplayName = null

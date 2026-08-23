@@ -10,7 +10,7 @@ data class RequestContext(
     val appId: UUID? = null,
     val installId: UUID? = null,
     val userId: UUID? = null,
-    val lang: String? = null,
+    val locale: String? = null,
     val currency: String? = null,
     val country: String? = null,
     val clientPlatform: ClientPlatform? = null,

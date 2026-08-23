@@ -30,12 +30,12 @@ class OperationContextResolutionTest {
         mvc.perform(
             get("/customer/query/core/ctx/echo")
                 .header(RequestHeaders.APP_ID, validAppId)
-                .header(RequestHeaders.LANG, "en")
+                .header(RequestHeaders.LOCALE, "en")
                 .header(RequestHeaders.CLIENT_PLATFORM, "ios")
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.appId").value(validAppId))
-            .andExpect(jsonPath("$.data.lang").value("en"))
+            .andExpect(jsonPath("$.data.locale").value("en"))
             .andExpect(jsonPath("$.data.platform").value("IOS"))
     }
 
@@ -73,7 +73,7 @@ class OperationContextResolutionTest {
         @GetMapping("/customer/query/core/ctx/echo")
         fun echo(ctx: OperationContext): Map<String, Any?> = mapOf(
             "appId" to ctx.appId,
-            "lang" to ctx.lang,
+            "locale" to ctx.locale,
             "platform" to ctx.clientPlatform?.name,
         )
     }

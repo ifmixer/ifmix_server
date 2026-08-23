@@ -613,7 +613,7 @@ It must:
 
 ### Currency and market contract
 
-Every monetary amount in `premium_result` MUST use `valuation_currency`, except explicitly labeled `original_price` inside comparable-sale records.
+Every monetary amount in `premium_result` MUST use `valuation_currency`.
 
 `premium_result.value_analysis.currency`
 - `CODE`
@@ -1042,7 +1042,8 @@ Return exactly:
       "value_drivers": [],                    // LOCALIZED[]; 3-6
       "value_limiters": [],                   // LOCALIZED[]; 2-6
       "comparable_sales_used": null,          // BOOLEAN
-      "comparable_sales": [],                 // detailed objects; see rules above      "confidence": null,                     // NUMBER 0.0-1.0
+      "comparable_sales": [],                 // detailed objects; see rules above
+      "confidence": null,                     // NUMBER 0.0-1.0
       "confidence_desc": null                 // LOCALIZED
     },
 

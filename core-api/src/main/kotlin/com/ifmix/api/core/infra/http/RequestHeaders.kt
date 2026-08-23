@@ -4,7 +4,7 @@ package com.ifmix.api.core.infra.http
 object RequestHeaders {
     const val APP_ID = "x-app-id"
     const val INSTALL_ID = "x-install-id"
-    const val LANG = "x-lang"
+    const val LOCALE = "x-locale"
     const val CURRENCY = "x-currency"
     const val COUNTRY = "x-country"
     const val NATIVE_VERSION = "x-native-version"

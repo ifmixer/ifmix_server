@@ -21,7 +21,7 @@ data class ScanInput(
     /** 一张或多张图片 */
     val items: List<ScanMediaItem>,
     /** 用户语言偏好（BCP-47，如 zh-CN, en-US, ja-JP） */
-    val lang: String? = null,
+    val locale: String? = null,
     /** 用户所在国家/地区（ISO 3166-1 alpha-2，如 CN, US, JP） */
     val country: String? = null,
     /** 用户货币偏好（ISO 4217，如 CNY, USD, JPY） */

@@ -21,7 +21,7 @@ object ScanPrompt {
      * Build the complete system prompt with runtime values filled in.
      */
     fun systemPrompt(input: ScanInput): String {
-        val resolvedLang = input.lang?.takeIf { it.isNotBlank() } ?: "en-US"
+        val resolvedLang = input.locale?.takeIf { it.isNotBlank() } ?: "en-US"
         val resolvedCurrency = input.currency?.takeIf { it.isNotBlank() } ?: "USD"
         val resolvedRegion = input.country?.takeIf { it.isNotBlank() } ?: "Not specified"
 
