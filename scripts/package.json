@@ -1,0 +1,14 @@
+{
+  "name": "ifmix-server-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "schema:snapshot": "tsx schema-diff.ts --snapshot",
+    "schema:diff": "tsx schema-diff.ts --diff",
+    "schema:list": "tsx schema-diff.ts --list"
+  },
+  "devDependencies": {
+    "@graphql-inspector/cli": "^4.0.0",
+    "tsx": "^4.0.0"
+  }
+}

@@ -1,0 +1,4 @@
+# Ignore generated snapshots, keep the directory
+schema-versions/
+!schema-versions/.gitkeep
+node_modules/
