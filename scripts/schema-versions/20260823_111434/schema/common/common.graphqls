@@ -1,0 +1,25 @@
+scalar UUID       # 22-char Base58
+scalar DateTime   # ISO-8601 UTC string
+scalar JSON       # 透传 JSONB
+
+type OperationResult {
+    success: Boolean!
+    modifiedCount: Int
+}
+
+enum SortDirection {
+    ASC
+    DESC
+}
+
+"通用列表查询参数"
+input FindOptions {
+    filter: FilterGroup
+    cursor: String
+    sortBy: String
+    sortDirection: SortDirection
+    limit: Int
+}
+
+type Query
+type Mutation

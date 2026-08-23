@@ -1,0 +1,14 @@
+input SubmitFeedbackInput {
+    scanRecordId: UUID
+    "反馈分类。100=LIKED, 200=PRICE_TOO_HIGH, 210=PRICE_TOO_LOW, 220=PRICE_MISSING, 300=WRONG_IDENTIFICATION, 400=FEATURE_REQUEST, 410=MORE_RECOMMENDATIONS"
+    category: Int!
+    comment: String
+}
+
+type SubmitFeedbackResult {
+    id: UUID!
+}
+
+extend type Mutation {
+    m_cms_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackResult!
+}

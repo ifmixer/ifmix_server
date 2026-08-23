@@ -1,0 +1,17 @@
+input verifyIapPurchaseInput {
+    "购买平台。100=APPLE, 200=GOOGLE"
+    platform: Int!
+    productId: String!
+    signedTransaction: String
+    purchaseToken: String
+}
+
+type VerifyIapPurchaseResult {
+    "付费等级。100=FREE, 200=PRO, 300=ENTERPRISE"
+    tier: Int!
+    expiresAt: DateTime
+}
+
+extend type Mutation {
+    m_pay_verifyIapPurchase(input: verifyIapPurchaseInput!): VerifyIapPurchaseResult!
+}
