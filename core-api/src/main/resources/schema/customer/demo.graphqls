@@ -49,7 +49,7 @@ extend type Query {
     q_demo_findTodoById(id: UUID!): Todo!
     q_demo_findTodosByIds(ids: [UUID!]!): [Todo!]!
     "动态条件查询。可过滤字段: title(String), done(Boolean), userId(UUID), note(String), createdAt(DateTime), updatedAt(DateTime)"
-    q_demo_findTodos(options: FindOptions): TodoPage!
+    q_demo_findTodos(options: CommonFindOptions): TodoPage!
 }
 
 # --- Mutation: Create ---
@@ -118,7 +118,7 @@ input UpdateTodoItemsMutationInput {
 }
 
 input CreateTodoItemForTodoInput {
-    todoId: UUID!                  # 新建时需要指定挂到哪个 todo
+    todoId: UUID!
     content: String!
     done: Boolean
     note: String
@@ -145,14 +145,11 @@ type UpdateTodoItemsResult {
 }
 
 # --- Mutation: Delete ---
-type DeleteTodoResult {
-    success: Boolean!
-}
 
 extend type Mutation {
     m_demo_createTodo(input: CreateTodoInput!): CreateTodoResult!
     m_demo_updateTodo(input: UpdateTodoInput!): UpdateTodoResult!
     m_demo_batchUpdateTodoItems(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsResult!
-    m_demo_deleteTodo(id: UUID!): DeleteTodoResult!
-    m_demo_batchDeleteTodos(ids: [UUID!]!): DeleteTodoResult!
+    m_demo_deleteTodo(id: UUID!): OperationResult!
+    m_demo_deleteTodoByIds(ids: [UUID!]!): OperationResult!
 }

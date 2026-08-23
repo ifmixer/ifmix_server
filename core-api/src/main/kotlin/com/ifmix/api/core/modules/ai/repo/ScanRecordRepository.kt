@@ -1,5 +1,6 @@
 package com.ifmix.api.core.modules.ai.repo
 
+import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.ai.ScanRecord
 import com.ifmix.api.core.entity.ai.ScanRecordProps
 import com.ifmix.api.core.entity.ai.appId
@@ -7,14 +8,12 @@ import com.ifmix.api.core.entity.ai.collected
 import com.ifmix.api.core.entity.ai.id
 import com.ifmix.api.core.entity.ai.userDisplayName
 import com.ifmix.api.core.entity.ai.userNotes
+import com.ifmix.api.core.generated.types.CommonFindOptions
 import com.ifmix.api.core.generated.types.ScanUnsetField
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
-import com.ifmix.api.core.infra.repo.FilterGroupResolver
-import org.babyfish.jimmer.sql.kt.ast.expression.desc
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
-import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
@@ -25,30 +24,16 @@ class ScanRecordRepository {
         val FILTERABLE = listOf(
             ScanRecordProps.STATUS,
             ScanRecordProps.COLLECTED,
-            ScanRecordProps.LANG,
             ScanRecordProps.CREATED_AT,
+            ScanRecordProps.UPDATED_AT,
+            ScanRecordProps.LANG,
+            ScanRecordProps.COUNTRY,
+            ScanRecordProps.CURRENCY,
         )
     }
 
-    fun findByCursor(mc: ModuleCtx, appId: UUID, collected: Boolean?, cursor: UUID?, limit: Int): List<ScanRecord> {
-        return mc.sql.createQuery(ScanRecord::class) {
-            where(table.appId eq appId)
-            collected?.let { where(table.collected eq it) }
-            cursor?.let { where(table.id lt it) }
-            orderBy(table.id.desc())
-            select(table)
-        }.limit(limit).execute()
-    }
-
-    fun findByFilter(mc: ModuleCtx, appId: UUID, filter: com.ifmix.api.core.generated.types.FilterGroup?, cursor: UUID?, limit: Int): List<ScanRecord> {
-        return mc.sql.createQuery(ScanRecord::class) {
-            where(table.appId eq appId)
-            FilterGroupResolver.apply(this, filter, FILTERABLE)
-            cursor?.let { where(table.id lt it) }
-            orderBy(table.id.desc())
-            select(table)
-        }.limit(limit).execute()
-    }
+    fun findScans(mc: ModuleCtx, appId: UUID, options: CommonFindOptions?): Page<ScanRecord> =
+        tpl.findByOptions(mc, appId, options, FILTERABLE)
 
     fun partialUpdate(mc: ModuleCtx, appId: UUID, id: UUID, req: UpdateScanInput): Int {
         val unset = req.unset?.toSet() ?: emptySet()

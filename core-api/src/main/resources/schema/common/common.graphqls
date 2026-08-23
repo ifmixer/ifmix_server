@@ -13,7 +13,7 @@ enum SortDirection {
 }
 
 "通用列表查询参数"
-input FindOptions {
+input CommonFindOptions {
     filter: FilterGroup
     cursor: String
     sortBy: String

@@ -6,7 +6,7 @@ import com.ifmix.api.core.entity.demo.TodoItem
 import com.ifmix.api.core.entity.demo.toDomain
 import com.ifmix.api.core.generated.types.CreateTodoInput
 import com.ifmix.api.core.generated.types.CreateTodoItemForTodoInput
-import com.ifmix.api.core.generated.types.FindOptions
+import com.ifmix.api.core.generated.types.CommonFindOptions
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.infra.db.ModuleCtx
@@ -31,7 +31,7 @@ class TodoAggHandler(
     fun findByIds(mc: ModuleCtx, appId: UUID, ids: List<UUID>): List<Todo> =
         todoRepo.findByIds(mc, appId, ids)
 
-    fun findTodos(mc: ModuleCtx, appId: UUID, options: FindOptions?): Page<Todo> =
+    fun findTodos(mc: ModuleCtx, appId: UUID, options: CommonFindOptions?): Page<Todo> =
         todoRepo.findByOptions(mc, appId, options)
 
     fun findItemsByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>): List<TodoItem> =

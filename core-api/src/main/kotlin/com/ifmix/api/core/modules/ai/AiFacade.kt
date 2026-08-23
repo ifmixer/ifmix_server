@@ -2,7 +2,7 @@ package com.ifmix.api.core.modules.ai
 
 import com.ifmix.api.core.dto.ai.AiScanResult
 import com.ifmix.api.core.dto.common.Page
-import com.ifmix.api.core.generated.types.FilterGroup
+import com.ifmix.api.core.generated.types.CommonFindOptions
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.infra.db.ModuleCtx
@@ -22,14 +22,8 @@ class AiFacade(
     fun findById(opCtx: OperationContext, id: UUID): ScanRecord? =
         scanHandler.findById(mcFactory.forApp(opCtx), id)
 
-    fun findByCursor(opCtx: OperationContext, cursor: String?, limit: Int?): Page<ScanRecord> =
-        scanHandler.findByCursorFiltered(mcFactory.forApp(opCtx), cursor, limit, null)
-
-    fun findByCursorFiltered(opCtx: OperationContext, cursor: String?, limit: Int?, collected: Boolean?): Page<ScanRecord> =
-        scanHandler.findByCursorFiltered(mcFactory.forApp(opCtx), cursor, limit, collected)
-
-    fun findByFilter(opCtx: OperationContext, filter: FilterGroup?, cursor: String?, limit: Int?): Page<ScanRecord> =
-        scanHandler.findByFilter(mcFactory.forApp(opCtx), filter, cursor, limit)
+    fun findScans(opCtx: OperationContext, options: CommonFindOptions?): Page<ScanRecord> =
+        scanHandler.findScans(mcFactory.forApp(opCtx), options)
 
     /** AI 调用在事务外 */
     fun runAiScan(opCtx: OperationContext, input: NewScanInput): AiScanResult =

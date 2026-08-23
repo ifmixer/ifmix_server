@@ -56,22 +56,13 @@ class AiFetcher(
         return aiService.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
-    @DgsQuery(field = "q_ai_findScansByCursor")
-    fun findByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ScanQueryInput?): Page<ScanRecord> {
-        val ctx = ctxProvider.fromDfe(dfe)
-        val q = input ?: ScanQueryInput()
-        return aiService.findByCursorFiltered(ctx, q.cursor, q.limit, q.collected)
-    }
-
     @DgsQuery(field = "q_ai_findScans")
     fun findScans(
         dfe: DgsDataFetchingEnvironment,
-        @InputArgument filter: FilterGroup?,
-        @InputArgument cursor: String?,
-        @InputArgument limit: Int?,
+        @InputArgument options: com.ifmix.api.core.generated.types.CommonFindOptions?,
     ): Page<ScanRecord> {
         val ctx = ctxProvider.fromDfe(dfe)
-        return aiService.findByFilter(ctx, filter, cursor, limit)
+        return aiService.findScans(ctx, options)
     }
 
     // --- Collection queries ---

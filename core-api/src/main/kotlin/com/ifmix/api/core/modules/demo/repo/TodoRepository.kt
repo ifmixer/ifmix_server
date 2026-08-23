@@ -14,14 +14,12 @@ import com.ifmix.api.core.entity.demo.note
 import com.ifmix.api.core.entity.demo.recommend
 import com.ifmix.api.core.entity.demo.userId
 import com.ifmix.api.core.entity.demo.todoId
-import com.ifmix.api.core.generated.types.FindOptions
-import com.ifmix.api.core.generated.types.SortDirection
+import com.ifmix.api.core.generated.types.CommonFindOptions
 import com.ifmix.api.core.generated.types.TodoRecommendInput
 import com.ifmix.api.core.generated.types.TodoUnsetField
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
-import com.ifmix.api.core.infra.repo.FilterGroupResolver
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
 import org.babyfish.jimmer.sql.kt.ast.table.KWeakJoin
@@ -51,23 +49,8 @@ class TodoRepository {
     fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
     fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, appId, ids)
 
-    fun findByOptions(mc: ModuleCtx, appId: UUID, options: FindOptions?): Page<Todo> {
-        val cursor = options?.cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-        val limit = (options?.limit ?: 10).coerceIn(1, 100)
-        val sortBy = options?.sortBy ?: "id"
-        val desc = options?.sortDirection != SortDirection.ASC
-
-        val rows = mc.sql.createQuery(Todo::class) {
-            where(table.appId eq appId)
-            FilterGroupResolver.apply(this, options?.filter, FILTERABLE)
-            cursor?.let { where(table.id lt it) }
-            if (desc) orderBy(table.get<Any>(sortBy).desc())
-            else orderBy(table.get<Any>(sortBy).asc())
-            select(table)
-        }.limit(limit + 1).execute()
-
-        return Page.of(rows, limit) { it.id.toString() }
-    }
+    fun findByOptions(mc: ModuleCtx, appId: UUID, options: CommonFindOptions?): Page<Todo> =
+        tpl.findByOptions(mc, appId, options, FILTERABLE)
 
     fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoInput): Int {
         val set = input.set

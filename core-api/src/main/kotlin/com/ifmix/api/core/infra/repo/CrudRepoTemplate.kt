@@ -1,11 +1,14 @@
 package com.ifmix.api.core.infra.repo
 
+import com.ifmix.api.core.dto.common.Page
+import com.ifmix.api.core.generated.types.CommonFindOptions
+import com.ifmix.api.core.generated.types.SortDirection
 import com.ifmix.api.core.infra.db.ModuleCtx
 import org.babyfish.jimmer.sql.kt.ast.expression.*
+import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
+import org.babyfish.jimmer.meta.TypedProp
 import java.util.UUID
 import kotlin.reflect.KClass
-import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
-import com.ifmix.api.core.dto.common.Page
 
 /**
  * 全局实体 CRUD 模板（无租户隔离）。
@@ -167,6 +170,93 @@ class AppCrudRepoTemplate<E : Any>(
         return Page.of(rows, limit) { idString(it) }
     }
 
+    /**
+     * 通用 CommonFindOptions 查询：filter + cursor + sortBy + sortDirection + limit。
+     * @param filterable 允许 FilterGroup 过滤的字段白名单
+     * @param sortable 允许排序的字段名白名单（默认只允许 id）
+     */
+    fun findByOptions(
+        ctx: ModuleCtx,
+        appId: UUID,
+        options: CommonFindOptions?,
+        filterable: List<TypedProp.Scalar<E, *>>,
+        sortable: Set<String> = setOf(this.id),
+        where: (KMutableRootQuery.ForEntity<E>.() -> Unit)? = null,
+    ): Page<E> {
+        val limit = (options?.limit ?: 10).coerceIn(1, 100)
+        val sortBy = (options?.sortBy ?: this.id).also {
+            require(it in sortable) { "sortBy '$it' not allowed. Allowed: $sortable" }
+        }
+        val desc = options?.sortDirection != SortDirection.ASC
+
+        // 解析复合 cursor: sortBy==id → "{id}", 否则 → "{sortValue},{id}"
+        val cursorParts = options?.cursor?.split(",", limit = 2)
+        val cursorId: UUID?
+        val cursorSortValue: String?
+        if (sortBy == this.id) {
+            cursorId = cursorParts?.firstOrNull()?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+            cursorSortValue = null
+        } else {
+            cursorSortValue = cursorParts?.firstOrNull()
+            cursorId = cursorParts?.getOrNull(1)?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+        }
+
+        val rows = ctx.sql.createQuery(entityType) {
+            where(table.get<UUID>(this@AppCrudRepoTemplate.appId) eq appId)
+            FilterGroupResolver.apply(this, options?.filter, filterable)
+            where?.invoke(this)
+
+            // cursor 条件
+            if (cursorSortValue != null && cursorId != null) {
+                val sortCol = table.get<Any>(sortBy)
+                val idCol = table.get<UUID>(this@AppCrudRepoTemplate.id)
+                // 复合 cursor: (sortBy < val) OR (sortBy = val AND id < cursorId)
+                if (desc) {
+                    where(
+                        or(
+                            sql(Boolean::class, "%e < %v") { expression(sortCol); value(cursorSortValue) },
+                            and(
+                                sql(Boolean::class, "%e = %v") { expression(sortCol); value(cursorSortValue) },
+                                idCol lt cursorId
+                            )
+                        )
+                    )
+                } else {
+                    where(
+                        or(
+                            sql(Boolean::class, "%e > %v") { expression(sortCol); value(cursorSortValue) },
+                            and(
+                                sql(Boolean::class, "%e = %v") { expression(sortCol); value(cursorSortValue) },
+                                idCol gt cursorId
+                            )
+                        )
+                    )
+                }
+            } else if (cursorId != null) {
+                if (desc) where(table.get<UUID>(this@AppCrudRepoTemplate.id) lt cursorId)
+                else where(table.get<UUID>(this@AppCrudRepoTemplate.id) gt cursorId)
+            }
+
+            // 排序: 主排序字段 + id 做 tiebreaker
+            if (desc) {
+                orderBy(table.get<Any>(sortBy).desc())
+                if (sortBy != this@AppCrudRepoTemplate.id) orderBy(table.get<UUID>(this@AppCrudRepoTemplate.id).desc())
+            } else {
+                orderBy(table.get<Any>(sortBy).asc())
+                if (sortBy != this@AppCrudRepoTemplate.id) orderBy(table.get<UUID>(this@AppCrudRepoTemplate.id).asc())
+            }
+            select(table)
+        }.limit(limit + 1).execute()
+
+        return Page.of(rows, limit) { entity ->
+            if (sortBy == this.id) {
+                extractId(entity).toString()
+            } else {
+                "${extractField(entity, sortBy)},${extractId(entity)}"
+            }
+        }
+    }
+
     // ===== Write =====
 
     fun save(ctx: ModuleCtx, entity: E): Boolean =
@@ -203,5 +293,10 @@ class AppCrudRepoTemplate<E : Any>(
         return spi.__get(id) as UUID
     }
 
+
+    private fun extractField(entity: E, field: String): Any? {
+        val spi = entity as org.babyfish.jimmer.runtime.ImmutableSpi
+        return spi.__get(field)
+    }
     private fun idString(entity: E): String? = extractId(entity).toString()
 }

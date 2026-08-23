@@ -36,7 +36,7 @@ class DemoFetcher(
     @DgsQuery(field = "q_demo_findTodos")
     fun findTodos(
         dfe: DgsDataFetchingEnvironment,
-        @InputArgument options: com.ifmix.api.core.generated.types.FindOptions?,
+        @InputArgument options: com.ifmix.api.core.generated.types.CommonFindOptions?,
     ): Page<com.ifmix.api.core.entity.demo.Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
         val page = demoService.findTodos(ctx, options)
@@ -66,17 +66,17 @@ class DemoFetcher(
     }
 
     @DgsMutation(field = "m_demo_deleteTodo")
-    fun deleteTodo(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DeleteTodoResult {
+    fun deleteTodo(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): com.ifmix.api.core.dto.common.OperationResult {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx -> demoService.deleteById(txCtx, id) }
-        return DeleteTodoResult(success = true)
+        return com.ifmix.api.core.dto.common.OperationResult(success = true)
     }
 
-    @DgsMutation(field = "m_demo_batchDeleteTodos")
-    fun batchDeleteTodos(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): DeleteTodoResult {
+    @DgsMutation(field = "m_demo_deleteTodoByIds")
+    fun deleteTodoByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): com.ifmix.api.core.dto.common.OperationResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        globalTx.withTx(ctx) { txCtx -> demoService.deleteByIds(txCtx, ids) }
-        return DeleteTodoResult(success = true)
+        val count = globalTx.withTx(ctx) { txCtx -> demoService.deleteByIds(txCtx, ids) }
+        return com.ifmix.api.core.dto.common.OperationResult(success = true, modifiedCount = count)
     }
 
     private fun tryParseUuid(s: String): UUID? =

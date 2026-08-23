@@ -3,7 +3,7 @@ package com.ifmix.api.core.modules.demo
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.demo.Todo
 import com.ifmix.api.core.generated.types.CreateTodoInput
-import com.ifmix.api.core.generated.types.FindOptions
+import com.ifmix.api.core.generated.types.CommonFindOptions
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.generated.types.UpdateTodoItemsMutationInput
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
@@ -25,7 +25,7 @@ class DemoFacade(
     fun findByIds(ctx: OperationContext, ids: List<UUID>): List<Todo> =
         handler.findByIds(mcFactory.forApp(ctx), ctx.mustGetAppId(), ids)
 
-    fun findTodos(ctx: OperationContext, options: FindOptions?): Page<Todo> =
+    fun findTodos(ctx: OperationContext, options: CommonFindOptions?): Page<Todo> =
         handler.findTodos(mcFactory.forApp(ctx), ctx.mustGetAppId(), options)
 
     fun findItemsByTodoIds(ctx: OperationContext, todoIds: Collection<UUID>): List<com.ifmix.api.core.entity.demo.TodoItem> =
