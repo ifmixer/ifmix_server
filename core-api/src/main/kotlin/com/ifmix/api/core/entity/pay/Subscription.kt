@@ -17,7 +17,7 @@ interface Subscription : BaseAppEntity, SoftDeletableProps {
     val originalTransactionId: String?
     val productId: String?
 
-    /** 购买平台编码。0=UNKNOWN, 100=APPLE, 200=GOOGLE */
+    /** 购买平台编码。0=UNKNOWN, 10=APPLE, 20=GOOGLE */
     val platform: Int
 
     val active: Boolean

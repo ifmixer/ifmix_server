@@ -1,5 +1,5 @@
 input verifyIapPurchaseInput {
-    "购买平台。100=APPLE, 200=GOOGLE"
+    "购买平台。10=APPLE, 20=GOOGLE"
     platform: Int!
     productId: String!
     signedTransaction: String
@@ -7,7 +7,7 @@ input verifyIapPurchaseInput {
 }
 
 type VerifyIapPurchaseResult {
-    "付费等级。100=FREE, 200=PRO, 300=ENTERPRISE"
+    "付费等级。10=FREE, 20=PRO, 30=ENTERPRISE"
     tier: Int!
     expiresAt: DateTime
 }

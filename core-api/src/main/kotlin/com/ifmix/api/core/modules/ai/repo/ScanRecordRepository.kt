@@ -27,7 +27,7 @@ class ScanRecordRepository {
             ScanRecordProps.COLLECTED,
             ScanRecordProps.CREATED_AT,
             ScanRecordProps.UPDATED_AT,
-            ScanRecordProps.LANG,
+            ScanRecordProps.LOCALE,
             ScanRecordProps.COUNTRY,
             ScanRecordProps.CURRENCY,
         )

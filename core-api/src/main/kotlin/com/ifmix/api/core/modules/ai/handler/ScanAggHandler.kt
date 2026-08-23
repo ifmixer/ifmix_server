@@ -75,11 +75,11 @@ class ScanAggHandler(
             this.images = result.images.map { ImageRef(key = it.imageKey) }
             this.basicResult = result.basicResult
             this.premiumResult = result.premiumResult
-            this.status = 200
+            this.status = 20
             this.clientIp = result.clientIp
             this.installId = sc.op.mustGetInstallId()
             this.userId = sc.op.userId
-            this.lang = result.locale
+            this.locale = result.locale
             this.country = result.country
             this.currency = result.currency
             this.userDisplayName = null

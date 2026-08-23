@@ -1,7 +1,7 @@
 input PresignUploadInput {
-    "上传分类。100=ANTIQUE_SCAN"
+    "上传分类。10=ANTIQUE_SCAN"
     category: Int!
-    "内容类型。100=IMAGE_JPEG, 200=IMAGE_PNG, 300=IMAGE_WEBP"
+    "内容类型。10=IMAGE_JPEG, 20=IMAGE_PNG, 30=IMAGE_WEBP"
     contentType: Int!
 }
 

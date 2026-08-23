@@ -1,14 +1,14 @@
 package com.ifmix.api.core.entity.ai
 
 import com.ifmix.api.core.entity.common.BaseAppEntity
+import com.ifmix.api.core.entity.common.CustomerOwnedProps
 import com.ifmix.api.core.entity.common.SoftDeletableProps
+import com.ifmix.api.core.entity.common.UserPreferenceProps
 import org.babyfish.jimmer.sql.*
-import java.util.UUID
 
 @Entity
 @Table(name = "ai_scan_record")
-interface ScanRecord : BaseAppEntity, SoftDeletableProps {
-
+interface ScanRecord : BaseAppEntity, SoftDeletableProps, CustomerOwnedProps, UserPreferenceProps {
 
     @Serialized
     @Column(name = "image_keys")
@@ -24,11 +24,6 @@ interface ScanRecord : BaseAppEntity, SoftDeletableProps {
 
     val status: Int
     val clientIp: String?
-    val installId: UUID
-    val userId: UUID?
-    val lang: String?
-    val country: String?
-    val currency: String?
     val userDisplayName: String?
     val userNotes: String?
     val collected: Boolean

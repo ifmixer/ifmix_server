@@ -9,7 +9,7 @@ type ScanRecord {
     basicResult: JSON
     "高级扫描结果 (JSONB)"
     premiumResult: JSON
-    "扫描状态。100=PENDING, 110=PROCESSING, 200=COMPLETED, 300=FAILED"
+    "扫描状态。10=PENDING, 11=PROCESSING, 20=COMPLETED, 30=FAILED"
     status: Int!
     clientIp: String
     lang: String

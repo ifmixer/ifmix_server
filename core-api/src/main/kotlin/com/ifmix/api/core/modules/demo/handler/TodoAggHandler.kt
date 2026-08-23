@@ -54,7 +54,7 @@ class TodoAggHandler(
             this.note = input.note
             this.meta = null
             this.recommend = input.recommend?.toDomain()
-            this.installId = mc.installId
+            this.installId = mc.op.mustGetInstallId()
             this.userId = mc.userId
             this.createdAt = now
             this.updatedAt = now

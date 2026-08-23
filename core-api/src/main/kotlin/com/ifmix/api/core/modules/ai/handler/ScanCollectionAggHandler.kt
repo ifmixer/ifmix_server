@@ -28,7 +28,7 @@ open class ScanCollectionAggHandler(
             this.id = id
             this.appId = sc.appId!!
             this.userId = ctx.userId
-            this.installId = ctx.installId
+            this.installId = ctx.mustGetInstallId()
             this.isDefault = true
             this.createdAt = now
             this.updatedAt = now

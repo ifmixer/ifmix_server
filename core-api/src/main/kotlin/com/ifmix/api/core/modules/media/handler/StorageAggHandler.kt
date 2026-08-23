@@ -20,21 +20,21 @@ class StorageAggHandler(
     private val objectStorage: ObjectStorage,
 ) {
     fun presignUpload(mc: ModuleCtx, input: PresignUploadInput): PresignUploadResult {
-        val appId = mc.op.appId!!
-        val installId = mc.op.installId!!
+        val appId = mc.op.mustGetAppId()
+        val installId = mc.op.mustGetInstallId()
         val mediaId = UuidV7.generate()
 
         val category = "antique_scan"
         val ext = when (input.contentType) {
-            100 -> "jpg"
-            200 -> "png"
-            300 -> "webp"
+            10 -> "jpg"
+            20 -> "png"
+            30 -> "webp"
             else -> throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
         }
         val mimeType = when (input.contentType) {
-            100 -> "image/jpeg"
-            200 -> "image/png"
-            300 -> "image/webp"
+            10 -> "image/jpeg"
+            20 -> "image/png"
+            30 -> "image/webp"
             else -> throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
         }
 

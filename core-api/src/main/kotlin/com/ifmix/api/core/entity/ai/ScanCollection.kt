@@ -1,15 +1,12 @@
 package com.ifmix.api.core.entity.ai
 
 import com.ifmix.api.core.entity.common.BaseAppEntity
+import com.ifmix.api.core.entity.common.CustomerOwnedProps
 import org.babyfish.jimmer.sql.*
-import java.util.UUID
 
 @Entity
 @Table(name = "ai_scan_collection")
-interface ScanCollection : BaseAppEntity {
+interface ScanCollection : BaseAppEntity, CustomerOwnedProps {
 
-
-    val installId: UUID?
-    val userId: UUID?
     val isDefault: Boolean
 }

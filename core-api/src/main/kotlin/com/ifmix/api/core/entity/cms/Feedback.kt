@@ -3,19 +3,20 @@ package com.ifmix.api.core.entity.cms
 import com.ifmix.api.core.entity.common.AppScopedProps
 import com.ifmix.api.core.entity.common.UUIDProps
 import com.ifmix.api.core.entity.common.CreatedAtProps
+import com.ifmix.api.core.entity.common.CustomerOwnedProps
+import com.ifmix.api.core.entity.common.UserPreferenceProps
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
+
 /**
  * Feedback 实体。追加式写入，不软删（无 @LogicalDeleted）。
  */
 @Entity
 @Table(name = "cms_feedback")
-interface Feedback : UUIDProps, AppScopedProps, CreatedAtProps {
-    val installId: UUID
-    @Column(name = "user_id")
-    val userId: UUID?
+interface Feedback : UUIDProps, AppScopedProps, CreatedAtProps, CustomerOwnedProps, UserPreferenceProps {
+
     val scanRecordId: UUID?
-    /** 反馈分类编码。0=UNKNOWN, 100=LIKED, 200=PRICE_TOO_HIGH, 210=PRICE_TOO_LOW, 220=PRICE_MISSING, 300=WRONG_IDENTIFICATION, 400=FEATURE_REQUEST, 410=MORE_RECOMMENDATIONS */
+    /** 反馈分类编码。0=UNKNOWN, 10=LIKED, 20=PRICE_TOO_HIGH, 21=PRICE_TOO_LOW, 22=PRICE_MISSING, 30=WRONG_IDENTIFICATION, 40=FEATURE_REQUEST, 41=MORE_RECOMMENDATIONS */
     val category: Int
     val comment: String?
 }
