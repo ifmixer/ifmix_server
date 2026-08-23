@@ -25,11 +25,13 @@ object ScanPrompt {
         val resolvedCurrency = input.currency?.takeIf { it.isNotBlank() } ?: "USD"
         val resolvedRegion = input.country?.takeIf { it.isNotBlank() } ?: "Not specified"
 
-        return template
+        val prompt = template
             .replace("{{CURRENT_DATE}}", input.date.toString())
             .replace("{{RESPONSE_LANGUAGE}}", resolvedLang)
-            .replace("{{MARKET_REGION}}", resolvedRegion)
+            .replace("{{MARKET_COUNTRY}}", resolvedRegion)
             .replace("{{VALUATION_CURRENCY}}", resolvedCurrency)
+
+        return prompt
     }
 
     /**

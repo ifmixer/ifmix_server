@@ -25,8 +25,8 @@ class DemoFacade(
     fun findByIds(ctx: OperationContext, ids: List<UUID>): List<Todo> =
         handler.findByIds(mcFactory.forApp(ctx), ctx.mustGetAppId(), ids)
 
-    fun findTodos(ctx: OperationContext, options: CommonFindOptions?): Page<Todo> =
-        handler.findTodos(mcFactory.forApp(ctx), ctx.mustGetAppId(), options)
+    fun findTodos(ctx: OperationContext, findOptions: CommonFindOptions?): Page<Todo> =
+        handler.findTodos(mcFactory.forApp(ctx), ctx.mustGetAppId(), findOptions)
 
     fun findItemsByTodoIds(ctx: OperationContext, todoIds: Collection<UUID>): List<com.ifmix.api.core.entity.demo.TodoItem> =
         handler.findItemsByTodoIds(mcFactory.forApp(ctx), ctx.mustGetAppId(), todoIds)

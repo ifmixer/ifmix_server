@@ -3,7 +3,6 @@ package com.ifmix.api.core.bff.graphql.customer.ai
 import com.ifmix.api.core.generated.types.DeleteScanResult
 import com.ifmix.api.core.generated.types.NewScanInput
 import com.ifmix.api.core.generated.types.NewScanResult
-import com.ifmix.api.core.generated.types.ScanQueryInput
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.generated.types.FilterGroup
 import com.ifmix.api.core.generated.types.UpdateScanInput
@@ -56,13 +55,13 @@ class AiFetcher(
         return aiService.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
-    @DgsQuery(field = "q_ai_findScans")
-    fun findScans(
+    @DgsQuery(field = "q_ai_findMyScans")
+    fun findMyScans(
         dfe: DgsDataFetchingEnvironment,
-        @InputArgument options: com.ifmix.api.core.generated.types.CommonFindOptions?,
+        @InputArgument findOptions: com.ifmix.api.core.generated.types.CommonFindOptions?,
     ): Page<ScanRecord> {
         val ctx = ctxProvider.fromDfe(dfe)
-        return aiService.findScans(ctx, options)
+        return aiService.findMyScans(ctx, findOptions)
     }
 
     // --- Collection queries ---

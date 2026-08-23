@@ -1,6 +1,7 @@
 package com.ifmix.api.core.dto.ai
 
 import java.time.LocalDate
+import java.util.UUID
 
 /**
  * 扫描输入中的单个媒体项。
@@ -16,6 +17,7 @@ data class ScanMediaItem(
  * ScanRunner 的输入 DTO。
  */
 data class ScanInput(
+    val scanId: UUID,
     /** 一张或多张图片 */
     val items: List<ScanMediaItem>,
     /** 用户语言偏好（BCP-47，如 zh-CN, en-US, ja-JP） */

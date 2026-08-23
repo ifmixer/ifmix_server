@@ -49,7 +49,7 @@ extend type Query {
     q_demo_findTodoById(id: UUID!): Todo!
     q_demo_findTodosByIds(ids: [UUID!]!): [Todo!]!
     "动态条件查询。可过滤字段: title(String), done(Boolean), userId(UUID), note(String), createdAt(DateTime), updatedAt(DateTime)"
-    q_demo_findTodos(options: CommonFindOptions): TodoPage!
+    q_demo_findTodos(findOptions: CommonFindOptions): TodoPage!
 }
 
 # --- Mutation: Create ---

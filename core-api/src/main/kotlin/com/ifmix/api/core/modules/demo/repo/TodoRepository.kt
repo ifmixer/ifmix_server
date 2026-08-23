@@ -49,8 +49,8 @@ class TodoRepository {
     fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
     fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, appId, ids)
 
-    fun findByOptions(mc: ModuleCtx, appId: UUID, options: CommonFindOptions?): Page<Todo> =
-        tpl.findByOptions(mc, appId, options, FILTERABLE)
+    fun findByOptions(mc: ModuleCtx, appId: UUID, findOptions: CommonFindOptions?): Page<Todo> =
+        tpl.findByOptions(mc, appId, findOptions, FILTERABLE)
 
     fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoInput): Int {
         val set = input.set

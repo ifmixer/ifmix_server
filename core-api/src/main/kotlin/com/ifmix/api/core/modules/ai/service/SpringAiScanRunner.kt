@@ -82,13 +82,13 @@ open class SpringAiScanRunner(
                         .build()
 
                     val prompt = Prompt(listOf(systemMsg, userMsg))
-                    log.debug("Scan run start. model={}, key={}", model, pickedKeyId)
+                    log.debug("Scan run start. scanId={}, model={}, keyId={}", input.scanId, model,  pickedKeyId)
 
                     val startMs = System.currentTimeMillis()
                     val response = client.prompt(prompt).call()
                     val content = response.content() ?: ""
                     val elapsedMs = System.currentTimeMillis() - startMs
-                    log.debug("Scan run completed. model={}, key={}, elapsed={}ms, content={}", model, pickedKeyId, elapsedMs, content)
+                    log.debug("Scan run completed. scanId={}, model={}, keyId={}, elapsed={}ms, content={}", input.scanId, model, pickedKeyId, elapsedMs, content)
 
                     val data = parseJsonToMap(content)
 

@@ -115,7 +115,7 @@ type RemoveScanCollectionItemsResult {
 extend type Query {
     q_ai_findScanById(id: UUID!): ScanRecord!
     "通用动态过滤查询（支持 AND/OR 嵌套条件）"
-    q_ai_findScans(options: CommonFindOptions): ScanRecordPage!
+    q_ai_findMyScans(findOptions: CommonFindOptions): ScanRecordPage!
     q_ai_getDefaultCollection: ScanCollection!
     q_ai_findCollectionItemsByCursor(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
 }

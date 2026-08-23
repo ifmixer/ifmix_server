@@ -36,10 +36,10 @@ class DemoFetcher(
     @DgsQuery(field = "q_demo_findTodos")
     fun findTodos(
         dfe: DgsDataFetchingEnvironment,
-        @InputArgument options: com.ifmix.api.core.generated.types.CommonFindOptions?,
+        @InputArgument findOptions: com.ifmix.api.core.generated.types.CommonFindOptions?,
     ): Page<com.ifmix.api.core.entity.demo.Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
-        val page = demoService.findTodos(ctx, options)
+        val page = demoService.findTodos(ctx, findOptions)
         return Page(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
     }
 

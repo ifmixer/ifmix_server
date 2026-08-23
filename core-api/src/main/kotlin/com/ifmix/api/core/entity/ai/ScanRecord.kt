@@ -3,6 +3,7 @@ package com.ifmix.api.core.entity.ai
 import com.ifmix.api.core.entity.common.BaseAppEntity
 import com.ifmix.api.core.entity.common.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
+import java.util.UUID
 
 @Entity
 @Table(name = "ai_scan_record")
@@ -23,6 +24,8 @@ interface ScanRecord : BaseAppEntity, SoftDeletableProps {
 
     val status: Int
     val clientIp: String?
+    val installId: UUID?
+    val userId: UUID?
     val lang: String?
     val country: String?
     val currency: String?

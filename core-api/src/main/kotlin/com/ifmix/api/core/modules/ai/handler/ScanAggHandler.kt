@@ -39,6 +39,7 @@ class ScanAggHandler(
         }
 
         val scanInput = ScanInput(
+            scanId=scanId,
             items = resolved,
             lang = opCtx.lang,
             country = opCtx.country,
@@ -76,6 +77,8 @@ class ScanAggHandler(
             this.premiumResult = result.premiumResult
             this.status = 200
             this.clientIp = result.clientIp
+            this.installId = sc.op.installId
+            this.userId = sc.op.userId
             this.lang = result.lang
             this.country = result.country
             this.currency = result.currency
@@ -116,9 +119,10 @@ class ScanAggHandler(
     fun getPublicUrl(sc: ModuleCtx, objectKey: String): String =
         objectStorage.getPublicUrl("ugc", objectKey)
 
-    fun findScans(sc: ModuleCtx, options: CommonFindOptions?): Page<ScanRecord> {
+    fun findMyScans(sc: ModuleCtx, findOptions: CommonFindOptions?): Page<ScanRecord> {
         val appId = sc.op.mustGetAppId()
-        return scanRepo.findScans(sc, appId, options)
+        val installId = sc.op.mustGetInstallId()
+        return scanRepo.findMyScans(sc, appId, installId, findOptions)
     }
 
     private fun guessMediaType(key: String, mediaType: String?): String =

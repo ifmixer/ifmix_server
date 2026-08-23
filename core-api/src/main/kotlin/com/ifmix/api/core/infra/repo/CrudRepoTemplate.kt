@@ -179,19 +179,19 @@ class AppCrudRepoTemplate<E : Any>(
     fun findByOptions(
         ctx: ModuleCtx,
         appId: UUID,
-        options: CommonFindOptions?,
+        findOptions: CommonFindOptions?,
         filterable: List<TypedProp.Scalar<E, *>>,
         sortable: Set<String> = setOf(this.id),
         where: (KMutableRootQuery.ForEntity<E>.() -> Unit)? = null,
     ): Page<E> {
-        val limit = (options?.limit ?: 10).coerceIn(1, 100)
-        val sortBy = (options?.sortBy ?: this.id).also {
+        val limit = (findOptions?.limit ?: 10).coerceIn(1, 100)
+        val sortBy = (findOptions?.sortBy ?: this.id).also {
             require(it in sortable) { "sortBy '$it' not allowed. Allowed: $sortable" }
         }
-        val desc = options?.sortDirection != SortDirection.ASC
+        val desc = findOptions?.sortDirection != SortDirection.ASC
 
         // 解析复合 cursor（整体 Base58 编码）: 解码后 sortBy==id → "{id}", 否则 → "{sortValue},{id}"
-        val rawCursor = options?.cursor?.let { runCatching { Base58.decodeString(it) }.getOrNull() }
+        val rawCursor = findOptions?.cursor?.let { runCatching { Base58.decodeString(it) }.getOrNull() }
         val cursorParts = rawCursor?.split(",", limit = 2)
         val cursorId: UUID?
         val cursorSortValue: String?
@@ -205,7 +205,7 @@ class AppCrudRepoTemplate<E : Any>(
 
         val rows = ctx.sql.createQuery(entityType) {
             where(table.get<UUID>(this@AppCrudRepoTemplate.appId) eq appId)
-            FilterGroupResolver.apply(this, options?.filter, filterable)
+            FilterGroupResolver.apply(this, findOptions?.filter, filterable)
             where?.invoke(this)
 
             // cursor 条件

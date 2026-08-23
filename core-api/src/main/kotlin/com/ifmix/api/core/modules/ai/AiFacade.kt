@@ -22,8 +22,8 @@ class AiFacade(
     fun findById(opCtx: OperationContext, id: UUID): ScanRecord? =
         scanHandler.findById(mcFactory.forApp(opCtx), id)
 
-    fun findScans(opCtx: OperationContext, options: CommonFindOptions?): Page<ScanRecord> =
-        scanHandler.findScans(mcFactory.forApp(opCtx), options)
+    fun findMyScans(opCtx: OperationContext, findOptions: CommonFindOptions?): Page<ScanRecord> =
+        scanHandler.findMyScans(mcFactory.forApp(opCtx), findOptions)
 
     /** AI 调用在事务外 */
     fun runAiScan(opCtx: OperationContext, input: NewScanInput): AiScanResult =

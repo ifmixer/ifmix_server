@@ -49,6 +49,14 @@ class RequestLoggingFilter : OncePerRequestFilter() {
             val query = wrappedRequest.queryString?.let { "?$it" } ?: ""
 
             val requestBody = getBody(wrappedRequest.contentAsByteArray, wrappedRequest.characterEncoding)
+
+            // 跳过 IntrospectionQuery 的日志输出（IDE/工具高频探测，无业务价值）
+            if (requestBody.contains("IntrospectionQuery") || requestBody.contains("__schema")) {
+                wrappedResponse.copyBodyToResponse()
+                OperationContextHolder.clear()
+                return
+            }
+
             val responseBody = getBody(wrappedResponse.contentAsByteArray, wrappedResponse.characterEncoding)
 
             if (status >= 400) {

@@ -8,6 +8,7 @@ import com.ifmix.api.core.entity.ai.collected
 import com.ifmix.api.core.entity.ai.id
 import com.ifmix.api.core.entity.ai.userDisplayName
 import com.ifmix.api.core.entity.ai.userNotes
+import com.ifmix.api.core.entity.ai.installId
 import com.ifmix.api.core.generated.types.CommonFindOptions
 import com.ifmix.api.core.generated.types.ScanUnsetField
 import com.ifmix.api.core.generated.types.UpdateScanInput
@@ -32,8 +33,10 @@ class ScanRecordRepository {
         )
     }
 
-    fun findScans(mc: ModuleCtx, appId: UUID, options: CommonFindOptions?): Page<ScanRecord> =
-        tpl.findByOptions(mc, appId, options, FILTERABLE)
+    fun findMyScans(mc: ModuleCtx, appId: UUID, installId: UUID, findOptions: CommonFindOptions?): Page<ScanRecord> =
+        tpl.findByOptions(mc, appId, findOptions, FILTERABLE) {
+            where(table.installId eq installId)
+        }
 
     fun partialUpdate(mc: ModuleCtx, appId: UUID, id: UUID, req: UpdateScanInput): Int {
         val unset = req.unset?.toSet() ?: emptySet()

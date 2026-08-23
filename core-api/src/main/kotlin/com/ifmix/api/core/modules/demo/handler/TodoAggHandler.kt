@@ -31,8 +31,8 @@ class TodoAggHandler(
     fun findByIds(mc: ModuleCtx, appId: UUID, ids: List<UUID>): List<Todo> =
         todoRepo.findByIds(mc, appId, ids)
 
-    fun findTodos(mc: ModuleCtx, appId: UUID, options: CommonFindOptions?): Page<Todo> =
-        todoRepo.findByOptions(mc, appId, options)
+    fun findTodos(mc: ModuleCtx, appId: UUID, findOptions: CommonFindOptions?): Page<Todo> =
+        todoRepo.findByOptions(mc, appId, findOptions)
 
     fun findItemsByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>): List<TodoItem> =
         todoItemRepo.findByTodoIds(mc, appId, todoIds)
