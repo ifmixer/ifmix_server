@@ -17,6 +17,7 @@ class AuthJwtService(
     private val keys: AuthJwtKeys,
     private val issuer: String,
     private val accessTtlSec: Long = 900,
+    val installTtlSec: Long = 86400 * 365,
 ) {
 
     companion object {
@@ -32,6 +33,24 @@ class AuthJwtService(
             .jwtID(UuidV7.generate().toString())
             .issueTime(now)
             .expirationTime(Date(now.time + accessTtlSec * 1000))
+            .build()
+        val header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(keys.kid).type(JOSEObjectType.JWT).build()
+        val jwt = SignedJWT(header, claims)
+        jwt.sign(Ed25519Signer(keys.signingKey))
+        return jwt.serialize()
+    }
+
+    /** Install 级别长期令牌（无用户身份，仅标识设备） */
+    fun signInstall(installId: String, appId: String): String {
+        val now = Date()
+        val claims = JWTClaimsSet.Builder()
+            .issuer(issuer)
+            .subject(installId)
+            .audience(listOf(appId))
+            .jwtID(UuidV7.generate().toString())
+            .issueTime(now)
+            .expirationTime(Date(now.time + installTtlSec * 1000))
+            .claim("type", "install")
             .build()
         val header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(keys.kid).type(JOSEObjectType.JWT).build()
         val jwt = SignedJWT(header, claims)

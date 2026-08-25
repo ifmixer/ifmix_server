@@ -74,6 +74,12 @@ class AuthFetcher(
         return OperationResult(success = true)
     }
 
+    @DgsMutation(field = "m_auth_registerInstall")
+    fun registerInstall(dfe: DgsDataFetchingEnvironment, @InputArgument input: RegisterInstallInput): RegisterInstallResult {
+        val ctx = ctxProvider.fromDfe(dfe)
+        return globalTx.withTx(ctx) { txCtx -> authService.registerInstall(txCtx, input) }
+    }
+
     private fun LoginRes.toResult() = LoginResult(
         accessToken = accessToken,
         refreshToken = refreshToken,

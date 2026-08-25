@@ -1,9 +1,12 @@
 package com.ifmix.api.core.modules.auth
 
+import com.ifmix.api.core.generated.types.RegisterInstallInput
+import com.ifmix.api.core.generated.types.RegisterInstallResult
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.auth.handler.AuthAggHandler
 import com.ifmix.api.core.modules.auth.handler.DeleteAccountRes
+import com.ifmix.api.core.modules.auth.handler.InstallHandler
 import com.ifmix.api.core.modules.auth.handler.LoginReq
 import com.ifmix.api.core.modules.auth.handler.LoginRes
 import com.ifmix.api.core.modules.auth.handler.LogoutReq
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service
 class AuthFacade(
     private val mcFactory: ModuleCtxFactory,
     private val handler: AuthAggHandler,
+    private val installHandler: InstallHandler,
 ) {
     fun me(ctx: OperationContext): MeRes =
         handler.me(mcFactory.forApp(ctx))
@@ -32,4 +36,7 @@ class AuthFacade(
 
     fun requestAccountDeletion(ctx: OperationContext): DeleteAccountRes =
         handler.requestAccountDeletion(mcFactory.forApp(ctx))
+
+    fun registerInstall(ctx: OperationContext, input: RegisterInstallInput): RegisterInstallResult =
+        installHandler.register(mcFactory.forApp(ctx), input)
 }
