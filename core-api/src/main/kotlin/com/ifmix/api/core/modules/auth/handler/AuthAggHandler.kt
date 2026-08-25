@@ -150,7 +150,7 @@ class AuthAggHandler(
             this.updatedAt = now
         })
 
-        val accessToken = jwt.signAccess(appUserId.toString(), appId.toString())
+        val accessToken = jwt.signAccess(appUserId.toString(), mc.op.mustGetInstallId().toString(), appId.toString())
 
         // 7. Publish event
         events.publishEvent(AuthLoggedInEvent(
@@ -198,7 +198,7 @@ class AuthAggHandler(
         })
         refreshTokenRepo.revoke(mc, oldToken.id, replacedBy = newTokenId)
 
-        val accessToken = jwt.signAccess(oldToken.appUserId.toString(), appId.toString())
+        val accessToken = jwt.signAccess(oldToken.appUserId.toString(), oldToken.loginInstallId?.toString() ?: "", appId.toString())
         return RefreshRes(
             accessToken = accessToken,
             refreshToken = rawNewToken,

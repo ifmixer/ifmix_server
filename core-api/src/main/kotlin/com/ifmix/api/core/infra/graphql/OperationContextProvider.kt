@@ -2,8 +2,6 @@ package com.ifmix.api.core.infra.graphql
 
 import com.ifmix.api.core.infra.auth.AuthInterceptor
 import com.ifmix.api.core.infra.http.ApiError
-import com.ifmix.api.core.infra.http.ClientIpResolver
-import com.ifmix.api.core.infra.http.ClientPlatform
 import com.ifmix.api.core.infra.http.ErrorCode
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.infra.http.RequestContext
@@ -11,7 +9,6 @@ import com.netflix.graphql.dgs.context.DgsContext
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.internal.DgsWebMvcRequestData
 import graphql.schema.GraphQLObjectType
-import jakarta.servlet.http.HttpServletRequest
 import org.springframework.stereotype.Component
 import org.springframework.web.context.request.ServletRequestAttributes
 
@@ -20,47 +17,46 @@ class OperationContextProvider {
 
     /**
      * 从 DGS DataFetchingEnvironment 中提取 OperationContext。
-     * 自动判断 query/mutation，构建 RequestContext（from headers）。
-     * ModuleCtx 由 Facade 层根据集群路由自行构建。
+     * RequestContext 由 AuthInterceptor 构建并存入 attribute。
+     * require* 参数控制必填校验，缺失时抛 ApiError。
      */
-    fun fromDfe(dfe: DgsDataFetchingEnvironment): OperationContext {
+    fun fromDfe(
+        dfe: DgsDataFetchingEnvironment,
+        requireAppId: Boolean = true,
+        requireInstallId: Boolean = true,
+        requireUserId: Boolean = false,
+        requireLocale: Boolean = false,
+        requireCountry: Boolean = false,
+        requireCurrency: Boolean = false,
+    ): OperationContext {
         val requestData = DgsContext.getRequestData(dfe) as? DgsWebMvcRequestData
             ?: throw ApiError(ErrorCode.INTERNAL, "GraphQL context not found")
 
         val servletRequest = (requestData.webRequest as? ServletRequestAttributes)?.request
             ?: throw ApiError(ErrorCode.INTERNAL, "Native HTTP request not found")
 
-        val userIdStr = servletRequest.getAttribute(AuthInterceptor.ATTR_USER_ID) as? String
+        val reqCtx = servletRequest.getAttribute(AuthInterceptor.ATTR_REQUEST_CONTEXT) as? RequestContext
+            ?: throw ApiError(ErrorCode.INTERNAL, "RequestContext not found")
+
+        // require 校验
+        if (requireAppId && reqCtx.appId == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id is required")
+        if (requireInstallId && reqCtx.installId == null) throw ApiError(ErrorCode.INVALID_REQUEST, "install token is required")
+        if (requireUserId && reqCtx.userId == null) throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
+        if (requireLocale && reqCtx.locale == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-locale is required")
+        if (requireCountry && reqCtx.country == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-country is required")
+        if (requireCurrency && reqCtx.currency == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-currency is required")
 
         val isMutation = dfe.executionStepInfo.parent?.type?.let {
             (it as? GraphQLObjectType)?.name == "Mutation"
         } ?: false
-        val opName = dfe.field?.name
-
-        val reqCtx = RequestContext(
-            appId = parseUuid(servletRequest.getHeader("x-app-id")),
-            installId = parseUuid(servletRequest.getHeader("x-install-id")),
-            locale = servletRequest.getHeader("x-locale").takeIf { !it.isNullOrBlank() },
-            currency = servletRequest.getHeader("x-currency").takeIf { !it.isNullOrBlank() },
-            country = servletRequest.getHeader("x-country").takeIf { !it.isNullOrBlank() },
-            clientPlatform = ClientPlatform.fromHeader(servletRequest.getHeader("x-client-platform")),
-            userId = userIdStr?.let { tryParseUuid(it) },
-            clientIp = ClientIpResolver.resolve(servletRequest),
-        )
 
         val ctx = OperationContext(
             req = reqCtx,
-            opName = opName,
+            opName = dfe.field?.name,
             isMutation = isMutation,
             preferReader = !isMutation,
         )
         com.ifmix.api.core.infra.jimmer.OperationContextHolder.set(ctx)
         return ctx
     }
-
-    private fun parseUuid(header: String?): java.util.UUID? =
-        header?.takeIf { it.isNotBlank() }?.let { tryParseUuid(it) }
-
-    private fun tryParseUuid(s: String): java.util.UUID? =
-        runCatching { java.util.UUID.fromString(s) }.getOrNull()
 }
