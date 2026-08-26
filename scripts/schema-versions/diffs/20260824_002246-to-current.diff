@@ -1,3 +1,24 @@
 # 20260824_002246 → current
 
-[success] No changes detected
+[log] 
+Detected the following changes (18) between schemas:
+
+[log] ✖  Field Query.q_ai_findMyScans changed type from ScanRecordPage! to ScanRecordListViewPage!
+[log] ✖  Field hasMore was removed from object type ScanCollectionItemPage
+[log] ✖  Field nextCursor was removed from object type ScanCollectionItemPage
+[log] ✖  Field clientIp was removed from object type ScanRecord
+[log] ✖  Field lang was removed from object type ScanRecord
+[log] ✖  Type ScanRecordPage was removed
+[log] ✖  Field hasMore was removed from object type TodoPage
+[log] ✖  Field nextCursor was removed from object type TodoPage
+[log] ✔  Field m_auth_registerInstall was added to object type Mutation
+[log] ✔  Type PageInfo was added
+[log] ✔  Type RegisterInstallInput was added
+[log] ✔  Type RegisterInstallResult was added
+[log] ✔  Field pageInfo was added to object type ScanCollectionItemPage
+[log] ✔  Object type ScanRecord has description 详情视图，包含扫描结果
+[log] ✔  Field locale was added to object type ScanRecord
+[log] ✔  Type ScanRecordListView was added
+[log] ✔  Type ScanRecordListViewPage was added
+[log] ✔  Field pageInfo was added to object type TodoPage
+[error] Detected 8 breaking changes

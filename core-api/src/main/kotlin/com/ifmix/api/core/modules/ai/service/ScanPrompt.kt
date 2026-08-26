@@ -12,6 +12,8 @@ object ScanPrompt {
 
     private val template: String = loadResource("prompts/scan-system_20260823.md")
 
+//    private val template: String = loadResource("prompts/scan-system-hello.md")
+
     private fun loadResource(path: String): String =
         ScanPrompt::class.java.classLoader.getResourceAsStream(path)
             ?.bufferedReader()?.readText()

@@ -78,7 +78,7 @@ open class SpringAiScanRunner(
                     val userText = ScanPrompt.userPrompt(input)
                     val userMsg = UserMessage.builder()
                         .text(userText)
-                        .media(*mediaItems.toTypedArray())
+//                        .media(*mediaItems.toTypedArray())
                         .build()
 
                     val prompt = Prompt(listOf(systemMsg, userMsg))
