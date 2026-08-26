@@ -149,7 +149,7 @@ class ScanRecordsDataLoader(
         val opCtx = OperationContextHolder.current()
         val mc = mcFactory.forApp(opCtx)
         val appId = opCtx.mustGetAppId()
-        val records = scanRecordRepo.findByIds(mc, appId, ids)
+        val records = scanRecordRepo.findByIdsListView(mc, appId, ids)
         val map = records.associateBy { it.id }
         return CompletableFuture.completedFuture(ids.associateWith { map[it] })
     }

@@ -41,8 +41,7 @@ type TodoItem {
 
 type TodoPage {
     items: [Todo!]!
-    nextCursor: String
-    hasMore: Boolean!
+    pageInfo: PageInfo!
 }
 
 extend type Query {

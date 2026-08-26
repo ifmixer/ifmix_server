@@ -5,8 +5,10 @@ import com.ifmix.api.core.generated.types.CommonFindOptions
 import com.ifmix.api.core.generated.types.SortDirection
 import com.ifmix.api.core.infra.codec.Base58
 import com.ifmix.api.core.infra.db.ModuleCtx
+import org.babyfish.jimmer.sql.ast.Selection
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
+import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
 import org.babyfish.jimmer.meta.TypedProp
 import java.util.UUID
 import kotlin.reflect.KClass
@@ -182,6 +184,7 @@ class AppCrudRepoTemplate<E : Any>(
         findOptions: CommonFindOptions?,
         filterable: List<TypedProp.Scalar<E, *>>,
         sortable: Set<String> = setOf(this.id),
+        fetchBy: (KNonNullTable<E>.() -> Selection<E>)? = null,
         where: (KMutableRootQuery.ForEntity<E>.() -> Unit)? = null,
     ): Page<E> {
         val limit = (findOptions?.limit ?: 10).coerceIn(1, 100)
@@ -247,7 +250,7 @@ class AppCrudRepoTemplate<E : Any>(
                 orderBy(table.get<Any>(sortBy).asc())
                 if (sortBy != this@AppCrudRepoTemplate.id) orderBy(table.get<UUID>(this@AppCrudRepoTemplate.id).asc())
             }
-            select(table)
+            if (fetchBy != null) select(fetchBy.invoke(table)) else select(table)
         }.limit(limit + 1).execute()
 
         return Page.of(rows, limit) { entity ->

@@ -40,7 +40,7 @@ class DemoFetcher(
     ): Page<com.ifmix.api.core.entity.demo.Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
         val page = demoService.findTodos(ctx, findOptions)
-        return Page(items = page.items, nextCursor = page.nextCursor, hasMore = page.hasMore)
+        return page
     }
 
     @DgsMutation(field = "m_demo_createTodo")

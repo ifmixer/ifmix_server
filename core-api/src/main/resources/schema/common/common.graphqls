@@ -2,6 +2,11 @@ scalar UUID       # 36-char standard format
 scalar DateTime   # ISO-8601 UTC string
 scalar JSON       # 透传 JSONB
 
+type PageInfo {
+    nextCursor: String
+    hasMore: Boolean!
+}
+
 type OperationResult {
     success: Boolean!
     modifiedCount: Int

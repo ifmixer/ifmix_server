@@ -40,7 +40,7 @@ open class ScanCollectionFacade(
     fun findItemsByCursor(ctx: OperationContext, req: ListItemsReq?): Page<ScanCollectionItem> {
         val mc = mcFactory.forApp(ctx)
         val collectionId = req?.collectionId ?: (handler.getDefault(mc)?.id
-            ?: return Page(items = emptyList(), nextCursor = null, hasMore = false))
+            ?: return Page(items = emptyList()))
         return handler.findItemsByCursor(mc, collectionId, req?.limit)
     }
 }

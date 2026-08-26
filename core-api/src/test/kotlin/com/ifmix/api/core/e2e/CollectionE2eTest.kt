@@ -44,6 +44,6 @@ class CollectionE2eTest : E2eTestBase() {
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.data.items").isArray
-            .jsonPath("$.data.hasMore").isEqualTo(false)
+            .jsonPath("$.data.pageInfo.hasMore").isEqualTo(false)
     }
 }

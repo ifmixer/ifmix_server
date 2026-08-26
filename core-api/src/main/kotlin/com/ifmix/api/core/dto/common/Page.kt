@@ -3,8 +3,7 @@ package com.ifmix.api.core.dto.common
 
 data class Page<T>(
     val items: List<T>,
-    val nextCursor: String? = null,
-    val hasMore: Boolean = nextCursor != null,
+    val pageInfo: PageInfo = PageInfo(),
 ) {
     companion object {
         /**
@@ -17,7 +16,7 @@ data class Page<T>(
             val hasMore = rawItems.size > limit
             val items = if (hasMore) rawItems.take(limit) else rawItems
             val nextCursor = if (hasMore) items.lastOrNull()?.let(cursorExtractor) else null
-            return Page(items, nextCursor, hasMore)
+            return Page(items, PageInfo(nextCursor, hasMore))
         }
     }
 }

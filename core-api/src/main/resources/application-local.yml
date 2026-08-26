@@ -17,6 +17,8 @@ server:
 app:
   expose-errors: true
   # show-sql: true
+  auth:
+    jwt-private-key: '{"kty":"OKP","crv":"Ed25519","kid":"dev-ephemeral","use":"sig","d":"SyR2r1MAt8RrOuvKdIEY1uF-ukq5Ph04yCQKr8GIK10","x":"yPmYi9PmtYaEQpLlvLZRmOL_bCwmYGpzgd4P6iTFIdY"}'
   # Cloudflare R2（S3 兼容）
   storage:
     type: s3

@@ -5,6 +5,7 @@ import com.ifmix.api.core.entity.ai.ScanRecord
 import com.ifmix.api.core.entity.ai.ScanRecordProps
 import com.ifmix.api.core.entity.ai.appId
 import com.ifmix.api.core.entity.ai.collected
+import com.ifmix.api.core.entity.ai.fetchBy
 import com.ifmix.api.core.entity.ai.id
 import com.ifmix.api.core.entity.ai.userDisplayName
 import com.ifmix.api.core.entity.ai.userNotes
@@ -15,6 +16,7 @@ import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
+import org.babyfish.jimmer.sql.kt.ast.expression.valueIn
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
@@ -33,8 +35,13 @@ class ScanRecordRepository {
         )
     }
 
+    /** 列表视图：不加载 basicResult / premiumResult JSONB 大字段 */
     fun findMyScans(mc: ModuleCtx, appId: UUID, installId: UUID, findOptions: CommonFindOptions?): Page<ScanRecord> =
-        tpl.findByOptions(mc, appId, findOptions, FILTERABLE) {
+        tpl.findByOptions(mc, appId, findOptions, FILTERABLE, fetchBy = { fetchBy {
+            allScalarFields()
+            basicResult(false)
+            premiumResult(false)
+        } }) {
             where(table.installId eq installId)
         }
 
@@ -63,6 +70,21 @@ class ScanRecordRepository {
     fun save(mc: ModuleCtx, entity: ScanRecord) = tpl.save(mc, entity)
     fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
     fun findByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<ScanRecord> = tpl.findByIds(mc, appId, ids)
+
+    /** 列表视图批量查询：不加载 basicResult / premiumResult */
+    fun findByIdsListView(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<ScanRecord> {
+        if (ids.isEmpty()) return emptyList()
+        return mc.sql.createQuery(ScanRecord::class) {
+            where(table.appId eq appId)
+            where(table.id valueIn ids)
+            select(table.fetchBy {
+                allScalarFields()
+                basicResult(false)
+                premiumResult(false)
+            })
+        }.execute()
+    }
+
     fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
     fun exists(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.exists(mc, appId, id)
 }

@@ -2,6 +2,7 @@ package com.ifmix.api.core.infra.service
 
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.dto.common.Page
+import com.ifmix.api.core.dto.common.PageInfo
 import com.ifmix.api.core.infra.http.OperationContext
 
 import com.ifmix.api.core.infra.redis.CacheAside
@@ -89,8 +90,10 @@ class CrudServiceOps<T : Any>(
         val resultItems = items.take(effectiveLimit)
         return Page(
             items = resultItems,
-            nextCursor = resultItems.lastOrNull()?.let { idExtractor(it).toString() },
-            hasMore = hasMore,
+            pageInfo = PageInfo(
+                nextCursor = resultItems.lastOrNull()?.let { idExtractor(it).toString() },
+                hasMore = hasMore,
+            ),
         )
     }
 
