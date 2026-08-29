@@ -19,4 +19,7 @@ interface ScanDeepResearch : BaseAppEntity {
     @Serialized
     @Column(name = "premium_result")
     val premiumResult: Map<String, Any?>?
+
+    @Column(name = "prompt_version")
+    val promptVersion: String
 }

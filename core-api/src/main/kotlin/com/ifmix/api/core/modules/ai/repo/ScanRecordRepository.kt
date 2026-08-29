@@ -11,6 +11,8 @@ import com.ifmix.api.core.entity.ai.fetchBy
 import com.ifmix.api.core.entity.ai.hasDeepSearch
 import com.ifmix.api.core.entity.ai.id
 import com.ifmix.api.core.entity.ai.images
+import com.ifmix.api.core.entity.ai.isPublic
+import com.ifmix.api.core.entity.ai.promptVersion
 import com.ifmix.api.core.entity.ai.userDisplayName
 import com.ifmix.api.core.entity.ai.userNotes
 import com.ifmix.api.core.entity.ai.installId
@@ -67,25 +69,38 @@ class ScanRecordRepository {
             if (ScanUnsetField.USER_DISPLAY_NAME !in unset && ScanUnsetField.USER_NOTES !in unset) {
                 req.set?.collected?.let { set(table.collected, it) }
             }
+            req.set?.isPublic?.let { set(table.isPublic, it) }
         }.execute()
     }
 
     fun save(mc: ModuleCtx, entity: ScanRecord) = tpl.save(mc, entity)
     fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
 
-    /** DeepResearch 后回写：images + basicResult + hasDeepSearch。 */
-    fun updateAfterDeepResearch(
+    /** DeepResearch 前置：整体替换 images（AI 失败也已提交）。 */
+    fun updateImages(
         mc: ModuleCtx,
         appId: UUID,
         id: UUID,
         images: List<ImageRef>,
-        basicResult: Map<String, Any?>?,
     ): Int = mc.sql.createUpdate(ScanRecord::class) {
         where(table.appId eq appId)
         where(table.id eq id)
         set(table.images, images)
+    }.execute()
+
+    /** DeepResearch 后置：回写 basicResult + hasDeepSearch + promptVersion。 */
+    fun updateResultAfterDeepResearch(
+        mc: ModuleCtx,
+        appId: UUID,
+        id: UUID,
+        basicResult: Map<String, Any?>?,
+        promptVersion: String,
+    ): Int = mc.sql.createUpdate(ScanRecord::class) {
+        where(table.appId eq appId)
+        where(table.id eq id)
         set(table.basicResult, basicResult)
         set(table.hasDeepSearch, true)
+        set(table.promptVersion, promptVersion)
     }.execute()
     fun findByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<ScanRecord> = tpl.findByIds(mc, appId, ids)
 

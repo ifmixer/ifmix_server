@@ -62,6 +62,8 @@ app:
       preDeductPerAttempt: 1
       # 模型回退顺序：主模型 → fallback 列表（按逗号分隔的优先级）
       modelFallbackOrder: "llama-4.0-mini,miro-4"
+      # 提示词版本：加载 prompts/${name}_${promptVersion}.md，并随扫描结果落库
+      promptVersion: ${SCAN_PROMPT_VERSION:v10}
     # AI 扫描模块专用限流：按 key 维度独立限制（防止单个 key 耗尽）
     scanKeyRateLimit:
       enabled: true

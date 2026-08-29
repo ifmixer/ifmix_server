@@ -23,6 +23,10 @@ interface ScanRecord : BaseAppEntity, SoftDeletableProps, CustomerOwnedProps, Us
     val userDisplayName: String?
     val userNotes: String?
     val collected: Boolean
+    @Column(name = "is_public")
+    val isPublic: Boolean
     @Column(name = "has_deep_search")
     val hasDeepSearch: Boolean
+    @Column(name = "prompt_version")
+    val promptVersion: String
 }

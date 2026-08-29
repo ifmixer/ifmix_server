@@ -88,6 +88,15 @@ class AiFetcher(
         return loader.load(itemId)
     }
 
+    @DgsData(parentType = "ScanRecord", field = "deepResearch")
+    fun deepResearch(dfe: DgsDataFetchingEnvironment): CompletableFuture<com.ifmix.api.core.entity.ai.ScanDeepResearch> {
+        val scanRecordId = dfe.getSource<ScanRecord>()?.id
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "ScanRecord has no id")
+        val loader = dfe.getDataLoader<UUID, com.ifmix.api.core.entity.ai.ScanDeepResearch>(DeepResearchDataLoader.NAME)
+            ?: throw ApiError(ErrorCode.INTERNAL, "DeepResearchDataLoader not registered")
+        return loader.load(scanRecordId)
+    }
+
     // --- Scan mutations ---
 
     @DgsMutation(field = "m_ai_createScan")
@@ -103,9 +112,11 @@ class AiFetcher(
     @DgsMutation(field = "m_ai_runDeepResearch")
     fun runDeepResearch(dfe: DgsDataFetchingEnvironment, @InputArgument input: com.ifmix.api.core.generated.types.RunDeepResearchInput): com.ifmix.api.core.generated.types.RunDeepResearchResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        // Step 1: AI 调用在事务外
+        // Step 1: 先更新图片（独立事务）— 即使后续 AI 失败，图片也已提交
+        globalTx.withTx(ctx) { txCtx -> aiService.updateDeepResearchImages(txCtx, input) }
+        // Step 2: AI 调用在事务外
         val result = aiService.runDeepResearch(ctx, input)
-        // Step 2: DB 写入在事务内
+        // Step 3: 结果写入在事务内
         val success = globalTx.withTx(ctx) { txCtx -> aiService.saveDeepResearch(txCtx, result) }
         val record = if (success && dfe.selectionSet.fields.any { it.name == "scanRecord" }) {
             aiService.findById(ctx, input.scanRecordId)
@@ -169,5 +180,22 @@ class ScanRecordsDataLoader(
 
     companion object {
         const val NAME = "scanRecords"
+    }
+}
+
+/** DataLoader for ScanDeepResearch batch loading by scanRecordId. */
+@DgsDataLoader(name = DeepResearchDataLoader.NAME, caching = false)
+class DeepResearchDataLoader(
+    private val aiService: AiFacade,
+) : MappedBatchLoader<UUID, com.ifmix.api.core.entity.ai.ScanDeepResearch?> {
+    override fun load(scanRecordIds: Set<UUID>): CompletionStage<Map<UUID, com.ifmix.api.core.entity.ai.ScanDeepResearch?>> {
+        val opCtx = OperationContextHolder.current()
+        val rows = aiService.findDeepResearchByScanRecordIds(opCtx, scanRecordIds)
+        val map = rows.associateBy { it.scanRecordId }
+        return CompletableFuture.completedFuture(scanRecordIds.associateWith { map[it] })
+    }
+
+    companion object {
+        const val NAME = "scanDeepResearch"
     }
 }

@@ -3,6 +3,14 @@ package com.ifmix.api.core.dto.ai
 import java.time.LocalDate
 import java.util.UUID
 
+/** 扫描类型 — 决定使用哪套系统提示词。 */
+enum class ScanType {
+    /** 基础扫描：仅返回 basic_result。 */
+    BASIC,
+    /** 深度研究：返回 basic_result + premium_result。 */
+    DEEP_RESEARCH,
+}
+
 /**
  * 扫描输入中的单个媒体项。
  */
@@ -18,7 +26,7 @@ data class ScanMediaItem(
  */
 data class ScanInput(
     val scanId: UUID,
-    /** 一张或多张图片 */
+    /** 一张或多张图片（顺序即数组顺序） */
     val items: List<ScanMediaItem>,
     /** 用户语言偏好（BCP-47，如 zh-CN, en-US, ja-JP） */
     val locale: String? = null,
@@ -28,6 +36,6 @@ data class ScanInput(
     val currency: String? = null,
     /** 当前日期，用于年代分类阈值计算 */
     val date: LocalDate = LocalDate.now(),
-    /** true 时使用 deep-research 系统提示词（返回 basic_result + premium_result） */
-    val deepResearch: Boolean = false,
+    /** 扫描类型 — ScanRunner 据此选择系统提示词 */
+    val type: ScanType = ScanType.BASIC,
 )

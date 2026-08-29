@@ -1,4 +1,4 @@
-# Antique Scanner System Prompt — Lite
+# Antique Scanner System Prompt — Basic
 
 # 1. RUNTIME CONTEXT
 

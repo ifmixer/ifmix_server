@@ -22,6 +22,10 @@ class AiFacade(
     fun findById(opCtx: OperationContext, id: UUID): ScanRecord? =
         scanHandler.findById(mcFactory.forApp(opCtx), id)
 
+    /** 批量按 scanRecordId 查询 DeepResearch（DataLoader 用）。 */
+    fun findDeepResearchByScanRecordIds(opCtx: OperationContext, scanRecordIds: Collection<UUID>): List<com.ifmix.api.core.entity.ai.ScanDeepResearch> =
+        scanHandler.findDeepResearchByScanRecordIds(mcFactory.forApp(opCtx), scanRecordIds)
+
     fun findMyScans(opCtx: OperationContext, findOptions: CommonFindOptions?): Page<ScanRecord> =
         scanHandler.findMyScans(mcFactory.forApp(opCtx), findOptions)
 
@@ -33,9 +37,13 @@ class AiFacade(
     fun saveScanRecord(opCtx: OperationContext, result: AiScanResult): ScanRecord =
         scanHandler.saveNewScan(mcFactory.forApp(opCtx), result)
 
-    /** DeepResearch AI 调用在事务外 */
+    /** DeepResearch 第一步：先更新图片（事务内，AI 失败也已提交） */
+    fun updateDeepResearchImages(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.RunDeepResearchInput) =
+        scanHandler.updateDeepResearchImages(mcFactory.forApp(opCtx), input)
+
+    /** DeepResearch AI 调用在事务外（mc 在此构建） */
     fun runDeepResearch(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.RunDeepResearchInput): com.ifmix.api.core.dto.ai.DeepResearchResult =
-        scanHandler.runDeepResearch(opCtx, input)
+        scanHandler.runDeepResearch(mcFactory.forApp(opCtx), input)
 
     /** DeepResearch DB 写入在事务内 */
     fun saveDeepResearch(opCtx: OperationContext, result: com.ifmix.api.core.dto.ai.DeepResearchResult): Boolean =

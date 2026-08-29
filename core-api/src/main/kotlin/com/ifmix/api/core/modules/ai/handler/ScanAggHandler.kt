@@ -26,7 +26,7 @@ class ScanAggHandler(
     private val objectStorage: ObjectStorage,
     private val scanRepo: ScanRecordRepository,
     private val deepResearchRepo: com.ifmix.api.core.modules.ai.repo.ScanDeepResearchRepository,
-    private val mcFactory: com.ifmix.api.core.infra.db.ModuleCtxFactory,
+    private val scanPrompt: com.ifmix.api.core.modules.ai.service.ScanPrompt,
 ) {
     /** 外部 AI 调用（无事务）— 解析 images、运行 AI、返回结果 DTO */
     fun runAiScan(opCtx: OperationContext, input: NewScanInput): AiScanResult {
@@ -61,6 +61,7 @@ class ScanAggHandler(
             clientIp = opCtx.clientIp,
             images = input.images,
             basicResult = basicResult,
+            promptVersion = scanPrompt.promptVersion,
             createdAt = now,
             updatedAt = now,
         )
@@ -83,7 +84,9 @@ class ScanAggHandler(
             this.userDisplayName = null
             this.userNotes = null
             this.collected = false
+            this.isPublic = true
             this.hasDeepSearch = false
+            this.promptVersion = result.promptVersion
             this.createdAt = result.createdAt
             this.updatedAt = result.updatedAt
         }
@@ -109,20 +112,31 @@ class ScanAggHandler(
     fun findById(sc: ModuleCtx, id: UUID): ScanRecord? =
         scanRepo.findById(sc, sc.op.mustGetAppId(), id)
 
+    /** 批量按 scanRecordId 查询 DeepResearch（DataLoader 用）。 */
+    fun findDeepResearchByScanRecordIds(sc: ModuleCtx, scanRecordIds: Collection<UUID>): List<com.ifmix.api.core.entity.ai.ScanDeepResearch> =
+        deepResearchRepo.findByScanRecordIds(sc, sc.op.mustGetAppId(), scanRecordIds)
+
     /**
-     * DeepResearch 外部 AI 调用（无事务）。
-     * 校验 scanRecord 归属，按 position 排序图片，用 deep-research 提示词跑 AI，返回结果 DTO。
+     * DeepResearch 第一步（事务内）：校验归属并整体替换 images。
+     * 即使随后的 AI 调用失败，图片也已提交。images 顺序即数组顺序；view 为物品视角。
      */
-    fun runDeepResearch(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.RunDeepResearchInput): com.ifmix.api.core.dto.ai.DeepResearchResult {
-        val appId = opCtx.mustGetAppId()
-        val mc = mcFactory.forApp(opCtx)
-        val existing = scanRepo.findById(mc, appId, input.scanRecordId)
+    fun updateDeepResearchImages(sc: ModuleCtx, input: com.ifmix.api.core.generated.types.RunDeepResearchInput) {
+        val appId = sc.op.mustGetAppId()
+        val imageRefs = input.images.map { ImageRef(key = it.imageKey, view = it.view) }
+        val updated = scanRepo.updateImages(sc, appId, input.scanRecordId, imageRefs)
+        if (updated == 0) throw com.ifmix.api.core.infra.http.ApiError(com.ifmix.api.core.infra.http.ErrorCode.NOT_FOUND)
+    }
+
+    /**
+     * DeepResearch 第二步（无事务，mc 由 Facade 构建）：用 deep-research 提示词跑 AI。
+     * 图片已在 updateDeepResearchImages 提交，这里只读取归属信息并调用 AI。
+     */
+    fun runDeepResearch(sc: ModuleCtx, input: com.ifmix.api.core.generated.types.RunDeepResearchInput): com.ifmix.api.core.dto.ai.DeepResearchResult {
+        val appId = sc.op.mustGetAppId()
+        val existing = scanRepo.findById(sc, appId, input.scanRecordId)
             ?: throw com.ifmix.api.core.infra.http.ApiError(com.ifmix.api.core.infra.http.ErrorCode.NOT_FOUND)
 
-        // 按 position 排序后落库 & 送 AI
-        val sorted = input.images.sortedBy { it.position }
-        val imageRefs = sorted.map { ImageRef(key = it.imageKey, position = it.position) }
-        val resolved = sorted.map { img ->
+        val resolved = input.images.map { img ->
             ScanMediaItem(
                 imageUrl = objectStorage.getPublicUrl("ugc", img.imageKey),
                 mediaType = guessMediaType(img.imageKey, img.mediaType),
@@ -135,9 +149,9 @@ class ScanAggHandler(
             locale = existing.locale,
             country = existing.country,
             currency = existing.currency,
-            deepResearch = true,
+            type = com.ifmix.api.core.dto.ai.ScanType.DEEP_RESEARCH,
         )
-        val aiResponse = scanRunner.run(opCtx, scanInput)
+        val aiResponse = scanRunner.run(sc.op, scanInput)
 
         @Suppress("UNCHECKED_CAST")
         val basicResult = aiResponse["basic_result"] as? Map<String, Any?> ?: aiResponse
@@ -147,20 +161,20 @@ class ScanAggHandler(
         return com.ifmix.api.core.dto.ai.DeepResearchResult(
             scanRecordId = input.scanRecordId,
             appId = appId,
-            images = imageRefs,
             basicResult = basicResult,
             premiumResult = premiumResult,
+            promptVersion = scanPrompt.promptVersion,
         )
     }
 
     /**
-     * 事务内持久化 DeepResearch 结果：
-     * 1) 回写 scan_record 的 images + basicResult + hasDeepSearch
+     * DeepResearch 第三步（事务内）：
+     * 1) 回写 scan_record 的 basicResult + hasDeepSearch + promptVersion
      * 2) 按 scanRecordId upsert ai_scan_deep_research 的 premiumResult
      */
     fun saveDeepResearch(sc: ModuleCtx, result: com.ifmix.api.core.dto.ai.DeepResearchResult): Boolean {
-        val updated = scanRepo.updateAfterDeepResearch(
-            sc, result.appId, result.scanRecordId, result.images, result.basicResult,
+        val updated = scanRepo.updateResultAfterDeepResearch(
+            sc, result.appId, result.scanRecordId, result.basicResult, result.promptVersion,
         )
         if (updated == 0) throw com.ifmix.api.core.infra.http.ApiError(com.ifmix.api.core.infra.http.ErrorCode.NOT_FOUND)
 
@@ -170,6 +184,7 @@ class ScanAggHandler(
             this.appId = result.appId
             this.scanRecordId = result.scanRecordId
             this.premiumResult = result.premiumResult
+            this.promptVersion = result.promptVersion
         }
         deepResearchRepo.upsert(sc, entity)
         return true

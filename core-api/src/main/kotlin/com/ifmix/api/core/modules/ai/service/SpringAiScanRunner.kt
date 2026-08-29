@@ -32,6 +32,7 @@ open class SpringAiScanRunner(
     private val keyStore: AgnesKeyStore,
     @Value("\${app.agnes.ai.modelFallbackOrder:}") fallbackOrderStr: String,
     @Qualifier("snakeCaseMapper") private val snakeCaseMapper: ObjectMapper,
+    private val scanPrompt: ScanPrompt,
 ) : ScanRunner {
 
     private val fallbackModels: List<String> = fallbackOrderStr
@@ -75,23 +76,25 @@ open class SpringAiScanRunner(
                     val client = chatClientFactory.forKey(apiKey, model)
 
                     val systemMsg = SystemMessage(
-                        if (input.deepResearch) ScanPrompt.deepResearchSystemPrompt(input)
-                        else ScanPrompt.systemPrompt(input)
+                        when (input.type) {
+                            com.ifmix.api.core.dto.ai.ScanType.DEEP_RESEARCH -> scanPrompt.deepResearchSystemPrompt(input)
+                            com.ifmix.api.core.dto.ai.ScanType.BASIC -> scanPrompt.systemPrompt(input)
+                        }
                     )
-                    val userText = ScanPrompt.userPrompt(input)
+                    val userText = scanPrompt.userPrompt(input)
                     val userMsg = UserMessage.builder()
                         .text(userText)
                         .media(*mediaItems.toTypedArray())
                         .build()
 
                     val prompt = Prompt(listOf(systemMsg, userMsg))
-                    log.debug("Scan run start. scanId={}, model={}, keyId={}", input.scanId, model,  pickedKeyId)
+                    log.debug("Scan run start. scanId={}, type={}, model={}, keyId={}", input.scanId, input.type, model, pickedKeyId)
 
                     val startMs = System.currentTimeMillis()
                     val response = client.prompt(prompt).call()
                     val content = response.content() ?: ""
                     val elapsedMs = System.currentTimeMillis() - startMs
-                    log.debug("Scan run completed. scanId={}, model={}, keyId={}, elapsed={}ms, content={}", input.scanId, model, pickedKeyId, elapsedMs, content)
+                    log.debug("Scan run completed. scanId={}, type={}, model={}, keyId={}, elapsed={}ms, content={}", input.scanId, input.type, model, pickedKeyId, elapsedMs, content)
 
                     val data = parseJsonToMap(content)
 

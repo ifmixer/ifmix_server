@@ -14,6 +14,7 @@ type ScanRecordListView {
     userDisplayName: String
     userNotes: String
     collected: Boolean!
+    isPublic: Boolean!
     createdAt: DateTime!
     updatedAt: DateTime
 }
@@ -35,6 +36,8 @@ type ScanRecord {
     userNotes: String
     collected: Boolean!
     hasDeepSearch: Boolean!
+    promptVersion: String!
+    isPublic: Boolean!
     createdAt: DateTime!
     updatedAt: DateTime
 }
@@ -45,13 +48,15 @@ type ScanDeepResearch {
     scanRecordId: UUID!
     "高级扫描结果 (JSONB)"
     premiumResult: JSON
+    promptVersion: String!
     createdAt: DateTime!
     updatedAt: DateTime
 }
 
 type ImageRef {
     key: String!
-    position: Int!
+    "物品视角编码，如 0=front, 1=side, 2=back"
+    view: Int
 }
 
 type ScanRecordListViewPage {
@@ -82,6 +87,7 @@ input UpdateScanSetInput {
     userDisplayName: String
     userNotes: String
     collected: Boolean
+    isPublic: Boolean
 }
 
 enum ScanUnsetField { USER_DISPLAY_NAME, USER_NOTES }
@@ -102,8 +108,8 @@ input RunDeepResearchInput {
 
 input DeepResearchImageInput {
     imageKey: String!
-    "展示/分析顺序，升序"
-    position: Int!
+    "物品视角编码，如 0=front, 1=side, 2=back"
+    view: Int
     mediaType: String
 }
 
