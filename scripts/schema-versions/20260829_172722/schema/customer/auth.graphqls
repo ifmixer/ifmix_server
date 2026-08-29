@@ -1,0 +1,65 @@
+type UserInfo {
+    id: UUID!
+    email: String
+}
+
+type LoginResult {
+    accessToken: String!
+    refreshToken: String!
+    expiresIn: Int!
+    user: UserInfo!
+}
+
+type MeResult {
+    user: UserInfo!
+    "付费等级。10=FREE, 20=PRO, 30=ENTERPRISE"
+    tier: Int!
+    tierActive: Boolean!
+    tierExpiresAt: DateTime
+}
+
+type RefreshResult {
+    accessToken: String!
+    refreshToken: String!
+    expiresIn: Int!
+}
+
+input IdpLoginInput {
+    idpId: UUID!
+    credential: String!
+}
+
+input RefreshInput {
+    refreshToken: String!
+}
+
+input LogoutInput {
+    refreshToken: String!
+}
+
+input RegisterInstallInput {
+    "平台: 10=iOS, 20=Android, 30=Web"
+    platform: Int!
+    nativeVersion: String
+    jsVersion: String
+    "扩展信息 (device model, os version 等)"
+    info: JSON
+}
+
+type RegisterInstallResult {
+    installId: UUID!
+    token: String!
+    expiresIn: Int!
+}
+
+extend type Query {
+    q_auth_me: MeResult!
+}
+
+extend type Mutation {
+    m_auth_login(input: IdpLoginInput!): LoginResult!
+    m_auth_refreshToken(input: RefreshInput!): RefreshResult!
+    m_auth_logout(input: LogoutInput!): OperationResult!
+    m_auth_deleteAccount: OperationResult!
+    m_auth_registerInstall(input: RegisterInstallInput!): RegisterInstallResult!
+}

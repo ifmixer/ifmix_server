@@ -22,6 +22,7 @@
 | app | `app_config_revision` | app | AppConfigRevision |
 | app | `app_info` | 全局 | AppInfo |
 | ai | `ai_scan_record` | app | ScanRecord |
+| ai | `ai_scan_deep_research` | app | ScanDeepResearch |
 | ai | `ai_scan_collection` | app | ScanCollection |
 | ai | `ai_scan_collection_item` | app | ScanCollectionItem |
 | ai | `ai_agnes_key` | app | AgnesKey |
@@ -64,6 +65,24 @@
 - **常量**: 放 model class 嵌套 object，跨模块的放 `entity/shared/`
 - **编码规则**: 0 保留不用，从 10 开始步长 10
 
+### 枚举码表登记
+
+#### `ImageRef.category`（图片分类，存于 `ai_scan_record.image_keys` JSONB）
+
+| Code | 名称 | 说明 |
+|------|------|------|
+| 0 | UNSPECIFIED | 未指定/默认（如初次扫描的主图） |
+| 10 | FRONT | 正面 |
+| 20 | BACK | 背面 |
+| 30 | BOTTOM | 底部 / 底面 |
+| 40 | MAKER_MARK | 款识 / 签名 |
+| 50 | DAMAGE | 损伤 / 磨损 |
+| 60 | DIMENSIONS | 尺寸 / 比例（带参照物） |
+| 70 | PRICE_TAG | 价签 |
+| 80 | DOCUMENTS | 文件 / 来源证明 |
+| 90 | DETAIL | 局部细节（通用，可选） |
+| 100 | OTHER | 其它 |
+
 ## FilterGroup 动态查询
 
 ```graphql
@@ -101,5 +120,10 @@ input CommonFindOptions {
 
 ## Flyway
 
-- V1-V28, 不可回退
+- V1–V35, 不可回退
 - 迁移文件: `core-api/src/main/resources/db/migration/`
+- 最近变更:
+  - V32 `ai_scan_deep_research`（深度研究结果表）+ `ai_scan_record.has_deep_search`
+  - V33 移除 `ai_scan_record.premium_result`（迁移至 `ai_scan_deep_research`）
+  - V34 `ai_scan_record` / `ai_scan_deep_research` 增加 `prompt_version`
+  - V35 `ai_scan_record.is_public`（默认 true）

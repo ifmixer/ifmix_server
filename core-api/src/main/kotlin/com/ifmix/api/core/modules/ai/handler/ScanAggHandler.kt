@@ -118,11 +118,11 @@ class ScanAggHandler(
 
     /**
      * DeepResearch 第一步（事务内）：校验归属并整体替换 images。
-     * 即使随后的 AI 调用失败，图片也已提交。images 顺序即数组顺序；view 为物品视角。
+     * 即使随后的 AI 调用失败，图片也已提交。images 顺序即数组顺序；category 为图片分类。
      */
     fun updateDeepResearchImages(sc: ModuleCtx, input: com.ifmix.api.core.generated.types.RunDeepResearchInput) {
         val appId = sc.op.mustGetAppId()
-        val imageRefs = input.images.map { ImageRef(key = it.imageKey, view = it.view) }
+        val imageRefs = input.images.map { ImageRef(key = it.imageKey, category = it.category) }
         val updated = scanRepo.updateImages(sc, appId, input.scanRecordId, imageRefs)
         if (updated == 0) throw com.ifmix.api.core.infra.http.ApiError(com.ifmix.api.core.infra.http.ErrorCode.NOT_FOUND)
     }

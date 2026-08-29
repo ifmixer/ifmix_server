@@ -55,12 +55,7 @@ type ScanDeepResearch {
 
 type ImageRef {
     key: String!
-    """
-    图片分类（Int 码，详见 docs/DATABASE.md）：
-    0=UNSPECIFIED(未指定/主图), 10=FRONT(正面), 20=BACK(背面), 30=BOTTOM(底部),
-    40=MAKER_MARK(款识/签名), 50=DAMAGE(损伤), 60=DIMENSIONS(尺寸/带参照物),
-    70=PRICE_TAG(价签), 80=DOCUMENTS(文件/来源证明), 90=DETAIL(局部细节), 100=OTHER(其它)
-    """
+    "图片分类。0=UNSPECIFIED,10=FRONT,20=BACK,30=BOTTOM,40=MAKER_MARK,50=DAMAGE,60=DIMENSIONS,70=PRICE_TAG,80=DOCUMENTS,90=DETAIL,100=OTHER"
     category: Int
 }
 
@@ -113,12 +108,7 @@ input RunDeepResearchInput {
 
 input DeepResearchImageInput {
     imageKey: String!
-    """
-    图片分类（Int 码，详见 docs/DATABASE.md）：
-    0=UNSPECIFIED(未指定/主图), 10=FRONT(正面), 20=BACK(背面), 30=BOTTOM(底部),
-    40=MAKER_MARK(款识/签名), 50=DAMAGE(损伤), 60=DIMENSIONS(尺寸/带参照物),
-    70=PRICE_TAG(价签), 80=DOCUMENTS(文件/来源证明), 90=DETAIL(局部细节), 100=OTHER(其它)
-    """
+    "图片分类。0=UNSPECIFIED,10=FRONT,20=BACK,30=BOTTOM,40=MAKER_MARK,50=DAMAGE,60=DIMENSIONS,70=PRICE_TAG,80=DOCUMENTS,90=DETAIL,100=OTHER"
     category: Int
     mediaType: String
 }
