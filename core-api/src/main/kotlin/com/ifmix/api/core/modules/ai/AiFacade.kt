@@ -33,6 +33,14 @@ class AiFacade(
     fun saveScanRecord(opCtx: OperationContext, result: AiScanResult): ScanRecord =
         scanHandler.saveNewScan(mcFactory.forApp(opCtx), result)
 
+    /** DeepResearch AI 调用在事务外 */
+    fun runDeepResearch(opCtx: OperationContext, input: com.ifmix.api.core.generated.types.RunDeepResearchInput): com.ifmix.api.core.dto.ai.DeepResearchResult =
+        scanHandler.runDeepResearch(opCtx, input)
+
+    /** DeepResearch DB 写入在事务内 */
+    fun saveDeepResearch(opCtx: OperationContext, result: com.ifmix.api.core.dto.ai.DeepResearchResult): Boolean =
+        scanHandler.saveDeepResearch(mcFactory.forApp(opCtx), result)
+
     fun updateScan(opCtx: OperationContext, input: UpdateScanInput): Boolean =
         scanHandler.updateScan(mcFactory.forApp(opCtx), input)
 

@@ -18,7 +18,6 @@ data class AiScanResult(
     val clientIp: String?,
     val images: List<NewScanImageInput>,
     val basicResult: Map<String, Any?>,
-    val premiumResult: Map<String, Any?>?,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

@@ -2,11 +2,15 @@ package com.ifmix.api.core.modules.ai.repo
 
 import com.ifmix.api.core.dto.common.Page
 import com.ifmix.api.core.entity.ai.ScanRecord
+import com.ifmix.api.core.entity.ai.ImageRef
 import com.ifmix.api.core.entity.ai.ScanRecordProps
 import com.ifmix.api.core.entity.ai.appId
+import com.ifmix.api.core.entity.ai.basicResult
 import com.ifmix.api.core.entity.ai.collected
 import com.ifmix.api.core.entity.ai.fetchBy
+import com.ifmix.api.core.entity.ai.hasDeepSearch
 import com.ifmix.api.core.entity.ai.id
+import com.ifmix.api.core.entity.ai.images
 import com.ifmix.api.core.entity.ai.userDisplayName
 import com.ifmix.api.core.entity.ai.userNotes
 import com.ifmix.api.core.entity.ai.installId
@@ -35,12 +39,11 @@ class ScanRecordRepository {
         )
     }
 
-    /** 列表视图：不加载 basicResult / premiumResult JSONB 大字段 */
+    /** 列表视图：不加载 basicResult JSONB 大字段 */
     fun findMyScans(mc: ModuleCtx, appId: UUID, installId: UUID, findOptions: CommonFindOptions?): Page<ScanRecord> =
         tpl.findByOptions(mc, appId, findOptions, FILTERABLE, fetchBy = { fetchBy {
             allScalarFields()
             basicResult(false)
-            premiumResult(false)
         } }) {
             where(table.installId eq installId)
         }
@@ -69,9 +72,24 @@ class ScanRecordRepository {
 
     fun save(mc: ModuleCtx, entity: ScanRecord) = tpl.save(mc, entity)
     fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
+
+    /** DeepResearch 后回写：images + basicResult + hasDeepSearch。 */
+    fun updateAfterDeepResearch(
+        mc: ModuleCtx,
+        appId: UUID,
+        id: UUID,
+        images: List<ImageRef>,
+        basicResult: Map<String, Any?>?,
+    ): Int = mc.sql.createUpdate(ScanRecord::class) {
+        where(table.appId eq appId)
+        where(table.id eq id)
+        set(table.images, images)
+        set(table.basicResult, basicResult)
+        set(table.hasDeepSearch, true)
+    }.execute()
     fun findByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<ScanRecord> = tpl.findByIds(mc, appId, ids)
 
-    /** 列表视图批量查询：不加载 basicResult / premiumResult */
+    /** 列表视图批量查询：不加载 basicResult */
     fun findByIdsListView(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<ScanRecord> {
         if (ids.isEmpty()) return emptyList()
         return mc.sql.createQuery(ScanRecord::class) {
@@ -80,7 +98,6 @@ class ScanRecordRepository {
             select(table.fetchBy {
                 allScalarFields()
                 basicResult(false)
-                premiumResult(false)
             })
         }.execute()
     }

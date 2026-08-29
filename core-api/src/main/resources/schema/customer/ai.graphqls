@@ -24,8 +24,8 @@ type ScanRecord {
     images: [ImageRef!]
     "基础扫描结果 (JSONB)"
     basicResult: JSON
-    "高级扫描结果 (JSONB)"
-    premiumResult: JSON
+    "深度研究结果，按 scanRecordId 懒加载 (DataLoader)"
+    deepResearch: ScanDeepResearch
     "扫描状态。10=PENDING, 11=PROCESSING, 20=COMPLETED, 30=FAILED"
     status: Int!
     locale: String
@@ -34,12 +34,24 @@ type ScanRecord {
     userDisplayName: String
     userNotes: String
     collected: Boolean!
+    hasDeepSearch: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime
+}
+
+"深度研究结果 (premium_result 保存在 ai_scan_deep_research)"
+type ScanDeepResearch {
+    id: UUID!
+    scanRecordId: UUID!
+    "高级扫描结果 (JSONB)"
+    premiumResult: JSON
     createdAt: DateTime!
     updatedAt: DateTime
 }
 
 type ImageRef {
     key: String!
+    position: Int!
 }
 
 type ScanRecordListViewPage {
@@ -81,6 +93,23 @@ type UpdateScanResult {
 
 type DeleteScanResult {
     success: Boolean!
+}
+
+input RunDeepResearchInput {
+    scanRecordId: UUID!
+    images: [DeepResearchImageInput!]!
+}
+
+input DeepResearchImageInput {
+    imageKey: String!
+    "展示/分析顺序，升序"
+    position: Int!
+    mediaType: String
+}
+
+type RunDeepResearchResult {
+    success: Boolean!
+    scanRecord: ScanRecord
 }
 
 # ==================== Collection ====================
@@ -138,6 +167,7 @@ extend type Query {
 
 extend type Mutation {
     m_ai_createScan(input: NewScanInput!): NewScanResult!
+    m_ai_runDeepResearch(input: RunDeepResearchInput!): RunDeepResearchResult!
     m_ai_updateScan(input: UpdateScanInput!): UpdateScanResult!
     m_ai_deleteScan(id: UUID!): DeleteScanResult!
     m_ai_addCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemResult!

@@ -1,8 +1,0 @@
-# 20260823_111434 → 20260823_112159
-
-[log] 
-Detected the following changes (2) between schemas:
-
-[log] ✖  Input field priority of type Int! was added to input object type TodoRecItemInput
-[log] ✔  Field priority was added to object type TodoRecItem
-[error] Detected 1 breaking change

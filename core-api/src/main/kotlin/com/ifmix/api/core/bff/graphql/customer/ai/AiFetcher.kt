@@ -100,6 +100,19 @@ class AiFetcher(
         return NewScanResult(scanRecord = record)
     }
 
+    @DgsMutation(field = "m_ai_runDeepResearch")
+    fun runDeepResearch(dfe: DgsDataFetchingEnvironment, @InputArgument input: com.ifmix.api.core.generated.types.RunDeepResearchInput): com.ifmix.api.core.generated.types.RunDeepResearchResult {
+        val ctx = ctxProvider.fromDfe(dfe)
+        // Step 1: AI 调用在事务外
+        val result = aiService.runDeepResearch(ctx, input)
+        // Step 2: DB 写入在事务内
+        val success = globalTx.withTx(ctx) { txCtx -> aiService.saveDeepResearch(txCtx, result) }
+        val record = if (success && dfe.selectionSet.fields.any { it.name == "scanRecord" }) {
+            aiService.findById(ctx, input.scanRecordId)
+        } else null
+        return com.ifmix.api.core.generated.types.RunDeepResearchResult(success = success, scanRecord = record)
+    }
+
     @DgsMutation(field = "m_ai_updateScan")
     fun updateScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateScanInput): UpdateScanResult {
         val ctx = ctxProvider.fromDfe(dfe)

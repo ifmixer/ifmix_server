@@ -16,7 +16,9 @@ import java.util.UUID
 interface Feedback : UUIDProps, AppScopedProps, CreatedAtProps, CustomerOwnedProps, UserPreferenceProps {
 
     val scanRecordId: UUID?
-    /** 反馈分类编码。0=UNKNOWN, 10=LIKED, 20=PRICE_TOO_HIGH, 21=PRICE_TOO_LOW, 22=PRICE_MISSING, 30=WRONG_IDENTIFICATION, 40=FEATURE_REQUEST, 41=MORE_RECOMMENDATIONS */
+    /** 反馈分类编码。0=UNKNOWN, 10=LIKED, 20=PRICE_TOO_HIGH, 21=PRICE_TOO_LOW, 22=PRICE_MISSING, 23=PRICE_UNREASONABLE, 30=WRONG_IDENTIFICATION, 40=FEATURE_REQUEST, 41=MORE_RECOMMENDATIONS */
     val category: Int
     val comment: String?
+    /** SPM 埋点位置标识 */
+    val spm: String?
 }

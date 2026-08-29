@@ -28,4 +28,6 @@ data class ScanInput(
     val currency: String? = null,
     /** 当前日期，用于年代分类阈值计算 */
     val date: LocalDate = LocalDate.now(),
+    /** true 时使用 deep-research 系统提示词（返回 basic_result + premium_result） */
+    val deepResearch: Boolean = false,
 )

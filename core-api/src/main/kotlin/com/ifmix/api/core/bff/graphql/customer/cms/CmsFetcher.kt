@@ -35,4 +35,5 @@ private fun SubmitFeedbackInput.toReq() = SubmitFeedbackReq(
     category = category,
     comment = comment,
     scanRecordId = scanRecordId,
+    spm = spm,
 )

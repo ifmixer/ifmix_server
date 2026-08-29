@@ -10,31 +10,38 @@ import com.ifmix.api.core.dto.ai.ScanInput
  */
 object ScanPrompt {
 
-    private val template: String = loadResource("prompts/scan-system_20260823.md")
+//    private val template: String = loadResource("prompts/scan-system_20260823.md")
 
-//    private val template: String = loadResource("prompts/scan-system-hello.md")
+    private val template: String = loadResource("prompts/scan-system-basic.md")
+
+    private val deepResearchTemplate: String = loadResource("prompts/scan-system-deep-research.md")
 
     private fun loadResource(path: String): String =
         ScanPrompt::class.java.classLoader.getResourceAsStream(path)
             ?.bufferedReader()?.readText()
             ?: error("Classpath resource not found: $path")
 
-    /**
-     * Build the complete system prompt with runtime values filled in.
-     */
-    fun systemPrompt(input: ScanInput): String {
+    private fun fill(tpl: String, input: ScanInput): String {
         val resolvedLang = input.locale?.takeIf { it.isNotBlank() } ?: "en-US"
         val resolvedCurrency = input.currency?.takeIf { it.isNotBlank() } ?: "USD"
         val resolvedRegion = input.country?.takeIf { it.isNotBlank() } ?: "Not specified"
 
-        val prompt = template
+        return tpl
             .replace("{{CURRENT_DATE}}", input.date.toString())
             .replace("{{RESPONSE_LOCALE}}", resolvedLang)
             .replace("{{MARKET_REGION}}", resolvedRegion)
             .replace("{{VALUATION_CURRENCY}}", resolvedCurrency)
-
-        return prompt
     }
+
+    /**
+     * Build the complete system prompt with runtime values filled in.
+     */
+    fun systemPrompt(input: ScanInput): String = fill(template, input)
+
+    /**
+     * Deep-research system prompt — returns both basic_result and premium_result.
+     */
+    fun deepResearchSystemPrompt(input: ScanInput): String = fill(deepResearchTemplate, input)
 
     /**
      * Minimal user prompt — task instruction only. Log this for debugging.

@@ -23,6 +23,7 @@ class FeedbackAggHandler(
             this.category = req.category
             this.comment = req.comment
             this.scanRecordId = req.scanRecordId
+            this.spm = req.spm
             this.createdAt = Instant.now()
         }
         feedbackRepo.save(mc, feedback)

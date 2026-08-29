@@ -18,13 +18,11 @@ interface ScanRecord : BaseAppEntity, SoftDeletableProps, CustomerOwnedProps, Us
     @Column(name = "basic_result")
     val basicResult: Map<String, Any?>?
 
-    @Serialized
-    @Column(name = "premium_result")
-    val premiumResult: Map<String, Any?>?
-
     val status: Int
     val clientIp: String?
     val userDisplayName: String?
     val userNotes: String?
     val collected: Boolean
+    @Column(name = "has_deep_search")
+    val hasDeepSearch: Boolean
 }

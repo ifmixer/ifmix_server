@@ -74,11 +74,14 @@ open class SpringAiScanRunner(
                     val apiKey = doc?.key ?: continue
                     val client = chatClientFactory.forKey(apiKey, model)
 
-                    val systemMsg = SystemMessage(ScanPrompt.systemPrompt(input))
+                    val systemMsg = SystemMessage(
+                        if (input.deepResearch) ScanPrompt.deepResearchSystemPrompt(input)
+                        else ScanPrompt.systemPrompt(input)
+                    )
                     val userText = ScanPrompt.userPrompt(input)
                     val userMsg = UserMessage.builder()
                         .text(userText)
-//                        .media(*mediaItems.toTypedArray())
+                        .media(*mediaItems.toTypedArray())
                         .build()
 
                     val prompt = Prompt(listOf(systemMsg, userMsg))
