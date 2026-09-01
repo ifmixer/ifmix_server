@@ -4,20 +4,13 @@ import com.ifmix.api.core.infra.http.OperationContext
 import java.util.UUID
 
 /**
- * 行归属判定：
- * - 登录用户（ctx.userId != null）：只看 row.userId 是否匹配
- * - 匿名用户（ctx.userId == null）：只看 row.installId 是否匹配
+ * 行归属判定：只认 customerId。
+ * - 行无归属（customerId == null）：视为公共/无主，任何人可访问
+ * - 行有归属：必须与当前上下文 customerId 一致
  *
  * @param ctx 当前请求上下文
- * @param userId 行记录中的 userId（可为 null）
- * @param installId 行记录中的 installId（可为 null）
+ * @param customerId 行记录中的 customerId（可为 null）
  * @return 当前用户是否拥有该行
  */
-fun ownsRow(ctx: OperationContext, userId: UUID?, installId: UUID?): Boolean =
-    if (userId != null) {
-        userId == ctx.userId
-    } else if (installId != null) {
-        installId == ctx.installId
-    } else {
-        true
-    }
+fun ownsRow(ctx: OperationContext, customerId: UUID?): Boolean =
+    customerId == null || customerId == ctx.customerId

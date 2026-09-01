@@ -15,12 +15,13 @@ import com.ifmix.api.core.entity.ai.isPublic
 import com.ifmix.api.core.entity.ai.promptVersion
 import com.ifmix.api.core.entity.ai.userDisplayName
 import com.ifmix.api.core.entity.ai.userNotes
-import com.ifmix.api.core.entity.ai.installId
+import com.ifmix.api.core.entity.ai.customerId
 import com.ifmix.api.core.generated.types.CommonFindOptions
 import com.ifmix.api.core.generated.types.ScanUnsetField
 import com.ifmix.api.core.generated.types.UpdateScanInput
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
+import org.babyfish.jimmer.sql.ast.mutation.DeleteMode
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.valueIn
 import org.springframework.stereotype.Repository
@@ -42,12 +43,12 @@ class ScanRecordRepository {
     }
 
     /** 列表视图：不加载 basicResult JSONB 大字段 */
-    fun findMyScans(mc: ModuleCtx, appId: UUID, installId: UUID, findOptions: CommonFindOptions?): Page<ScanRecord> =
+    fun findMyScans(mc: ModuleCtx, appId: UUID, customerId: UUID, findOptions: CommonFindOptions?): Page<ScanRecord> =
         tpl.findByOptions(mc, appId, findOptions, FILTERABLE, fetchBy = { fetchBy {
             allScalarFields()
             basicResult(false)
         } }) {
-            where(table.installId eq installId)
+            where(table.customerId eq customerId)
         }
 
     fun partialUpdate(mc: ModuleCtx, appId: UUID, id: UUID, req: UpdateScanInput): Int {
@@ -75,6 +76,14 @@ class ScanRecordRepository {
 
     fun save(mc: ModuleCtx, entity: ScanRecord) = tpl.save(mc, entity)
     fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
+
+    /** 合并：把 fromCustomerId 名下扫描记录归属改到 toCustomerId。返回改写行数。 */
+    fun reassignOwner(mc: ModuleCtx, appId: UUID, fromCustomerId: UUID, toCustomerId: UUID): Int =
+        mc.sql.createUpdate(ScanRecord::class) {
+            where(table.appId eq appId)
+            where(table.customerId eq fromCustomerId)
+            set(table.customerId, toCustomerId)
+        }.execute()
 
     /** DeepResearch 前置：整体替换 images（AI 失败也已提交）。 */
     fun updateImages(
@@ -119,4 +128,14 @@ class ScanRecordRepository {
 
     fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
     fun exists(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.exists(mc, appId, id)
+
+    /** 阶段 6：物理删除某批 customer 名下扫描记录（含软删列，显式 PHYSICAL 硬删避免孤儿行）。 */
+    fun physicalDeleteByCustomers(mc: ModuleCtx, appId: UUID, customerIds: Collection<UUID>): Int {
+        if (customerIds.isEmpty()) return 0
+        return mc.sql.createDelete(ScanRecord::class) {
+            setMode(DeleteMode.PHYSICAL)
+            where(table.appId eq appId)
+            where(table.customerId valueIn customerIds)
+        }.execute()
+    }
 }

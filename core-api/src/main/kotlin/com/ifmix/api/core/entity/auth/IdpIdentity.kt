@@ -26,5 +26,4 @@ interface IdpIdentity : BaseEntity {
     val profile: Map<String, Any?>?
 
     val loginIp: String?
-    val loginInstallId: UUID?
 }

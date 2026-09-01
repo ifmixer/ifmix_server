@@ -62,10 +62,9 @@ class RequestLoggingFilter : OncePerRequestFilter() {
             if (status >= 400) {
                 // 错误响应：WARN 级别，打印完整请求体和响应体
                 val appId = wrappedRequest.getHeader("x-app-id") ?: "<none>"
-                val installId = wrappedRequest.getHeader("x-install-id") ?: "<none>"
                 log.warn(
-                    "▶ {} {}{} | status={} | {}ms | appId={} installId={}\n  ├─ req: {}\n  └─ res: {}",
-                    method, uri, query, status, duration, appId, installId,
+                    "▶ {} {}{} | status={} | {}ms | appId={}\n  ├─ req: {}\n  └─ res: {}",
+                    method, uri, query, status, duration, appId,
                     requestBody.truncate(2000),
                     responseBody.truncate(2000),
                 )

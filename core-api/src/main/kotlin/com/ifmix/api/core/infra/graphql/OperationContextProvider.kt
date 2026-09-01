@@ -23,8 +23,7 @@ class OperationContextProvider {
     fun fromDfe(
         dfe: DgsDataFetchingEnvironment,
         requireAppId: Boolean = true,
-        requireInstallId: Boolean = true,
-        requireUserId: Boolean = false,
+        requireCustomerId: Boolean = false,
         requireLocale: Boolean = false,
         requireCountry: Boolean = false,
         requireCurrency: Boolean = false,
@@ -40,8 +39,7 @@ class OperationContextProvider {
 
         // require 校验
         if (requireAppId && reqCtx.appId == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id is required")
-        if (requireInstallId && reqCtx.installId == null) throw ApiError(ErrorCode.INVALID_REQUEST, "install token is required")
-        if (requireUserId && reqCtx.userId == null) throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
+        if (requireCustomerId && reqCtx.customerId == null) throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
         if (requireLocale && reqCtx.locale == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-locale is required")
         if (requireCountry && reqCtx.country == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-country is required")
         if (requireCurrency && reqCtx.currency == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-currency is required")

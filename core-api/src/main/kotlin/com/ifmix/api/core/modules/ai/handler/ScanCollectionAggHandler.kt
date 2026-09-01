@@ -27,8 +27,7 @@ open class ScanCollectionAggHandler(
         val model = ScanCollection {
             this.id = id
             this.appId = sc.appId!!
-            this.userId = ctx.userId
-            this.installId = ctx.mustGetInstallId()
+            this.customerId = ctx.customerId
             this.isDefault = true
             this.createdAt = now
             this.updatedAt = now
@@ -53,13 +52,12 @@ open class ScanCollectionAggHandler(
     fun getDefault(sc: ModuleCtx): ScanCollection? {
         val ctx = sc.op
         val appId = ctx.appId!!
-        return collectionRepo.findDefault(sc, appId, ctx.installId, ctx.userId)
+        return collectionRepo.findDefault(sc, appId, ctx.customerId)
     }
 
     fun findItemsByCursor(sc: ModuleCtx, collectionId: UUID, limit: Int?): Page<ScanCollectionItem> {
         val appId = sc.op.appId!!
         val effectiveLimit = limit ?: 20
-        val cursor = sc.op.installId // placeholder - actual cursor logic stays simple
         return itemRepo.findItemsByCursor(sc, appId, collectionId, effectiveLimit, null)
     }
 }

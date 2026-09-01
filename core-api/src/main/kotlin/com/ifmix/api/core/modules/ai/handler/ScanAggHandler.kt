@@ -76,8 +76,7 @@ class ScanAggHandler(
             this.basicResult = result.basicResult
             this.status = 20
             this.clientIp = result.clientIp
-            this.installId = sc.op.mustGetInstallId()
-            this.userId = sc.op.userId
+            this.customerId = sc.op.customerId
             this.locale = result.locale
             this.country = result.country
             this.currency = result.currency
@@ -201,8 +200,8 @@ class ScanAggHandler(
 
     fun findMyScans(sc: ModuleCtx, findOptions: CommonFindOptions?): Page<ScanRecord> {
         val appId = sc.op.mustGetAppId()
-        val installId = sc.op.mustGetInstallId()
-        return scanRepo.findMyScans(sc, appId, installId, findOptions)
+        val customerId = sc.op.mustGetCustomerId()
+        return scanRepo.findMyScans(sc, appId, customerId, findOptions)
     }
 
     private fun guessMediaType(key: String, mediaType: String?): String =

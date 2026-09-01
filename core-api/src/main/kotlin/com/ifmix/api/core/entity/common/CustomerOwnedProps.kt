@@ -1,11 +1,12 @@
 package com.ifmix.api.core.entity.common
 
+import org.babyfish.jimmer.sql.Column
 import org.babyfish.jimmer.sql.MappedSuperclass
 import java.util.UUID
 
-/** Customer 归属标记：installId 必填，userId 可选（未登录时为 null）。 */
+/** Customer 归属标记：customerId 可选（匿名未转正时为 null）。 */
 @MappedSuperclass
 interface CustomerOwnedProps {
-    val installId: UUID
-    val userId: UUID?
+    @Column(name = "customer_id")
+    val customerId: UUID?
 }

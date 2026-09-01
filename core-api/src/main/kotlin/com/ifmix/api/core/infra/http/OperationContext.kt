@@ -22,8 +22,9 @@ data class OperationContext(
 ) {
     // ===== 便捷委托 =====
     val appId get() = req.appId
-    val installId get() = req.installId
-    val userId get() = req.userId
+    val customerId get() = req.customerId
+    val actorType get() = req.actorType
+    val anonymous get() = req.anonymous
     val locale get() = req.locale
     val currency get() = req.currency
     val country get() = req.country
@@ -34,6 +35,5 @@ data class OperationContext(
     val readCache get() = !isMutation
 
     fun mustGetAppId() = req.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id is required")
-    fun mustGetUserId() = req.userId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
-    fun mustGetInstallId() = req.installId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-install-id is required")
+    fun mustGetCustomerId() = req.customerId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
 }

@@ -21,7 +21,7 @@ class StorageAggHandler(
 ) {
     fun presignUpload(mc: ModuleCtx, input: PresignUploadInput): PresignUploadResult {
         val appId = mc.op.mustGetAppId()
-        val installId = mc.op.mustGetInstallId()
+        val customerId = mc.op.mustGetCustomerId()
         val mediaId = UuidV7.generate()
 
         val category = "antique_scan"
@@ -38,15 +38,14 @@ class StorageAggHandler(
             else -> throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
         }
 
-        val objectKey = "app/${appId.toBase58()}/$category/install/${installId.toBase58()}/${mediaId.toBase58()}.$ext"
+        val objectKey = "app/${appId.toBase58()}/$category/customer/${customerId.toBase58()}/${mediaId.toBase58()}.$ext"
         val uploadUrl = objectStorage.presignUpload("ugc", objectKey, mimeType, Duration.ofSeconds(300))
         val downloadUrl = objectStorage.getPublicUrl("ugc", objectKey)
 
         val entity = UploadRecord {
             id = mediaId
             this.appId = appId
-            this.installId = installId
-            this.userId = mc.op.userId
+            this.customerId = customerId
             this.objectKey = objectKey
             this.contentType = mimeType
             this.category = category

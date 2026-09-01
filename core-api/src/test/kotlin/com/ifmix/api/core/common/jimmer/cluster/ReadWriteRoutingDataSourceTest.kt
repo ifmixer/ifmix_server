@@ -10,6 +10,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 class ReadWriteRoutingDataSourceTest {
 
+    /** determineCurrentLookupKey 在生产代码中为 protected；测试通过反射调用，不放宽生产可见性。 */
+    private fun ReadWriteRoutingDataSource.lookupKey(): Any? =
+        javaClass.getDeclaredMethod("determineCurrentLookupKey")
+            .apply { isAccessible = true }
+            .invoke(this)
+
     @Test
     fun `routes to writer when not in read-only transaction`() {
         val writerDs = EmbeddedDatabaseBuilder().setType(EmbeddedDatabaseType.H2).setName("writer").build()
@@ -17,7 +23,7 @@ class ReadWriteRoutingDataSourceTest {
         val routing = ReadWriteRoutingDataSource(writerDs, readerDs)
 
         // 不在事务中 → 默认走 writer
-        val key = routing.determineCurrentLookupKey()
+        val key = routing.lookupKey()
         assertThat(key).isEqualTo("writer")
 
         writerDs.shutdown()
@@ -33,7 +39,7 @@ class ReadWriteRoutingDataSourceTest {
         // 模拟 read-only 事务
         TransactionSynchronizationManager.setCurrentTransactionReadOnly(true)
         try {
-            val key = routing.determineCurrentLookupKey()
+            val key = routing.lookupKey()
             assertThat(key).isEqualTo("reader")
         } finally {
             TransactionSynchronizationManager.setCurrentTransactionReadOnly(false)

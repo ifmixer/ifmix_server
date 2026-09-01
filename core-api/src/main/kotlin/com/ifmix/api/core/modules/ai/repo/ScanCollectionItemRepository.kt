@@ -10,6 +10,7 @@ import com.ifmix.api.core.entity.ai.updatedAt
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
+import org.babyfish.jimmer.sql.ast.mutation.DeleteMode
 import org.babyfish.jimmer.sql.kt.ast.expression.desc
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
@@ -78,4 +79,14 @@ class ScanCollectionItemRepository {
     fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
     fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
     fun exists(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.exists(mc, appId, id)
+
+    /** 阶段 6：级联物理删除某批收藏夹下的所有 item（无软删列，避免孤儿行）。 */
+    fun physicalDeleteByCollections(mc: ModuleCtx, appId: UUID, collectionIds: Collection<UUID>): Int {
+        if (collectionIds.isEmpty()) return 0
+        return mc.sql.createDelete(ScanCollectionItem::class) {
+            setMode(DeleteMode.PHYSICAL)
+            where(table.get<UUID>("appId") eq appId)
+            where(table.collectionId valueIn collectionIds)
+        }.execute()
+    }
 }

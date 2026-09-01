@@ -28,5 +28,5 @@ interface RateLimitSubjectResolver {
 /** 默认实现：userId ?: ip ?: "unknown"。 */
 class DefaultRateLimitSubjectResolver : RateLimitSubjectResolver {
     override fun resolve(ctx: OperationContext, clientIp: String): String =
-        ctx.userId?.toString() ?: if (clientIp.isNotBlank()) clientIp else "unknown"
+        ctx.customerId?.toString() ?: if (clientIp.isNotBlank()) clientIp else "unknown"
 }

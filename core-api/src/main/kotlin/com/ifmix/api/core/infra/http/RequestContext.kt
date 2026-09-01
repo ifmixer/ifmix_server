@@ -8,8 +8,12 @@ import java.util.UUID
  */
 data class RequestContext(
     val appId: UUID? = null,
-    val installId: UUID? = null,
-    val userId: UUID? = null,
+    /** 主体 id 归一：actorType==customer 时 = actorId。null = 匿名/未认证。 */
+    val customerId: UUID? = null,
+    /** 主体类型："customer" / 未来 "manager"。未认证时 null。 */
+    val actorType: String? = null,
+    /** 是否匿名主体（token ano claim）。 */
+    val anonymous: Boolean = false,
     val locale: String? = null,
     val currency: String? = null,
     val country: String? = null,

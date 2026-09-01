@@ -49,6 +49,24 @@ class RateLimiter(
         redis.opsForValue().decrement(dayKey)
     }
 
+    /**
+     * 固定窗口限流（任意窗口长度）。窗口以首次 INCR 时刻起算，TTL = windowSec。
+     * 命中（count > limit）返回 false（不额外退款——固定窗口下超限请求仍计入本窗口）。
+     * 与 [check] 的 UTC 日窗口区分：本方法用于短窗口（如每 IP 60s N 次）。
+     *
+     * @param subject 唯一标识（如 clientIp）
+     * @param limit   窗口内允许的最大次数
+     * @param windowSec 窗口长度（秒）
+     */
+    fun checkFixedWindow(subject: String, limit: Int, windowSec: Long): Boolean {
+        val key = "ratelimit:fw:${subject}:${windowSec}"
+        val count = redis.opsForValue().increment(key, 1) ?: 0
+        if (count == 1L) {
+            redis.expire(key, windowSec, SECONDS)
+        }
+        return count <= limit
+    }
+
     private fun utcDayKey(subject: String): String =
         "ratelimit:${subject}:${utcDayString()}"
 

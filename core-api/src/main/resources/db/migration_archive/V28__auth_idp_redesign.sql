@@ -3,18 +3,18 @@
 -- 新增: auth_idp, auth_idpidentity, auth_app_to_idp_relation, auth_appuser_to_idpidentity_relation, auth_appuser_refreshtoken
 -- 修改: app_config_revision 删 auth_tenant_id, user_appuser 删 auth_identity_id
 
--- Drop old tables
-DROP TABLE IF EXISTS auth_device_secret;
-DROP TABLE IF EXISTS auth_provider_identity;
-DROP TABLE IF EXISTS auth_refresh_token;
-DROP TABLE IF EXISTS auth_identity;
-DROP TABLE IF EXISTS auth_tenant;
+-- Drop old tables (CASCADE：旧表间存在 FK 依赖，级联删除约束)
+DROP TABLE IF EXISTS auth_device_secret CASCADE;
+DROP TABLE IF EXISTS auth_provider_identity CASCADE;
+DROP TABLE IF EXISTS auth_refresh_token CASCADE;
+DROP TABLE IF EXISTS auth_identity CASCADE;
+DROP TABLE IF EXISTS auth_tenant CASCADE;
 
 -- app_config_revision: drop auth_tenant_id
 ALTER TABLE app_config_revision DROP COLUMN IF EXISTS auth_tenant_id;
 
--- user_appuser: drop auth_identity_id
-ALTER TABLE user_appuser DROP COLUMN IF EXISTS auth_identity_id;
+-- user_app_user: drop auth_identity_id（真实表名 user_app_user）
+ALTER TABLE user_app_user DROP COLUMN IF EXISTS auth_identity_id;
 
 -- auth_idp (全局)
 CREATE TABLE auth_idp (

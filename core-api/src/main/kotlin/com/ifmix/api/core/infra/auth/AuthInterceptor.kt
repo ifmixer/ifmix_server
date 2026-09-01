@@ -26,8 +26,9 @@ class AuthInterceptor(private val jwt: AuthJwtService) : HandlerInterceptor {
 
         val reqCtx = RequestContext(
             appId = headerAppId ?: token?.appId,
-            installId = token?.installId,
-            userId = token?.userId,
+            customerId = token?.let { if (it.actorType == AuthJwtService.ACTOR_CUSTOMER) it.actorId else null },
+            actorType = token?.actorType,
+            anonymous = token?.anonymous ?: false,
             locale = request.getHeader(RequestHeaders.LOCALE)?.takeIf { it.isNotBlank() },
             currency = request.getHeader(RequestHeaders.CURRENCY)?.takeIf { it.isNotBlank() },
             country = request.getHeader(RequestHeaders.COUNTRY)?.takeIf { it.isNotBlank() },
@@ -62,13 +63,10 @@ class AuthInterceptor(private val jwt: AuthJwtService) : HandlerInterceptor {
         val appId = verified.appId?.let {
             tryParseUuid(it) ?: throw ApiError(ErrorCode.UNAUTHORIZED, "token contains invalid appId")
         }
-        val installId = verified.installId?.let {
-            tryParseUuid(it) ?: throw ApiError(ErrorCode.UNAUTHORIZED, "token contains invalid installId")
+        val actorId = verified.actorId?.let {
+            tryParseUuid(it) ?: throw ApiError(ErrorCode.UNAUTHORIZED, "token contains invalid actorId")
         }
-        val userId = verified.userId?.let {
-            tryParseUuid(it) ?: throw ApiError(ErrorCode.UNAUTHORIZED, "token contains invalid userId")
-        }
-        return ParsedToken(appId = appId, installId = installId, userId = userId)
+        return ParsedToken(appId = appId, actorId = actorId, actorType = verified.actorType, anonymous = verified.anonymous)
     }
 
     private fun parseClientPlatform(request: HttpServletRequest): ClientPlatform? {
@@ -83,4 +81,4 @@ class AuthInterceptor(private val jwt: AuthJwtService) : HandlerInterceptor {
     }
 }
 
-private data class ParsedToken(val appId: UUID?, val installId: UUID?, val userId: UUID?)
+private data class ParsedToken(val appId: UUID?, val actorId: UUID?, val actorType: String?, val anonymous: Boolean)

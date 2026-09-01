@@ -1,21 +1,17 @@
 package com.ifmix.api.core.modules.auth
 
-import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
-import com.ifmix.api.core.modules.auth.repo.AppUserToInstallRelationRepository
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 
 /**
- * 登录后处理：
- * 1. 记录 user-install 绑定关系（用于后续分析）
- * 2. 归并匿名数据（TODO）
+ * 登录后处理：归并匿名数据（阶段 4 实现）。
+ * install 绑定记录已随 install 主体删除。
  */
 @Component
 class MergeOnLoginListener(
-    private val bindingRepo: AppUserToInstallRelationRepository,
     private val mcFactory: ModuleCtxFactory,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -23,23 +19,7 @@ class MergeOnLoginListener(
     @Async
     @EventListener
     fun onLogin(e: AuthLoggedInEvent) {
-        try {
-            // 记录 user-install 绑定
-            if (e.installId != null) {
-                bindingRepo.recordBinding(
-                    mc = mcFactory.forApp(e.ctx),
-                    appId = e.appId,
-                    appUserId = e.appUserId,
-                    installId = e.installId,
-                    clientIp = e.clientIp,
-                    clientPlatform = e.clientPlatform,
-                )
-                log.debug("Recorded user-install binding: user={}, install={}", e.appUserId, e.installId)
-            }
-        } catch (ex: Exception) {
-            log.warn("Failed to record user-install binding: {}", ex.message)
-        }
-
-        // TODO: 待实现匿名数据归并（把 installId 下的匿名 scan/collection 归属到 userId）
+        // TODO(阶段4): 匿名 customer 数据归并（把匿名 customerId 下的 scan/collection 归属到登录 customerId）
+        log.debug("Login event: app={}, customer={}", e.appId, e.customerId)
     }
 }

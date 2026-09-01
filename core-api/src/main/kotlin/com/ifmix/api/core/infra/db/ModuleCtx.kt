@@ -15,13 +15,13 @@ data class ModuleCtx(
 ) {
     // ===== 便捷委托 =====
     val appId get() = op.appId
-    val userId get() = op.userId
-    val installId get() = op.installId
+    val customerId get() = op.customerId
+    val actorType get() = op.actorType
+    val anonymous get() = op.anonymous
     val readCache get() = op.readCache
 
     fun mustGetAppId() = op.mustGetAppId()
-    fun mustGetUserId() = op.mustGetUserId()
-    fun mustGetInstallId() = op.mustGetInstallId()
+    fun mustGetCustomerId() = op.mustGetCustomerId()
 }
 
 /** 一个集群的 writer + reader KSqlClient 对 */

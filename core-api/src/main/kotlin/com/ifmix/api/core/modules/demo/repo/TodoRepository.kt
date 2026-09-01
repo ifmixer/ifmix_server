@@ -12,7 +12,7 @@ import com.ifmix.api.core.entity.demo.title
 import com.ifmix.api.core.entity.demo.done
 import com.ifmix.api.core.entity.demo.note
 import com.ifmix.api.core.entity.demo.recommend
-import com.ifmix.api.core.entity.demo.userId
+import com.ifmix.api.core.entity.demo.customerId
 import com.ifmix.api.core.entity.demo.todoId
 import com.ifmix.api.core.generated.types.CommonFindOptions
 import com.ifmix.api.core.generated.types.TodoRecommendInput
@@ -20,6 +20,7 @@ import com.ifmix.api.core.generated.types.TodoUnsetField
 import com.ifmix.api.core.generated.types.UpdateTodoInput
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate
+import org.babyfish.jimmer.sql.ast.mutation.DeleteMode
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
 import org.babyfish.jimmer.sql.kt.ast.table.KWeakJoin
@@ -36,7 +37,7 @@ class TodoRepository {
         val FILTERABLE = listOf(
             TodoProps.TITLE,
             TodoProps.DONE,
-            TodoProps.USER_ID,
+            TodoProps.CUSTOMER_ID,
             TodoProps.NOTE,
             TodoProps.CREATED_AT,
             TodoProps.UPDATED_AT,
@@ -48,6 +49,24 @@ class TodoRepository {
     fun save(mc: ModuleCtx, entity: Todo) = tpl.save(mc, entity)
     fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
     fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, appId, ids)
+
+    /** 合并：把 fromCustomerId 名下 todo 归属改到 toCustomerId。返回改写行数。 */
+    fun reassignOwner(mc: ModuleCtx, appId: UUID, fromCustomerId: UUID, toCustomerId: UUID): Int =
+        mc.sql.createUpdate(Todo::class) {
+            where(table.appId eq appId)
+            where(table.customerId eq fromCustomerId)
+            set(table.customerId, toCustomerId)
+        }.execute()
+
+    /** 阶段 6：物理删除某批 customer 名下 todo（含软删列，显式 PHYSICAL 硬删避免孤儿行）。 */
+    fun physicalDeleteByCustomers(mc: ModuleCtx, appId: UUID, customerIds: Collection<UUID>): Int {
+        if (customerIds.isEmpty()) return 0
+        return mc.sql.createDelete(Todo::class) {
+            setMode(DeleteMode.PHYSICAL)
+            where(table.appId eq appId)
+            where(table.customerId valueIn customerIds)
+        }.execute()
+    }
 
     fun findByOptions(mc: ModuleCtx, appId: UUID, findOptions: CommonFindOptions?): Page<Todo> =
         tpl.findByOptions(mc, appId, findOptions, FILTERABLE)

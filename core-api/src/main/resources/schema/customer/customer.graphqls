@@ -1,0 +1,14 @@
+"匿名 Customer 创建结果：既是首装入口，也是登出后惰性重建入口。"
+type CreateAnonymousResult {
+    accessToken: String!
+    refreshToken: String!
+    "refresh token 过期时间（ISO-8601）"
+    refreshExpiresAt: DateTime!
+    "access token 有效期（秒）"
+    expiresIn: Int!
+}
+
+extend type Mutation {
+    "创建匿名 Customer 并签发 token（无需鉴权）。每 IP 60s 限 10 次。"
+    m_customer_createAnonymous: CreateAnonymousResult!
+}

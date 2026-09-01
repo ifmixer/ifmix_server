@@ -159,3 +159,5 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "ScanCollectionItemPage" to "com.ifmix.api.core.dto.common.Page",
     )
 }
+
+

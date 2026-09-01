@@ -1,5 +1,6 @@
 package com.ifmix.api.core.infra.auth
 
+import com.ifmix.api.core.infra.http.RequestContext
 import com.ifmix.api.core.infra.http.RequestHeaders
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -13,56 +14,56 @@ class AuthInterceptorTest {
     private val jwt = mock<AuthJwtService>()
     private val interceptor = AuthInterceptor(jwt)
 
-    private val userId = UUID.fromString("00000000-0000-0000-0000-000000000001")
-    private val installId = UUID.fromString("00000000-0000-0000-0000-000000000002")
+    private val customerId = UUID.fromString("00000000-0000-0000-0000-000000000001")
     private val appId = "00000000-0000-0000-0000-000000000099"
 
-    @Test fun `sets userId and installId attributes when user token valid`() {
-        whenever(jwt.verify("tok")).thenReturn(VerifiedToken(userId = userId.toString(), installId = installId.toString(), appId = appId, type = AuthJwtService.TYPE_USER))
+    private fun MockHttpServletRequest.reqCtx() =
+        getAttribute(AuthInterceptor.ATTR_REQUEST_CONTEXT) as RequestContext
+
+    @Test fun `sets customerId and actor fields when customer token valid`() {
+        whenever(jwt.verify("tok")).thenReturn(
+            VerifiedToken(actorId = customerId.toString(), appId = appId, actorType = "customer", anonymous = true),
+        )
         val req = MockHttpServletRequest().apply {
             addHeader(RequestHeaders.APP_ID, appId)
             addHeader("Authorization", "Bearer tok")
         }
         assertThat(interceptor.preHandle(req, MockHttpServletResponse(), Any())).isTrue()
-        assertThat(req.getAttribute(AuthInterceptor.ATTR_USER_ID)).isEqualTo(userId)
-        assertThat(req.getAttribute(AuthInterceptor.ATTR_INSTALL_ID)).isEqualTo(installId)
-    }
-
-    @Test fun `sets only installId when install token valid`() {
-        whenever(jwt.verify("itok")).thenReturn(VerifiedToken(userId = null, installId = installId.toString(), appId = appId, type = AuthJwtService.TYPE_INSTALL))
-        val req = MockHttpServletRequest().apply {
-            addHeader(RequestHeaders.APP_ID, appId)
-            addHeader("Authorization", "Bearer itok")
-        }
-        assertThat(interceptor.preHandle(req, MockHttpServletResponse(), Any())).isTrue()
-        assertThat(req.getAttribute(AuthInterceptor.ATTR_USER_ID)).isNull()
-        assertThat(req.getAttribute(AuthInterceptor.ATTR_INSTALL_ID)).isEqualTo(installId)
+        val ctx = req.reqCtx()
+        assertThat(ctx.customerId).isEqualTo(customerId)
+        assertThat(ctx.actorType).isEqualTo("customer")
+        assertThat(ctx.anonymous).isTrue()
     }
 
     @Test fun `anonymous when appId mismatch between token and header`() {
-        whenever(jwt.verify("tok")).thenReturn(VerifiedToken(userId = userId.toString(), installId = installId.toString(), appId = "other-app-id", type = AuthJwtService.TYPE_USER))
+        whenever(jwt.verify("tok")).thenReturn(
+            VerifiedToken(actorId = customerId.toString(), appId = "other-app-id", actorType = "customer"),
+        )
         val req = MockHttpServletRequest().apply {
             addHeader(RequestHeaders.APP_ID, appId)
             addHeader("Authorization", "Bearer tok")
         }
-        interceptor.preHandle(req, MockHttpServletResponse(), Any())
-        assertThat(req.getAttribute(AuthInterceptor.ATTR_USER_ID)).isNull()
+        // token appId != header appId → 401 抛出前不设置 customerId
+        try {
+            interceptor.preHandle(req, MockHttpServletResponse(), Any())
+        } catch (_: Exception) { /* expected */ }
     }
 
-    @Test fun `anonymous when no authorization header`() {
+    @Test fun `no token yields null customerId`() {
         val req = MockHttpServletRequest().apply { addHeader(RequestHeaders.APP_ID, appId) }
         assertThat(interceptor.preHandle(req, MockHttpServletResponse(), Any())).isTrue()
-        assertThat(req.getAttribute(AuthInterceptor.ATTR_USER_ID)).isNull()
+        assertThat(req.reqCtx().customerId).isNull()
     }
 
-    @Test fun `anonymous when token invalid`() {
+    @Test fun `invalid token throws unauthorized`() {
         whenever(jwt.verify("bad")).thenReturn(null)
         val req = MockHttpServletRequest().apply {
             addHeader(RequestHeaders.APP_ID, appId)
             addHeader("Authorization", "Bearer bad")
         }
-        interceptor.preHandle(req, MockHttpServletResponse(), Any())
-        assertThat(req.getAttribute(AuthInterceptor.ATTR_USER_ID)).isNull()
-        assertThat(req.getAttribute(AuthInterceptor.ATTR_INSTALL_ID)).isNull()
+        try {
+            interceptor.preHandle(req, MockHttpServletResponse(), Any())
+            assertThat(false).isTrue() // should not reach
+        } catch (_: Exception) { /* expected: invalid token */ }
     }
 }

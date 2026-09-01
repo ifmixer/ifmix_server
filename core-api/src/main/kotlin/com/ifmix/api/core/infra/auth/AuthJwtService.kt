@@ -11,57 +11,37 @@ import com.nimbusds.jwt.SignedJWT
 import java.util.Date
 
 /**
- * 自家 app 级 JWT：EdDSA(Ed25519) 签发/验签。
+ * 自家 app 级 JWT：EdDSA(Ed25519) 签发/验签。主体无关（Medusa v2 actor 模型）。
  *
  * 统一 claim 结构：
- * - sub: userId（user token）/ 无（install token）
- * - iid: installId（两种 token 都有）
+ * - sub: actorId（customer / 未来 manager）
  * - aud: appId
- * - type: "u"（user）/ "i"（install）
+ * - act: actorType（"customer" / 未来 "manager"）；用 act 不用 typ（避免与 JOSE header typ 混）
+ * - ano: 是否匿名（Boolean，缺省 false）
  */
 class AuthJwtService(
     private val keys: AuthJwtKeys,
     private val issuer: String,
     private val accessTtlSec: Long = 900,
-    val installTtlSec: Long = 86400 * 365,
 ) {
 
     companion object {
         const val TOKEN_TYPE = "Bearer"
-        const val TYPE_USER = "u"
-        const val TYPE_INSTALL = "i"
+        const val ACTOR_CUSTOMER = "customer"
     }
 
-    /** 用户级 access token：sub=userId, iid=installId, type=u */
-    fun signAccess(appUserId: String, installId: String, appId: String): String {
+    /** access token：sub=actorId, act=actorType, ano=anonymous */
+    fun signAccess(actorId: String, actorType: String, appId: String, anonymous: Boolean = false): String {
         val now = Date()
         val claims = JWTClaimsSet.Builder()
             .issuer(issuer)
-            .subject(appUserId)
+            .subject(actorId)
             .audience(listOf(appId))
             .jwtID(UuidV7.generate().toString())
             .issueTime(now)
             .expirationTime(Date(now.time + accessTtlSec * 1000))
-            .claim("iid", installId)
-            .claim("type", TYPE_USER)
-            .build()
-        val header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(keys.kid).type(JOSEObjectType.JWT).build()
-        val jwt = SignedJWT(header, claims)
-        jwt.sign(Ed25519Signer(keys.signingKey))
-        return jwt.serialize()
-    }
-
-    /** Install 级别长期令牌：sub 无, iid=installId, type=i */
-    fun signInstall(installId: String, appId: String): String {
-        val now = Date()
-        val claims = JWTClaimsSet.Builder()
-            .issuer(issuer)
-            .audience(listOf(appId))
-            .jwtID(UuidV7.generate().toString())
-            .issueTime(now)
-            .expirationTime(Date(now.time + installTtlSec * 1000))
-            .claim("iid", installId)
-            .claim("type", TYPE_INSTALL)
+            .claim("act", actorType)
+            .claim("ano", anonymous)
             .build()
         val header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(keys.kid).type(JOSEObjectType.JWT).build()
         val jwt = SignedJWT(header, claims)
@@ -82,10 +62,10 @@ class AuthJwtService(
         if (exp.before(Date())) return null
         if (claims.issuer != issuer) return null
         VerifiedToken(
-            userId = claims.subject,
-            installId = claims.getStringClaim("iid"),
+            actorId = claims.subject,
             appId = claims.audience?.firstOrNull(),
-            type = claims.getStringClaim("type") ?: TYPE_INSTALL,
+            actorType = claims.getStringClaim("act") ?: ACTOR_CUSTOMER,
+            anonymous = runCatching { claims.getBooleanClaim("ano") }.getOrNull() ?: false,
         )
     } catch (_: Exception) {
         null
@@ -95,11 +75,10 @@ class AuthJwtService(
 }
 
 data class VerifiedToken(
-    val userId: String?,
-    val installId: String?,
+    val actorId: String?,
     val appId: String?,
-    val type: String,
+    val actorType: String,
+    val anonymous: Boolean = false,
 ) {
-    val isUser get() = type == AuthJwtService.TYPE_USER
-    val isInstall get() = type == AuthJwtService.TYPE_INSTALL
+    val isCustomer get() = actorType == AuthJwtService.ACTOR_CUSTOMER
 }
