@@ -163,3 +163,13 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
 
 
 
+
+// Flyway migrate — 手动执行数据库迁移（app 启动不再自动 migrate）。
+// 用法: ./gradlew :core-api:flywayMigrate
+// 覆盖连接: DB_URL=... DB_USER=... DB_PASSWORD=... ./gradlew :core-api:flywayMigrate
+tasks.register<JavaExec>("flywayMigrate") {
+    group = "database"
+    description = "Run Flyway migrations against DB_URL (default: local core_api_local)."
+    mainClass.set("com.ifmix.core.api.infra.jimmer.FlywayMigrate")
+    classpath = sourceSets["main"].runtimeClasspath
+}

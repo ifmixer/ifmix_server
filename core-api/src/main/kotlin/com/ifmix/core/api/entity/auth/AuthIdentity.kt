@@ -41,6 +41,22 @@ interface AuthIdentity : BaseAppEntity {
     @Column(name = "phone_verified")
     val phoneVerified: Boolean
 
+    /** 最近一次登录时间。 */
+    @Column(name = "last_login_at")
+    val lastLoginAt: java.time.Instant?
+
+    /** 最近一次登录方式（10:email 20:phone 30:idp）。 */
+    @Column(name = "last_login_method")
+    val lastLoginMethod: Int?
+
+    /** 最近一次登录用的 idp 身份（idp 登录时非空；email/phone 登录为 null）。 */
+    @Column(name = "last_login_idp_identity_id")
+    val lastLoginIdpIdentityId: java.util.UUID?
+
+    /** 最近一次登录 IP（可能取不到，故可空）。 */
+    @Column(name = "last_login_ip")
+    val lastLoginIp: String?
+
     @Serialized
     val metadata: Map<String, Any?>?
 }

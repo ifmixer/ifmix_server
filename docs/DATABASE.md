@@ -12,11 +12,11 @@
 |------|------|------|--------|
 | auth | `auth_idp` | 全局 | Idp |
 | auth | `auth_idpidentity` | 全局 | IdpIdentity |
+| auth | `auth_identity` | app | AuthIdentity |
+| auth | `auth_identity_to_idpidentity_relation` | app | AuthIdentityIdpRelation |
 | auth | `auth_app_to_idp_relation` | app | AppToIdpRelation |
-| auth | `auth_appuser_to_idpidentity_relation` | app | AppUserToIdpIdentityRelation |
-| auth | `auth_appuser_refreshtoken` | app | AppUserRefreshToken |
-| auth | `auth_appuser_to_install_relation` | app | AppUserToInstallRelation |
-| user | `user_appuser` | app | AppUser |
+| auth | `auth_refreshtoken` | app | RefreshToken |
+| customer | `customer` | app | Customer |
 | demo | `demo_todo` | app | Todo |
 | demo | `demo_todo_item` | app | TodoItem |
 | app | `app_config_revision` | app | AppConfigRevision |
@@ -30,6 +30,24 @@
 | pay | `pay_store_notification` | app | StoreNotification |
 | media | `media_upload_record` | app | UploadRecord |
 | cms | `cms_feedback` | app | Feedback |
+
+## Auth 身份模型映射
+
+跨模块均为逻辑外键 UUID（不用 `@ManyToOne`）：
+
+| 关系 | 方向 / 列 | 基数 | 说明 |
+|------|-----------|------|------|
+| Customer → AuthIdentity | `customer.auth_identity_id` | N:1 | 匿名未登录为 null；customer 注销后可新建、复用同一账号 |
+| AuthIdentity ↔ IdpIdentity | 关系表 `auth_identity_to_idpidentity_relation`（`auth_identity_id` / `idp_identity_id`） | M:N | 见下 |
+| RefreshToken → 主体 | `actor_type`(10=customer/20=manager) + `actor_id` | — | 主体无关，不直接绑 customer |
+| IdpIdentity → Idp | `idp_identity.idp_id`（可选） | N:1 | email/phone 等内建身份可无 idp |
+| AppToIdpRelation | `app_id` + `idp_id` | M:N | app 启用了哪些 IDP |
+
+**M:N 双向（关系表按 `app_id` 隔离）**：
+- 一个 `IdpIdentity`（全局，跨 app）→ 多个 `AuthIdentity`（每 app 一个）：反查唯一索引 `(app_id, idp_identity_id) WHERE deleted_at IS NULL`。
+- 一个 `AuthIdentity`（app 级）→ 多个 `IdpIdentity`（同 app 多 provider：Google+Apple…）：正查索引 `(app_id, auth_identity_id)`。
+
+> `IdpIdentity`/`Idp` 全局跨 app，其余身份表为 app 级。账号权威资料（姓名/邮箱/手机/metadata）在 `AuthIdentity`；`Customer` 只保留匿名/合并语义 + `authIdentityId`。详见 [AUTH_DESIGN.md](AUTH_DESIGN.md)。
 
 ## 主键
 
@@ -62,7 +80,7 @@
 - **GraphQL**: input/output 全部 `Int`，schema 注释写含义
 - **PG**: SMALLINT
 - **Kotlin**: `val status: Int`
-- **常量**: 放 model class 嵌套 object，跨模块的放 `entity/shared/`
+- **常量**: 放 model class 嵌套 object，跨模块的放 `entity/common/`
 - **编码规则**: 0 保留不用，从 10 开始步长 10
 
 ### 枚举码表登记
@@ -120,10 +138,13 @@ input CommonFindOptions {
 
 ## Flyway
 
-- V1–V35, 不可回退
+- 当前 migration 目录为 V1–V5（历史迁移已压缩，旧版本归档在 `db/migration_archive/`），不可回退
 - 迁移文件: `core-api/src/main/resources/db/migration/`
-- 最近变更:
-  - V32 `ai_scan_deep_research`（深度研究结果表）+ `ai_scan_record.has_deep_search`
-  - V33 移除 `ai_scan_record.premium_result`（迁移至 `ai_scan_deep_research`）
-  - V34 `ai_scan_record` / `ai_scan_deep_research` 增加 `prompt_version`
-  - V35 `ai_scan_record.is_public`（默认 true）
+- **手动执行**（不再随应用启动自动 migrate）：`./gradlew :core-api:flywayMigrate`
+  - 连接由 `DB_URL`/`DB_USER`/`DB_PASSWORD` 决定（默认本地 `core_api_local`）
+- 版本一览:
+  - V1 baseline（压缩后的基线）
+  - V2 `actor_type` 改 Int（10=customer）；customer 加 `merged_to_at`
+  - V3 `auth_idpidentity` 列调整（`provider_subject_id` 改名、`idp_id` 可选、手机分段等）
+  - V4 身份模型改关系表：建 `auth_identity` + `auth_identity_to_idpidentity_relation`、`customer.auth_identity_id`、`auth_idpidentity` `provider_type`→`idp_type`
+  - V5 `auth_appuser_refreshtoken` → `auth_refreshtoken`

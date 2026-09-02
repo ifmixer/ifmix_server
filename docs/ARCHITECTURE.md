@@ -1,6 +1,6 @@
 # ifmix_server 架构文档
 
-> 最后更新: 2026-08-23
+> 最后更新: 2026-09-03
 
 ## 项目概述
 
@@ -49,9 +49,22 @@
 │  Jimmer/CacheAside/GlobalTxRunner/Auth/RateLimit/Storage             │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Data: PostgreSQL (Writer + Reader) | Redis | S3                     │
-│  Flyway V1-V28 | UUIDv7 时间有序 ID                                  │
+│  Flyway V1-V5（手动 flywayMigrate task）| UUIDv7 时间有序 ID         │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+## 多模块结构
+
+项目为 Gradle 三模块：
+
+| 模块 | 类型 | 职责 | 依赖 |
+|------|------|------|------|
+| `core-common` | 纯 Kotlin 库（无 Spring） | 跨模块共享：`UuidV7`、`ClusterProperties` 等 | — |
+| `core-api` | Spring Boot Web 服务 | 主 API（GraphQL + REST + Webhook），业务全部在此 | 不依赖另两者 |
+| `core-job` | Spring Boot（非 web，Spring Batch） | 定时/批处理任务：匿名 customer 清理等 | `core-common` |
+
+> `core-api` 与 `core-job` 各自是独立可启动的 Spring Boot 应用，共享同一 PostgreSQL；跨模块只通过数据库（逻辑外键 UUID）协作，不互相编译依赖。
+> 数据库迁移不再随应用启动执行，统一用 `./gradlew :core-api:flywayMigrate` 手动跑（见「构建与测试」）。
 
 ### 分层约束
 
@@ -74,8 +87,8 @@ Repo         →  持有 CrudRepoTemplate（companion object）
 
 | 模块 | 功能 |
 |------|------|
-| auth | IDP 登录(Apple/Google)、AppUser↔IDP 绑定、Refresh Token 轮转、Access Token(EdDSA) |
-| user | AppUser CRUD |
+| auth | IDP 登录(Apple/Google)、AuthIdentity 账号中枢、AuthIdentity↔IdpIdentity 绑定(M:N 关系表)、Refresh Token 轮转、Access Token(EdDSA) |
+| customer | Customer CRUD、匿名先行 / 登录转正 / 跨设备合并 |
 | ai | 古物扫描、AI 识别(Spring AI 多模态)、Key 轮换+模型 fallback、收藏管理 |
 | demo | Todo 清单 CRUD、嵌入 items、游标分页、FilterGroup 示例 |
 | pay | Apple/Google 购买验证、订阅管理、Webhook(JWS 验签)、Tier 映射 |
@@ -83,44 +96,47 @@ Repo         →  持有 CrudRepoTemplate（companion object）
 | media | 预签名上传/下载 |
 | app | AppConfig 版本管理、AppInfo |
 
+> 匿名 Customer 清理等批处理任务在 **core-job**（Spring Batch），不在 core-api。
 > 认证详细设计见 [AUTH_DESIGN.md](AUTH_DESIGN.md)
 
 ## 目录结构
 
 ```
-core-api/src/main/kotlin/com/ifmix/api/core/
+core-api/src/main/kotlin/com/ifmix/core/api/
 ├── CoreApplication.kt
 ├── bff/
 │   ├── graphql/customer/       # DGS DataFetcher
 │   │   ├── ai/                 # AiFetcher + DataLoaders
 │   │   ├── auth/               # AuthFetcher
 │   │   ├── cms/                # CmsFetcher
+│   │   ├── customer/           # CustomerFetcher
 │   │   ├── demo/               # DemoFetcher + TodoItemsResolver
 │   │   ├── pay/                # PayFetcher
 │   │   └── media/              # MediaFetcher
 │   ├── webhooks/               # WebhookController (Apple/Google IAP REST)
 │   └── wellknown/              # JwksController
 ├── entity/                      # Jimmer interface entity (直出 GraphQL)
-│   ├── common/                 # 基类: BaseEntity, BaseAppEntity, UUIDProps, MutableProps, SoftDeletableProps
-│   ├── ai/                     # ScanRecord, ScanCollection, ScanCollectionItem, AgnesKey, ImageRef
-│   ├── auth/                   # Idp, IdpIdentity, AppToIdpRelation, AppUserToIdpIdentityRelation, AppUserRefreshToken, AppUserToInstallRelation
+│   ├── common/                 # 基类 + 跨模块枚举: BaseEntity, BaseAppEntity, UUIDProps, MutableProps, SoftDeletableProps, AppScopedProps, CustomerOwnedProps, Platforms, Tiers
+│   ├── ai/                     # ScanRecord, ScanCollection, ScanCollectionItem, ScanDeepResearch, AgnesKey, ImageRef
+│   ├── auth/                   # Idp, IdpIdentity, AuthIdentity, AuthIdentityIdpRelation, AppToIdpRelation, RefreshToken
+│   ├── customer/               # Customer
 │   ├── pay/                    # Subscription, StoreNotification
 │   ├── demo/                   # Todo, TodoItem, TodoRecommend
 │   ├── app/                    # AppConfigRevision, AppInfo, ConfigTypes
-│   ├── user/                   # AppUser
 │   ├── cms/                    # Feedback
-│   ├── media/                  # UploadRecord
-│   └── shared/                 # Platforms, Tiers (跨模块枚举常量)
+│   └── media/                  # UploadRecord
 ├── modules/
 │   ├── auth/
 │   │   ├── AuthFacade.kt
 │   │   ├── handler/AuthAggHandler.kt
-│   │   ├── repo/               # IdpRepository, IdpIdentityRepository, AppToIdpRelationRepository, etc.
+│   │   ├── repo/               # IdpRepository, IdpIdentityRepository, AuthIdentityRepository, AuthIdentityIdpRelationRepository, AppToIdpRelationRepository, RefreshTokenRepository
 │   │   ├── AuthConfig.kt, ProviderVerifier.kt
+│   │   ├── AuthLoggedInEvent.kt
 │   │   └── MergeOnLoginListener.kt
-│   ├── user/
-│   │   ├── UserFacade.kt
-│   │   └── repo/AppUserRepository.kt
+│   ├── customer/
+│   │   ├── CustomerFacade.kt
+│   │   ├── handler/            # CustomerMergeHandler
+│   │   └── repo/CustomerRepository.kt
 │   ├── ai/
 │   │   ├── AiFacade.kt, ScanCollectionFacade.kt
 │   │   ├── handler/ScanAggHandler.kt, ScanCollectionAggHandler.kt
@@ -165,7 +181,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 └── resources/
     ├── schema/common/          # GraphQL 公共 scalars + CommonFindOptions
     ├── schema/customer/        # GraphQL Customer schema (auth, ai, demo, pay, media, cms)
-    ├── db/migration/           # Flyway V1-V28
+    ├── db/migration/           # Flyway V1-V5（手动：./gradlew :core-api:flywayMigrate）
     ├── prompts/                # AI scan prompts
     └── application.yml + application-local.yml
 ```
@@ -186,7 +202,7 @@ core-api/src/main/kotlin/com/ifmix/api/core/
 
 - 从 `.graphqls` 生成 Kotlin input/payload/enum types
 - output types 通过 `typeMapping` 映射到 Jimmer entity（entity 直出）
-- 生成代码包: `com.ifmix.api.core.generated`
+- 生成代码包: `com.ifmix.core.api.generated`
 
 ## 缓存分层
 
@@ -249,6 +265,10 @@ DB (via Jimmer KSqlClient)
 | 28 | CacheAside 显式调用 | 不用 @Cacheable 魔法 |
 | 29 | objectKey UUID 用 Base58 | URL 场景缩短路径 |
 | 30 | CommonFindOptions + findByOptions | 通用分页查询模板（filter/cursor/sort/limit） |
+| 31 | 三模块拆分 core-common/core-api/core-job | 批处理与 web 分离；共享库无 Spring 依赖 |
+| 32 | Flyway 手动 flywayMigrate，不随启动 | 多实例部署避免并发 migrate 竞争，迁移显式可控 |
+| 33 | AuthIdentity 账号中枢 + Customer/IdpIdentity 关系表 | 账号资料与 app 级用户分离；IdpIdentity↔AuthIdentity 用 M:N 关系表 |
+| 34 | 匿名 Customer 清理迁到 core-job | 批处理任务不占 web 进程，Spring Batch 编排 |
 
 ## API 约定
 
@@ -288,17 +308,22 @@ DB (via Jimmer KSqlClient)
 | 文档 | 内容 |
 |------|------|
 | [编码指南](CODING_GUIDE.md) | Context 模型、事务管理、分层示例代码、Entity 设计、CrudRepoTemplate |
-| [认证设计](AUTH_DESIGN.md) | IDP 模型、登录流程、providerType |
+| [认证设计](AUTH_DESIGN.md) | IDP 模型、AuthIdentity、登录判定表、idpType |
 | [数据库约定](DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup、游标分页 |
 
 ## 构建与测试
 
 ```bash
-./gradlew :core-api:compileKotlin          # 编译（含 KSP）
+./gradlew :core-api:compileKotlin          # 编译 core-api（含 KSP）
+./gradlew :core-job:compileKotlin          # 编译 core-job（批处理）
 ./gradlew :core-api:test                   # 全部测试
 ./gradlew :core-api:test --tests "*.e2e.*" # E2E
-./gradlew :core-api:bootRun                # 运行 (需 PG + Redis)
+./gradlew :core-api:flywayMigrate          # 执行数据库迁移（手动，替代启动时自动 migrate）
+./gradlew :core-api:bootRun                # 运行主服务 (需 PG + Redis)
+./gradlew :core-job:bootRun                # 运行批处理任务 (需 PG)
 ```
+
+> `flywayMigrate` 连接由环境变量 `DB_URL`/`DB_USER`/`DB_PASSWORD` 决定（默认本地 `core_api_local`）。
 
 - **测试框架**: JUnit 5 + Mockito + assertk
 - **集成测试**: Testcontainers (PostgreSQL + Redis)
@@ -316,3 +341,6 @@ DB (via Jimmer KSqlClient)
 | 2026-08-23 | Auth 重设计：IDP 模型 |
 | 2026-08-23 | BaseEntity/BaseAppEntity 基类 |
 | 2026-08-23 | CommonFindOptions 通用查询 |
+| 2026-09-02 | 三模块拆分（core-common / core-api / core-job） |
+| 2026-09-02 | 身份模型重构：AuthIdentity 账号中枢 + Customer + M:N 关系表 |
+| 2026-09-02 | Flyway 改手动 flywayMigrate task；匿名清理迁入 core-job |

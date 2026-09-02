@@ -16,7 +16,10 @@ ModuleCtx           模块调用级     构造于: Facade (ModuleCtxFactory.forA
 
 ```kotlin
 data class RequestContext(
-    val appId: UUID?, val installId: UUID?, val userId: UUID?,
+    val appId: UUID?,
+    val customerId: UUID?,   // 主体归一：actorType==customer 时 = actorId；null = 匿名/未认证
+    val actorType: Int?,     // 10=customer / 20=manager
+    val anonymous: Boolean,  // token ano claim
     val locale: String?, val currency: String?, val country: String?,
     val clientPlatform: ClientPlatform?, val clientIp: String?,
 )
@@ -45,8 +48,9 @@ data class ModuleCtx(
     val inTransaction: Boolean = false,
 ) {
     val appId get() = op.appId
-    val userId get() = op.userId
-    val installId get() = op.installId
+    val customerId get() = op.customerId
+    val actorType get() = op.actorType
+    val anonymous get() = op.anonymous
 }
 ```
 
@@ -167,7 +171,7 @@ class TodoAggHandler(
 class TodoRepository {
     companion object {
         private val tpl = AppCrudRepoTemplate(Todo::class)
-        val FILTERABLE = listOf(TodoProps.TITLE, TodoProps.DONE, TodoProps.USER_ID)
+        val FILTERABLE = listOf(TodoProps.TITLE, TodoProps.DONE, TodoProps.CUSTOMER_ID)
         val SORTABLE = setOf("id", "createdAt", "updatedAt")
     }
 

@@ -4,6 +4,13 @@
 
 本项目是 **ifmix_server** — 面向移动端的后端 API 服务（古物扫描 + AI 图像识别 + 收藏管理 + 社交登录 + IAP）。
 
+三个 Gradle 模块：
+- `core-common` — 纯 Kotlin 库（无 Spring）：`UuidV7`、`ClusterProperties` 等共享类。
+- `core-api` — 主 Spring Boot Web 服务（GraphQL + REST + Webhook），业务全部在此；不依赖另两者。
+- `core-job` — Spring Boot 非 web（Spring Batch）：匿名 Customer 清理等批处理；依赖 `core-common`。
+
+跨模块只通过同一 PostgreSQL 协作（逻辑外键 UUID），不互相编译依赖。
+
 ## 技术栈
 
 - Kotlin 2.3.10 / JDK 25 (Virtual Threads)
@@ -18,7 +25,7 @@
 |------|------|
 | [架构总览](docs/ARCHITECTURE.md) | 分层、模块职责、设计决策、API 约定 |
 | [编码指南](docs/CODING_GUIDE.md) | 每层怎么写、Context 模型、事务、示例代码 |
-| [认证设计](docs/AUTH_DESIGN.md) | IDP 模型、登录流程 |
+| [认证设计](docs/AUTH_DESIGN.md) | IDP + AuthIdentity 模型、登录判定表 |
 | [数据库约定](docs/DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup |
 
 ## 代码约定速查
@@ -63,9 +70,12 @@
 ## 常用命令
 
 ```bash
-./gradlew :core-api:compileKotlin    # 编译（含 KSP）
+./gradlew :core-api:compileKotlin    # 编译 core-api（含 KSP）
+./gradlew :core-job:compileKotlin    # 编译 core-job（Spring Batch）
 ./gradlew :core-api:test              # 测试
-./gradlew :core-api:bootRun           # 运行 (需 PG + Redis)
+./gradlew :core-api:flywayMigrate     # 手动执行 DB 迁移（不再随启动 migrate）
+./gradlew :core-api:bootRun           # 运行主服务 (需 PG + Redis)
+./gradlew :core-job:bootRun           # 运行批处理任务 (需 PG)
 ```
 
 ## 工作方式

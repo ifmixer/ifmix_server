@@ -169,7 +169,7 @@ class AnonymousCleanupCleaner(
         jdbc.sql(
             """
             SELECT EXISTS(
-              SELECT 1 FROM auth_appuser_refreshtoken
+              SELECT 1 FROM auth_refreshtoken
               WHERE actor_id = :id AND actor_type = :actorType
                 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())
             )
