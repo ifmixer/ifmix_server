@@ -16,7 +16,7 @@ import java.util.Date
  * 统一 claim 结构：
  * - sub: actorId（customer / 未来 manager）
  * - aud: appId
- * - act: actorType（"customer" / 未来 "manager"）；用 act 不用 typ（避免与 JOSE header typ 混）
+ * - act: actorType（10=customer / 20=manager，Int）；用 act 不用 typ（避免与 JOSE header typ 混）
  * - ano: 是否匿名（Boolean，缺省 false）
  */
 class AuthJwtService(
@@ -27,11 +27,11 @@ class AuthJwtService(
 
     companion object {
         const val TOKEN_TYPE = "Bearer"
-        const val ACTOR_CUSTOMER = "customer"
+        const val ACTOR_CUSTOMER = 10
     }
 
     /** access token：sub=actorId, act=actorType, ano=anonymous */
-    fun signAccess(actorId: String, actorType: String, appId: String, anonymous: Boolean = false): String {
+    fun signAccess(actorId: String, actorType: Int, appId: String, anonymous: Boolean = false): String {
         val now = Date()
         val claims = JWTClaimsSet.Builder()
             .issuer(issuer)
@@ -51,7 +51,7 @@ class AuthJwtService(
 
     /**
      * 验签 + exp + issuer。任何失败返回 null（不抛）。
-     * 成功返回 [VerifiedToken]，字段均为原始 String，由调用方校验一致性并转换。
+     * 成功返回 [VerifiedToken]，actorType 为 Int，由调用方校验一致性。
      */
     fun verify(token: String): VerifiedToken? = try {
         val jwt = SignedJWT.parse(token)
@@ -64,7 +64,7 @@ class AuthJwtService(
         VerifiedToken(
             actorId = claims.subject,
             appId = claims.audience?.firstOrNull(),
-            actorType = claims.getStringClaim("act") ?: ACTOR_CUSTOMER,
+            actorType = claims.getIntegerClaim("act") ?: ACTOR_CUSTOMER,
             anonymous = runCatching { claims.getBooleanClaim("ano") }.getOrNull() ?: false,
         )
     } catch (_: Exception) {
@@ -77,7 +77,7 @@ class AuthJwtService(
 data class VerifiedToken(
     val actorId: String?,
     val appId: String?,
-    val actorType: String,
+    val actorType: Int,
     val anonymous: Boolean = false,
 ) {
     val isCustomer get() = actorType == AuthJwtService.ACTOR_CUSTOMER

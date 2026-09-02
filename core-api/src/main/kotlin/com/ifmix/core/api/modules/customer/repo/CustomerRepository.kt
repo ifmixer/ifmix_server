@@ -33,7 +33,6 @@ class CustomerRepository {
             this.appId = appId
             this.anonymous = true
             this.mergedTo = null
-            this.metadata = null
             this.createdAt = now
             this.updatedAt = now
         }

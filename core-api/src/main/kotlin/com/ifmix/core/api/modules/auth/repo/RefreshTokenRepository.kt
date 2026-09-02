@@ -56,7 +56,7 @@ class RefreshTokenRepository {
      * 有效 = revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())。
      * 无有效 token 的匿名 customer 即可物理删（token 过期后客户端无法再 attach，复活无意义）。
      */
-    fun hasValidToken(mc: ModuleCtx, appId: UUID, actorId: UUID, actorType: String): Boolean {
+    fun hasValidToken(mc: ModuleCtx, appId: UUID, actorId: UUID, actorType: Int): Boolean {
         val now = Instant.now()
         return mc.sql.createQuery(RefreshToken::class) {
             where(table.appId eq appId)
@@ -74,7 +74,7 @@ class RefreshTokenRepository {
     }
 
     /** 合并：吊销某主体（cur）所有未吊销的 refresh token。返回吊销行数。 */
-    fun revokeAllByActor(mc: ModuleCtx, appId: UUID, actorId: UUID, actorType: String): Int {
+    fun revokeAllByActor(mc: ModuleCtx, appId: UUID, actorId: UUID, actorType: Int): Int {
         val now = Instant.now()
         return mc.sql.createUpdate(RefreshToken::class) {
             where(table.appId eq appId)

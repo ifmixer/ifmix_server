@@ -10,8 +10,8 @@ data class RequestContext(
     val appId: UUID? = null,
     /** 主体 id 归一：actorType==customer 时 = actorId。null = 匿名/未认证。 */
     val customerId: UUID? = null,
-    /** 主体类型："customer" / 未来 "manager"。未认证时 null。 */
-    val actorType: String? = null,
+    /** 主体类型：10=customer / 20=manager。未认证时 null。 */
+    val actorType: Int? = null,
     /** 是否匿名主体（token ano claim）。 */
     val anonymous: Boolean = false,
     val locale: String? = null,

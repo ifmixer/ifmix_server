@@ -22,7 +22,7 @@ class AuthInterceptorTest {
 
     @Test fun `sets customerId and actor fields when customer token valid`() {
         whenever(jwt.verify("tok")).thenReturn(
-            VerifiedToken(actorId = customerId.toString(), appId = appId, actorType = "customer", anonymous = true),
+            VerifiedToken(actorId = customerId.toString(), appId = appId, actorType = AuthJwtService.ACTOR_CUSTOMER, anonymous = true),
         )
         val req = MockHttpServletRequest().apply {
             addHeader(RequestHeaders.APP_ID, appId)
@@ -31,13 +31,13 @@ class AuthInterceptorTest {
         assertThat(interceptor.preHandle(req, MockHttpServletResponse(), Any())).isTrue()
         val ctx = req.reqCtx()
         assertThat(ctx.customerId).isEqualTo(customerId)
-        assertThat(ctx.actorType).isEqualTo("customer")
+        assertThat(ctx.actorType).isEqualTo(AuthJwtService.ACTOR_CUSTOMER)
         assertThat(ctx.anonymous).isTrue()
     }
 
     @Test fun `anonymous when appId mismatch between token and header`() {
         whenever(jwt.verify("tok")).thenReturn(
-            VerifiedToken(actorId = customerId.toString(), appId = "other-app-id", actorType = "customer"),
+            VerifiedToken(actorId = customerId.toString(), appId = "other-app-id", actorType = AuthJwtService.ACTOR_CUSTOMER),
         )
         val req = MockHttpServletRequest().apply {
             addHeader(RequestHeaders.APP_ID, appId)

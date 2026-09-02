@@ -57,6 +57,7 @@ data class LogoutReq(val refreshToken: String)
 data class LogoutRes(val ok: Boolean)
 
 data class CreateAnonymousRes(
+    val customerId: UUID,
     val accessToken: String,
     val refreshToken: String,
     val refreshExpiresAt: Instant,
@@ -147,8 +148,8 @@ class AuthAggHandler(
         val verified = verifier.verifyWithIdpConfig(idp, mc.op.clientPlatform, req.credential)
 
         // 3. 找/建 IdpIdentity（全局）
-        val idpIdentity = idpIdentityRepo.findByIdpAndIdentityId(mc, req.idpId, verified.accountId)
-            ?: createIdpIdentity(mc, req.idpId, verified)
+        val idpIdentity = idpIdentityRepo.findByIdpAndSubject(mc, req.idpId, verified.accountId)
+            ?: createIdpIdentity(mc, req.idpId, idp.providerType, verified)
 
         // 4. 通过 relation 查该 idpIdentity 在此 app 下绑了哪个 customer（existing）
         //    并按判定表决定：转正 / 无操作 / 合并 / 冲突。方向硬编码 匿名 cur → existing（R1）。
@@ -156,7 +157,7 @@ class AuthAggHandler(
         val cur: UUID? = mc.op.customerId
         val curAnonymous: Boolean = mc.op.anonymous
         val relation = appUserToIdpIdentityRepo.findByAppAndIdpIdentity(mc, appId, idpIdentity.id)
-        val existing: UUID? = relation?.customerId
+        val existing: UUID? = relation?.actorId
 
         val ownerId: UUID = when (val action = decideLoginAction(cur, curAnonymous, existing)) {
             // 判定表①：relation 不存在 → cur 转正 + 建 relation（零迁移）；cur==null 才新建 customer（兼容旧调用）
@@ -274,7 +275,7 @@ class AuthAggHandler(
      * 创建匿名 Customer 并签发 access + refresh token。无需鉴权。
      * 既是首装入口，也是登出后惰性重建入口。token: sub=customerId, act="customer", ano=true。
      */
-    fun createAnonymous(mc: ModuleCtx): CreateAnonymousRes {
+    fun createAnonymousCustomer(mc: ModuleCtx): CreateAnonymousRes {
         val appId = mc.appId!!
         val customerId = customerRepo.createCustomer(mc, appId) // anonymous=true
 
@@ -299,6 +300,7 @@ class AuthAggHandler(
             customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, appId.toString(), anonymous = true,
         )
         return CreateAnonymousRes(
+            customerId = customerId,
             accessToken = accessToken,
             refreshToken = rawRefreshToken,
             refreshExpiresAt = refreshExpiresAt,
@@ -322,15 +324,20 @@ class AuthAggHandler(
         else -> throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unknown provider type: $providerType")
     }
 
-    private fun createIdpIdentity(mc: ModuleCtx, idpId: UUID, verified: ProviderVerifier.VerifiedResult): IdpIdentity {
+    private fun createIdpIdentity(mc: ModuleCtx, idpId: UUID, providerType: Int, verified: ProviderVerifier.VerifiedResult): IdpIdentity {
         val now = Instant.now()
         val entity = IdpIdentity {
             this.id = UuidV7.generate()
+            this.providerType = providerType
             this.idpId = idpId
-            this.idpIdentityId = verified.accountId
+            this.providerSubjectId = verified.accountId
             this.email = verified.email
             this.emailVerified = verified.emailVerified
-            this.phone = verified.phone
+            this.phoneCallingCode = null
+            this.phoneCountryCode = null
+            this.phoneNationalNumber = null
+            this.phoneVerified = false
+            this.password = null
             this.profile = verified.userMetadata
             this.loginIp = mc.op.clientIp
             this.createdAt = now
@@ -340,12 +347,13 @@ class AuthAggHandler(
         return entity
     }
 
-    private fun createRelation(mc: ModuleCtx, appId: UUID, customerId: UUID, idpId: UUID, idpIdentityId: UUID) {
+    private fun createRelation(mc: ModuleCtx, appId: UUID, actorId: UUID, idpId: UUID, idpIdentityId: UUID) {
         val now = Instant.now()
         appUserToIdpIdentityRepo.save(mc, IdpIdentityBinding {
             this.id = UuidV7.generate()
             this.appId = appId
-            this.customerId = customerId
+            this.actorType = AuthJwtService.ACTOR_CUSTOMER
+            this.actorId = actorId
             this.idpId = idpId
             this.idpIdentityId = idpIdentityId
             this.createdAt = now
@@ -357,15 +365,12 @@ class AuthAggHandler(
         val now = Instant.now()
         val entity = IdpIdentity {
             this.id = id
-            this.idpId = verified.accountId.let { /* keep existing */ mc.let { ctx -> idpIdentityRepo.findById(ctx, id)!!.idpId } }
-            this.idpIdentityId = verified.accountId
+            this.providerSubjectId = verified.accountId
             this.email = verified.email
             this.emailVerified = verified.emailVerified
-            this.phone = verified.phone
             this.profile = verified.userMetadata
             this.loginIp = ip
             this.updatedAt = now
-            this.createdAt = now // won't change on upsert
         }
         idpIdentityRepo.save(mc, entity)
     }

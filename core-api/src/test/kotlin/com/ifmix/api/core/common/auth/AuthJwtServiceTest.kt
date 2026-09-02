@@ -20,7 +20,7 @@ class AuthJwtServiceTest {
         val result = svc.verify(token)
         assertThat(result).isNotNull
         assertThat(result!!.actorId).isEqualTo(customerId.toString())
-        assertThat(result.actorType).isEqualTo("customer")
+        assertThat(result.actorType).isEqualTo(AuthJwtService.ACTOR_CUSTOMER)
         assertThat(result.appId).isEqualTo(appId)
         assertThat(result.isCustomer).isTrue()
         assertThat(result.anonymous).isTrue()

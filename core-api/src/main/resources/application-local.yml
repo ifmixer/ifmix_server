@@ -39,12 +39,12 @@ app:
 
   datasource:
     writer:
-      jdbc-url: jdbc:postgresql://localhost:5432/ifmix_core_test
+      jdbc-url: jdbc:postgresql://localhost:5432/core_api_local
       username: postgres
       password: postgres
       maximum-pool-size: 100
     reader:
-      jdbc-url: jdbc:postgresql://localhost:5432/ifmix_core_test
+      jdbc-url: jdbc:postgresql://localhost:5432/core_api_local
       username: postgres
       password: postgres
       maximum-pool-size: 100

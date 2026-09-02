@@ -1,5 +1,16 @@
+"Customer（C 端用户）。按需查：仅取 id 时不触发 DB 查询。"
+type Customer {
+    id: UUID!
+    "是否匿名（未转正）"
+    anonymous: Boolean!
+}
+
 "匿名 Customer 创建结果：既是首装入口，也是登出后惰性重建入口。"
 type CreateAnonymousResult {
+    "新建的 customer id（无需查库即可返回）"
+    customerId: UUID!
+    "Customer 对象（按需查：仅取 id 时不查库）"
+    customer: Customer
     accessToken: String!
     refreshToken: String!
     "refresh token 过期时间（ISO-8601）"
@@ -10,5 +21,5 @@ type CreateAnonymousResult {
 
 extend type Mutation {
     "创建匿名 Customer 并签发 token（无需鉴权）。每 IP 60s 限 10 次。"
-    m_customer_createAnonymous: CreateAnonymousResult!
+    m_customer_createAnonymousCustomer: CreateAnonymousResult!
 }

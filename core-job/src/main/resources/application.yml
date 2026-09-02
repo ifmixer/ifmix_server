@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: ifmix-core-job
+  main:
+    # 非 web：批处理进程，cron 触发、跑完退出
+    web-application-type: none
+    banner-mode: "off"
+  batch:
+    job:
+      # 不自动跑所有 job；由 --job.name 经 JobDispatcher 显式触发。
+      # 注：Boot 4 / Batch 6 已移除 spring.batch.jdbc.initialize-schema，
+      # Batch 元数据 schema 改由 DataSourceConfig.batchSchemaInitializer 显式建到 core_job_local。
+      enabled: false
+
+# 双数据源：业务库（清理目标）+ job 库（Batch 元数据）
+app:
+  datasource:
+    # 业务库：清理任务读写 customer / subscription 等
+    business:
+      jdbc-url: jdbc:postgresql://localhost:5432/core_api_local
+      username: postgres
+      password: postgres
+      maximum-pool-size: 5
+    # job 库：Spring Batch JobRepository（执行历史 / 断点）
+    job:
+      jdbc-url: jdbc:postgresql://localhost:5432/core_job_local
+      username: postgres
+      password: postgres
+      maximum-pool-size: 3
+  customer:
+    cleanup:
+      batch-size: 500
+      tombstone-window-days: 7
+
+logging:
+  level:
+    com.ifmix.core.job: INFO

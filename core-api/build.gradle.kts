@@ -123,7 +123,7 @@ ksp {
 // DGS Codegen — 从 .graphqls schema 生成 Kotlin input/payload/enum types
 tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
     // 生成代码的包名
-    packageName = "com.ifmix.api.core.generated"
+    packageName = "com.ifmix.core.api.generated"
     language = "kotlin"
     generateClient = true       // 生成类型安全 client（测试用）
     generateDataTypes = true    // 生成 input/type data classes
@@ -143,20 +143,21 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "DateTime" to "java.time.Instant",
         "JSON" to "kotlin.Any",
         // Entity output types → Domain Model data classes
-        "Todo" to "com.ifmix.api.core.entity.demo.Todo",
-        "TodoItem" to "com.ifmix.api.core.entity.demo.TodoItem",
-        "ScanRecord" to "com.ifmix.api.core.entity.ai.ScanRecord",
-        "ScanCollection" to "com.ifmix.api.core.entity.ai.ScanCollection",
-        "ScanCollectionItem" to "com.ifmix.api.core.entity.ai.ScanCollectionItem",
-        "ImageRef" to "com.ifmix.api.core.entity.ai.ImageRef",
+        "Customer" to "com.ifmix.core.api.entity.customer.Customer",
+        "Todo" to "com.ifmix.core.api.entity.demo.Todo",
+        "TodoItem" to "com.ifmix.core.api.entity.demo.TodoItem",
+        "ScanRecord" to "com.ifmix.core.api.entity.ai.ScanRecord",
+        "ScanCollection" to "com.ifmix.core.api.entity.ai.ScanCollection",
+        "ScanCollectionItem" to "com.ifmix.core.api.entity.ai.ScanCollectionItem",
+        "ImageRef" to "com.ifmix.core.api.entity.ai.ImageRef",
         // OperationResult: 手写类型，不再由 codegen 生成
-        "OperationResult" to "com.ifmix.api.core.dto.common.OperationResult",
+        "OperationResult" to "com.ifmix.core.api.dto.common.OperationResult",
         // PageInfo: 手写类型
-        "PageInfo" to "com.ifmix.api.core.dto.common.PageInfo",
+        "PageInfo" to "com.ifmix.core.api.dto.common.PageInfo",
         // Page types → 通用 Page<T>
-        "TodoPage" to "com.ifmix.api.core.dto.common.Page",
-        "ScanRecordPage" to "com.ifmix.api.core.dto.common.Page",
-        "ScanCollectionItemPage" to "com.ifmix.api.core.dto.common.Page",
+        "TodoPage" to "com.ifmix.core.api.dto.common.Page",
+        "ScanRecordPage" to "com.ifmix.core.api.dto.common.Page",
+        "ScanCollectionItemPage" to "com.ifmix.core.api.dto.common.Page",
     )
 }
 

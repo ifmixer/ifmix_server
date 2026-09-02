@@ -1,12 +1,12 @@
-package com.ifmix.core.api.modules.customer.handler
+package com.ifmix.core.job.customer
 
 /**
- * 匿名 Customer 清理的「是否应删」纯判定（阶段 6 R1 防误删入口）。
+ * 匿名 Customer 清理的「是否应删」纯判定（R1 防误删入口）。
  *
- * 抽成纯函数便于独立断言测试（不依赖 DB / Spring）。scheduler 先用 SQL 过滤出两类候选，
+ * 抽成纯函数便于独立断言测试（不依赖 DB / Spring）。cleaner 先用 SQL 过滤出两类候选，
  * 再对每个候选拉取 hasValidToken / hasActiveSubscription，最后交给本函数裁决。
  *
- * 绝不删「正常已登录用户」：anonymous=false 且 mergedTo=null 的组合永远返回 false。
+ * 绝不删「正常已登录用户」：anonymous=false 且 merged=false 的组合永远返回 false。
  */
 object AnonymousCleanupDecision {
 

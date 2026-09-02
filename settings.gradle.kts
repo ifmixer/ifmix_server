@@ -4,3 +4,5 @@ plugins {
 rootProject.name = "ifmix-server"
 
 include("core-api")
+include("core-common")
+include("core-job")

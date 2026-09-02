@@ -31,8 +31,8 @@ class AuthFacade(
     fun logout(ctx: OperationContext, req: LogoutReq): LogoutRes =
         handler.logout(mcFactory.forApp(ctx), req)
 
-    fun createAnonymous(ctx: OperationContext): CreateAnonymousRes =
-        handler.createAnonymous(mcFactory.forApp(ctx))
+    fun createAnonymousCustomer(ctx: OperationContext): CreateAnonymousRes =
+        handler.createAnonymousCustomer(mcFactory.forApp(ctx))
 
     fun requestAccountDeletion(ctx: OperationContext): DeleteAccountRes =
         handler.requestAccountDeletion(mcFactory.forApp(ctx))

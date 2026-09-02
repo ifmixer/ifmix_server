@@ -6,21 +6,24 @@ import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 /**
- * Customer 绑定了哪些 IDP 身份（app 级）。
+ * Actor 绑定了哪些 IDP 身份（app 级）。
  * 唯一键: (appId, idpIdentityId) 在未删除记录中唯一。
- * 表名保持 auth_appuser_to_idpidentity_relation（避免动表）。
  */
 @Entity
-@Table(name = "auth_appuser_to_idpidentity_relation")
+@Table(name = "auth_actor_to_idpidentity_relation")
 interface IdpIdentityBinding : BaseAppEntity, SoftDeletableProps {
 
-    /** 逻辑外键 → customer（跨模块）。列名保持 app_user_id（避免动表）。 */
-    @Column(name = "app_user_id")
-    val customerId: UUID
+    /** 主体类型（10:customer / 20:manager，见 AuthJwtService）。 */
+    @Column(name = "actor_type")
+    val actorType: Int
+
+    /** 逻辑外键 → 主体 id（actorType==customer 时为 customer.id）。 */
+    @Column(name = "actor_id")
+    val actorId: UUID
 
     /** 逻辑外键 → auth_idp */
     val idpId: UUID
 
-    /** 逻辑外键 → auth_idpidentity */
+    /** 逻辑外键 → auth_idpidentity（该行 id，非第三方 subject） */
     val idpIdentityId: UUID
 }
