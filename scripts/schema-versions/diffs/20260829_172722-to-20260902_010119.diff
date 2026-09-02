@@ -1,0 +1,15 @@
+# 20260829_172722 → 20260902_010119
+
+[log] 
+Detected the following changes (9) between schemas:
+
+[log] ✖  Field m_auth_registerInstall was removed from object type Mutation
+[log] ✖  Field q_ai_findScanById was removed from object type Query
+[log] ✖  Type RegisterInstallInput was removed
+[log] ✖  Type RegisterInstallResult was removed
+[log] ✖  Field promptVersion was removed from object type ScanDeepResearch
+[log] ✖  Field promptVersion was removed from object type ScanRecord
+[log] ✔  Type CreateAnonymousResult was added
+[log] ✔  Field m_customer_createAnonymous was added to object type Mutation
+[log] ✔  Field q_ai_findMyScanById was added to object type Query
+[error] Detected 6 breaking changes
