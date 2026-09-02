@@ -15,7 +15,7 @@ import java.time.Instant
 
 /** 构造 Google IDP：config.clientIds = {ios,android,web} */
 private fun googleIdp() = Idp {
-    providerType = 20
+    idpType = 20
     name = "google"
     thirdId = "google"
     desc = null
@@ -24,7 +24,7 @@ private fun googleIdp() = Idp {
 
 /** 构造 Apple IDP：config.bundleId（native）/ servicesId（web） */
 private fun appleIdp() = Idp {
-    providerType = 10
+    idpType = 10
     name = "apple"
     thirdId = "apple"
     desc = null

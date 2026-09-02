@@ -3,6 +3,7 @@ package com.ifmix.core.api.modules.customer.repo
 import com.ifmix.core.api.entity.customer.Customer
 import com.ifmix.core.api.entity.customer.anonymous
 import com.ifmix.core.api.entity.customer.appId
+import com.ifmix.core.api.entity.customer.authIdentityId
 import com.ifmix.core.api.entity.customer.id
 import com.ifmix.core.api.entity.customer.mergedTo
 import com.ifmix.core.api.entity.customer.updatedAt
@@ -49,6 +50,15 @@ class CustomerRepository {
             set(table.updatedAt, Instant.now())
         }.execute()
 
+    /** 绑定账号：设置 customer.authIdentityId（登录转正时）。 */
+    fun setAuthIdentity(mc: ModuleCtx, appId: UUID, id: UUID, authIdentityId: UUID): Int =
+        mc.sql.createUpdate(Customer::class) {
+            where(table.appId eq appId)
+            where(table.id eq id)
+            set(table.authIdentityId, authIdentityId)
+            set(table.updatedAt, Instant.now())
+        }.execute()
+
     /** 合并 tombstone：将 cur 标记为已并入 existing（方向硬编码 匿名 cur → existing，R1）。 */
     fun markMerged(mc: ModuleCtx, appId: UUID, curId: UUID, existingId: UUID): Int =
         mc.sql.createUpdate(Customer::class) {
@@ -60,6 +70,16 @@ class CustomerRepository {
 
     fun save(mc: ModuleCtx, entity: Customer) = tpl.save(mc, entity)
     fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
+
+    /** 反查：app 内绑定该 authIdentity 的存活 customer（排除已合并 tombstone）。 */
+    fun findByAuthIdentity(mc: ModuleCtx, appId: UUID, authIdentityId: UUID): UUID? =
+        mc.sql.createQuery(Customer::class) {
+            where(table.appId eq appId)
+            where(table.authIdentityId eq authIdentityId)
+            where(table.mergedTo.isNull())
+            select(table.id)
+        }.limit(1).execute().firstOrNull()
+
     fun findByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>) = tpl.findByIds(mc, appId, ids)
     fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
     fun exists(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.exists(mc, appId, id)

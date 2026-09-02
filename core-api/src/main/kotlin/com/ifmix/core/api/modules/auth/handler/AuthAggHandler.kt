@@ -1,7 +1,7 @@
 package com.ifmix.core.api.modules.auth.handler
 
 import com.ifmix.core.api.entity.auth.RefreshToken
-import com.ifmix.core.api.entity.auth.IdpIdentityBinding
+import com.ifmix.core.api.entity.auth.AuthIdentityIdpRelation
 import com.ifmix.core.api.entity.auth.IdpIdentity
 import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.auth.Hashing
@@ -13,7 +13,8 @@ import com.ifmix.core.api.modules.auth.AuthLoggedInEvent
 import com.ifmix.core.api.modules.auth.ProviderVerifier
 import com.ifmix.core.api.modules.auth.repo.AppToIdpRelationRepository
 import com.ifmix.core.api.modules.auth.repo.RefreshTokenRepository
-import com.ifmix.core.api.modules.auth.repo.IdpIdentityBindingRepository
+import com.ifmix.core.api.modules.auth.repo.AuthIdentityRepository
+import com.ifmix.core.api.modules.auth.repo.AuthIdentityIdpRelationRepository
 import com.ifmix.core.api.modules.auth.repo.IdpIdentityRepository
 import com.ifmix.core.api.modules.auth.repo.IdpRepository
 import com.ifmix.core.api.modules.customer.repo.CustomerRepository
@@ -87,7 +88,8 @@ class AuthAggHandler(
     private val idpRepo: IdpRepository,
     private val idpIdentityRepo: IdpIdentityRepository,
     private val appToIdpRepo: AppToIdpRelationRepository,
-    private val appUserToIdpIdentityRepo: IdpIdentityBindingRepository,
+    private val authIdentityRepo: AuthIdentityRepository,
+    private val relationRepo: AuthIdentityIdpRelationRepository,
     private val refreshTokenRepo: RefreshTokenRepository,
     private val customerRepo: CustomerRepository,
     private val mergeHandler: CustomerMergeHandler,
@@ -142,29 +144,31 @@ class AuthAggHandler(
         // 2. 加载 IDP 配置，验证 credential
         val idp = idpRepo.findById(mc, req.idpId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "IDP not found")
-        val providerKey = providerKeyForType(idp.providerType)
+        val providerKey = providerKeyForType(idp.idpType)
         val verifier = verifiers[providerKey]
-            ?: throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unsupported provider type: ${idp.providerType}")
+            ?: throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unsupported provider type: ${idp.idpType}")
         val verified = verifier.verifyWithIdpConfig(idp, mc.op.clientPlatform, req.credential)
 
         // 3. 找/建 IdpIdentity（全局）
         val idpIdentity = idpIdentityRepo.findByIdpAndSubject(mc, req.idpId, verified.accountId)
-            ?: createIdpIdentity(mc, req.idpId, idp.providerType, verified)
+            ?: createIdpIdentity(mc, req.idpId, idp.idpType, verified)
 
-        // 4. 通过 relation 查该 idpIdentity 在此 app 下绑了哪个 customer（existing）
-        //    并按判定表决定：转正 / 无操作 / 合并 / 冲突。方向硬编码 匿名 cur → existing（R1）。
+        // 4. 走关系表 + auth_identity 判定该 idpIdentity 在此 app 下对应哪个 customer（existing）。
+        //    idpIdentity(全局) → relation(app级) → auth_identity → customer.authIdentityId。
         //    cur = 当前 token 主体（可能为匿名 customer，也可能为 null——旧调用无匿名 token）。
         val cur: UUID? = mc.op.customerId
         val curAnonymous: Boolean = mc.op.anonymous
-        val relation = appUserToIdpIdentityRepo.findByAppAndIdpIdentity(mc, appId, idpIdentity.id)
-        val existing: UUID? = relation?.actorId
+        val relation = relationRepo.findByAppAndIdpIdentity(mc, appId, idpIdentity.id)
+        val existing: UUID? = relation?.let { customerRepo.findByAuthIdentity(mc, appId, it.authIdentityId) }
 
         val ownerId: UUID = when (val action = decideLoginAction(cur, curAnonymous, existing)) {
-            // 判定表①：relation 不存在 → cur 转正 + 建 relation（零迁移）；cur==null 才新建 customer（兼容旧调用）
+            // 判定表①：该身份此 app 下无账号 → cur 转正 + 建账号/关系（零迁移）；cur==null 才新建 customer
             is LoginAction.PromoteOrCreate -> {
                 val target = cur ?: customerRepo.createCustomer(mc, appId)
+                val authId = authIdentityRepo.createAccount(mc, appId)
+                createRelation(mc, appId, authId, idpIdentity.id)
+                customerRepo.setAuthIdentity(mc, appId, target, authId)
                 if (cur != null) customerRepo.promote(mc, appId, cur)
-                createRelation(mc, appId, target, req.idpId, idpIdentity.id)
                 target
             }
             // 判定表②：relation 存在且 existing == cur → 无操作（重复登录）
@@ -318,17 +322,17 @@ class AuthAggHandler(
     // Internal helpers
     // =========================================================================
 
-    private fun providerKeyForType(providerType: Int): String = when (providerType) {
+    private fun providerKeyForType(idpType: Int): String = when (idpType) {
         10 -> "apple"
         20 -> "google"
-        else -> throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unknown provider type: $providerType")
+        else -> throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unknown provider type: $idpType")
     }
 
-    private fun createIdpIdentity(mc: ModuleCtx, idpId: UUID, providerType: Int, verified: ProviderVerifier.VerifiedResult): IdpIdentity {
+    private fun createIdpIdentity(mc: ModuleCtx, idpId: UUID, idpType: Int, verified: ProviderVerifier.VerifiedResult): IdpIdentity {
         val now = Instant.now()
         val entity = IdpIdentity {
             this.id = UuidV7.generate()
-            this.providerType = providerType
+            this.idpType = idpType
             this.idpId = idpId
             this.providerSubjectId = verified.accountId
             this.email = verified.email
@@ -337,7 +341,6 @@ class AuthAggHandler(
             this.phoneCountryCode = null
             this.phoneNationalNumber = null
             this.phoneVerified = false
-            this.password = null
             this.profile = verified.userMetadata
             this.loginIp = mc.op.clientIp
             this.createdAt = now
@@ -347,14 +350,12 @@ class AuthAggHandler(
         return entity
     }
 
-    private fun createRelation(mc: ModuleCtx, appId: UUID, actorId: UUID, idpId: UUID, idpIdentityId: UUID) {
+    private fun createRelation(mc: ModuleCtx, appId: UUID, authIdentityId: UUID, idpIdentityId: UUID) {
         val now = Instant.now()
-        appUserToIdpIdentityRepo.save(mc, IdpIdentityBinding {
+        relationRepo.save(mc, AuthIdentityIdpRelation {
             this.id = UuidV7.generate()
             this.appId = appId
-            this.actorType = AuthJwtService.ACTOR_CUSTOMER
-            this.actorId = actorId
-            this.idpId = idpId
+            this.authIdentityId = authIdentityId
             this.idpIdentityId = idpIdentityId
             this.createdAt = now
             this.updatedAt = now
@@ -377,7 +378,9 @@ class AuthAggHandler(
 
     private fun findPrimaryEmail(mc: ModuleCtx, appId: UUID, customerId: UUID): String? {
         // ponytail: 简单实现，后续可优化为专门查询
-        val relation = appUserToIdpIdentityRepo.findFirstByCustomer(mc, appId, customerId) ?: return null
+        val customer = customerRepo.findById(mc, appId, customerId) ?: return null
+        val authIdentityId = customer.authIdentityId ?: return null
+        val relation = relationRepo.findFirstByAuthIdentity(mc, appId, authIdentityId) ?: return null
         val idpIdentity = idpIdentityRepo.findById(mc, relation.idpIdentityId) ?: return null
         return idpIdentity.email
     }

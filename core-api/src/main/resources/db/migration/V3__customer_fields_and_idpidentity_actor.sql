@@ -1,17 +1,6 @@
--- V3: customer 补充资料列；auth_idpidentity 列调整（provider_type/可选 idp/手机分段/password）；
+-- V3: auth_idpidentity 列调整（provider_type/可选 idp/手机分段/password）；
 --     binding 表 actor 化重命名。
-
--- 1. customer: 新增资料列（含重新引入 metadata jsonb）
-ALTER TABLE customer
-    ADD COLUMN first_name            VARCHAR(255),
-    ADD COLUMN last_name             VARCHAR(255),
-    ADD COLUMN email                 VARCHAR(255),
-    ADD COLUMN email_verified        BOOLEAN NOT NULL DEFAULT false,
-    ADD COLUMN phone_calling_code    VARCHAR(8),
-    ADD COLUMN phone_country_code    VARCHAR(2),
-    ADD COLUMN phone_national_number VARCHAR(32),
-    ADD COLUMN phone_verified        BOOLEAN NOT NULL DEFAULT false,
-    ADD COLUMN metadata              JSONB;
+--     （customer 资料列改由 V4 归入 auth_identity。）
 
 -- 2. auth_idpidentity: 列改名 idp_identity_id → provider_subject_id
 ALTER TABLE auth_idpidentity RENAME COLUMN idp_identity_id TO provider_subject_id;

@@ -12,9 +12,9 @@ import java.util.UUID
 @Table(name = "auth_idpidentity")
 interface IdpIdentity : BaseEntity {
 
-    /** provider 类型（10:email 20:phone 30:apple 40:google）。 */
-    @Column(name = "provider_type")
-    val providerType: Int
+    /** idp 类型（10:apple 20:google）。 */
+    @Column(name = "idp_type")
+    val idpType: Int
 
     /** 逻辑外键 → auth_idp（email/phone 等内建身份可无 idp，故可选）。 */
     val idpId: UUID?
@@ -39,9 +39,6 @@ interface IdpIdentity : BaseEntity {
     val phoneNationalNumber: String?
 
     val phoneVerified: Boolean
-
-    /** 密码哈希（社交身份为 null）。 */
-    val password: String?
 
     @Serialized
     val profile: Map<String, Any?>?

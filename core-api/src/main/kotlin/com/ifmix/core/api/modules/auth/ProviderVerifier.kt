@@ -9,7 +9,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder
 
 /**
  * 第三方 provider 的 credential 验证器。
- * 每种 providerType 注册一个实现，通过 Idp.config JSONB 获取验证所需配置。
+ * 每种 idpType 注册一个实现，通过 Idp.config JSONB 获取验证所需配置。
  */
 interface ProviderVerifier {
 
