@@ -1,0 +1,24 @@
+input SubmitFeedbackInput {
+    scanRecordId: UUID
+    """
+    反馈分类:
+    0=UNKNOWN, 10=LIKED, 20=PRICE_TOO_HIGH, 21=PRICE_TOO_LOW,
+    22=PRICE_MISSING, 23=PRICE_UNREASONABLE, 30=WRONG_IDENTIFICATION, 40=FEATURE_REQUEST,
+    41=MORE_RECOMMENDATIONS, 50=WRONG_DATING, 51=WRONG_ORIGIN,
+    52=WRONG_CONDITION, 53=WRONG_RARITY, 60=HELPFUL_TIPS
+    """
+    category: Int!
+    """ 所在页面区块（如 valuation / dating / condition / authenticity 等），用于定位反馈来源 """
+    section: String
+    """ SPM 埋点位置标识，用于精确定位反馈触发点 """
+    spm: String
+    comment: String
+}
+
+type SubmitFeedbackResult {
+    id: UUID!
+}
+
+extend type Mutation {
+    m_cms_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackResult!
+}

@@ -8,6 +8,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.servlet.resource.NoResourceFoundException
+import org.springframework.web.servlet.NoHandlerFoundException
 
 /** 统一异常处理：把异常映射为信封响应。 */
 @RestControllerAdvice
@@ -46,6 +48,14 @@ class GlobalExceptionHandler(
     fun handleUnreadable(ex: HttpMessageNotReadableException): ResponseEntity<Envelope<Nothing>> =
         ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(Envelope.error(ErrorCode.INVALID_REQUEST.externalCode, "malformed request body"))
+
+    /** 404：路径无映射 / 静态资源不存在。返回 404，不打 stack（仅 debug 级）。 */
+    @ExceptionHandler(NoResourceFoundException::class, NoHandlerFoundException::class)
+    fun handleNotFound(ex: Exception): ResponseEntity<Envelope<Nothing>> {
+        log.debug("No handler for request: {}", ex.message)
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(Envelope.error(ErrorCode.NOT_FOUND.externalCode, "not found"))
+    }
 
     @ExceptionHandler(Exception::class)
     fun handleGeneric(ex: Exception): ResponseEntity<Envelope<Nothing>> {

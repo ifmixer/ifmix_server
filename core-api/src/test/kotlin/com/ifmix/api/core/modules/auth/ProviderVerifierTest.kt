@@ -1,41 +1,35 @@
 package com.ifmix.api.core.modules.auth
 
-import tools.jackson.module.kotlin.jacksonObjectMapper
-import com.ifmix.api.core.entity.app.AppleConfigValue
-import com.ifmix.api.core.entity.app.ConfigContent
-import com.ifmix.api.core.entity.app.GoogleConfigValue
-import com.ifmix.api.core.entity.app.GoogleClientIdsValue
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isInstanceOf
+import assertk.assertions.isTrue
+import com.ifmix.api.core.entity.auth.Idp
 import com.ifmix.api.core.infra.http.ApiError
 import com.ifmix.api.core.infra.http.ClientPlatform
-import com.ifmix.api.core.entity.app.AppConfigRevision
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import java.time.Instant
-import java.util.UUID
 
-private val mapper = jacksonObjectMapper()
+/** 构造 Google IDP：config.clientIds = {ios,android,web} */
+private fun googleIdp() = Idp {
+    providerType = 20
+    name = "google"
+    thirdId = "google"
+    desc = null
+    config = mapOf("clientIds" to mapOf("ios" to "gid-ios", "android" to "gid-and", "web" to "gid-web"))
+}
 
-private fun cfg() = AppConfigRevision(
-    id = UUID.randomUUID(),
-    appId = UUID.randomUUID(),
-    authTenantId = UUID.randomUUID(),
-    appleBundleId = "com.x.app",
-    androidPackageName = null,
-    revisionNumber = 1,
-    enabled = true,
-    slug = "test",
-    note = "test",
-    createdAt = Instant.now(),
-    content = mapper.writeValueAsString(
-        ConfigContent(
-            apple = AppleConfigValue(servicesId = "com.x.svc"),
-            google = GoogleConfigValue(clientIds = GoogleClientIdsValue(ios = "gid-ios", android = "gid-and", web = "gid-web")),
-        )
-    ),
-)
+/** 构造 Apple IDP：config.bundleId（native）/ servicesId（web） */
+private fun appleIdp() = Idp {
+    providerType = 10
+    name = "apple"
+    thirdId = "apple"
+    desc = null
+    config = mapOf("bundleId" to "com.x.app", "servicesId" to "com.x.svc")
+}
 
 private fun jwt(aud: String, sub: String = "sub123") = Jwt.withTokenValue("t")
     .header("alg", "RS256").subject(sub).audience(listOf(aud))
@@ -45,7 +39,7 @@ private fun jwt(aud: String, sub: String = "sub123") = Jwt.withTokenValue("t")
 class ProviderVerifierTest {
     @Test fun `google verify ok when aud matches platform client id`() {
         val decoder = JwtDecoder { jwt("gid-ios") }
-        val v = GoogleVerifier(decoder).verify(cfg(), ClientPlatform.IOS, "idtoken")
+        val v = GoogleVerifier(decoder).verifyWithIdpConfig(googleIdp(), ClientPlatform.IOS, "idtoken")
         assertThat(v.accountId).isEqualTo("sub123")
         assertThat(v.email).isEqualTo("a@b.com")
         assertThat(v.emailVerified).isTrue()
@@ -53,25 +47,25 @@ class ProviderVerifierTest {
 
     @Test fun `google verify fails when aud mismatches`() {
         val decoder = JwtDecoder { jwt("wrong-aud") }
-        assertThatThrownBy { GoogleVerifier(decoder).verify(cfg(), ClientPlatform.IOS, "idtoken") }
-            .isInstanceOf(ApiError::class.java)
+        assertThat(
+            assertThrows<ApiError> { GoogleVerifier(decoder).verifyWithIdpConfig(googleIdp(), ClientPlatform.IOS, "idtoken") }
+        ).isInstanceOf(ApiError::class)
     }
 
     @Test fun `apple verify uses bundleId for native`() {
         val decoder = JwtDecoder { jwt("com.x.app") }
-        val v = AppleVerifier(decoder).verify(cfg(), ClientPlatform.IOS, "idtoken")
+        val v = AppleVerifier(decoder).verifyWithIdpConfig(appleIdp(), ClientPlatform.IOS, "idtoken")
         assertThat(v.accountId).isEqualTo("sub123")
     }
 
     @Test fun `apple verify uses servicesId for web`() {
         val decoder = JwtDecoder { jwt("com.x.svc") }
-        val v = AppleVerifier(decoder).verify(cfg(), ClientPlatform.WEB, "idtoken")
+        val v = AppleVerifier(decoder).verifyWithIdpConfig(appleIdp(), ClientPlatform.WEB, "idtoken")
         assertThat(v.accountId).isEqualTo("sub123")
     }
 
     @Test fun `verify fails when decoder throws`() {
         val decoder = JwtDecoder { throw org.springframework.security.oauth2.jwt.JwtException("bad") }
-        assertThatThrownBy { GoogleVerifier(decoder).verify(cfg(), ClientPlatform.IOS, "idtoken") }
-            .isInstanceOf(ApiError::class.java)
+        assertThrows<ApiError> { GoogleVerifier(decoder).verifyWithIdpConfig(googleIdp(), ClientPlatform.IOS, "idtoken") }
     }
 }
