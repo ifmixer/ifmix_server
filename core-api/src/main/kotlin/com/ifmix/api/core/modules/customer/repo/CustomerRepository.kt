@@ -1,11 +1,11 @@
 package com.ifmix.api.core.modules.customer.repo
 
-import com.ifmix.api.core.entity.user.Customer
-import com.ifmix.api.core.entity.user.anonymous
-import com.ifmix.api.core.entity.user.appId
-import com.ifmix.api.core.entity.user.id
-import com.ifmix.api.core.entity.user.mergedTo
-import com.ifmix.api.core.entity.user.updatedAt
+import com.ifmix.api.core.entity.customer.Customer
+import com.ifmix.api.core.entity.customer.anonymous
+import com.ifmix.api.core.entity.customer.appId
+import com.ifmix.api.core.entity.customer.id
+import com.ifmix.api.core.entity.customer.mergedTo
+import com.ifmix.api.core.entity.customer.updatedAt
 import com.ifmix.api.core.infra.db.ModuleCtx
 import com.ifmix.api.core.infra.db.UuidV7
 import com.ifmix.api.core.infra.repo.AppCrudRepoTemplate

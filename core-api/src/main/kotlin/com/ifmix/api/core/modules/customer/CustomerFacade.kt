@@ -1,6 +1,6 @@
 package com.ifmix.api.core.modules.customer
 
-import com.ifmix.api.core.entity.user.Customer
+import com.ifmix.api.core.entity.customer.Customer
 import com.ifmix.api.core.infra.db.ModuleCtxFactory
 import com.ifmix.api.core.infra.http.OperationContext
 import com.ifmix.api.core.modules.customer.repo.CustomerRepository

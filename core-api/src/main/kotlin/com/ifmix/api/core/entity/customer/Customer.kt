@@ -1,4 +1,4 @@
-package com.ifmix.api.core.entity.user
+package com.ifmix.api.core.entity.customer
 
 import com.ifmix.api.core.entity.common.BaseAppEntity
 import org.babyfish.jimmer.sql.*
