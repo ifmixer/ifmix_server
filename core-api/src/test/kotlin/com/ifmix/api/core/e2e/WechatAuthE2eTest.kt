@@ -1,8 +1,8 @@
-package com.ifmix.api.core.e2e
+package com.ifmix.core.api.e2e
 
 import com.github.tomakehurst.wiremock.client.WireMock.*
-import com.ifmix.api.core.e2e.support.E2eTestBase
-import com.ifmix.api.core.e2e.support.TestFixtures
+import com.ifmix.core.api.e2e.support.E2eTestBase
+import com.ifmix.core.api.e2e.support.TestFixtures
 import org.junit.jupiter.api.*
 import org.springframework.beans.factory.annotation.Autowired
 

@@ -1,12 +1,12 @@
-package com.ifmix.api.core.modules.auth
+package com.ifmix.core.api.modules.auth
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isTrue
-import com.ifmix.api.core.entity.auth.Idp
-import com.ifmix.api.core.infra.http.ApiError
-import com.ifmix.api.core.infra.http.ClientPlatform
+import com.ifmix.core.api.entity.auth.Idp
+import com.ifmix.core.api.infra.http.ApiError
+import com.ifmix.core.api.infra.http.ClientPlatform
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.security.oauth2.jwt.Jwt

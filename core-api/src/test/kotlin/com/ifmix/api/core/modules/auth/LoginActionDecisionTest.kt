@@ -1,10 +1,10 @@
-package com.ifmix.api.core.modules.auth
+package com.ifmix.core.api.modules.auth
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
-import com.ifmix.api.core.modules.auth.handler.AuthAggHandler.Companion.LoginAction
-import com.ifmix.api.core.modules.auth.handler.AuthAggHandler.Companion.decideLoginAction
+import com.ifmix.core.api.modules.auth.handler.AuthAggHandler.Companion.LoginAction
+import com.ifmix.core.api.modules.auth.handler.AuthAggHandler.Companion.decideLoginAction
 import org.junit.jupiter.api.Test
 import java.util.UUID
 

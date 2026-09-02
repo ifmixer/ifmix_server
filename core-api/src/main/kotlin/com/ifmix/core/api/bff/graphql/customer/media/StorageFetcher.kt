@@ -1,0 +1,38 @@
+package com.ifmix.core.api.bff.graphql.customer.media
+
+import com.ifmix.core.api.generated.types.PresignDownloadInput
+import com.ifmix.core.api.generated.types.PresignDownloadResult
+import com.ifmix.core.api.generated.types.PresignUploadInput
+import com.ifmix.core.api.generated.types.PresignUploadResult
+import com.ifmix.core.api.infra.graphql.OperationContextProvider
+import com.ifmix.core.api.modules.media.StorageFacade
+import com.netflix.graphql.dgs.DgsComponent
+import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
+import com.netflix.graphql.dgs.DgsMutation
+import com.netflix.graphql.dgs.InputArgument
+
+@DgsComponent
+class StorageFetcher(
+    private val storageService: StorageFacade,
+    private val ctxProvider: OperationContextProvider,
+) {
+
+    @DgsMutation(field = "m_media_presignUpload")
+    fun presignUpload(dfe: DgsDataFetchingEnvironment, @InputArgument input: PresignUploadInput): PresignUploadResult {
+        val ctx = ctxProvider.fromDfe(dfe)
+        val result = storageService.presignUpload(ctx, input)
+        return PresignUploadResult(
+            mediaId = result.mediaId,
+            uploadUrl = result.uploadUrl,
+            imageKey = result.imageKey,
+            downloadUrl = result.downloadUrl,
+        )
+    }
+
+    @DgsMutation(field = "m_media_presignDownload")
+    fun presignDownload(dfe: DgsDataFetchingEnvironment, @InputArgument input: PresignDownloadInput): PresignDownloadResult {
+        val ctx = ctxProvider.fromDfe(dfe)
+        val result = storageService.presignDownload(ctx, input)
+        return PresignDownloadResult(url = result.url)
+    }
+}

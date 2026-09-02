@@ -1,4 +1,4 @@
-package com.ifmix.api.core.e2e.support
+package com.ifmix.core.api.e2e.support
 
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig

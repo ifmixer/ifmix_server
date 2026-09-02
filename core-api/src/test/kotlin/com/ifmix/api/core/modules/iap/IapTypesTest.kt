@@ -1,9 +1,9 @@
-package com.ifmix.api.core.modules.iap
+package com.ifmix.core.api.modules.iap
 
-import com.ifmix.api.core.dto.payment.SubscriptionState
-import com.ifmix.api.core.dto.payment.statusFromExpiry
-import com.ifmix.api.core.dto.payment.tierOf
-import com.ifmix.api.core.entity.common.Tiers
+import com.ifmix.core.api.dto.payment.SubscriptionState
+import com.ifmix.core.api.dto.payment.statusFromExpiry
+import com.ifmix.core.api.dto.payment.tierOf
+import com.ifmix.core.api.entity.common.Tiers
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.Instant

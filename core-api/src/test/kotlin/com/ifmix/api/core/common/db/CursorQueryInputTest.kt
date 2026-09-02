@@ -1,6 +1,6 @@
-package com.ifmix.api.core.infra.db
+package com.ifmix.core.api.infra.db
 
-import com.ifmix.api.core.dto.common.CursorQueryInput
+import com.ifmix.core.api.dto.common.CursorQueryInput
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -26,6 +26,6 @@ class CursorQueryInputTest {
     fun defaultsToIdDescending() {
         val input = CursorQueryInput()
         assertThat(input.effectiveSortBy()).isEqualTo("id")
-        assertThat(input.effectiveOrder()).isEqualTo(com.ifmix.api.core.dto.common.SortOrder.DESC)
+        assertThat(input.effectiveOrder()).isEqualTo(com.ifmix.core.api.dto.common.SortOrder.DESC)
     }
 }

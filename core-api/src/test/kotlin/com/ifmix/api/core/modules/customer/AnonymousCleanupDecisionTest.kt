@@ -1,10 +1,10 @@
-package com.ifmix.api.core.modules.customer
+package com.ifmix.core.api.modules.customer
 
 import assertk.assertThat
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
-import com.ifmix.api.core.modules.customer.handler.AnonymousCleanupDecision
-import com.ifmix.api.core.modules.customer.handler.AnonymousCleanupDecision.CustomerState
+import com.ifmix.core.api.modules.customer.handler.AnonymousCleanupDecision
+import com.ifmix.core.api.modules.customer.handler.AnonymousCleanupDecision.CustomerState
 import org.junit.jupiter.api.Test
 
 /**

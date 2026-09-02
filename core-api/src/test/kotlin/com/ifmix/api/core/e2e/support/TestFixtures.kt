@@ -1,4 +1,4 @@
-package com.ifmix.api.core.e2e.support
+package com.ifmix.core.api.e2e.support
 
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component

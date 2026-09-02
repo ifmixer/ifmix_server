@@ -1,9 +1,9 @@
-package com.ifmix.api.core.e2e
+package com.ifmix.core.api.e2e
 
-import com.ifmix.api.core.e2e.support.E2eTestBase
-import com.ifmix.api.core.entity.demo.Todo
-import com.ifmix.api.core.entity.demo.by
-import com.ifmix.api.core.infra.db.UuidV7
+import com.ifmix.core.api.e2e.support.E2eTestBase
+import com.ifmix.core.api.entity.demo.Todo
+import com.ifmix.core.api.entity.demo.by
+import com.ifmix.core.api.infra.db.UuidV7
 import org.assertj.core.api.Assertions.assertThat
 import org.babyfish.jimmer.kt.new
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode

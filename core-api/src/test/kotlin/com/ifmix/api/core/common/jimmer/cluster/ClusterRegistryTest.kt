@@ -1,4 +1,4 @@
-package com.ifmix.api.core.infra.jimmer
+package com.ifmix.core.api.infra.jimmer
 
 import assertk.assertThat
 import assertk.assertions.isNotNull

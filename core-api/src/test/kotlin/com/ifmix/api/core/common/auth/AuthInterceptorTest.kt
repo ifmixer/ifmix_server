@@ -1,7 +1,7 @@
-package com.ifmix.api.core.infra.auth
+package com.ifmix.core.api.infra.auth
 
-import com.ifmix.api.core.infra.http.RequestContext
-import com.ifmix.api.core.infra.http.RequestHeaders
+import com.ifmix.core.api.infra.http.RequestContext
+import com.ifmix.core.api.infra.http.RequestHeaders
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock

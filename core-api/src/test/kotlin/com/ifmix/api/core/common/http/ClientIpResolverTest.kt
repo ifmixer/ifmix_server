@@ -1,4 +1,4 @@
-package com.ifmix.api.core.infra.http
+package com.ifmix.core.api.infra.http
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

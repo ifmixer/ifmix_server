@@ -1,4 +1,4 @@
-package com.ifmix.api.core.infra.auth
+package com.ifmix.core.api.infra.auth
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
