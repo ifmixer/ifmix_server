@@ -210,6 +210,14 @@ jooq {
                         isKotlinNotNullRecordAttributes = true
                         isPojos = true
                         isPojosAsKotlinDataClasses = true
+//                        isDaos = true
+                        isComments=true
+//                        isImmutablePojos =true
+                        isInterfaces = true
+                        isTables = true
+                        isJavadoc = true
+//                        isSpringDao = true
+                        isSerializablePojos=true
                     }
                 }
             }

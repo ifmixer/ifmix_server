@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreAuthTenant
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,12 +15,12 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreAuthTenant(
-    var id: UUID,
-    var jwtPrivateKeyPem: String? = null,
-    var jwtIssuer: String? = null,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var jwtPrivateKeyPem: String? = null,
+    override var jwtIssuer: String? = null,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null
+): ICoreAuthTenant {
 
 
     override fun equals(other: Any?): Boolean {
@@ -81,5 +82,22 @@ data class CoreAuthTenant(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreAuthTenant) {
+        this.id = from.id
+        this.jwtPrivateKeyPem = from.jwtPrivateKeyPem
+        this.jwtIssuer = from.jwtIssuer
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+    }
+
+    override fun <E : ICoreAuthTenant> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

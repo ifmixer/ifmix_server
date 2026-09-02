@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreTodo
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,18 +15,18 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreTodo(
-    var id: UUID,
-    var title: String,
-    var done: Boolean? = null,
-    var appId: UUID,
-    var createdAt: Instant,
-    var updatedAt: Instant,
-    var deletedAt: Instant? = null,
-    var installId: UUID? = null,
-    var userId: UUID? = null,
-    var meta: String? = null,
-    var note: String? = null
-): Serializable {
+    override var id: UUID,
+    override var title: String,
+    override var done: Boolean? = null,
+    override var appId: UUID,
+    override var createdAt: Instant,
+    override var updatedAt: Instant,
+    override var deletedAt: Instant? = null,
+    override var installId: UUID? = null,
+    override var userId: UUID? = null,
+    override var meta: String? = null,
+    override var note: String? = null
+): ICoreTodo {
 
 
     override fun equals(other: Any?): Boolean {
@@ -119,5 +120,28 @@ data class CoreTodo(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreTodo) {
+        this.id = from.id
+        this.title = from.title
+        this.done = from.done
+        this.appId = from.appId
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+        this.deletedAt = from.deletedAt
+        this.installId = from.installId
+        this.userId = from.userId
+        this.meta = from.meta
+        this.note = from.note
+    }
+
+    override fun <E : ICoreTodo> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

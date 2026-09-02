@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreUserInstallBinding
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,18 +15,18 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreUserInstallBinding(
-    var id: UUID,
-    var appId: UUID,
-    var userId: UUID,
-    var installId: UUID,
-    var firstSeenAt: Instant? = null,
-    var lastSeenAt: Instant? = null,
-    var loginCount: Int? = null,
-    var clientIp: String? = null,
-    var clientPlatform: String? = null,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var appId: UUID,
+    override var userId: UUID,
+    override var installId: UUID,
+    override var firstSeenAt: Instant? = null,
+    override var lastSeenAt: Instant? = null,
+    override var loginCount: Int? = null,
+    override var clientIp: String? = null,
+    override var clientPlatform: String? = null,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null
+): ICoreUserInstallBinding {
 
 
     override fun equals(other: Any?): Boolean {
@@ -123,5 +124,28 @@ data class CoreUserInstallBinding(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreUserInstallBinding) {
+        this.id = from.id
+        this.appId = from.appId
+        this.userId = from.userId
+        this.installId = from.installId
+        this.firstSeenAt = from.firstSeenAt
+        this.lastSeenAt = from.lastSeenAt
+        this.loginCount = from.loginCount
+        this.clientIp = from.clientIp
+        this.clientPlatform = from.clientPlatform
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+    }
+
+    override fun <E : ICoreUserInstallBinding> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

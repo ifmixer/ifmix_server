@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreScanCollectionItem
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,14 +15,14 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreScanCollectionItem(
-    var id: UUID,
-    var appId: UUID,
-    var collectionId: UUID,
-    var scanRecordId: UUID,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null,
-    var deletedAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var appId: UUID,
+    override var collectionId: UUID,
+    override var scanRecordId: UUID,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null,
+    override var deletedAt: Instant? = null
+): ICoreScanCollectionItem {
 
 
     override fun equals(other: Any?): Boolean {
@@ -87,5 +88,24 @@ data class CoreScanCollectionItem(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreScanCollectionItem) {
+        this.id = from.id
+        this.appId = from.appId
+        this.collectionId = from.collectionId
+        this.scanRecordId = from.scanRecordId
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+        this.deletedAt = from.deletedAt
+    }
+
+    override fun <E : ICoreScanCollectionItem> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

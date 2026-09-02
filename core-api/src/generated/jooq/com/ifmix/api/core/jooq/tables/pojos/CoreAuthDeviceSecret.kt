@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreAuthDeviceSecret
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,17 +15,17 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreAuthDeviceSecret(
-    var id: UUID,
-    var authTenantId: UUID,
-    var authIdentityId: UUID,
-    var secretHash: String,
-    var loginInstallId: UUID? = null,
-    var expiresAt: Instant? = null,
-    var revokedAt: Instant? = null,
-    var lastUsedAt: Instant? = null,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null
-): Serializable {
+    override var id: UUID,
+    override var authTenantId: UUID,
+    override var authIdentityId: UUID,
+    override var secretHash: String,
+    override var loginInstallId: UUID? = null,
+    override var expiresAt: Instant? = null,
+    override var revokedAt: Instant? = null,
+    override var lastUsedAt: Instant? = null,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null
+): ICoreAuthDeviceSecret {
 
 
     override fun equals(other: Any?): Boolean {
@@ -114,5 +115,27 @@ data class CoreAuthDeviceSecret(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreAuthDeviceSecret) {
+        this.id = from.id
+        this.authTenantId = from.authTenantId
+        this.authIdentityId = from.authIdentityId
+        this.secretHash = from.secretHash
+        this.loginInstallId = from.loginInstallId
+        this.expiresAt = from.expiresAt
+        this.revokedAt = from.revokedAt
+        this.lastUsedAt = from.lastUsedAt
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+    }
+
+    override fun <E : ICoreAuthDeviceSecret> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

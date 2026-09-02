@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreFeedback
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,15 +15,15 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreFeedback(
-    var id: UUID,
-    var appId: UUID,
-    var installId: UUID,
-    var userId: UUID? = null,
-    var scanRecordId: UUID? = null,
-    var category: Int? = null,
-    var comment: String? = null,
-    var createdAt: Instant
-): Serializable {
+    override var id: UUID,
+    override var appId: UUID,
+    override var installId: UUID,
+    override var userId: UUID? = null,
+    override var scanRecordId: UUID? = null,
+    override var category: Int? = null,
+    override var comment: String? = null,
+    override var createdAt: Instant
+): ICoreFeedback {
 
 
     override fun equals(other: Any?): Boolean {
@@ -96,5 +97,25 @@ data class CoreFeedback(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreFeedback) {
+        this.id = from.id
+        this.appId = from.appId
+        this.installId = from.installId
+        this.userId = from.userId
+        this.scanRecordId = from.scanRecordId
+        this.category = from.category
+        this.comment = from.comment
+        this.createdAt = from.createdAt
+    }
+
+    override fun <E : ICoreFeedback> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

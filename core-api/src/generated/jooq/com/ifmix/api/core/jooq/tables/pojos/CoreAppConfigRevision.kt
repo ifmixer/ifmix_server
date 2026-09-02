@@ -5,8 +5,8 @@ package com.ifmix.api.core.jooq.tables.pojos
 
 
 import com.ifmix.api.core.entity.app.ConfigContent
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreAppConfigRevision
 
-import java.io.Serializable
 import java.time.Instant
 import java.util.UUID
 
@@ -16,18 +16,18 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreAppConfigRevision(
-    var id: UUID,
-    var appId: UUID,
-    var authTenantId: UUID? = null,
-    var appleBundleId: String? = null,
-    var androidPackageName: String? = null,
-    var revisionNumber: Int? = null,
-    var createdAt: Instant? = null,
-    var enabled: Boolean? = null,
-    var slug: String? = null,
-    var content: ConfigContent? = null,
-    var note: String? = null
-): Serializable {
+    override var id: UUID,
+    override var appId: UUID,
+    override var authTenantId: UUID? = null,
+    override var appleBundleId: String? = null,
+    override var androidPackageName: String? = null,
+    override var revisionNumber: Int? = null,
+    override var createdAt: Instant? = null,
+    override var enabled: Boolean? = null,
+    override var slug: String? = null,
+    override var content: ConfigContent? = null,
+    override var note: String? = null
+): ICoreAppConfigRevision {
 
 
     override fun equals(other: Any?): Boolean {
@@ -133,5 +133,28 @@ data class CoreAppConfigRevision(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreAppConfigRevision) {
+        this.id = from.id
+        this.appId = from.appId
+        this.authTenantId = from.authTenantId
+        this.appleBundleId = from.appleBundleId
+        this.androidPackageName = from.androidPackageName
+        this.revisionNumber = from.revisionNumber
+        this.createdAt = from.createdAt
+        this.enabled = from.enabled
+        this.slug = from.slug
+        this.content = from.content
+        this.note = from.note
+    }
+
+    override fun <E : ICoreAppConfigRevision> into(into: E): E {
+        into.from(this)
+        return into
     }
 }

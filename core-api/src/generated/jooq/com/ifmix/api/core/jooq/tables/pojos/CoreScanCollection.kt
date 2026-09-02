@@ -4,7 +4,8 @@
 package com.ifmix.api.core.jooq.tables.pojos
 
 
-import java.io.Serializable
+import com.ifmix.api.core.jooq.tables.interfaces.ICoreScanCollection
+
 import java.time.Instant
 import java.util.UUID
 
@@ -14,17 +15,17 @@ import java.util.UUID
  */
 @Suppress("warnings")
 data class CoreScanCollection(
-    var id: UUID,
-    var appId: UUID,
-    var installId: UUID? = null,
-    var userId: String? = null,
+    override var id: UUID,
+    override var appId: UUID,
+    override var installId: UUID? = null,
+    override var userId: String? = null,
     @Suppress("INAPPLICABLE_JVM_NAME")
     @set:JvmName("setIsDefault")
-    var isDefault: Boolean? = null,
-    var createdAt: Instant? = null,
-    var updatedAt: Instant? = null,
-    var deletedAt: Instant? = null
-): Serializable {
+    override var isDefault: Boolean? = null,
+    override var createdAt: Instant? = null,
+    override var updatedAt: Instant? = null,
+    override var deletedAt: Instant? = null
+): ICoreScanCollection {
 
 
     override fun equals(other: Any?): Boolean {
@@ -106,5 +107,25 @@ data class CoreScanCollection(
 
         sb.append(")")
         return sb.toString()
+    }
+
+    // -------------------------------------------------------------------------
+    // FROM and INTO
+    // -------------------------------------------------------------------------
+
+    override fun from(from: ICoreScanCollection) {
+        this.id = from.id
+        this.appId = from.appId
+        this.installId = from.installId
+        this.userId = from.userId
+        this.isDefault = from.isDefault
+        this.createdAt = from.createdAt
+        this.updatedAt = from.updatedAt
+        this.deletedAt = from.deletedAt
+    }
+
+    override fun <E : ICoreScanCollection> into(into: E): E {
+        into.from(this)
+        return into
     }
 }
