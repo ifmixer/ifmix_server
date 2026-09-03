@@ -125,7 +125,7 @@ class AuthAggHandler(
     }
 
     fun me(mc: ModuleCtx): MeRes {
-        val userId = mc.op.customerId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+        val userId = mc.op.actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         val appId = mc.appId!!
         val appUser = customerRepo.findById(mc, appId, userId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "user not found")
@@ -156,7 +156,7 @@ class AuthAggHandler(
         // 4. 走关系表 + auth_identity 判定该 idpIdentity 在此 app 下对应哪个 customer（existing）。
         //    idpIdentity(全局) → relation(app级) → auth_identity → customer.authIdentityId。
         //    cur = 当前 token 主体（可能为匿名 customer，也可能为 null——旧调用无匿名 token）。
-        val cur: UUID? = mc.op.customerId
+        val cur: UUID? = mc.op.actorId
         val curAnonymous: Boolean = mc.op.anonymous
         val relation = relationRepo.findByAppAndIdpIdentity(mc, appId, idpIdentity.id)
         val existing: UUID? = relation?.let { customerRepo.findByAuthIdentity(mc, appId, it.authIdentityId) }
@@ -313,7 +313,7 @@ class AuthAggHandler(
     }
 
     fun requestAccountDeletion(mc: ModuleCtx): DeleteAccountRes {
-        mc.op.customerId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+        mc.op.actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         val scheduledAt = Instant.now().plusSeconds(30L * 24 * 3600).toEpochMilli()
         return DeleteAccountRes(accepted = true, scheduledAt = scheduledAt)
     }

@@ -54,7 +54,7 @@ class PaymentAggHandler(
         if (existingSub != null) {
             // restore purchases：命中已存在订阅，若归属与当前主体不一致则刷新 customerId
             // （合并/换设备后同一订阅需归到当前登录的 customer）。方向以当前主体为准。
-            val curCustomerId = mc.op.customerId
+            val curCustomerId = mc.op.actorId
             if (curCustomerId != null && existingSub.customerId != curCustomerId) {
                 subscriptionRepo.updateOwner(mc, appId, existingSub.id, curCustomerId)
             }
@@ -84,7 +84,7 @@ class PaymentAggHandler(
         val subscription = Subscription {
             this.id = UuidV7.generate()
             this.appId = appId
-            this.customerId = mc.op.customerId
+            this.customerId = mc.op.actorId
             this.subscriptionPxid = subscriptionPxid
             this.originalTransactionId = verifyResult.originalTransactionId
             this.productId = req.productId

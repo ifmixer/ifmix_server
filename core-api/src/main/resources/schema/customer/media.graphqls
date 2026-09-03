@@ -1,6 +1,6 @@
 input PresignUploadInput {
-    "上传分类。10=ANTIQUE_SCAN"
-    category: Int!
+    "对象存储路径前缀（业务分类，如 antique_scan）"
+    prefix: String!
     "内容类型。10=IMAGE_JPEG, 20=IMAGE_PNG, 30=IMAGE_WEBP"
     contentType: Int!
 }

@@ -21,10 +21,13 @@ class StorageAggHandler(
 ) {
     fun presignUpload(mc: ModuleCtx, input: PresignUploadInput): PresignUploadResult {
         val appId = mc.op.mustGetAppId()
-        val customerId = mc.op.mustGetCustomerId()
+        val actorId = mc.op.mustGetActorId()
+        val actorType = mc.op.actorType ?: throw IllegalStateException("actorType missing on authenticated request")
         val mediaId = UuidV7.generate()
 
-        val category = "antique_scan"
+        val prefix = sanitizePrefix(input.prefix)
+        // images typeGroup 固定为 image（本接口只处理图片上传）
+        val typeGroup = "image"
         val ext = when (input.contentType) {
             10 -> "jpg"
             20 -> "png"
@@ -38,17 +41,17 @@ class StorageAggHandler(
             else -> throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
         }
 
-        val objectKey = "app/${appId.toBase58()}/$category/${mediaId.toBase58()}.$ext"
+        val objectKey = "$typeGroup/app/${appId.toBase58()}/$prefix/${mediaId.toBase58()}.$ext"
         val uploadUrl = objectStorage.presignUpload("ugc", objectKey, mimeType, Duration.ofSeconds(300))
         val downloadUrl = objectStorage.getPublicUrl("ugc", objectKey)
 
         val entity = UploadRecord {
             id = mediaId
             this.appId = appId
-            this.customerId = customerId
+            this.actorId = actorId
+            this.actorType = actorType
             this.objectKey = objectKey
             this.contentType = mimeType
-            this.category = category
             this.clientIp = mc.op.clientIp
             this.createdAt = Instant.now()
         }
@@ -70,12 +73,28 @@ class StorageAggHandler(
     }
 
     /**
-     * objectKey 格式校验：必须以 "app/" 开头，不得包含 ".." 或绝对路径。
+     * objectKey 格式校验：必须含 "/app/" 段，不得包含 ".." 或绝对路径。
+     * 新格式 ${typeGroup}/app/${appId}/${prefix}/${mediaId}.ext
      * 防止客户端传入任意 S3 key 实现路径遍历。
      */
     private fun validateObjectKey(key: String) {
-        require(key.startsWith("app/")) { "invalid objectKey: must start with app/" }
-        require(!key.contains("..")) { "invalid objectKey: path traversal detected" }
         require(!key.startsWith("/")) { "invalid objectKey: absolute path not allowed" }
+        require(!key.contains("..")) { "invalid objectKey: path traversal detected" }
+        require(key.contains("/app/")) { "invalid objectKey: must contain /app/ segment" }
+    }
+
+    /**
+     * prefix 净化：客户端传入的业务分类目录名，会拼进 S3 key。
+     * 只允许 [a-zA-Z0-9_-]，防路径遍历/注入。
+     */
+    private fun sanitizePrefix(raw: String): String {
+        require(raw.isNotBlank()) { "prefix must not be blank" }
+        require(raw.length <= 64) { "prefix too long (max 64)" }
+        require(raw.matches(PREFIX_REGEX)) { "invalid prefix: only [a-zA-Z0-9_-] allowed" }
+        return raw
+    }
+
+    companion object {
+        private val PREFIX_REGEX = Regex("^[a-zA-Z0-9_-]+$")
     }
 }

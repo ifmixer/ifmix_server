@@ -1,6 +1,7 @@
 package com.ifmix.core.api.infra.graphql
 
 import com.ifmix.core.api.infra.auth.AuthInterceptor
+import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.http.OperationContext
@@ -23,7 +24,14 @@ class OperationContextProvider {
     fun fromDfe(
         dfe: DgsDataFetchingEnvironment,
         requireAppId: Boolean = true,
-        requireCustomerId: Boolean = false,
+        requireActorId: Boolean = false,
+        /**
+         * 主体类型护栏：若请求已认证（actorType 非 null），则必须等于此值；否则 403。
+         * 默认 ACTOR_CUSTOMER —— C 端 BFF，manager token（20）进来直接 403。
+         * 匿名/未认证（actorType==null）不受影响，公开接口照常。
+         * 传 null 表示不校验 actorType（将来 manager BFF 传 ACTOR_MANAGER，或按需放开）。
+         */
+        requireActorType: Int? = AuthJwtService.ACTOR_CUSTOMER,
         requireLocale: Boolean = false,
         requireCountry: Boolean = false,
         requireCurrency: Boolean = false,
@@ -39,7 +47,9 @@ class OperationContextProvider {
 
         // require 校验
         if (requireAppId && reqCtx.appId == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id is required")
-        if (requireCustomerId && reqCtx.customerId == null) throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
+        if (requireActorId && reqCtx.actorId == null) throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
+        if (requireActorType != null && reqCtx.actorType != null && reqCtx.actorType != requireActorType)
+            throw ApiError(ErrorCode.FORBIDDEN, "actor type not allowed for this endpoint")
         if (requireLocale && reqCtx.locale == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-locale is required")
         if (requireCountry && reqCtx.country == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-country is required")
         if (requireCurrency && reqCtx.currency == null) throw ApiError(ErrorCode.INVALID_REQUEST, "x-currency is required")

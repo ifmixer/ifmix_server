@@ -26,7 +26,7 @@ class AuthInterceptor(private val jwt: AuthJwtService) : HandlerInterceptor {
 
         val reqCtx = RequestContext(
             appId = headerAppId ?: token?.appId,
-            customerId = token?.let { if (it.actorType == AuthJwtService.ACTOR_CUSTOMER) it.actorId else null },
+            actorId = token?.actorId,
             actorType = token?.actorType,
             anonymous = token?.anonymous ?: false,
             locale = request.getHeader(RequestHeaders.LOCALE)?.takeIf { it.isNotBlank() },

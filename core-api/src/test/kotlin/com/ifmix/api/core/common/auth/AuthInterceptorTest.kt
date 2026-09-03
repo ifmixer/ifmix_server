@@ -30,7 +30,7 @@ class AuthInterceptorTest {
         }
         assertThat(interceptor.preHandle(req, MockHttpServletResponse(), Any())).isTrue()
         val ctx = req.reqCtx()
-        assertThat(ctx.customerId).isEqualTo(customerId)
+        assertThat(ctx.actorId).isEqualTo(customerId)
         assertThat(ctx.actorType).isEqualTo(AuthJwtService.ACTOR_CUSTOMER)
         assertThat(ctx.anonymous).isTrue()
     }
@@ -49,10 +49,10 @@ class AuthInterceptorTest {
         } catch (_: Exception) { /* expected */ }
     }
 
-    @Test fun `no token yields null customerId`() {
+    @Test fun `no token yields null actorId`() {
         val req = MockHttpServletRequest().apply { addHeader(RequestHeaders.APP_ID, appId) }
         assertThat(interceptor.preHandle(req, MockHttpServletResponse(), Any())).isTrue()
-        assertThat(req.reqCtx().customerId).isNull()
+        assertThat(req.reqCtx().actorId).isNull()
     }
 
     @Test fun `invalid token throws unauthorized`() {

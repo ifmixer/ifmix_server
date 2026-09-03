@@ -54,7 +54,7 @@ class TodoAggHandler(
             this.note = input.note
             this.meta = null
             this.recommend = input.recommend?.toDomain()
-            this.customerId = mc.customerId
+            this.customerId = mc.actorId
             this.createdAt = now
             this.updatedAt = now
         }

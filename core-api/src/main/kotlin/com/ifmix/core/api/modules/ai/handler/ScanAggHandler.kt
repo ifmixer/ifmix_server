@@ -76,7 +76,7 @@ class ScanAggHandler(
             this.basicResult = result.basicResult
             this.status = 20
             this.clientIp = result.clientIp
-            this.customerId = sc.op.customerId
+            this.customerId = sc.op.actorId
             this.locale = result.locale
             this.country = result.country
             this.currency = result.currency
@@ -200,7 +200,7 @@ class ScanAggHandler(
 
     fun findMyScans(sc: ModuleCtx, findOptions: CommonFindOptions?): Page<ScanRecord> {
         val appId = sc.op.mustGetAppId()
-        val customerId = sc.op.mustGetCustomerId()
+        val customerId = sc.op.mustGetActorId()
         return scanRepo.findMyScans(sc, appId, customerId, findOptions)
     }
 

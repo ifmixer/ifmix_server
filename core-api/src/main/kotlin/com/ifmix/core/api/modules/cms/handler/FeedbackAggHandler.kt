@@ -18,7 +18,7 @@ class FeedbackAggHandler(
         val feedback = Feedback {
             this.id = id
             this.appId = mc.op.appId!!
-            this.customerId = mc.op.customerId
+            this.customerId = mc.op.actorId
             this.category = req.category
             this.comment = req.comment
             this.scanRecordId = req.scanRecordId

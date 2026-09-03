@@ -88,7 +88,7 @@ class WebhookController(
             }
 
             // 5. 构建 OperationContext 并处理通知
-            val ctx = OperationContext(req = RequestContext(appId = appId, customerId = SYSTEM_USER_ID))
+            val ctx = OperationContext(req = RequestContext(appId = appId, actorId = SYSTEM_USER_ID))
             iapService.handleAppleNotification(ctx, rawPayload, appleDecoder)
             return ResponseEntity.ok("ok")
 
@@ -121,7 +121,7 @@ class WebhookController(
             }
 
             // 3. 处理通知
-            val ctx = OperationContext(req = RequestContext(appId = appId, customerId = SYSTEM_USER_ID))
+            val ctx = OperationContext(req = RequestContext(appId = appId, actorId = SYSTEM_USER_ID))
             iapService.handleGoogleNotification(ctx, rawPayload, googleDecoder)
             return ResponseEntity.ok("ok")
 

@@ -27,7 +27,7 @@ open class ScanCollectionAggHandler(
         val model = ScanCollection {
             this.id = id
             this.appId = sc.appId!!
-            this.customerId = ctx.customerId
+            this.customerId = ctx.actorId
             this.isDefault = true
             this.createdAt = now
             this.updatedAt = now
@@ -52,7 +52,7 @@ open class ScanCollectionAggHandler(
     fun getDefault(sc: ModuleCtx): ScanCollection? {
         val ctx = sc.op
         val appId = ctx.appId!!
-        return collectionRepo.findDefault(sc, appId, ctx.customerId)
+        return collectionRepo.findDefault(sc, appId, ctx.actorId)
     }
 
     fun findItemsByCursor(sc: ModuleCtx, collectionId: UUID, limit: Int?): Page<ScanCollectionItem> {

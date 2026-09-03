@@ -13,4 +13,4 @@ import java.util.UUID
  * @return 当前用户是否拥有该行
  */
 fun ownsRow(ctx: OperationContext, customerId: UUID?): Boolean =
-    customerId == null || customerId == ctx.customerId
+    customerId == null || customerId == ctx.actorId
