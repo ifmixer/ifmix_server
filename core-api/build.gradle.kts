@@ -110,6 +110,11 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     jvmArgs("--enable-native-access=ALL-UNNAMED", "-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8")
 }
 
+// 存在两个 main（CoreApplicationKt + FlywayMigrate），显式指定 Spring Boot 主类消除歧义。
+springBoot {
+    mainClass.set("com.ifmix.core.api.CoreApplicationKt")
+}
+
 // Jimmer KSP 配置
 ksp {
     // Jimmer DTO 文件位置（相对于 project root）

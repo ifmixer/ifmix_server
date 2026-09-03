@@ -38,7 +38,7 @@ class StorageAggHandler(
             else -> throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
         }
 
-        val objectKey = "app/${appId.toBase58()}/$category/customer/${customerId.toBase58()}/${mediaId.toBase58()}.$ext"
+        val objectKey = "app/${appId.toBase58()}/$category/${mediaId.toBase58()}.$ext"
         val uploadUrl = objectStorage.presignUpload("ugc", objectKey, mimeType, Duration.ofSeconds(300))
         val downloadUrl = objectStorage.getPublicUrl("ugc", objectKey)
 

@@ -1,3 +1,11 @@
 # 20260902_010119 → current
 
-[success] No changes detected
+[log] 
+Detected the following changes (5) between schemas:
+
+[log] ✖  Field m_customer_createAnonymous was removed from object type Mutation
+[log] ✔  Field customer was added to object type CreateAnonymousResult
+[log] ✔  Field customerId was added to object type CreateAnonymousResult
+[log] ✔  Type Customer was added
+[log] ✔  Field m_customer_createAnonymousCustomer was added to object type Mutation
+[error] Detected 1 breaking change
