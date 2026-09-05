@@ -52,29 +52,37 @@ class AuthJwtService(
     }
 
     /**
-     * 验签 + exp + issuer。任何失败返回 null（不抛）。
-     * 成功返回 [VerifiedToken]，actorType 为 Int，由调用方校验一致性。
+     * 验签 + exp + issuer。
+     * - 验签失败/篡改/issuer 不符/结构非法 → 返回 null（不抛）。
+     * - 验签通过但**已过期** → 抛 [TokenExpiredException]，供上层映射为 TOKEN_EXPIRED（让前端 refresh）。
      */
-    fun verify(token: String): VerifiedToken? = try {
-        val jwt = SignedJWT.parse(token)
-        val pub = keys.publicKeyFor(jwt.header.keyID) ?: return null
-        if (!jwt.verify(Ed25519Verifier(pub))) return null
+    fun verify(token: String): VerifiedToken? {
+        val jwt = try {
+            val parsed = SignedJWT.parse(token)
+            val pub = keys.publicKeyFor(parsed.header.keyID) ?: return null
+            if (!parsed.verify(Ed25519Verifier(pub))) return null
+            parsed
+        } catch (_: Exception) {
+            return null
+        }
+        // 验签已通过：以下是可信 claims。过期单独区分（抛出），其余无效返回 null。
         val claims = jwt.jwtClaimsSet
         val exp = claims.expirationTime ?: return null
-        if (exp.before(Date())) return null
+        if (exp.before(Date())) throw TokenExpiredException()
         if (claims.issuer != issuer) return null
-        VerifiedToken(
+        return VerifiedToken(
             actorId = claims.subject,
             appId = claims.audience?.firstOrNull(),
             actorType = claims.getIntegerClaim("act") ?: ACTOR_CUSTOMER,
             anonymous = runCatching { claims.getBooleanClaim("ano") }.getOrNull() ?: false,
         )
-    } catch (_: Exception) {
-        null
     }
 
     fun jwkSetJson(): String = keys.jwkSetJson()
 }
+
+/** 验签通过但 access token 已过期。上层据此返回 TOKEN_EXPIRED，提示前端用 refresh token 换新。 */
+class TokenExpiredException : RuntimeException("access token expired")
 
 data class VerifiedToken(
     val actorId: String?,

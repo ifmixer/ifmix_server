@@ -3,6 +3,7 @@ package com.ifmix.core.api.infra.http
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import com.ifmix.core.api.infra.auth.AuthInterceptor
 import com.ifmix.core.api.infra.jimmer.OperationContextHolder
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -58,21 +59,21 @@ class RequestLoggingFilter : OncePerRequestFilter() {
             }
 
             val responseBody = getBody(wrappedResponse.contentAsByteArray, wrappedResponse.characterEncoding)
+            val headers = importantHeaders(wrappedRequest)
 
             if (status >= 400) {
                 // 错误响应：WARN 级别，打印完整请求体和响应体
-                val appId = wrappedRequest.getHeader("x-app-id") ?: "<none>"
                 log.warn(
-                    "▶ {} {}{} | status={} | {}ms | appId={}\n  ├─ req: {}\n  └─ res: {}",
-                    method, uri, query, status, duration, appId,
+                    "▶ {} {}{} | status={} | {}ms | {}\n  ├─ req: {}\n  └─ res: {}",
+                    method, uri, query, status, duration, headers,
                     requestBody.truncate(2000),
                     responseBody.truncate(2000),
                 )
             } else if (log.isDebugEnabled) {
                 // 正常响应：DEBUG 级别
                 log.debug(
-                    "▶ {} {}{} | status={} | {}ms | req: {} | res: {}",
-                    method, uri, query, status, duration,
+                    "▶ {} {}{} | status={} | {}ms | {} | req: {} | res: {}",
+                    method, uri, query, status, duration, headers,
                     requestBody.truncate(500),
                     responseBody.truncate(500),
                 )
@@ -90,6 +91,43 @@ class RequestLoggingFilter : OncePerRequestFilter() {
         return String(content, charset(encoding ?: "UTF-8"))
     }
 
+    /**
+     * 汇总重要请求头 + clientIp + userId 用于排查。只输出存在的值，避免噪音；
+     * Authorization 脱敏（只标存在与 scheme，绝不打 token 明文）。
+     * userId 取自 AuthInterceptor 解析后存入 request attribute 的 RequestContext.actorId。
+     */
+    private fun importantHeaders(request: HttpServletRequest): String {
+        val parts = mutableListOf<String>()
+        for (name in LOGGED_HEADERS) {
+            request.getHeader(name)?.takeIf { it.isNotBlank() }?.let { parts.add("$name=$it") }
+        }
+        request.getHeader("Authorization")?.takeIf { it.isNotBlank() }?.let {
+            val scheme = it.substringBefore(' ', it).take(16)
+            parts.add("Authorization=$scheme ***")
+        }
+        // clientIp 总是记录（排查必需）
+        parts.add("clientIp=${ClientIpResolver.resolve(request)}")
+        // userId：认证后主体 id（匿名/未认证时缺省，不输出）
+        (request.getAttribute(AuthInterceptor.ATTR_REQUEST_CONTEXT) as? RequestContext)
+            ?.actorId?.let { parts.add("userId=$it") }
+        return parts.joinToString(" ")
+    }
+
     private fun String.truncate(max: Int): String =
         if (length <= max) this else substring(0, max) + "...(truncated)"
+
+    companion object {
+        /** 排查用的重要请求头（不含 Authorization，后者单独脱敏处理）。 */
+        private val LOGGED_HEADERS = listOf(
+            RequestHeaders.APP_ID,
+            RequestHeaders.INSTALL_ID,
+            "x-api-name",
+            RequestHeaders.CLIENT_PLATFORM,
+            RequestHeaders.LOCALE,
+            RequestHeaders.CURRENCY,
+            RequestHeaders.COUNTRY,
+            RequestHeaders.NATIVE_VERSION,
+            RequestHeaders.BUNDLE_VERSION,
+        )
+    }
 }

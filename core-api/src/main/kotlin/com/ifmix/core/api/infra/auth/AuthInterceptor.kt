@@ -53,8 +53,11 @@ class AuthInterceptor(private val jwt: AuthJwtService) : HandlerInterceptor {
         if (raw.isBlank())
             throw ApiError(ErrorCode.INVALID_REQUEST, "Bearer token is empty")
 
-        val verified = jwt.verify(raw)
-            ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or expired token")
+        val verified = try {
+            jwt.verify(raw)
+        } catch (_: TokenExpiredException) {
+            throw ApiError(ErrorCode.TOKEN_EXPIRED, "access token expired")
+        } ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or expired token")
 
         // token.appId 必须与 header x-app-id 一致（若 header 存在）
         if (headerAppId != null && verified.appId != headerAppId.toString())
