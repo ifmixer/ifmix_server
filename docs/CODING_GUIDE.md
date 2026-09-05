@@ -250,3 +250,25 @@ interface ClusterRouter {
 ```
 
 Query → reader, Mutation → writer（通过 GlobalTxRunner）。
+
+## 日志与异常
+
+异常日志**集中在两个异常入口**记录，业务代码抛 `ApiError` 时无需各自打 log：
+
+- GraphQL 路径：`GraphQLExceptionHandler`（DGS `DataFetcherExceptionResolver`）
+- REST/Webhook 路径：`GlobalExceptionHandler`（`@RestControllerAdvice`）
+
+分级规则（按 `ErrorCode.status`）：
+
+| 情况 | 级别 | 说明 |
+|------|------|------|
+| 5xx（INTERNAL / AI_UNAVAILABLE） | `error`（带 stack） | 服务端故障 |
+| RATE_LIMITED / QUOTA_EXCEEDED / AUTH_PROVIDER_FAILED | `warn` | 限流命中、第三方验证失败 |
+| 其余 4xx（400/401/403/404/TOKEN_EXPIRED…） | `debug` | 正常客户端拒绝，避免刷 warn |
+| 非 `ApiError` 未预期异常 | `error`（带 stack） | 视为程序 bug；GraphQL 侧记录后返回 null 走默认处理 |
+
+其他约定：
+
+- **静默降级点必须打 log**：吞掉外部故障 / 兜底返回 null 的分支（如 Redis `INCR` 返回 null 降级放行、webhook 载荷解析失败）记 `warn`，便于排查。
+- **不要给正常路径打 log**：合法默认值（`?: false`）、用户输入校验失败（无效 UUID/日期/token）属正常流程，打 log 只是噪音。
+- logger 声明：`private val log = LoggerFactory.getLogger(X::class.java)`；占位符 `log.warn("... {}", arg)`，只有 `error` 带异常对象打 stack。

@@ -1,5 +1,7 @@
 input SubmitFeedbackInput {
     scanRecordId: UUID
+    """ 反馈来源主题: 10=Scan, 20=DeepResearch, 30=App """
+    topic: Int!
     """
     反馈原因（多选）:
     0=UNKNOWN, 10=LIKED, 20=PRICE_TOO_HIGH, 21=PRICE_TOO_LOW,
@@ -13,6 +15,10 @@ input SubmitFeedbackInput {
     """ SPM 埋点位置标识，用于精确定位反馈触发点 """
     spm: String
     comment: String
+    """ 可选联系方式：邮箱（回访用） """
+    email: String
+    """ 可选联系方式：手机号（回访用） """
+    phone: String
 }
 
 type SubmitFeedbackResult {
@@ -20,5 +26,5 @@ type SubmitFeedbackResult {
 }
 
 extend type Mutation {
-    m_cms_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackResult!
+    m_cs_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackResult!
 }

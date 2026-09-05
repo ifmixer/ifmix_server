@@ -1,8 +1,8 @@
-package com.ifmix.core.api.modules.cms.repo
+package com.ifmix.core.api.modules.cs.repo
 
-import com.ifmix.core.api.entity.cms.Feedback
-import com.ifmix.core.api.entity.cms.appId
-import com.ifmix.core.api.entity.cms.customerId
+import com.ifmix.core.api.entity.cs.Feedback
+import com.ifmix.core.api.entity.cs.appId
+import com.ifmix.core.api.entity.cs.customerId
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.repo.AppCrudRepoTemplate
 import org.babyfish.jimmer.sql.ast.mutation.DeleteMode

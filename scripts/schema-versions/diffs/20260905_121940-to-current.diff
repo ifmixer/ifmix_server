@@ -1,0 +1,7 @@
+# 20260905_121940 → current
+
+[log] 
+Detected the following changes (1) between schemas:
+
+[log] ✖  Input field topic of type Int! was added to input object type SubmitFeedbackInput
+[error] Detected 1 breaking change

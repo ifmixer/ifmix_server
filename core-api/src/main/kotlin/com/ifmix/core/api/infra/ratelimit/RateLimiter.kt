@@ -1,5 +1,6 @@
 package com.ifmix.core.api.infra.ratelimit
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Instant
 import java.time.ZoneId
@@ -28,16 +29,22 @@ class RateLimiter(
         val dayKey = utcDayKey(subject)
 
         val count = redis.opsForValue().increment(dayKey, 1)
+        if (count == null) {
+            // Redis increment 返回 null：连接异常/故障。降级放行，但必须告警——此刻限流形同虚设。
+            log.warn("rate-limit degraded: redis INCR returned null, allowing request. subject={} dayKey={}", subject, dayKey)
+            return CheckResult.allowed(0, limit.toLong())
+        }
         if (count == 1L) {
             // 首日首次写入，设置 TTL 到当日结束
             val ttl = secondsUntilEndOfDay()
             redis.expire(dayKey, ttl, SECONDS)
         }
 
-        return if ((count ?: 0) > limit) {
-            CheckResult.limited(count ?: 0)
+        return if (count > limit) {
+            log.warn("rate-limit hit (utc-day): subject={} count={} limit={} tier={}", subject, count, limit, tier)
+            CheckResult.limited(count)
         } else {
-            CheckResult.allowed(count ?: 0, limit.toLong())
+            CheckResult.allowed(count, limit.toLong())
         }
     }
 
@@ -60,11 +67,20 @@ class RateLimiter(
      */
     fun checkFixedWindow(subject: String, limit: Int, windowSec: Long): Boolean {
         val key = "ratelimit:fw:${subject}:${windowSec}"
-        val count = redis.opsForValue().increment(key, 1) ?: 0
+        val count = redis.opsForValue().increment(key, 1)
+        if (count == null) {
+            // Redis increment 返回 null：连接异常/故障。降级放行，但告警——此刻限流失效。
+            log.warn("rate-limit degraded: redis INCR returned null, allowing request. subject={} windowSec={}", subject, windowSec)
+            return true
+        }
         if (count == 1L) {
             redis.expire(key, windowSec, SECONDS)
         }
-        return count <= limit
+        val allowed = count <= limit
+        if (!allowed) {
+            log.warn("rate-limit hit (fixed-window): subject={} count={} limit={} windowSec={}", subject, count, limit, windowSec)
+        }
+        return allowed
     }
 
     private fun utcDayKey(subject: String): String =
@@ -95,5 +111,6 @@ class RateLimiter(
 
     companion object {
         private val UTC = ZoneId.of("UTC")
+        private val log = LoggerFactory.getLogger(RateLimiter::class.java)
     }
 }

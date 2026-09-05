@@ -1,9 +1,11 @@
 package com.ifmix.core.api.infra.graphql
 
 import com.ifmix.core.api.infra.http.ApiError
+import com.ifmix.core.api.infra.http.ErrorCode
 import graphql.GraphQLError
 import graphql.GraphqlErrorBuilder
 import graphql.schema.DataFetchingEnvironment
+import org.slf4j.LoggerFactory
 import org.springframework.core.annotation.Order
 import org.springframework.graphql.execution.DataFetcherExceptionResolverAdapter
 import org.springframework.graphql.execution.ErrorType
@@ -21,8 +23,22 @@ import org.springframework.stereotype.Component
 @Order(1)
 class GraphQLExceptionHandler : DataFetcherExceptionResolverAdapter() {
 
+    private val log = LoggerFactory.getLogger(GraphQLExceptionHandler::class.java)
+
     override fun resolveToSingleError(ex: Throwable, env: DataFetchingEnvironment): GraphQLError? {
+        val path = env.executionStepInfo.path
         if (ex is ApiError) {
+            // 集中分级记日志：5xx 服务端故障 error(带 stack)；限流/第三方验证失败 warn；其余客户端错误 debug。
+            val code = ex.errorCode
+            when {
+                code.status.is5xxServerError ->
+                    log.error("GraphQL ApiError [{}] {} at {}", code.externalCode, ex.message, path, ex)
+                code == ErrorCode.RATE_LIMITED || code == ErrorCode.QUOTA_EXCEEDED ||
+                    code == ErrorCode.AUTH_PROVIDER_FAILED ->
+                    log.warn("GraphQL ApiError [{}] {} at {}", code.externalCode, ex.message, path)
+                else ->
+                    log.debug("GraphQL ApiError [{}] {} at {}", code.externalCode, ex.message, path)
+            }
             return GraphqlErrorBuilder.newError(env)
                 .message(ex.message ?: ex.errorCode.name)
                 .errorType(ex.errorCode.toGraphQLErrorType())
@@ -32,7 +48,9 @@ class GraphQLExceptionHandler : DataFetcherExceptionResolverAdapter() {
                 ))
                 .build()
         }
-        // 其他异常返回 null → 走默认处理
+        // 非 ApiError：未预期的程序异常（NPE/DB/Redis 等）。记 error 带 stack 便于排查，
+        // 再返回 null 走 Spring GraphQL 默认处理（对客户端仍是 INTERNAL_ERROR）。
+        log.error("GraphQL unhandled exception at {}", path, ex)
         return null
     }
 }

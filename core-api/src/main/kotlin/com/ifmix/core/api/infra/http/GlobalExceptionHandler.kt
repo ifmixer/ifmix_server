@@ -21,6 +21,17 @@ class GlobalExceptionHandler(
     @ExceptionHandler(ApiError::class)
     fun handleApiError(ex: ApiError): ResponseEntity<*> {
         val code = ex.errorCode
+        // 集中分级记日志：5xx 服务端故障记 error(带 stack)；限流/第三方验证失败记 warn；
+        // 其余纯客户端错误(400/401/404/403)记 debug，避免正常拒绝刷 warn。
+        when {
+            code.status.is5xxServerError ->
+                log.error("ApiError [{}] {}", code.externalCode, ex.message, ex)
+            code == ErrorCode.RATE_LIMITED || code == ErrorCode.QUOTA_EXCEEDED ||
+                code == ErrorCode.AUTH_PROVIDER_FAILED ->
+                log.warn("ApiError [{}] {}", code.externalCode, ex.message)
+            else ->
+                log.debug("ApiError [{}] {}", code.externalCode, ex.message)
+        }
         if (code == ErrorCode.AI_UNAVAILABLE && ex.details != null) {
             return ResponseEntity.status(code.status)
                 .header("Retry-After", "60")

@@ -47,7 +47,7 @@ class AnonymousCleanupCleaner(
             "ai_scan_record",
             "media_upload_record",
             "demo_todo",
-            "cms_feedback",
+            "cs_feedback",
             "pay_subscription",
         )
     }

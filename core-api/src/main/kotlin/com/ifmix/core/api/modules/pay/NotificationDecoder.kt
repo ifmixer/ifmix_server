@@ -54,7 +54,8 @@ class StubNotificationDecoder : NotificationDecoder {
             json.get("subscriptionPxid")?.asText()
                 ?: json.get("properties")?.get("subscriptionPxid")?.asText()
                 ?: "stub-sub-${UuidV7.generate()}"
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            log.warn("StubNotificationDecoder: failed to parse subscriptionPxid, using UUID fallback: {}", e.message)
             "stub-sub-${UuidV7.generate()}"
         }
         return DecodedNotification(
@@ -64,5 +65,9 @@ class StubNotificationDecoder : NotificationDecoder {
             type = NotificationType.SUBSCRIBED,
             timestamp = java.time.Instant.now(),
         )
+    }
+
+    private companion object {
+        private val log = org.slf4j.LoggerFactory.getLogger(StubNotificationDecoder::class.java)
     }
 }

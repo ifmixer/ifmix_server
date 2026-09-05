@@ -137,7 +137,8 @@ class WebhookController(
         return try {
             val tree = mapper.readTree(rawPayload)
             tree.get("signedPayload")?.asText()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            log.warn("failed to extract signedPayload from Apple webhook: {}", e.message)
             null
         }
     }
@@ -186,7 +187,8 @@ class WebhookController(
         return try {
             val tree = mapper.readTree(payloadJson)
             tree.get("data")?.get("bundleId")?.asText()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            log.warn("failed to extract bundleId from Apple payload: {}", e.message)
             null
         }
     }
@@ -199,7 +201,8 @@ class WebhookController(
             val decoded = java.util.Base64.getDecoder().decode(dataBase64)
             val dataTree = mapper.readTree(decoded)
             dataTree.get("packageName")?.asText()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            log.warn("failed to extract packageName from Google webhook: {}", e.message)
             null
         }
     }

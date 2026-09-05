@@ -1,10 +1,10 @@
-package com.ifmix.core.api.modules.cms.handler
+package com.ifmix.core.api.modules.cs.handler
 
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.db.UuidV7
-import com.ifmix.core.api.dto.cms.SubmitFeedbackReq
-import com.ifmix.core.api.entity.cms.Feedback
-import com.ifmix.core.api.modules.cms.repo.FeedbackRepository
+import com.ifmix.core.api.dto.cs.SubmitFeedbackReq
+import com.ifmix.core.api.entity.cs.Feedback
+import com.ifmix.core.api.modules.cs.repo.FeedbackRepository
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.UUID
@@ -19,7 +19,10 @@ class FeedbackAggHandler(
             this.id = id
             this.appId = mc.op.appId!!
             this.customerId = mc.op.actorId
+            this.topic = req.topic
             this.reasons = req.reasons.toTypedArray()
+            this.email = req.email
+            this.phone = req.phone
             this.comment = req.comment
             this.scanRecordId = req.scanRecordId
             this.spm = req.spm

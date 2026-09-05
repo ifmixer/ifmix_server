@@ -1,4 +1,4 @@
--- V7: cms_feedback.category(单值 smallint) → reasons(smallint[] 多选)。
+-- V7: cms_feedback.category(单值 smallint) → reasons(smallint[] 多选)；并新增 topic(来源主题)。
 -- 反馈原因改为多选。已有单值数据包成单元素数组保留。
 
 -- 1. 加新列 reasons smallint[]（先可空，回填后置 NOT NULL）
@@ -13,3 +13,8 @@ ALTER TABLE cms_feedback ALTER COLUMN reasons SET NOT NULL;
 
 -- 4. 删旧单值列
 ALTER TABLE cms_feedback DROP COLUMN category;
+
+-- 5. 新增 topic 来源主题（10=Scan, 20=DeepResearch, 30=App）。必填。
+--    加列时用 DEFAULT 0 回填已有行，随即 DROP DEFAULT——新行必须由应用显式给值（不兜底）。
+ALTER TABLE cms_feedback ADD COLUMN topic smallint NOT NULL DEFAULT 0;
+ALTER TABLE cms_feedback ALTER COLUMN topic DROP DEFAULT;

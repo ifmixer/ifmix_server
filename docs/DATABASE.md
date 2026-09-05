@@ -29,7 +29,7 @@
 | pay | `pay_subscription` | app | Subscription |
 | pay | `pay_store_notification` | app | StoreNotification |
 | media | `media_upload_record` | app | UploadRecord |
-| cms | `cms_feedback` | app | Feedback |
+| cs | `cs_feedback` | app | Feedback |
 
 ## Auth 身份模型映射
 
@@ -82,6 +82,9 @@
 - **Kotlin**: `val status: Int`
 - **常量**: 放 model class 嵌套 object，跨模块的放 `entity/common/`
 - **编码规则**: 0 保留不用，从 10 开始步长 10
+- **typealias 提可读性**: 语义编码字段用 `typealias Xxx = Int` + 常量 `object Xxxs`（如 `ActorType`/`FeedbackReason`）。
+  编译后即 `Int`，对 Jimmer(KSP)/GraphQL(DGS) 完全透明，DB 列/wire 不变；蓝绿发布老节点读到
+  未知 code 走 `when else` 降级而非崩溃（不同于 enum）。别名只提可读性，不带来类型安全。
 
 ### 枚举码表登记
 
@@ -100,6 +103,40 @@
 | 80 | DOCUMENTS | 文件 / 来源证明 |
 | 90 | DETAIL | 局部细节（通用，可选） |
 | 100 | OTHER | 其它 |
+
+#### 主体 / 身份类
+
+| typealias | 常量 object | 码表 |
+|-----------|------------|------|
+| `ActorType` (entity/common) | `ActorTypes` | 10=CUSTOMER, 20=MANAGER |
+| `IdpType` (entity/common) | `IdpTypes` | 10=APPLE, 20=GOOGLE |
+| `Platform` (entity/common) | `Platforms` | 10=APPLE, 20=GOOGLE |
+| `LoginMethod` (entity/auth) | `LoginMethods` | 10=EMAIL, 20=PHONE, 30=IDP |
+
+#### 业务类
+
+| typealias | 常量 object | 码表 |
+|-----------|------------|------|
+| `ContentType` (dto/common) | `ContentTypes` | 10=IMAGE_JPEG, 20=IMAGE_PNG, 30=IMAGE_WEBP |
+| `ScanStatus` (entity/ai) | `ScanStatuses` | 20=READY（其余待补） |
+| `FeedbackTopic` (entity/cs) | `FeedbackTopics` | 0=UNKNOWN, 10=SCAN, 20=DEEP_RESEARCH, 30=APP |
+
+#### `Feedback.reasons`（反馈原因，多选，存于 `cs_feedback.reasons` PG `smallint[]`）
+
+typealias `FeedbackReason` / 常量 `FeedbackReasons`。多选数组，Jimmer 原生数组映射
+（`Array<Int>` + `@Column(sqlElementType = "smallint")`）。
+
+| Code | 名称 |
+|------|------|
+| 0 | UNKNOWN |
+| 10 | LIKED |
+| 20 | PRICE_TOO_HIGH |
+| 21 | PRICE_TOO_LOW |
+| 22 | PRICE_MISSING |
+| 23 | PRICE_UNREASONABLE |
+| 30 | WRONG_IDENTIFICATION |
+| 40 | FEATURE_REQUEST |
+| 41 | MORE_RECOMMENDATIONS |
 
 ## FilterGroup 动态查询
 

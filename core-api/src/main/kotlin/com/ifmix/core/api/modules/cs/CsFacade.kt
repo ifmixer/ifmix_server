@@ -1,14 +1,14 @@
-package com.ifmix.core.api.modules.cms
+package com.ifmix.core.api.modules.cs
 
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
 import com.ifmix.core.api.infra.http.OperationContext
-import com.ifmix.core.api.dto.cms.SubmitFeedbackReq
-import com.ifmix.core.api.modules.cms.handler.FeedbackAggHandler
+import com.ifmix.core.api.dto.cs.SubmitFeedbackReq
+import com.ifmix.core.api.modules.cs.handler.FeedbackAggHandler
 import org.springframework.stereotype.Service
 import java.util.UUID
 
 @Service
-class CmsFacade(
+class CsFacade(
     private val mcFactory: ModuleCtxFactory,
     private val handler: FeedbackAggHandler,
 ) {

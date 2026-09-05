@@ -1,9 +1,10 @@
 package com.ifmix.core.api.e2e
 
 import com.ifmix.core.api.e2e.support.E2eTestBase
-import com.ifmix.core.api.entity.cms.Feedback
-import com.ifmix.core.api.entity.cms.FeedbackReasons
-import com.ifmix.core.api.entity.cms.by
+import com.ifmix.core.api.entity.cs.Feedback
+import com.ifmix.core.api.entity.cs.FeedbackReasons
+import com.ifmix.core.api.entity.cs.FeedbackTopics
+import com.ifmix.core.api.entity.cs.by
 import com.ifmix.core.api.infra.db.UuidV7
 import org.assertj.core.api.Assertions.assertThat
 import org.babyfish.jimmer.kt.new
@@ -41,6 +42,7 @@ class FeedbackReasonsArrayE2eTest : E2eTestBase() {
         val entity = new(Feedback::class).by {
             this.id = id
             this.appId = testAppId
+            this.topic = FeedbackTopics.SCAN
             this.reasons = arrayOf(FeedbackReasons.PRICE_TOO_HIGH, FeedbackReasons.WRONG_IDENTIFICATION)
             this.createdAt = Instant.now()
         }
@@ -48,7 +50,7 @@ class FeedbackReasonsArrayE2eTest : E2eTestBase() {
 
         // 1. JDBC 直查 raw 值，确认 PG 存成 smallint[] 字面量 {20,30}
         val rawArray = jdbcTemplate.queryForObject(
-            "SELECT reasons::text FROM cms_feedback WHERE id = ?::uuid",
+            "SELECT reasons::text FROM cs_feedback WHERE id = ?::uuid",
             String::class.java,
             id.toString(),
         )
@@ -65,6 +67,7 @@ class FeedbackReasonsArrayE2eTest : E2eTestBase() {
         val entity = new(Feedback::class).by {
             this.id = id
             this.appId = testAppId
+            this.topic = FeedbackTopics.APP
             this.reasons = emptyArray()
             this.createdAt = Instant.now()
         }

@@ -92,7 +92,7 @@ Repo         →  持有 CrudRepoTemplate（companion object）
 | ai | 古物扫描、AI 识别(Spring AI 多模态)、Key 轮换+模型 fallback、收藏管理 |
 | demo | Todo 清单 CRUD、嵌入 items、游标分页、FilterGroup 示例 |
 | pay | Apple/Google 购买验证、订阅管理、Webhook(JWS 验签)、Tier 映射 |
-| cms | 用户反馈 |
+| cs | 用户反馈（customer support） |
 | media | 预签名上传/下载 |
 | app | AppConfig 版本管理、AppInfo |
 
@@ -108,7 +108,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   ├── graphql/customer/       # DGS DataFetcher
 │   │   ├── ai/                 # AiFetcher + DataLoaders
 │   │   ├── auth/               # AuthFetcher
-│   │   ├── cms/                # CmsFetcher
+│   │   ├── cs/                 # CsFetcher
 │   │   ├── customer/           # CustomerFetcher
 │   │   ├── demo/               # DemoFetcher + TodoItemsResolver
 │   │   ├── pay/                # PayFetcher
@@ -123,7 +123,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   ├── pay/                    # Subscription, StoreNotification
 │   ├── demo/                   # Todo, TodoItem, TodoRecommend
 │   ├── app/                    # AppConfigRevision, AppInfo, ConfigTypes
-│   ├── cms/                    # Feedback
+│   ├── cs/                     # Feedback
 │   └── media/                  # UploadRecord
 ├── modules/
 │   ├── auth/
@@ -146,8 +146,8 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   │   ├── PayFacade.kt
 │   │   ├── handler/PayAggHandler.kt, PayWebhookHandler.kt
 │   │   └── repo/
-│   ├── cms/
-│   │   ├── CmsFacade.kt
+│   ├── cs/
+│   │   ├── CsFacade.kt
 │   │   ├── handler/FeedbackAggHandler.kt
 │   │   └── repo/
 │   ├── media/
@@ -180,7 +180,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   └── config/                 # WebConfig, JacksonConfig, TransactionConfig
 └── resources/
     ├── schema/common/          # GraphQL 公共 scalars + CommonFindOptions
-    ├── schema/customer/        # GraphQL Customer schema (auth, ai, demo, pay, media, cms)
+    ├── schema/customer/        # GraphQL Customer schema (auth, ai, demo, pay, media, cs)
     ├── db/migration/           # Flyway V1-V5（手动：./gradlew :core-api:flywayMigrate）
     ├── prompts/                # AI scan prompts
     └── application.yml + application-local.yml
