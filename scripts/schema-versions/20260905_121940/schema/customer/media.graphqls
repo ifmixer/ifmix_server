@@ -1,0 +1,27 @@
+input PresignUploadInput {
+    "对象存储路径前缀（业务分类，如 antique_scan）"
+    prefix: String!
+    "内容类型。10=IMAGE_JPEG, 20=IMAGE_PNG, 30=IMAGE_WEBP"
+    contentType: Int!
+}
+
+type PresignUploadResult {
+    mediaId: UUID!
+    uploadUrl: String!
+    imageKey: String!
+    downloadUrl: String!
+}
+
+input PresignDownloadInput {
+    imageKey: String!
+    durationSeconds: Int
+}
+
+type PresignDownloadResult {
+    url: String!
+}
+
+extend type Mutation {
+    m_media_presignUpload(input: PresignUploadInput!): PresignUploadResult!
+    m_media_presignDownload(input: PresignDownloadInput!): PresignDownloadResult!
+}

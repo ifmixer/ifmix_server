@@ -1,0 +1,191 @@
+# schema/customer/ai.graphqls
+
+# ==================== Scan ====================
+
+type ScanRecordListView {
+    id: UUID!
+    images: [ImageRef!]
+    "扫描状态。10=PENDING, 11=PROCESSING, 20=COMPLETED, 30=FAILED"
+    status: Int!
+    basicResult: JSON
+    locale: String
+    country: String
+    currency: String
+    userDisplayName: String
+    userNotes: String
+    collected: Boolean!
+    isPublic: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime
+}
+
+"详情视图，包含扫描结果"
+type ScanRecord {
+    id: UUID!
+    createdAt: DateTime!
+    updatedAt: DateTime
+    isPublic: Boolean!
+    "扫描状态。10=PENDING, 11=PROCESSING, 20=COMPLETED, 30=FAILED"
+    status: Int!
+    locale: String
+    country: String
+    currency: String
+    userDisplayName: String
+    userNotes: String
+    collected: Boolean!
+    hasDeepSearch: Boolean!
+    #    promptVersion: String!
+    images: [ImageRef!]
+    "基础扫描结果 (JSONB)"
+    basicResult: JSON
+    "深度研究结果，按 scanRecordId 懒加载 (DataLoader)"
+    deepResearch: ScanDeepResearch
+}
+
+"深度研究结果 (premium_result 保存在 ai_scan_deep_research)"
+type ScanDeepResearch {
+    id: UUID!
+    scanRecordId: UUID!
+    "高级扫描结果 (JSONB)"
+    premiumResult: JSON
+#    promptVersion: String!
+    createdAt: DateTime!
+    updatedAt: DateTime
+}
+
+type ImageRef {
+    key: String!
+    """
+    图片分类（Int 码，详见 docs/DATABASE.md）：
+    0=UNSPECIFIED(未指定/主图), 10=FRONT(正面), 20=BACK(背面), 30=BOTTOM(底部),
+    40=MAKER_MARK(款识/签名), 50=DAMAGE(损伤), 60=DIMENSIONS(尺寸/带参照物),
+    70=PRICE_TAG(价签), 80=DOCUMENTS(文件/来源证明), 90=DETAIL(局部细节), 100=OTHER(其它)
+    """
+    category: Int
+}
+
+type ScanRecordListViewPage {
+    items: [ScanRecordListView!]!
+    pageInfo: PageInfo!
+}
+
+input NewScanInput {
+    images: [NewScanImageInput!]!
+}
+
+input NewScanImageInput {
+    imageKey: String!
+    mediaType: String
+}
+
+type NewScanResult {
+    scanRecord: ScanRecord
+}
+
+input UpdateScanInput {
+    id: UUID!
+    set: UpdateScanSetInput
+    unset: [ScanUnsetField!]
+}
+
+input UpdateScanSetInput {
+    userDisplayName: String
+    userNotes: String
+    collected: Boolean
+    isPublic: Boolean
+}
+
+enum ScanUnsetField { USER_DISPLAY_NAME, USER_NOTES }
+
+type UpdateScanResult {
+    success: Boolean!
+    scanRecord: ScanRecord
+}
+
+type DeleteScanResult {
+    success: Boolean!
+}
+
+input RunDeepResearchInput {
+    scanRecordId: UUID!
+    images: [DeepResearchImageInput!]!
+}
+
+input DeepResearchImageInput {
+    imageKey: String!
+    """
+    图片分类（Int 码，详见 docs/DATABASE.md）：
+    0=UNSPECIFIED(未指定/主图), 10=FRONT(正面), 20=BACK(背面), 30=BOTTOM(底部),
+    40=MAKER_MARK(款识/签名), 50=DAMAGE(损伤), 60=DIMENSIONS(尺寸/带参照物),
+    70=PRICE_TAG(价签), 80=DOCUMENTS(文件/来源证明), 90=DETAIL(局部细节), 100=OTHER(其它)
+    """
+    category: Int
+    mediaType: String
+}
+
+type RunDeepResearchResult {
+    success: Boolean!
+    scanRecord: ScanRecord
+}
+
+# ==================== Collection ====================
+
+type ScanCollection {
+    id: UUID!
+    isDefault: Boolean!
+    createdAt: DateTime!
+}
+
+type ScanCollectionItem {
+    id: UUID!
+    scanRecord: ScanRecord!
+    createdAt: DateTime!
+}
+
+type ScanCollectionItemPage {
+    items: [ScanCollectionItem!]!
+    pageInfo: PageInfo!
+}
+
+input ListScanCollectionItemsInput {
+    cursor: String
+    limit: Int
+}
+
+input AddScanCollectionItemInput {
+    scanRecordId: UUID!
+}
+
+type AddScanCollectionItemResult {
+    collectionId: UUID!
+    alreadyExists: Boolean!
+}
+
+input RemoveScanCollectionItemsInput {
+    scanRecordIds: [UUID!]!
+}
+
+type RemoveScanCollectionItemsResult {
+    removedCount: Int!
+}
+
+# ==================== Query ====================
+
+extend type Query {
+    q_ai_findMyScanById(id: UUID!): ScanRecord!
+    "通用动态过滤查询（支持 AND/OR 嵌套条件）"
+    q_ai_findMyScans(findOptions: CommonFindOptions): ScanRecordListViewPage!
+    q_ai_getDefaultCollection: ScanCollection!
+    q_ai_findCollectionItemsByCursor(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
+}
+
+# ==================== Mutation ====================
+
+extend type Mutation {
+    m_ai_createScan(input: NewScanInput!): NewScanResult!
+    m_ai_runDeepResearch(input: RunDeepResearchInput!): RunDeepResearchResult!
+    m_ai_updateScan(input: UpdateScanInput!): UpdateScanResult!
+    m_ai_deleteScan(id: UUID!): DeleteScanResult!
+    m_ai_addCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemResult!
+    m_ai_removeCollectionItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsResult!
+}
