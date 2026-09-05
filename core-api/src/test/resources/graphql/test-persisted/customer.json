@@ -1,0 +1,4 @@
+{
+  "q_test_ok": "query q_test_ok { __typename }",
+  "q_test_broken": "query q_test_broken { this is not valid graphql !!!"
+}

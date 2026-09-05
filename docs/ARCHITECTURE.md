@@ -310,6 +310,7 @@ DB (via Jimmer KSqlClient)
 | [编码指南](CODING_GUIDE.md) | Context 模型、事务管理、分层示例代码、Entity 设计、CrudRepoTemplate |
 | [认证设计](AUTH_DESIGN.md) | IDP 模型、AuthIdentity、登录判定表、idpType |
 | [数据库约定](DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup、游标分页 |
+| [GraphQL Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md) | persisted query allowlist、x-api-name 契约、PreparsedDocumentProvider |
 
 ## 构建与测试
 

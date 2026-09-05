@@ -11,6 +11,12 @@ spring:
       chat:
         options:
           model: agnes-2.5-flash
+
+# 本地：trusted-documents 机制同样开启（带 x-api-name 走 allowlist），
+# 但允许未带 x-api-name 的 raw query 兜底，方便 GraphiQL/API 探索。
+graphql:
+  trusted-documents:
+    allow-raw-query: true
 server:
   port: 3001
 

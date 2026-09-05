@@ -12,6 +12,16 @@ spring:
     schema:
       locations: classpath:schema/common/,classpath:schema/customer/
 
+# GraphQL Trusted Documents (persisted query allowlist)
+# trusted-documents 机制恒开：带 x-api-name 的请求一律走 allowlist（命中执行、未命中拒绝）。
+# allow-raw-query：未传 x-api-name 时是否允许 body raw query 兜底。
+#   默认 false（uat/prod）：禁止 raw query，强制走 persisted query。
+#   local profile 覆盖为 true 以允许 raw query 探索（见 application-local.yml）。
+graphql:
+  trusted-documents:
+    allow-raw-query: false
+    allowlist-path: classpath:graphql/persisted-queries/customer/
+
 dgs:
   graphql:
     path: /customer/core/gql
