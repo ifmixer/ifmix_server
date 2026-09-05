@@ -1,6 +1,7 @@
 package com.ifmix.core.api.entity.media
 
 import com.ifmix.core.api.entity.common.AppScopedProps
+import com.ifmix.core.api.entity.common.ActorType
 import com.ifmix.core.api.entity.common.UUIDProps
 import com.ifmix.core.api.entity.common.CreatedAtProps
 import org.babyfish.jimmer.sql.*
@@ -18,7 +19,7 @@ interface UploadRecord : UUIDProps, AppScopedProps, CreatedAtProps {
     val actorId: UUID
 
     /** 主体类型：10=customer / 20=manager */
-    val actorType: Int
+    val actorType: ActorType
 
     val objectKey: String
     val contentType: String

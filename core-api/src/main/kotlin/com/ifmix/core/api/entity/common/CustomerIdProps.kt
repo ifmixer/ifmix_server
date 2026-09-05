@@ -6,7 +6,7 @@ import java.util.UUID
 
 /** Customer 归属标记：customerId 可选（匿名未转正时为 null）。 */
 @MappedSuperclass
-interface CustomerOwnedProps {
+interface CustomerIdProps {
     @Column(name = "customer_id")
     val customerId: UUID?
 }

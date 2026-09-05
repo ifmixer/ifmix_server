@@ -1,5 +1,6 @@
 package com.ifmix.core.api.infra.http
 
+import com.ifmix.core.api.entity.common.ActorType
 import java.util.UUID
 
 /**
@@ -11,7 +12,7 @@ data class RequestContext(
     /** 主体 id（token sub）。null = 未认证。 */
     val actorId: UUID? = null,
     /** 主体类型：10=customer / 20=manager。未认证时 null。 */
-    val actorType: Int? = null,
+    val actorType: ActorType? = null,
     /** 是否匿名主体（token ano claim）。 */
     val anonymous: Boolean = false,
     val locale: String? = null,

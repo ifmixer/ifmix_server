@@ -21,6 +21,8 @@ import com.ifmix.core.api.modules.customer.repo.CustomerRepository
 import com.ifmix.core.api.modules.customer.handler.CustomerMergeHandler
 import com.ifmix.core.api.dto.payment.SubscriptionState
 import com.ifmix.core.api.entity.common.Tiers
+import com.ifmix.core.api.entity.common.IdpType
+import com.ifmix.core.api.entity.common.IdpTypes
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
@@ -322,13 +324,13 @@ class AuthAggHandler(
     // Internal helpers
     // =========================================================================
 
-    private fun providerKeyForType(idpType: Int): String = when (idpType) {
-        10 -> "apple"
-        20 -> "google"
+    private fun providerKeyForType(idpType: IdpType): String = when (idpType) {
+        IdpTypes.APPLE -> "apple"
+        IdpTypes.GOOGLE -> "google"
         else -> throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unknown provider type: $idpType")
     }
 
-    private fun createIdpIdentity(mc: ModuleCtx, idpId: UUID, idpType: Int, verified: ProviderVerifier.VerifiedResult): IdpIdentity {
+    private fun createIdpIdentity(mc: ModuleCtx, idpId: UUID, idpType: IdpType, verified: ProviderVerifier.VerifiedResult): IdpIdentity {
         val now = Instant.now()
         val entity = IdpIdentity {
             this.id = UuidV7.generate()

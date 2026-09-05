@@ -81,4 +81,4 @@ class AuthInterceptor(private val jwt: AuthJwtService) : HandlerInterceptor {
     }
 }
 
-private data class ParsedToken(val appId: UUID?, val actorId: UUID?, val actorType: Int?, val anonymous: Boolean)
+private data class ParsedToken(val appId: UUID?, val actorId: UUID?, val actorType: com.ifmix.core.api.entity.common.ActorType?, val anonymous: Boolean)

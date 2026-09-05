@@ -2,6 +2,7 @@ package com.ifmix.core.api.infra.graphql
 
 import com.ifmix.core.api.infra.auth.AuthInterceptor
 import com.ifmix.core.api.infra.auth.AuthJwtService
+import com.ifmix.core.api.entity.common.ActorType
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.http.OperationContext
@@ -31,7 +32,7 @@ class OperationContextProvider {
          * 匿名/未认证（actorType==null）不受影响，公开接口照常。
          * 传 null 表示不校验 actorType（将来 manager BFF 传 ACTOR_MANAGER，或按需放开）。
          */
-        requireActorType: Int? = AuthJwtService.ACTOR_CUSTOMER,
+        requireActorType: ActorType? = AuthJwtService.ACTOR_CUSTOMER,
         requireLocale: Boolean = false,
         requireCountry: Boolean = false,
         requireCurrency: Boolean = false,

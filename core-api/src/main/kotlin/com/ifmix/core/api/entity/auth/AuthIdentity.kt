@@ -3,6 +3,16 @@ package com.ifmix.core.api.entity.auth
 import com.ifmix.core.api.entity.common.BaseAppEntity
 import org.babyfish.jimmer.sql.*
 
+/** 登录方式编码。typealias（Int 全链路透传），码表见 [LoginMethods]。 */
+typealias LoginMethod = Int
+
+/** 登录方式码表（0 保留，从 10 起步长 10）。 */
+object LoginMethods {
+    const val EMAIL: LoginMethod = 10
+    const val PHONE: LoginMethod = 20
+    const val IDP: LoginMethod = 30
+}
+
 /**
  * App 级账号中枢：Customer.authIdentityId 指向本表；
  * 与 IdpIdentity 的 M:N 绑定关系存于 auth_identity_to_idpidentity_relation。
@@ -47,7 +57,7 @@ interface AuthIdentity : BaseAppEntity {
 
     /** 最近一次登录方式（10:email 20:phone 30:idp）。 */
     @Column(name = "last_login_method")
-    val lastLoginMethod: Int?
+    val lastLoginMethod: LoginMethod?
 
     /** 最近一次登录用的 idp 身份（idp 登录时非空；email/phone 登录为 null）。 */
     @Column(name = "last_login_idp_identity_id")

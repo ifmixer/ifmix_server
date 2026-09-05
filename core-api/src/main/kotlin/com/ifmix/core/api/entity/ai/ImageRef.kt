@@ -20,4 +20,22 @@ package com.ifmix.core.api.entity.ai
  * | 90   | DETAIL      | 局部细节（通用，可选）         |
  * | 100  | OTHER       | 其它                          |
  */
-data class ImageRef(val key: String, val category: Int? = null)
+data class ImageRef(val key: String, val category: ImageCategory? = null)
+
+/** 图片分类编码。typealias（Int 全链路透传），码表见 [ImageCategories]。 */
+typealias ImageCategory = Int
+
+/** 图片分类码表（0 留白，从 10 起步长 10）。见 docs/DATABASE.md。 */
+object ImageCategories {
+    const val UNSPECIFIED: ImageCategory = 0
+    const val FRONT: ImageCategory = 10
+    const val BACK: ImageCategory = 20
+    const val BOTTOM: ImageCategory = 30
+    const val MAKER_MARK: ImageCategory = 40
+    const val DAMAGE: ImageCategory = 50
+    const val DIMENSIONS: ImageCategory = 60
+    const val PRICE_TAG: ImageCategory = 70
+    const val DOCUMENTS: ImageCategory = 80
+    const val DETAIL: ImageCategory = 90
+    const val OTHER: ImageCategory = 100
+}

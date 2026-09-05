@@ -2,6 +2,7 @@ package com.ifmix.core.api.modules.media.handler
 
 import com.ifmix.core.api.dto.storage.PresignDownloadResult
 import com.ifmix.core.api.dto.storage.PresignUploadResult
+import com.ifmix.core.api.dto.common.ContentTypes
 import com.ifmix.core.api.generated.types.PresignDownloadInput
 import com.ifmix.core.api.generated.types.PresignUploadInput
 import com.ifmix.core.api.infra.codec.toBase58
@@ -28,18 +29,10 @@ class StorageAggHandler(
         val prefix = sanitizePrefix(input.prefix)
         // images typeGroup 固定为 image（本接口只处理图片上传）
         val typeGroup = "image"
-        val ext = when (input.contentType) {
-            10 -> "jpg"
-            20 -> "png"
-            30 -> "webp"
-            else -> throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
-        }
-        val mimeType = when (input.contentType) {
-            10 -> "image/jpeg"
-            20 -> "image/png"
-            30 -> "image/webp"
-            else -> throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
-        }
+        val ext = ContentTypes.extension(input.contentType)
+            ?: throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
+        val mimeType = ContentTypes.mimeType(input.contentType)
+            ?: throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
 
         val objectKey = "$typeGroup/app/${appId.toBase58()}/$prefix/${mediaId.toBase58()}.$ext"
         val uploadUrl = objectStorage.presignUpload("ugc", objectKey, mimeType, Duration.ofSeconds(300))

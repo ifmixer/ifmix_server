@@ -74,7 +74,7 @@ class ScanAggHandler(
             this.appId = result.appId
             this.images = result.images.map { ImageRef(key = it.imageKey) }
             this.basicResult = result.basicResult
-            this.status = 20
+            this.status = com.ifmix.core.api.entity.ai.ScanStatuses.READY
             this.clientIp = result.clientIp
             this.customerId = sc.op.actorId
             this.locale = result.locale

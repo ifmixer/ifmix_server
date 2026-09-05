@@ -1,6 +1,8 @@
 package com.ifmix.core.api.infra.auth
 
 import com.ifmix.core.api.infra.db.UuidV7
+import com.ifmix.core.api.entity.common.ActorType
+import com.ifmix.core.api.entity.common.ActorTypes
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -27,11 +29,11 @@ class AuthJwtService(
 
     companion object {
         const val TOKEN_TYPE = "Bearer"
-        const val ACTOR_CUSTOMER = 10
+        const val ACTOR_CUSTOMER = ActorTypes.CUSTOMER
     }
 
     /** access token：sub=actorId, act=actorType, ano=anonymous */
-    fun signAccess(actorId: String, actorType: Int, appId: String, anonymous: Boolean = false): String {
+    fun signAccess(actorId: String, actorType: ActorType, appId: String, anonymous: Boolean = false): String {
         val now = Date()
         val claims = JWTClaimsSet.Builder()
             .issuer(issuer)
@@ -77,7 +79,7 @@ class AuthJwtService(
 data class VerifiedToken(
     val actorId: String?,
     val appId: String?,
-    val actorType: Int,
+    val actorType: ActorType,
     val anonymous: Boolean = false,
 ) {
     val isCustomer get() = actorType == AuthJwtService.ACTOR_CUSTOMER

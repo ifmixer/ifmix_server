@@ -1,6 +1,7 @@
 package com.ifmix.core.api.entity.auth
 
 import com.ifmix.core.api.entity.common.BaseEntity
+import com.ifmix.core.api.entity.common.IdpType
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
@@ -14,7 +15,7 @@ interface IdpIdentity : BaseEntity {
 
     /** idp 类型（10:apple 20:google）。 */
     @Column(name = "idp_type")
-    val idpType: Int
+    val idpType: IdpType
 
     /** 逻辑外键 → auth_idp（email/phone 等内建身份可无 idp，故可选）。 */
     val idpId: UUID?

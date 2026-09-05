@@ -1,6 +1,7 @@
 package com.ifmix.core.api.entity.auth
 
 import com.ifmix.core.api.entity.common.BaseAppEntity
+import com.ifmix.core.api.entity.common.ActorType
 import org.babyfish.jimmer.sql.*
 import java.time.Instant
 import java.util.UUID
@@ -16,7 +17,7 @@ interface RefreshToken : BaseAppEntity {
     val actorId: UUID
 
     /** 主体类型：10=customer / 20=manager */
-    val actorType: Int
+    val actorType: ActorType
 
     val tokenHash: String
     val expiresAt: Instant?

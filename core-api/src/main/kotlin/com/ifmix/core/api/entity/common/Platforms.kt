@@ -5,6 +5,8 @@ package com.ifmix.core.api.entity.common
  *
  * 编码：0=UNKNOWN, 10=APPLE, 20=GOOGLE。
  */
+typealias Platform = Int
+
 object Platforms {
     const val APPLE = 10
     const val GOOGLE = 20
