@@ -32,7 +32,7 @@ class CmsFetcher(
 }
 
 private fun SubmitFeedbackInput.toReq() = SubmitFeedbackReq(
-    category = category,
+    reasons = reasons,
     comment = comment,
     scanRecordId = scanRecordId,
     spm = spm,

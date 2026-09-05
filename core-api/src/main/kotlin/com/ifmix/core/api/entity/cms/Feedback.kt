@@ -8,20 +8,20 @@ import com.ifmix.core.api.entity.common.UserPreferenceProps
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
-/** 反馈分类编码。typealias（Int 全链路透传），码表见 [FeedbackCategories]。 */
-typealias FeedbackCategory = Int
+/** 反馈原因编码。typealias（Int 全链路透传），码表见 [FeedbackReasons]。 */
+typealias FeedbackReason = Int
 
-/** 反馈分类码表。0 保留，从 10 起步长 10（价格类子项用个位细分）。 */
-object FeedbackCategories {
-    const val UNKNOWN: FeedbackCategory = 0
-    const val LIKED: FeedbackCategory = 10
-    const val PRICE_TOO_HIGH: FeedbackCategory = 20
-    const val PRICE_TOO_LOW: FeedbackCategory = 21
-    const val PRICE_MISSING: FeedbackCategory = 22
-    const val PRICE_UNREASONABLE: FeedbackCategory = 23
-    const val WRONG_IDENTIFICATION: FeedbackCategory = 30
-    const val FEATURE_REQUEST: FeedbackCategory = 40
-    const val MORE_RECOMMENDATIONS: FeedbackCategory = 41
+/** 反馈原因码表。0 保留，从 10 起步长 10（价格类子项用个位细分）。 */
+object FeedbackReasons {
+    const val UNKNOWN: FeedbackReason = 0
+    const val LIKED: FeedbackReason = 10
+    const val PRICE_TOO_HIGH: FeedbackReason = 20
+    const val PRICE_TOO_LOW: FeedbackReason = 21
+    const val PRICE_MISSING: FeedbackReason = 22
+    const val PRICE_UNREASONABLE: FeedbackReason = 23
+    const val WRONG_IDENTIFICATION: FeedbackReason = 30
+    const val FEATURE_REQUEST: FeedbackReason = 40
+    const val MORE_RECOMMENDATIONS: FeedbackReason = 41
 }
 
 /**
@@ -32,8 +32,9 @@ object FeedbackCategories {
 interface Feedback : UUIDProps, AppScopedProps, CreatedAtProps, CustomerIdProps, UserPreferenceProps {
 
     val scanRecordId: UUID?
-    /** 反馈分类编码。0=UNKNOWN, 10=LIKED, 20=PRICE_TOO_HIGH, 21=PRICE_TOO_LOW, 22=PRICE_MISSING, 23=PRICE_UNREASONABLE, 30=WRONG_IDENTIFICATION, 40=FEATURE_REQUEST, 41=MORE_RECOMMENDATIONS */
-    val category: FeedbackCategory
+    /** 反馈原因（多选）。码表见 [FeedbackReasons]。存 PG smallint[]。 */
+    @Column(sqlElementType = "smallint")
+    val reasons: Array<FeedbackReason>
     val comment: String?
     /** SPM 埋点位置标识 */
     val spm: String?

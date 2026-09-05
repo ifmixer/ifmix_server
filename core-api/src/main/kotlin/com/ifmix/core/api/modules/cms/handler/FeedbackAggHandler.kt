@@ -19,7 +19,7 @@ class FeedbackAggHandler(
             this.id = id
             this.appId = mc.op.appId!!
             this.customerId = mc.op.actorId
-            this.category = req.category
+            this.reasons = req.reasons.toTypedArray()
             this.comment = req.comment
             this.scanRecordId = req.scanRecordId
             this.spm = req.spm
