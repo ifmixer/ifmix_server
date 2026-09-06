@@ -1,18 +1,18 @@
 package com.ifmix.core.api.infra.config
 
-import com.ifmix.core.api.infra.auth.AuthInterceptor
-import com.ifmix.core.api.infra.http.HeaderValidationInterceptor
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.servlet.config.annotation.CorsRegistry
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
-/** 注册请求头校验拦截器（仅 customer/app-admin）与 OperationContext 参数解析器。 */
+/**
+ * Web MVC 配置。
+ *
+ * 不再注册 token/header 解析拦截器——请求解析与校验已下沉到 GraphQL 层
+ * [com.ifmix.core.api.infra.graphql.OperationContextProvider.fromDfe]（经 RequestParser），
+ * 失败即抛 ApiError → 统一 GraphQL 错误格式。
+ */
 @Configuration
-class WebConfig(
-    private val headerValidationInterceptor: HeaderValidationInterceptor,
-    private val authInterceptor: AuthInterceptor,
-) : WebMvcConfigurer {
+class WebConfig : WebMvcConfigurer {
 
     override fun addCorsMappings(registry: CorsRegistry) {
         registry.addMapping("/**")
@@ -20,20 +20,5 @@ class WebConfig(
             .allowedMethods("*")
             .allowedHeaders("*")
             .allowCredentials(true)
-    }
-
-    override fun addInterceptors(registry: InterceptorRegistry) {
-        registry.addInterceptor(headerValidationInterceptor)
-            .addPathPatterns("/customer/**")
-            .excludePathPatterns(
-                "/apidocs/**",
-            )
-
-        registry.addInterceptor(authInterceptor)
-            .addPathPatterns("/customer/**")
-            .excludePathPatterns(
-                "/apidocs/**",
-                "/.well-known/**",
-            )
     }
 }

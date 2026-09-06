@@ -26,7 +26,8 @@ class CustomerFetcher(
 
     @DgsMutation(field = "m_customer_createAnonymousCustomer")
     fun createAnonymousCustomer(dfe: DgsDataFetchingEnvironment): CreateAnonymousResult {
-        val ctx = ctxProvider.fromDfe(dfe)
+        // 建匿名号是获取首个凭证的入口，无需登录：requireActorType=null。
+        val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
         // 每 IP 60s 10 次
         val clientIp = ctx.clientIp ?: "unknown"
         if (!rateLimiter.checkFixedWindow(clientIp, RATE_LIMIT, RATE_WINDOW_SEC)) {

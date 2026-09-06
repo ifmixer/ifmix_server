@@ -38,7 +38,8 @@ class AuthFetcher(
 
     @DgsMutation(field = "m_auth_login")
     fun login(dfe: DgsDataFetchingEnvironment, @InputArgument input: IdpLoginInput): LoginResult {
-        val ctx = ctxProvider.fromDfe(dfe)
+        // login 无需登录：requireActorType=null（不 require；带了过期 token 仍会被校验，故前端不带 token）。
+        val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
         val res = globalTx.withTx(ctx) { txCtx ->
             authService.login(txCtx, LoginReq(idpId = input.idpId, credential = input.credential))
         }
@@ -47,7 +48,8 @@ class AuthFetcher(
 
     @DgsMutation(field = "m_auth_refreshToken")
     fun refresh(dfe: DgsDataFetchingEnvironment, @InputArgument input: RefreshInput): RefreshResult {
-        val ctx = ctxProvider.fromDfe(dfe)
+        // refresh 凭证是 body 的 refresh token；不解析 header access token（可能已过期）。
+        val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
         val res = globalTx.withTx(ctx) { txCtx ->
             authService.refresh(txCtx, RefreshReq(refreshToken = input.refreshToken))
         }

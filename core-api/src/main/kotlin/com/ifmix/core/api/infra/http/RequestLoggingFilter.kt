@@ -3,7 +3,7 @@ package com.ifmix.core.api.infra.http
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import com.ifmix.core.api.infra.auth.AuthInterceptor
+import com.ifmix.core.api.infra.auth.RequestParser
 import com.ifmix.core.api.infra.jimmer.OperationContextHolder
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -17,7 +17,7 @@ import org.springframework.web.util.ContentCachingResponseWrapper
  * - 错误响应（4xx/5xx）：WARN 级别额外打印响应体，方便排查问题。
  */
 @Component
-class RequestLoggingFilter : OncePerRequestFilter() {
+class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFilter() {
 
     private val log = LoggerFactory.getLogger(RequestLoggingFilter::class.java)
 
@@ -105,11 +105,9 @@ class RequestLoggingFilter : OncePerRequestFilter() {
             val scheme = it.substringBefore(' ', it).take(16)
             parts.add("Authorization=$scheme ***")
         }
-        // clientIp 总是记录（排查必需）
-        parts.add("clientIp=${ClientIpResolver.resolve(request)}")
-        // userId：认证后主体 id（匿名/未认证时缺省，不输出）
-        (request.getAttribute(AuthInterceptor.ATTR_REQUEST_CONTEXT) as? RequestContext)
-            ?.actorId?.let { parts.add("userId=$it") }
+        // clientIp / userId 取自 RequestParser（token 幂等缓存，与 fromDfe 共享同一 request 缓存）
+        parts.add("clientIp=${parser.parseClientIp(request)}")
+        parser.peekActorId(request)?.let { parts.add("userId=$it") }
         return parts.joinToString(" ")
     }
 

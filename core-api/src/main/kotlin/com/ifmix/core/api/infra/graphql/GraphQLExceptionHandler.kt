@@ -27,24 +27,26 @@ class GraphQLExceptionHandler : DataFetcherExceptionResolverAdapter() {
 
     override fun resolveToSingleError(ex: Throwable, env: DataFetchingEnvironment): GraphQLError? {
         val path = env.executionStepInfo.path
-        if (ex is ApiError) {
+        // 异常可能被 DGS/future 包装（CompletionException 等），沿 cause 链找 ApiError。
+        val apiError = generateSequence(ex) { it.cause }.filterIsInstance<ApiError>().firstOrNull()
+        if (apiError != null) {
             // 集中分级记日志：5xx 服务端故障 error(带 stack)；限流/第三方验证失败 warn；其余客户端错误 debug。
-            val code = ex.errorCode
+            val code = apiError.errorCode
             when {
                 code.status.is5xxServerError ->
-                    log.error("GraphQL ApiError [{}] {} at {}", code.externalCode, ex.message, path, ex)
+                    log.error("GraphQL ApiError [{}] {} at {}", code.externalCode, apiError.message, path, apiError)
                 code == ErrorCode.RATE_LIMITED || code == ErrorCode.QUOTA_EXCEEDED ||
                     code == ErrorCode.AUTH_PROVIDER_FAILED ->
-                    log.warn("GraphQL ApiError [{}] {} at {}", code.externalCode, ex.message, path)
+                    log.warn("GraphQL ApiError [{}] {} at {}", code.externalCode, apiError.message, path)
                 else ->
-                    log.debug("GraphQL ApiError [{}] {} at {}", code.externalCode, ex.message, path)
+                    log.debug("GraphQL ApiError [{}] {} at {}", code.externalCode, apiError.message, path)
             }
             return GraphqlErrorBuilder.newError(env)
-                .message(ex.message ?: ex.errorCode.name)
-                .errorType(ex.errorCode.toGraphQLErrorType())
+                .message(apiError.message ?: code.name)
+                .errorType(code.toGraphQLErrorType())
                 .extensions(mapOf(
-                    "code" to ex.errorCode.externalCode,
-                    "errorName" to ex.errorCode.name,
+                    "code" to code.externalCode,
+                    "errorName" to code.name,
                 ))
                 .build()
         }

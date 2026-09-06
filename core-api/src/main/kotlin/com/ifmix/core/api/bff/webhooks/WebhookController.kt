@@ -1,7 +1,6 @@
 package com.ifmix.core.api.bff.webhooks
 
 import com.ifmix.core.api.infra.http.OperationContext
-import com.ifmix.core.api.infra.http.RequestContext
 import com.ifmix.core.api.modules.app.AppConfigFacade
 import com.ifmix.core.api.modules.pay.PaymentFacade
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
@@ -88,7 +87,7 @@ class WebhookController(
             }
 
             // 5. 构建 OperationContext 并处理通知
-            val ctx = OperationContext(req = RequestContext(appId = appId, actorId = SYSTEM_USER_ID))
+            val ctx = OperationContext(appId = appId, actorId = SYSTEM_USER_ID)
             iapService.handleAppleNotification(ctx, rawPayload, appleDecoder)
             return ResponseEntity.ok("ok")
 
@@ -121,7 +120,7 @@ class WebhookController(
             }
 
             // 3. 处理通知
-            val ctx = OperationContext(req = RequestContext(appId = appId, actorId = SYSTEM_USER_ID))
+            val ctx = OperationContext(appId = appId, actorId = SYSTEM_USER_ID)
             iapService.handleGoogleNotification(ctx, rawPayload, googleDecoder)
             return ResponseEntity.ok("ok")
 
