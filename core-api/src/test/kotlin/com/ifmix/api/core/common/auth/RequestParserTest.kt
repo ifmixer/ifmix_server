@@ -83,7 +83,7 @@ class RequestParserTest {
     @Test fun `no token and not required returns null`() {
         assertThat(parser.parseActor(req(RequestHeaders.APP_ID to appId), requireActorType = null)).isNull()
     }
-    @Test fun `valid token returns ParsedToken`() {
+    @Test fun `valid token returns Actor`() {
         bearer(VerifiedToken(actorId = actorId, appId = appId, actorType = ActorTypes.CUSTOMER, anonymous = true))
         val a = parser.parseActor(req(RequestHeaders.APP_ID to appId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER)!!
         assertThat(a.actorId).isEqualTo(UUID.fromString(actorId))

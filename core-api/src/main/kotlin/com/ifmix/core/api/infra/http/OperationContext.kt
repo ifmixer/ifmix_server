@@ -21,7 +21,7 @@ data class OperationContext(
     /** 主体类型：10=customer / 20=manager。未认证时 null。 */
     val actorType: ActorType? = null,
     /** 是否匿名主体（token ano claim）。 */
-    val anonymous: Boolean = false,
+    val anonymous: Boolean = true,
     val locale: String? = null,
     val currency: String? = null,
     val country: String? = null,
