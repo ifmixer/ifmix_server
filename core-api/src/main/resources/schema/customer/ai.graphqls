@@ -71,6 +71,8 @@ type ScanRecordListViewPage {
 
 input NewScanInput {
     images: [NewScanImageInput!]!
+    "是否创建时即收藏（客户端「自动收藏」开关开启时传 true）；省略默认 false"
+    collected: Boolean
 }
 
 input NewScanImageInput {

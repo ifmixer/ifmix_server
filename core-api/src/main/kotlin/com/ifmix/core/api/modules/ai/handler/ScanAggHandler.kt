@@ -62,6 +62,7 @@ class ScanAggHandler(
             clientIp = opCtx.clientIp,
             images = input.images,
             basicResult = basicResult,
+            collected = input.collected ?: false,
             promptVersion = scanPrompt.promptVersion,
             createdAt = now,
             updatedAt = now,
@@ -83,7 +84,7 @@ class ScanAggHandler(
             this.currency = result.currency
             this.userDisplayName = null
             this.userNotes = null
-            this.collected = false
+            this.collected = result.collected
             this.isPublic = true
             this.hasDeepSearch = false
             this.promptVersion = result.promptVersion
