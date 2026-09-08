@@ -116,12 +116,26 @@ class AiFetcher(
         globalTx.withTx(ctx) { txCtx -> aiService.updateDeepResearchImages(txCtx, input) }
         // Step 2: AI 调用在事务外
         val result = aiService.runDeepResearch(ctx, input)
+        // 仅当 scan_status.status 为 SUCCESS/PARTIAL 才写回；否则返回失败状态要求用户修正
+        if (!result.isSuccess) {
+            return com.ifmix.core.api.generated.types.RunDeepResearchResult(
+                success = false,
+                status = result.status,
+                scanStatus = result.scanStatus,
+                scanRecord = null,
+            )
+        }
         // Step 3: 结果写入在事务内
         val success = globalTx.withTx(ctx) { txCtx -> aiService.saveDeepResearch(txCtx, result) }
         val record = if (success && dfe.selectionSet.fields.any { it.name == "scanRecord" }) {
             aiService.findById(ctx, input.scanRecordId)
         } else null
-        return com.ifmix.core.api.generated.types.RunDeepResearchResult(success = success, scanRecord = record)
+        return com.ifmix.core.api.generated.types.RunDeepResearchResult(
+            success = success,
+            status = result.status,
+            scanStatus = result.scanStatus,
+            scanRecord = record,
+        )
     }
 
     @DgsMutation(field = "m_ai_updateScan")

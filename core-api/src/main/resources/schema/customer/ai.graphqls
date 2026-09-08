@@ -57,7 +57,7 @@ type ImageRef {
     key: String!
     """
     图片分类（Int 码，详见 docs/DATABASE.md）：
-    0=UNSPECIFIED(未指定/主图), 10=FRONT(正面), 20=BACK(背面), 30=BOTTOM(底部),
+    0=MAIN(主图/默认), 10=FRONT(正面), 20=BACK(背面), 30=BOTTOM(底部),
     40=MAKER_MARK(款识/签名), 50=DAMAGE(损伤), 60=DIMENSIONS(尺寸/带参照物),
     70=PRICE_TAG(价签), 80=DOCUMENTS(文件/来源证明), 90=DETAIL(局部细节), 100=OTHER(其它)
     """
@@ -75,6 +75,14 @@ input NewScanInput {
 
 input NewScanImageInput {
     imageKey: String!
+    """
+    图片分类（Int 码，详见 docs/DATABASE.md）：
+    0=MAIN(主图/默认), 10=FRONT(正面), 20=BACK(背面), 30=BOTTOM(底部),
+    40=MAKER_MARK(款识/签名), 50=DAMAGE(损伤), 60=DIMENSIONS(尺寸/带参照物),
+    70=PRICE_TAG(价签), 80=DOCUMENTS(文件/来源证明), 90=DETAIL(局部细节), 100=OTHER(其它)
+    省略时服务端默认按主图(0)入库。
+    """
+    category: Int
     mediaType: String
 }
 
@@ -115,7 +123,7 @@ input DeepResearchImageInput {
     imageKey: String!
     """
     图片分类（Int 码，详见 docs/DATABASE.md）：
-    0=UNSPECIFIED(未指定/主图), 10=FRONT(正面), 20=BACK(背面), 30=BOTTOM(底部),
+    0=MAIN(主图/默认), 10=FRONT(正面), 20=BACK(背面), 30=BOTTOM(底部),
     40=MAKER_MARK(款识/签名), 50=DAMAGE(损伤), 60=DIMENSIONS(尺寸/带参照物),
     70=PRICE_TAG(价签), 80=DOCUMENTS(文件/来源证明), 90=DETAIL(局部细节), 100=OTHER(其它)
     """
@@ -124,7 +132,13 @@ input DeepResearchImageInput {
 }
 
 type RunDeepResearchResult {
+    "成功当且仅当 AI 调用成功且 scan_status.status 为 SUCCESS/PARTIAL；失败时不更新 scan 结果"
     success: Boolean!
+    "AI 返回的扫描状态：SUCCESS|PARTIAL|INSUFFICIENT_IMAGE|NON_PHYSICAL_SUBJECT"
+    status: String
+    "失败时的 scan_status 详情（summary/limitations/recommended_next_photos 等），供客户端提示用户修正"
+    scanStatus: JSON
+    "仅在成功时返回；失败时为 null（不更新 scan 结果）"
     scanRecord: ScanRecord
 }
 

@@ -12,6 +12,7 @@ import com.ifmix.core.api.infra.db.UuidV7
 import com.ifmix.core.api.infra.http.OperationContext
 import com.ifmix.core.api.infra.storage.ObjectStorage
 import com.ifmix.core.api.entity.ai.ImageRef
+import com.ifmix.core.api.entity.ai.ImageCategories
 import com.ifmix.core.api.entity.ai.ScanRecord
 import com.ifmix.core.api.modules.ai.ScanRunner
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
@@ -72,7 +73,7 @@ class ScanAggHandler(
         val record = ScanRecord {
             id = result.scanId
             this.appId = result.appId
-            this.images = result.images.map { ImageRef(key = it.imageKey) }
+            this.images = result.images.map { ImageRef(key = it.imageKey, category = it.category ?: ImageCategories.MAIN) }
             this.basicResult = result.basicResult
             this.status = com.ifmix.core.api.entity.ai.ScanStatuses.READY
             this.clientIp = result.clientIp
@@ -121,7 +122,7 @@ class ScanAggHandler(
      */
     fun updateDeepResearchImages(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.RunDeepResearchInput) {
         val appId = sc.op.mustGetAppId()
-        val imageRefs = input.images.map { ImageRef(key = it.imageKey, category = it.category) }
+        val imageRefs = input.images.map { ImageRef(key = it.imageKey, category = it.category ?: ImageCategories.MAIN) }
         val updated = scanRepo.updateImages(sc, appId, input.scanRecordId, imageRefs)
         if (updated == 0) throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
     }
