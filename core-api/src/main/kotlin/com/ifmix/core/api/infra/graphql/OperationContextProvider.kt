@@ -57,6 +57,7 @@ class OperationContextProvider(private val parser: RequestParser) {
             country = parser.parseCountry(servletRequest, requireCountry),
             clientPlatform = parser.parseClientPlatform(servletRequest),
             clientIp = parser.parseClientIp(servletRequest),
+            installId = parser.parseInstallId(servletRequest),
             opName = dfe.field?.name,
             isMutation = isMutation,
             preferReader = !isMutation,

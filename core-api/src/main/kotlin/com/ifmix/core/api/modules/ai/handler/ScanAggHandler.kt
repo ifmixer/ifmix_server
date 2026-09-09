@@ -79,6 +79,7 @@ class ScanAggHandler(
             this.status = com.ifmix.core.api.entity.ai.ScanStatuses.READY
             this.clientIp = result.clientIp
             this.customerId = sc.op.actorId
+            this.installId = sc.op.installId
             this.locale = result.locale
             this.country = result.country
             this.currency = result.currency

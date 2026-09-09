@@ -17,6 +17,23 @@ enum SortDirection {
     DESC
 }
 
+"""
+通用媒体引用（对象存储 key + 类型/分类）。参考 ai 模块的图片输入。
+type: 媒体大类 Int 码（0=UNKNOWN,10=IMAGE,20=VIDEO,30=AUDIO,40=DOCUMENT）。
+category: 业务分类 Int，语义由使用方定义，可空。
+"""
+input MediaInput {
+    key: String!
+    type: Int
+    category: Int
+}
+
+type MediaRef {
+    key: String!
+    type: Int
+    category: Int
+}
+
 "通用列表查询参数"
 input CommonFindOptions {
     filter: FilterGroup

@@ -19,6 +19,7 @@ class FeedbackAggHandler(
             this.id = id
             this.appId = mc.op.appId!!
             this.customerId = mc.op.actorId
+            this.installId = mc.op.installId
             this.topic = req.topic
             this.reasons = req.reasons.toTypedArray()
             this.email = req.email

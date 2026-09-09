@@ -27,6 +27,8 @@ data class OperationContext(
     val country: String? = null,
     val clientPlatform: ClientPlatform? = null,
     val clientIp: String? = null,
+    /** 安装标识（x-install-id header）。客户端生成，仅记录用于分析，不用于鉴权。 */
+    val installId: String? = null,
     // ===== 操作元信息 =====
     val opName: String? = null,
     val isMutation: Boolean = false,

@@ -25,6 +25,66 @@ type SubmitFeedbackResult {
     id: UUID!
 }
 
+# ==================== Support Request（工单 / 意见反馈）====================
+
+"用户支持工单。customer 侧仅创建 + 查询自己的工单；agent 侧流转/回复接口未实现（字段已预留）。"
+type SupportRequest {
+    id: UUID!
+    title: String!
+    message: String!
+    email: String
+    phone: String
+    "工单分类 Int 码（0=UNSPECIFIED,10=BUG,20=FEATURE_REQUEST,30=ACCOUNT,40=PAYMENT,50=CONTENT_ERROR,100=OTHER；允许未登记值）"
+    category: Int!
+    "工单状态 Int 码：10=OPEN,20=IN_PROGRESS,30=PENDING_CUSTOMER,40=RESOLVED,50=CLOSED"
+    status: Int!
+    attachments: [MediaRef!]
+    locale: String
+    country: String
+    currency: String
+    createdAt: DateTime!
+    updatedAt: DateTime
+    firstRepliedAt: DateTime
+    lastAgentRepliedAt: DateTime
+    lastCustomerRepliedAt: DateTime
+    resolvedAt: DateTime
+    closedAt: DateTime
+}
+
+type SupportRequestPage {
+    items: [SupportRequest!]!
+    pageInfo: PageInfo!
+}
+
+"创建工单。身份/installId/locale 由 header 推导；status 固定 OPEN，客户端不可指定。"
+input CreateSupportRequestInput {
+    title: String!
+    message: String!
+    "工单分类 Int 码，默认 0，允许未登记值"
+    category: Int! = 0
+    email: String
+    phone: String
+    attachments: [MediaInput!]
+}
+
+type CreateSupportRequestResult {
+    id: UUID!
+}
+
+input ListSupportRequestsInput {
+    cursor: String
+    limit: Int
+}
+
 extend type Mutation {
     m_cs_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackResult!
+    "创建工单（意见反馈 / 联系我们）。"
+    m_cs_createSupportRequest(input: CreateSupportRequestInput!): CreateSupportRequestResult!
+}
+
+extend type Query {
+    "我的工单详情（需登录，仅本人）。"
+    q_cs_mySupportRequestById(id: UUID!): SupportRequest!
+    "我的工单列表（需登录，按创建时间倒序游标翻页）。"
+    q_cs_mySupportRequests(input: ListSupportRequestsInput): SupportRequestPage!
 }

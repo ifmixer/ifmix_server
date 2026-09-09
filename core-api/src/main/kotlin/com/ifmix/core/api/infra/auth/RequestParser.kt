@@ -125,6 +125,10 @@ class RequestParser(private val jwt: AuthJwtService) {
 
     fun parseClientIp(request: HttpServletRequest): String = ClientIpResolver.resolve(request)
 
+    /** x-install-id：客户端安装标识，原样透传（trim，仅记录用途，不校验格式）。缺失返回 null。 */
+    fun parseInstallId(request: HttpServletRequest): String? =
+        request.getHeader(RequestHeaders.INSTALL_ID)?.trim()?.takeIf { it.isNotEmpty() }
+
     /** 通用 header：required 且缺失→抛；有值则经 normalize 规范化+校验（非法在 normalize 内抛）。 */
     private fun parseHeader(
         request: HttpServletRequest,
