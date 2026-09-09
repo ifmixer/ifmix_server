@@ -112,6 +112,23 @@ type UpdateScanResult {
     scanRecord: ScanRecord
 }
 
+"批量更新 scan（当前主要用于批量设置 collected）。仅影响调用者本人拥有的记录。"
+input BatchUpdateScanInput {
+    "要更新的 scan id 列表（仅本人拥有的会被更新）"
+    ids: [UUID!]!
+    set: BatchUpdateScanSetInput!
+}
+
+input BatchUpdateScanSetInput {
+    collected: Boolean
+    isPublic: Boolean
+}
+
+type BatchUpdateScanResult {
+    "实际更新的记录数（不属于调用者的 id 不计入）"
+    updatedCount: Int!
+}
+
 type DeleteScanResult {
     success: Boolean!
 }
@@ -201,6 +218,7 @@ extend type Mutation {
     m_ai_createScan(input: NewScanInput!): NewScanResult!
     m_ai_runDeepResearch(input: RunDeepResearchInput!): RunDeepResearchResult!
     m_ai_updateScan(input: UpdateScanInput!): UpdateScanResult!
+    m_ai_batchUpdateScan(input: BatchUpdateScanInput!): BatchUpdateScanResult!
     m_ai_deleteScan(id: UUID!): DeleteScanResult!
     m_ai_addCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemResult!
     m_ai_removeCollectionItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsResult!

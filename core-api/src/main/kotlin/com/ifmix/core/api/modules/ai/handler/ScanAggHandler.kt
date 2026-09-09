@@ -104,6 +104,23 @@ class ScanAggHandler(
         return true
     }
 
+    /**
+     * 批量更新 scan（owner-scoped）：仅影响调用者本人拥有的记录，返回实际更新数。
+     * ids 为空视为非法请求。
+     */
+    fun batchUpdateScan(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): Int {
+        val appId = sc.op.mustGetAppId()
+        val customerId = sc.op.mustGetActorId()
+        if (input.ids.isEmpty()) throw com.ifmix.core.api.infra.http.ApiError(
+            com.ifmix.core.api.infra.http.ErrorCode.INVALID_REQUEST, "ids cannot be empty"
+        )
+        return scanRepo.batchPartialUpdate(
+            sc, appId, customerId, input.ids,
+            collected = input.set.collected,
+            isPublic = input.set.isPublic,
+        )
+    }
+
     fun deleteScan(sc: ModuleCtx, id: UUID): Boolean {
         val appId = sc.op.mustGetAppId()
         scanRepo.deleteById(sc, appId, id)

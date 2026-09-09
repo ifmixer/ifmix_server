@@ -150,6 +150,13 @@ class AiFetcher(
         }
     }
 
+    @DgsMutation(field = "m_ai_batchUpdateScan")
+    fun batchUpdateScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): com.ifmix.core.api.generated.types.BatchUpdateScanResult {
+        val ctx = ctxProvider.fromDfe(dfe)
+        val updated = globalTx.withTx(ctx) { txCtx -> aiService.batchUpdateScan(txCtx, input) }
+        return com.ifmix.core.api.generated.types.BatchUpdateScanResult(updatedCount = updated)
+    }
+
     @DgsMutation(field = "m_ai_deleteScan")
     fun deleteScanById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DeleteScanResult {
         val ctx = ctxProvider.fromDfe(dfe)

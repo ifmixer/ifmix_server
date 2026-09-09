@@ -77,6 +77,30 @@ class ScanRecordRepository {
     fun save(mc: ModuleCtx, entity: ScanRecord) = tpl.save(mc, entity)
     fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
 
+    /**
+     * 批量部分更新（owner-scoped）：仅更新 appId + customerId 名下、且 id 在列表内的记录。
+     * 非本人拥有的 id 不会被更新，天然完成 owner 校验。返回实际更新行数。
+     * ids 为空返回 0；set 中所有字段为 null 返回 0（无字段可更新）。
+     */
+    fun batchPartialUpdate(
+        mc: ModuleCtx,
+        appId: UUID,
+        customerId: UUID,
+        ids: Collection<UUID>,
+        collected: Boolean?,
+        isPublic: Boolean?,
+    ): Int {
+        if (ids.isEmpty()) return 0
+        if (collected == null && isPublic == null) return 0
+        return mc.sql.createUpdate(ScanRecord::class) {
+            where(table.appId eq appId)
+            where(table.customerId eq customerId)
+            where(table.id valueIn ids)
+            collected?.let { set(table.collected, it) }
+            isPublic?.let { set(table.isPublic, it) }
+        }.execute()
+    }
+
     /** 合并：把 fromCustomerId 名下扫描记录归属改到 toCustomerId。返回改写行数。 */
     fun reassignOwner(mc: ModuleCtx, appId: UUID, fromCustomerId: UUID, toCustomerId: UUID): Int =
         mc.sql.createUpdate(ScanRecord::class) {

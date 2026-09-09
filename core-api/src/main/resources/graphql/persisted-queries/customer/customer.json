@@ -1,5 +1,6 @@
 {
   "m_ai_addCollectionItem": "mutation AddCollectionItem($input: AddScanCollectionItemInput!) { result: m_ai_addCollectionItem(input: $input) { collectionId alreadyExists } }",
+  "m_ai_batchUpdateScan": "mutation BatchUpdateScan($input: BatchUpdateScanInput!) { result: m_ai_batchUpdateScan(input: $input) { updatedCount } }",
   "m_ai_createScan": "mutation CreateScan($input: NewScanInput!) { result: m_ai_createScan(input: $input) { scanRecord { id images { key category } basicResult status deepResearch { id premiumResult createdAt updatedAt } hasDeepSearch locale country currency userDisplayName userNotes collected isPublic createdAt updatedAt } } }",
   "m_ai_deleteScan": "mutation DeleteScan($id: UUID!) { result: m_ai_deleteScan(id: $id) { success } }",
   "m_ai_removeCollectionItems": "mutation RemoveCollectionItems($input: RemoveScanCollectionItemsInput!) { result: m_ai_removeCollectionItems(input: $input) { removedCount } }",

@@ -52,6 +52,9 @@ class AiFacade(
     fun updateScan(opCtx: OperationContext, input: UpdateScanInput): Boolean =
         scanHandler.updateScan(mcFactory.forApp(opCtx), input)
 
+    fun batchUpdateScan(opCtx: OperationContext, input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): Int =
+        scanHandler.batchUpdateScan(mcFactory.forApp(opCtx), input)
+
     fun deleteScan(opCtx: OperationContext, id: UUID): Boolean =
         scanHandler.deleteScan(mcFactory.forApp(opCtx), id)
 
