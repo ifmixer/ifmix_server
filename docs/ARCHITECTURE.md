@@ -283,12 +283,24 @@ DB (via Jimmer KSqlClient)
 |--------|------|------|
 | `x-app-id` | UUID | 应用 ID（必填） |
 | `x-install-id` | UUID | 设备安装 ID |
-| `x-locale` | IETF BCP 47 | 用户语言偏好，如 `zh-CN`, `en-US`, `ja-JP` |
+| `x-locale` | IETF BCP 47 | 用户语言偏好。归一到受支持集，不支持则视为未提供（null）。支持 10 种：`en`, `zh-CN`, `zh-TW`, `ja`, `fr`, `es`, `pt`, `de`, `it`, `nl`（归一规则见下方「locale 归一」） |
 | `x-country` | ISO 3166-1 alpha-2, 大写 | 用户所在国家，如 `US`, `GB`, `JP`, `MY`, `SG`, `CN` |
 | `x-currency` | ISO 4217, 大写 | 用户货币偏好，如 `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD` |
 | `x-client-platform` | `ios` \| `android` | 客户端平台 |
 | `x-native-version` | 字符串 | 原生版本号 |
 | `x-js-version` | 字符串 | JS Bundle 版本号 |
+
+#### locale 归一
+
+`x-locale` 在 `RequestParser.parseLocale` 入口归一到受支持集，落库/透传的一律是规范值或 `null`（不支持不抛错，视为未提供，由下游各自兜底）。以后加语言只改 `RequestParser.normalizeLocale`。
+
+支持集（10 种）：`en`, `zh-CN`, `zh-TW`, `ja`, `fr`, `es`, `pt`, `de`, `it`, `nl`
+
+- 非中文按 language subtag 归并：`en-US`/`en-GB` → `en`，`pt-BR` → `pt`，`ja-JP` → `ja`，依此类推。
+- 中文按 script/region 分简繁：
+  - 简体：`zh` / `zh-Hans*` / `zh-CN` / `zh-SG` / `zh-MY` → `zh-CN`（裸 `zh` 默认简体）
+  - 繁体：`zh-TW` / `zh-HK` / `zh-MO` / `zh-Hant*` → `zh-TW`
+- 其它语言（`ko`/`ru`/…）或无法解析 → `null`
 
 ## 环境变量
 

@@ -98,14 +98,26 @@ class RequestParser(private val jwt: AuthJwtService) {
         }
     }
 
-    /** x-locale：规范化为 BCP 47（zh-cn→zh-CN）；非法抛。 */
-    fun parseLocale(request: HttpServletRequest, required: Boolean = false): String? =
-        parseHeader(request, RequestHeaders.LOCALE, required) { raw ->
-            if (!raw.matches(LOCALE_RE)) throw ApiError(ErrorCode.INVALID_REQUEST, "invalid ${RequestHeaders.LOCALE}")
-            java.util.Locale.forLanguageTag(raw).toLanguageTag().also {
-                if (it == "und") throw ApiError(ErrorCode.INVALID_REQUEST, "invalid ${RequestHeaders.LOCALE}")
-            }
+    /**
+     * x-locale：归一到受支持的语言集（方案 B）。不在支持集内 / 无法识别 → null（不抛错）。
+     *
+     * 支持集（10 种，BCP 47）：en, zh-CN, zh-TW, ja, fr, es, pt, de, it, nl。
+     * 归一规则：按 language subtag 归并（en-US→en、pt-BR→pt…）；中文按 script/region 分简繁
+     * （zh / zh-Hans* / zh-SG / zh-MY → zh-CN；zh-TW / zh-HK / zh-MO / zh-Hant* → zh-TW）。
+     * 以后加语言只改 [normalizeLocale]。
+     */
+    fun parseLocale(request: HttpServletRequest, required: Boolean = false): String? {
+        val raw = request.getHeader(RequestHeaders.LOCALE)?.takeIf { it.isNotBlank() }
+        if (raw == null) {
+            if (required) throw ApiError(ErrorCode.INVALID_REQUEST, "${RequestHeaders.LOCALE} is required")
+            return null
         }
+        val normalized = normalizeLocale(raw)
+        if (normalized == null && required) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "unsupported ${RequestHeaders.LOCALE}")
+        }
+        return normalized
+    }
 
     /** x-currency：ISO 4217 三字母，规范化大写；非法抛。 */
     fun parseCurrency(request: HttpServletRequest, required: Boolean = false): String? =
@@ -149,9 +161,38 @@ class RequestParser(private val jwt: AuthJwtService) {
     companion object {
         private const val ATTR_APP_ID = "com.ifmix.parsed.appId"
         private const val ATTR_ACTOR = "com.ifmix.parsed.actor"
-        /** BCP 47 粗校验：语言 2-3 字母 + 可选 -地区(2 字母)或 -UN M.49(3 数字)。 */
-        private val LOCALE_RE = Regex("^[A-Za-z]{2,3}(-[A-Za-z]{2}|-[0-9]{3})?$")
         private val CURRENCY_RE = Regex("^[A-Z]{3}$")   // ISO 4217（大写后校验）
         private val COUNTRY_RE = Regex("^[A-Z]{2}$")    // ISO 3166-1 alpha-2（大写后校验）
+
+        /** 非中文的受支持语言：language subtag（小写）→ 规范值。 */
+        private val SUPPORTED_LANGS = setOf("en", "ja", "fr", "es", "pt", "de", "it", "nl")
+
+        /**
+         * 归一任意 BCP 47 输入到受支持集，识别不了返回 null。以后加语言改这里。
+         * 支持集：en, zh-CN, zh-TW, ja, fr, es, pt, de, it, nl。
+         */
+        fun normalizeLocale(raw: String): String? {
+            val locale = try {
+                java.util.Locale.forLanguageTag(raw.trim())
+            } catch (_: Exception) {
+                return null
+            }
+            val lang = locale.language.lowercase()
+            if (lang.isEmpty()) return null
+
+            if (lang == "zh") return normalizeChinese(locale)
+            return if (lang in SUPPORTED_LANGS) lang else null
+        }
+
+        /** 中文按 script/region 分简繁；裸 zh 默认简体。 */
+        private fun normalizeChinese(locale: java.util.Locale): String {
+            val script = locale.script // Hans / Hant（若 tag 带 script 或可从 region 推断）
+            if (script.equals("Hant", ignoreCase = true)) return "zh-TW"
+            if (script.equals("Hans", ignoreCase = true)) return "zh-CN"
+            return when (locale.country.uppercase()) {
+                "TW", "HK", "MO" -> "zh-TW"
+                else -> "zh-CN" // CN / SG / MY / 空 → 简体
+            }
+        }
     }
 }

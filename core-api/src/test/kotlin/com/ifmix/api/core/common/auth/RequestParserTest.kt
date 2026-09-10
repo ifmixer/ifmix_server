@@ -65,11 +65,26 @@ class RequestParserTest {
     @Test fun `country malformed throws`() {
         assertThrows<ApiError> { parser.parseCountry(req(RequestHeaders.COUNTRY to "CHN")) }
     }
-    @Test fun `locale normalized to BCP47`() {
+    @Test fun `locale normalized to supported set`() {
         assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-cn"))).isEqualTo("zh-CN")
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "en-US"))).isEqualTo("en")
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "pt-BR"))).isEqualTo("pt")
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ja-JP"))).isEqualTo("ja")
     }
-    @Test fun `locale malformed throws`() {
-        assertThrows<ApiError> { parser.parseLocale(req(RequestHeaders.LOCALE to "!!bad")) }
+    @Test fun `locale chinese simplified vs traditional`() {
+        // 简体
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh"))).isEqualTo("zh-CN")
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-Hans"))).isEqualTo("zh-CN")
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-SG"))).isEqualTo("zh-CN")
+        // 繁体
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-TW"))).isEqualTo("zh-TW")
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-HK"))).isEqualTo("zh-TW")
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-Hant-HK"))).isEqualTo("zh-TW")
+    }
+    @Test fun `locale unsupported returns null (not throw)`() {
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ko"))).isNull()
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ru-RU"))).isNull()
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "!!bad"))).isNull()
     }
     @Test fun `optional header absent returns null`() {
         assertThat(parser.parseCurrency(req())).isNull()

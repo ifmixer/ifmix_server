@@ -30,6 +30,9 @@
 | pay | `pay_store_notification` | app | StoreNotification |
 | media | `media_upload_record` | app | UploadRecord |
 | cs | `cs_feedback` | app | Feedback |
+| cs | `cs_support_request` | app | SupportRequest |
+
+> `install_id`（`InstallIdProps`，entity/common）：客户端安装标识，由 `x-install-id` header 上报，服务端仅记录（可伪造，不用于鉴权），用于行为分析。已铺到 `ai_scan_record` / `ai_scan_collection` / `cs_feedback` / `cs_support_request`（均可空）。
 
 ## Auth 身份模型映射
 
@@ -120,6 +123,9 @@
 | `ContentType` (dto/common) | `ContentTypes` | 10=IMAGE_JPEG, 20=IMAGE_PNG, 30=IMAGE_WEBP |
 | `ScanStatus` (entity/ai) | `ScanStatuses` | 20=READY（其余待补） |
 | `FeedbackTopic` (entity/cs) | `FeedbackTopics` | 0=UNKNOWN, 10=SCAN, 20=DEEP_RESEARCH, 30=APP |
+| `MediaType`（媒体大类，`MediaRef.type`）(entity/common) | `MediaTypes` | 0=UNKNOWN, 10=IMAGE, 20=VIDEO, 30=AUDIO, 40=DOCUMENT |
+| `SupportRequestStatus` (entity/cs) | `SupportRequestStatuses` | 10=OPEN, 20=IN_PROGRESS, 30=PENDING_CUSTOMER, 40=RESOLVED, 50=CLOSED |
+| `SupportRequestCategory` (entity/cs) | `SupportRequestCategories` | 0=UNSPECIFIED, 10=BUG, 20=FEATURE_REQUEST, 30=ACCOUNT, 40=PAYMENT, 50=CONTENT_ERROR, 100=OTHER（允许客户端传未登记值） |
 
 #### `Feedback.reasons`（反馈原因，多选，存于 `cs_feedback.reasons` PG `smallint[]`）
 
