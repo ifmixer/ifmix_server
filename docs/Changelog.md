@@ -2,6 +2,13 @@
 
 本文件按时间倒序记录 core-api 面向客户端/数据库的变更。DateTime 用 ISO-8601；数据库变更标注对应 Flyway 版本。
 
+## 2026-09-12
+
+### Changed
+- **DB 迁移 squash**：历史 `V1`–`V10` 合并为单个 `V1__baseline.sql`（未上线，不考虑兼容性）。
+  baseline 由 `core_api_local`（v10 真实态）`pg_dump --schema-only` 生成，剔除 `flyway_schema_history`；
+  已在全新库验证：应用后与原 v10 schema **列/索引零差异**。旧环境需 drop 库后用新 `V1` 重新迁移。
+
 ## 2026-09-10
 
 ### Changed
