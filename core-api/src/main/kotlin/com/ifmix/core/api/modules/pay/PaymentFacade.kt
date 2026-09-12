@@ -19,12 +19,12 @@ class PaymentFacade(
      */
     fun verifyIapPurchase(ctx: OperationContext, req: VerifyReq): VerifyRes {
         val verifyResult = handler.verifyPurchase(req)
-        return handler.verifyAndUpsert(mcFactory.forApp(ctx), req, verifyResult)
+        return handler.verifyAndUpsert(mcFactory.forProject(ctx), req, verifyResult)
     }
 
     fun handleAppleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) =
-        webhookHandler.handleAppleNotification(mcFactory.forApp(ctx), rawPayload, decoder)
+        webhookHandler.handleAppleNotification(mcFactory.forProject(ctx), rawPayload, decoder)
 
     fun handleGoogleNotification(ctx: OperationContext, rawPayload: String, decoder: NotificationDecoder) =
-        webhookHandler.handleGoogleNotification(mcFactory.forApp(ctx), rawPayload, decoder)
+        webhookHandler.handleGoogleNotification(mcFactory.forProject(ctx), rawPayload, decoder)
 }

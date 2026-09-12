@@ -117,7 +117,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
     companion object {
         /** 排查用的重要请求头（不含 Authorization，后者单独脱敏处理）。 */
         private val LOGGED_HEADERS = listOf(
-            RequestHeaders.APP_ID,
+            RequestHeaders.PROJECT_ID,
             RequestHeaders.INSTALL_ID,
             "x-api-name",
             RequestHeaders.CLIENT_PLATFORM,

@@ -25,7 +25,7 @@ class SupportRequestAggHandler(
         val now = Instant.now()
         val entity = SupportRequest {
             this.id = id
-            this.appId = op.mustGetAppId()
+            this.projectId = op.mustGetProjectId()
             this.installId = op.installId
             this.customerId = op.actorId
             this.locale = op.locale
@@ -52,19 +52,19 @@ class SupportRequestAggHandler(
 
     /** 我的工单详情（owner-scoped，需登录）。 */
     fun findMineById(mc: ModuleCtx, id: UUID): SupportRequest {
-        val appId = mc.op.mustGetAppId()
+        val projectId = mc.op.mustGetProjectId()
         val customerId = mc.op.mustGetActorId()
-        return repo.findByIdOwned(mc, appId, customerId, id)
+        return repo.findByIdOwned(mc, projectId, customerId, id)
             ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
     /** 我的工单列表（owner-scoped，需登录）。 */
     fun findMine(mc: ModuleCtx, req: ListSupportRequestsReq?): Page<SupportRequest> {
-        val appId = mc.op.mustGetAppId()
+        val projectId = mc.op.mustGetProjectId()
         val customerId = mc.op.mustGetActorId()
         val limit = (req?.limit ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
         val cursor = req?.cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-        return repo.findMineByCursor(mc, appId, customerId, limit, cursor)
+        return repo.findMineByCursor(mc, projectId, customerId, limit, cursor)
     }
 
     companion object {

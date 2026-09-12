@@ -20,20 +20,20 @@ class AuthFacade(
     private val handler: AuthAggHandler,
 ) {
     fun me(ctx: OperationContext): MeRes =
-        handler.me(mcFactory.forApp(ctx))
+        handler.me(mcFactory.forProject(ctx))
 
     fun login(ctx: OperationContext, req: LoginReq): LoginRes =
-        handler.login(mcFactory.forApp(ctx), req)
+        handler.login(mcFactory.forProject(ctx), req)
 
     fun refresh(ctx: OperationContext, req: RefreshReq): RefreshRes =
-        handler.refresh(mcFactory.forApp(ctx), req)
+        handler.refresh(mcFactory.forProject(ctx), req)
 
     fun logout(ctx: OperationContext, req: LogoutReq): LogoutRes =
-        handler.logout(mcFactory.forApp(ctx), req)
+        handler.logout(mcFactory.forProject(ctx), req)
 
     fun createAnonymousCustomer(ctx: OperationContext): CreateAnonymousRes =
-        handler.createAnonymousCustomer(mcFactory.forApp(ctx))
+        handler.createAnonymousCustomer(mcFactory.forProject(ctx))
 
     fun requestAccountDeletion(ctx: OperationContext): DeleteAccountRes =
-        handler.requestAccountDeletion(mcFactory.forApp(ctx))
+        handler.requestAccountDeletion(mcFactory.forProject(ctx))
 }

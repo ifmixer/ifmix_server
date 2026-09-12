@@ -28,7 +28,7 @@ class SecurityE2eTest : E2eTestBase() {
     inner class HeaderValidation {
 
         @Test
-        fun `missing x-app-id returns 400`() {
+        fun `missing x-project-id returns 400`() {
             webClient.put()
                 .uri("/customer/query/core/auth/me")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -37,17 +37,17 @@ class SecurityE2eTest : E2eTestBase() {
         }
 
         @Test
-        fun `invalid x-app-id format returns 400`() {
+        fun `invalid x-project-id format returns 400`() {
             webClient.put()
                 .uri("/customer/query/core/auth/me")
-                .header("x-app-id", "not-a-uuid")
+                .header("x-project-id", "not-a-uuid")
                 .contentType(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isBadRequest
         }
 
         @Test
-        fun `valid x-app-id without token returns 401`() {
+        fun `valid x-project-id without token returns 401`() {
             put("/customer/query/core/auth/me")
                 .exchange()
                 .expectStatus().isUnauthorized
@@ -61,7 +61,7 @@ class SecurityE2eTest : E2eTestBase() {
         @Test
         fun `path traversal in objectKey returns 400`() {
             post("/customer/mutation/core/storage/presignDownload")
-                .bodyValue(mapOf("imageKey" to "app_${TEST_APP_ID}/i_${TEST_INSTALL_ID}/../etc/passwd"))
+                .bodyValue(mapOf("imageKey" to "app_${TEST_PROJECT_ID}/i_${TEST_INSTALL_ID}/../etc/passwd"))
                 .exchange()
                 .expectStatus().isBadRequest
                 .expectBody().jsonPath("$.msg").value<String> { assert(it.contains("path traversal")) }
@@ -76,13 +76,13 @@ class SecurityE2eTest : E2eTestBase() {
         }
 
         @Test
-        fun `objectKey with mismatched appId returns 400`() {
+        fun `objectKey with mismatched projectId returns 400`() {
             val otherAppId = "99999999-9999-9999-9999-999999999999"
             post("/customer/mutation/core/storage/presignDownload")
                 .bodyValue(mapOf("imageKey" to "app_${otherAppId}/i_${TEST_INSTALL_ID}/file.png"))
                 .exchange()
                 .expectStatus().isBadRequest
-                .expectBody().jsonPath("$.msg").value<String> { assert(it.contains("appId mismatch")) }
+                .expectBody().jsonPath("$.msg").value<String> { assert(it.contains("projectId mismatch")) }
         }
 
         @Test

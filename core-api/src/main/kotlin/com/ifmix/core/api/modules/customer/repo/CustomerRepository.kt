@@ -2,14 +2,14 @@ package com.ifmix.core.api.modules.customer.repo
 
 import com.ifmix.core.api.entity.customer.Customer
 import com.ifmix.core.api.entity.customer.anonymous
-import com.ifmix.core.api.entity.customer.appId
+import com.ifmix.core.api.entity.customer.projectId
 import com.ifmix.core.api.entity.customer.authIdentityId
 import com.ifmix.core.api.entity.customer.id
 import com.ifmix.core.api.entity.customer.mergedTo
 import com.ifmix.core.api.entity.customer.updatedAt
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.db.UuidV7
-import com.ifmix.core.api.infra.repo.AppCrudRepoTemplate
+import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
 import org.babyfish.jimmer.sql.ast.mutation.DeleteMode
 import org.babyfish.jimmer.sql.kt.ast.expression.asc
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
@@ -24,14 +24,14 @@ import java.util.UUID
 
 @Repository
 class CustomerRepository {
-    companion object { private val tpl = AppCrudRepoTemplate(Customer::class) }
+    companion object { private val tpl = ProjectCrudRepoTemplate(Customer::class) }
 
-    fun createCustomer(mc: ModuleCtx, appId: UUID): UUID {
+    fun createCustomer(mc: ModuleCtx, projectId: UUID): UUID {
         val now = Instant.now()
         val id = UuidV7.generate()
         val entity = Customer {
             this.id = id
-            this.appId = appId
+            this.projectId = projectId
             this.anonymous = true
             this.mergedTo = null
             this.createdAt = now
@@ -42,47 +42,47 @@ class CustomerRepository {
     }
 
     /** 转正：匿名 → 非匿名（登录且无需迁移时）。 */
-    fun promote(mc: ModuleCtx, appId: UUID, id: UUID): Int =
+    fun promote(mc: ModuleCtx, projectId: UUID, id: UUID): Int =
         mc.sql.createUpdate(Customer::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.id eq id)
             set(table.anonymous, false)
             set(table.updatedAt, Instant.now())
         }.execute()
 
     /** 绑定账号：设置 customer.authIdentityId（登录转正时）。 */
-    fun setAuthIdentity(mc: ModuleCtx, appId: UUID, id: UUID, authIdentityId: UUID): Int =
+    fun setAuthIdentity(mc: ModuleCtx, projectId: UUID, id: UUID, authIdentityId: UUID): Int =
         mc.sql.createUpdate(Customer::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.id eq id)
             set(table.authIdentityId, authIdentityId)
             set(table.updatedAt, Instant.now())
         }.execute()
 
     /** 合并 tombstone：将 cur 标记为已并入 existing（方向硬编码 匿名 cur → existing，R1）。 */
-    fun markMerged(mc: ModuleCtx, appId: UUID, curId: UUID, existingId: UUID): Int =
+    fun markMerged(mc: ModuleCtx, projectId: UUID, curId: UUID, existingId: UUID): Int =
         mc.sql.createUpdate(Customer::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.id eq curId)
             set(table.mergedTo, existingId)
             set(table.updatedAt, Instant.now())
         }.execute()
 
     fun save(mc: ModuleCtx, entity: Customer) = tpl.save(mc, entity)
-    fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
+    fun findById(mc: ModuleCtx, projectId: UUID, id: UUID) = tpl.findById(mc, projectId, id)
 
     /** 反查：app 内绑定该 authIdentity 的存活 customer（排除已合并 tombstone）。 */
-    fun findByAuthIdentity(mc: ModuleCtx, appId: UUID, authIdentityId: UUID): UUID? =
+    fun findByAuthIdentity(mc: ModuleCtx, projectId: UUID, authIdentityId: UUID): UUID? =
         mc.sql.createQuery(Customer::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.authIdentityId eq authIdentityId)
             where(table.mergedTo.isNull())
             select(table.id)
         }.limit(1).execute().firstOrNull()
 
-    fun findByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>) = tpl.findByIds(mc, appId, ids)
-    fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
-    fun exists(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.exists(mc, appId, id)
+    fun findByIds(mc: ModuleCtx, projectId: UUID, ids: Collection<UUID>) = tpl.findByIds(mc, projectId, ids)
+    fun deleteById(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
+    fun exists(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.exists(mc, projectId, id)
 
     // ===== 阶段 6：匿名清理 =====
 
@@ -92,9 +92,9 @@ class CustomerRepository {
      * refresh token 属 auth 模块，不在此跨模块 join（AGENTS：跨模块用逻辑外键 UUID）。
      * 按 id 升序分批，返回一批 id（幂等可重入：删掉后下批自然前移）。
      */
-    fun findAnonymousZombieCandidates(mc: ModuleCtx, appId: UUID, afterId: UUID?, limit: Int): List<UUID> =
+    fun findAnonymousZombieCandidates(mc: ModuleCtx, projectId: UUID, afterId: UUID?, limit: Int): List<UUID> =
         mc.sql.createQuery(Customer::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.anonymous eq true)
             where(table.mergedTo.isNull())
             afterId?.let { where(table.id gt it) }
@@ -106,9 +106,9 @@ class CustomerRepository {
      * 已合并 tombstone 候选：merged_to IS NOT NULL AND updatedAt < cutoff（超审计窗口）。
      * 合并事务已把资源/token 全部迁走，tombstone 是空壳，可安全删。
      */
-    fun findMergedTombstoneCandidates(mc: ModuleCtx, appId: UUID, cutoff: Instant, afterId: UUID?, limit: Int): List<UUID> =
+    fun findMergedTombstoneCandidates(mc: ModuleCtx, projectId: UUID, cutoff: Instant, afterId: UUID?, limit: Int): List<UUID> =
         mc.sql.createQuery(Customer::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.mergedTo.isNotNull())
             where(table.updatedAt lt cutoff)
             afterId?.let { where(table.id gt it) }
@@ -120,11 +120,11 @@ class CustomerRepository {
      * 物理删除 customer（绕过软删——customer 无 @LogicalDeleted，此处显式 PHYSICAL 以示意图）。
      * 仅按 id 集合删，调用方须已确保这些 id 是匿名僵尸或 tombstone。
      */
-    fun physicalDeleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int {
+    fun physicalDeleteByIds(mc: ModuleCtx, projectId: UUID, ids: Collection<UUID>): Int {
         if (ids.isEmpty()) return 0
         return mc.sql.createDelete(Customer::class) {
             setMode(DeleteMode.PHYSICAL)
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.id valueIn ids)
         }.execute()
     }

@@ -40,7 +40,7 @@ class OperationContextProvider(private val parser: RequestParser) {
             ?: throw ApiError(ErrorCode.INTERNAL, "Native HTTP request not found")
 
         // 全部解析与校验（含抛错）在 RequestParser 内完成；此处只按 require 调用 + 组装，无抛错/分支逻辑。
-        val appId = parser.parseAppId(servletRequest, requireAppId)
+        val projectId = parser.parseProjectId(servletRequest, requireAppId)
         val actor = parser.parseActor(servletRequest, requireActorType)
 
         val isMutation = dfe.executionStepInfo.parent?.type?.let {
@@ -48,7 +48,7 @@ class OperationContextProvider(private val parser: RequestParser) {
         } ?: false
 
         val ctx = OperationContext(
-            appId = appId,
+            projectId = projectId,
             actorId = actor?.actorId,
             actorType = actor?.actorType,
             anonymous = actor?.anonymous ?: false,

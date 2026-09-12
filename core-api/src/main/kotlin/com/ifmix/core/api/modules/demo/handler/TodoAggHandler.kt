@@ -25,30 +25,30 @@ class TodoAggHandler(
 
     // --- Queries ---
 
-    fun findById(mc: ModuleCtx, appId: UUID, id: UUID): Todo? =
-        todoRepo.findById(mc, appId, id)
+    fun findById(mc: ModuleCtx, projectId: UUID, id: UUID): Todo? =
+        todoRepo.findById(mc, projectId, id)
 
-    fun findByIds(mc: ModuleCtx, appId: UUID, ids: List<UUID>): List<Todo> =
-        todoRepo.findByIds(mc, appId, ids)
+    fun findByIds(mc: ModuleCtx, projectId: UUID, ids: List<UUID>): List<Todo> =
+        todoRepo.findByIds(mc, projectId, ids)
 
-    fun findTodos(mc: ModuleCtx, appId: UUID, findOptions: CommonFindOptions?): Page<Todo> =
-        todoRepo.findByOptions(mc, appId, findOptions)
+    fun findTodos(mc: ModuleCtx, projectId: UUID, findOptions: CommonFindOptions?): Page<Todo> =
+        todoRepo.findByOptions(mc, projectId, findOptions)
 
-    fun findItemsByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>): List<TodoItem> =
-        todoItemRepo.findByTodoIds(mc, appId, todoIds)
+    fun findItemsByTodoIds(mc: ModuleCtx, projectId: UUID, todoIds: Collection<UUID>): List<TodoItem> =
+        todoItemRepo.findByTodoIds(mc, projectId, todoIds)
 
-    fun countItemsByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>) =
-        todoItemRepo.countByTodoIds(mc, appId, todoIds)
+    fun countItemsByTodoIds(mc: ModuleCtx, projectId: UUID, todoIds: Collection<UUID>) =
+        todoItemRepo.countByTodoIds(mc, projectId, todoIds)
 
     // --- Mutations ---
 
     fun create(mc: ModuleCtx, input: CreateTodoInput): Todo {
-        val appId = mc.mustGetAppId()
+        val projectId = mc.mustGetProjectId()
         val now = Instant.now()
         val id = UuidV7.generate()
         val todo = Todo {
             this.id = id
-            this.appId = appId
+            this.projectId = projectId
             this.title = input.title
             this.done = input.done ?: false
             this.note = input.note
@@ -63,7 +63,7 @@ class TodoAggHandler(
         input.items?.forEach { item ->
             val todoItem = TodoItem {
                 this.id = UuidV7.generate()
-                this.appId = appId
+                this.projectId = projectId
                 this.todoId = id
                 this.content = item.content
                 this.done = item.done ?: false
@@ -74,41 +74,41 @@ class TodoAggHandler(
             todoItemRepo.save(mc, todoItem)
         }
 
-        return todoRepo.findById(mc, appId, id)!!
+        return todoRepo.findById(mc, projectId, id)!!
     }
 
-    fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoInput) {
-        todoRepo.partialUpdate(mc, appId, input)
+    fun partialUpdate(mc: ModuleCtx, projectId: UUID, input: UpdateTodoInput) {
+        todoRepo.partialUpdate(mc, projectId, input)
     }
 
-    fun batchUpdateItems(mc: ModuleCtx, appId: UUID, input: UpdateTodoItemsMutationInput) {
+    fun batchUpdateItems(mc: ModuleCtx, projectId: UUID, input: UpdateTodoItemsMutationInput) {
         // Delete
         input.delete?.let { ids ->
-            if (ids.isNotEmpty()) todoItemRepo.deleteByIds(mc, appId, ids)
+            if (ids.isNotEmpty()) todoItemRepo.deleteByIds(mc, projectId, ids)
         }
 
         // Create
         input.create?.forEach { item ->
-            createItem(mc, appId, item)
+            createItem(mc, projectId, item)
         }
 
         // Update
         input.update?.forEach { entry ->
-            todoItemRepo.partialUpdate(mc, appId, entry)
+            todoItemRepo.partialUpdate(mc, projectId, entry)
         }
     }
 
-    fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean =
-        todoRepo.deleteById(mc, appId, id)
+    fun deleteById(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean =
+        todoRepo.deleteById(mc, projectId, id)
 
-    fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: List<UUID>): Int =
-        todoRepo.deleteByIds(mc, appId, ids)
+    fun deleteByIds(mc: ModuleCtx, projectId: UUID, ids: List<UUID>): Int =
+        todoRepo.deleteByIds(mc, projectId, ids)
 
-    private fun createItem(mc: ModuleCtx, appId: UUID, item: CreateTodoItemForTodoInput) {
+    private fun createItem(mc: ModuleCtx, projectId: UUID, item: CreateTodoItemForTodoInput) {
         val now = Instant.now()
         val todoItem = TodoItem {
             this.id = UuidV7.generate()
-            this.appId = appId
+            this.projectId = projectId
             this.todoId = item.todoId
             this.content = item.content
             this.done = item.done ?: false

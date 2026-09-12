@@ -20,7 +20,7 @@ data class VerifyInput(
     val platform: Int,
     val purchaseToken: String,
     val productId: String,
-    val appId: String,
+    val projectId: String,
 )
 
 /** 验证结果。 */

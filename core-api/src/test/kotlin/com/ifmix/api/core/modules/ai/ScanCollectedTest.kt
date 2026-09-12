@@ -41,7 +41,7 @@ class ScanCollectedTest {
         scanPrompt = ScanPrompt("v10"),
     )
 
-    private fun opCtx() = OperationContext(appId = UUID.randomUUID(), actorId = UUID.randomUUID())
+    private fun opCtx() = OperationContext(projectId = UUID.randomUUID(), actorId = UUID.randomUUID())
 
     private fun input(collected: Boolean?) = NewScanInput(
         images = listOf(NewScanImageInput(imageKey = "k.jpg", category = 0, mediaType = "image/jpeg")),

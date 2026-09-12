@@ -1,6 +1,6 @@
 package com.ifmix.core.api.entity.demo
 
-import com.ifmix.core.api.entity.common.BaseAppEntity
+import com.ifmix.core.api.entity.common.BaseProjectEntity
 import com.ifmix.core.api.entity.common.CustomerIdProps
 import com.ifmix.core.api.entity.common.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
@@ -10,7 +10,7 @@ import org.babyfish.jimmer.sql.*
  */
 @Entity
 @Table(name = "demo_todo")
-interface Todo : BaseAppEntity, SoftDeletableProps, CustomerIdProps {
+interface Todo : BaseProjectEntity, SoftDeletableProps, CustomerIdProps {
 
     val title: String
     val done: Boolean

@@ -15,8 +15,8 @@ class StorageFacade(
     private val handler: StorageAggHandler,
 ) {
     fun presignUpload(opCtx: OperationContext, input: PresignUploadInput): PresignUploadResult =
-        handler.presignUpload(mcFactory.forApp(opCtx), input)
+        handler.presignUpload(mcFactory.forProject(opCtx), input)
 
     fun presignDownload(opCtx: OperationContext, input: PresignDownloadInput): PresignDownloadResult =
-        handler.presignDownload(mcFactory.forApp(opCtx), input)
+        handler.presignDownload(mcFactory.forProject(opCtx), input)
 }

@@ -94,7 +94,7 @@ Repo         →  持有 CrudRepoTemplate（companion object）
 | pay | Apple/Google 购买验证、订阅管理、Webhook(JWS 验签)、Tier 映射 |
 | cs | 用户反馈（customer support） |
 | media | 预签名上传/下载 |
-| app | AppConfig 版本管理、AppInfo |
+| project | ProjectConfig 版本管理、ProjectInfo |
 
 > 匿名 Customer 清理等批处理任务在 **core-job**（Spring Batch），不在 core-api。
 > 认证详细设计见 [AUTH_DESIGN.md](AUTH_DESIGN.md)
@@ -116,20 +116,20 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   ├── webhooks/               # WebhookController (Apple/Google IAP REST)
 │   └── wellknown/              # JwksController
 ├── entity/                      # Jimmer interface entity (直出 GraphQL)
-│   ├── common/                 # 基类 + 跨模块枚举: BaseEntity, BaseAppEntity, UUIDProps, MutableProps, SoftDeletableProps, AppScopedProps, CustomerOwnedProps, Platforms, Tiers
+│   ├── common/                 # 基类 + 跨模块枚举: BaseEntity, BaseProjectEntity, UUIDProps, MutableProps, SoftDeletableProps, ProjectScopedProps, CustomerOwnedProps, Platforms, Tiers
 │   ├── ai/                     # ScanRecord, ScanCollection, ScanCollectionItem, ScanDeepResearch, AgnesKey, ImageRef
-│   ├── auth/                   # Idp, IdpIdentity, AuthIdentity, AuthIdentityIdpRelation, AppToIdpRelation, RefreshToken
+│   ├── auth/                   # Idp, IdpIdentity, AuthIdentity, AuthIdentityIdpRelation, ProjectToIdpRelation, RefreshToken
 │   ├── customer/               # Customer
 │   ├── pay/                    # Subscription, StoreNotification
 │   ├── demo/                   # Todo, TodoItem, TodoRecommend
-│   ├── app/                    # AppConfigRevision, AppInfo, ConfigTypes
+│   ├── project/                    # ProjectConfigRevision, ProjectInfo, ConfigTypes
 │   ├── cs/                     # Feedback
 │   └── media/                  # UploadRecord
 ├── modules/
 │   ├── auth/
 │   │   ├── AuthFacade.kt
 │   │   ├── handler/AuthAggHandler.kt
-│   │   ├── repo/               # IdpRepository, IdpIdentityRepository, AuthIdentityRepository, AuthIdentityIdpRelationRepository, AppToIdpRelationRepository, RefreshTokenRepository
+│   │   ├── repo/               # IdpRepository, IdpIdentityRepository, AuthIdentityRepository, AuthIdentityIdpRelationRepository, ProjectToIdpRelationRepository, RefreshTokenRepository
 │   │   ├── AuthConfig.kt, ProviderVerifier.kt
 │   │   ├── AuthLoggedInEvent.kt
 │   │   └── MergeOnLoginListener.kt
@@ -154,9 +154,9 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   │   ├── StorageFacade.kt
 │   │   ├── handler/StorageAggHandler.kt
 │   │   └── repo/
-│   ├── app/
-│   │   ├── AppConfigFacade.kt
-│   │   ├── handler/AppConfigAggHandler.kt
+│   ├── project/
+│   │   ├── ProjectConfigFacade.kt
+│   │   ├── handler/ProjectConfigAggHandler.kt
 │   │   └── repo/
 │   └── demo/
 │       ├── DemoFacade.kt
@@ -167,9 +167,9 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   ├── db/                     # ModuleCtx, ModuleCtxFactory, ClusterRouter, ClusterSqlPair, UuidV7
 │   ├── tx/                     # TxRunner, GlobalTxRunner, TxPropagation
 │   ├── jimmer/                 # ClusterRegistry, ClusterProperties, JimmerConfig
-│   │                           # ReadWriteRoutingDataSource, AppScopedFilter, TimestampDraftInterceptor
+│   │                           # ReadWriteRoutingDataSource, ProjectScopedFilter, TimestampDraftInterceptor
 │   │                           # OperationContextHolder
-│   ├── repo/                   # CrudRepoTemplate, AppCrudRepoTemplate, FilterGroupResolver
+│   ├── repo/                   # CrudRepoTemplate, ProjectCrudRepoTemplate, FilterGroupResolver
 │   ├── codec/                  # Base58 (UUID ↔ 22-char URL-safe)
 │   ├── graphql/                # OperationContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
 │   ├── http/                   # OperationContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
@@ -188,7 +188,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 
 ## GraphQL 设计
 
-- **Endpoint**: `POST /customer/core/gql`（需 `x-app-id` header）
+- **Endpoint**: `POST /customer/core/gql`（需 `x-project-id` header）
 - **GraphiQL**: `/apidocs/core/customer/gql`
 - **Operation 命名**: `${q|m}_${module}_${action}`（如 `q_demo_findTodos`, `m_auth_login`）
 - **DateTime**: ISO-8601 UTC 字符串（输入接受 ISO 或 epoch millis）
@@ -220,7 +220,7 @@ DB (via Jimmer KSqlClient)
 
 ## 存储上传
 
-- objectKey: `app/{base58_appId}/{category}/install/{base58_installId}/{base58_mediaId}.{ext}`
+- objectKey: `project/{base58_projectId}/{category}/install/{base58_installId}/{base58_mediaId}.{ext}`
 - Base58 仅用于 objectKey（URL 场景）
 - presignUpload 不要求登录
 - 格式校验防路径遍历
@@ -239,7 +239,7 @@ DB (via Jimmer KSqlClient)
 | 2 | Jimmer 替代 jOOQ | Interface entity + KSP + Draft DSL + 直出 GraphQL |
 | 3 | GlobalTxRunner 在 DataFetcher 层 | 显式事务边界，整个 mutation field 一个事务 |
 | 4 | Facade 只构造 mc + 转发 | 不做 cache/tx，保持 thin |
-| 5 | CrudRepoTemplate 分两类 | `CrudRepoTemplate`(全局) + `AppCrudRepoTemplate`(强制 appId)，类型安全 |
+| 5 | CrudRepoTemplate 分两类 | `CrudRepoTemplate`(全局) + `ProjectCrudRepoTemplate`(强制 projectId)，类型安全 |
 | 6 | Template 单条返回 Boolean，batch 返回 Int | 语义清晰 |
 | 7 | Template 必须提供 batch 方法 | findByIds/existsByIds/batchSave/deleteByIds |
 | 8 | Entity 直出 GraphQL | 零 DTO 转换 |
@@ -253,7 +253,7 @@ DB (via Jimmer KSqlClient)
 | 16 | DateTime 统一 ISO-8601 字符串 | GraphQL 输出 + JSONB 存储一致 |
 | 17 | IDP 模型替代 AuthTenant | 去掉 tenant 层，简化为 IDP + relation |
 | 18 | 跨模块用逻辑外键 UUID | 不用 Jimmer `@ManyToOne`，保持模块独立 |
-| 19 | BaseEntity / BaseAppEntity 基类 | 减少样板：`id + createdAt + updatedAt`（+ appId） |
+| 19 | BaseEntity / BaseProjectEntity 基类 | 减少样板：`id + createdAt + updatedAt`（+ projectId） |
 | 20 | 表名带模块前缀 | `auth_idp`, `demo_todo`, `pay_subscription` |
 | 21 | payment→pay, storage→media | 包名/表名统一短名 |
 | 22 | @Service/@Component 直注册 | 不在 Config 间接注册 |
@@ -261,18 +261,18 @@ DB (via Jimmer KSqlClient)
 | 24 | AI ScanRunner 每个模型遍历所有 key | 不是只试一个就跳下一个模型 |
 | 25 | 限流超限不删 Redis key | 让 key 自然 TTL 过期 |
 | 26 | objectKey 强格式校验 | 防路径遍历 |
-| 27 | Webhook 必须验签 | Apple JWS / Google 通过 packageName 反查 appId |
+| 27 | Webhook 必须验签 | Apple JWS / Google 通过 packageName 反查 projectId |
 | 28 | CacheAside 显式调用 | 不用 @Cacheable 魔法 |
 | 29 | objectKey UUID 用 Base58 | URL 场景缩短路径 |
 | 30 | CommonFindOptions + findByOptions | 通用分页查询模板（filter/cursor/sort/limit） |
 | 31 | 三模块拆分 core-common/core-api/core-job | 批处理与 web 分离；共享库无 Spring 依赖 |
 | 32 | Flyway 手动 flywayMigrate，不随启动 | 多实例部署避免并发 migrate 竞争，迁移显式可控 |
-| 33 | AuthIdentity 账号中枢 + Customer/IdpIdentity 关系表 | 账号资料与 app 级用户分离；IdpIdentity↔AuthIdentity 用 M:N 关系表 |
+| 33 | AuthIdentity 账号中枢 + Customer/IdpIdentity 关系表 | 账号资料与 project 级用户分离；IdpIdentity↔AuthIdentity 用 M:N 关系表 |
 | 34 | 匿名 Customer 清理迁到 core-job | 批处理任务不占 web 进程，Spring Batch 编排 |
 
 ## API 约定
 
-- GraphQL: `/customer/core/gql`（`x-app-id` 必填）
+- GraphQL: `/customer/core/gql`（`x-project-id` 必填）
 - Webhook: `POST /webhooks/iap/*`（JWS 验签）
 - JWKS: `GET /.well-known/jwks`
 - REST 响应: `Envelope<T>` (`{code, msg, data}`)
@@ -281,7 +281,7 @@ DB (via Jimmer KSqlClient)
 
 | Header | 格式 | 说明 |
 |--------|------|------|
-| `x-app-id` | UUID | 应用 ID（必填） |
+| `x-project-id` | UUID | 应用 ID（必填） |
 | `x-install-id` | UUID | 设备安装 ID |
 | `x-locale` | IETF BCP 47 | 用户语言偏好。归一到受支持集，不支持则视为未提供（null）。支持 10 种：`en`, `zh-CN`, `zh-TW`, `ja`, `fr`, `es`, `pt`, `de`, `it`, `nl`（归一规则见下方「locale 归一」） |
 | `x-country` | ISO 3166-1 alpha-2, 大写 | 用户所在国家，如 `US`, `GB`, `JP`, `MY`, `SG`, `CN` |
@@ -352,7 +352,7 @@ DB (via Jimmer KSqlClient)
 | 2026-08-22 | 表名重命名 + payment→pay, storage→media |
 | 2026-08-22 | DateTime 统一 ISO-8601 |
 | 2026-08-23 | Auth 重设计：IDP 模型 |
-| 2026-08-23 | BaseEntity/BaseAppEntity 基类 |
+| 2026-08-23 | BaseEntity/BaseProjectEntity 基类 |
 | 2026-08-23 | CommonFindOptions 通用查询 |
 | 2026-09-02 | 三模块拆分（core-common / core-api / core-job） |
 | 2026-09-02 | 身份模型重构：AuthIdentity 账号中枢 + Customer + M:N 关系表 |

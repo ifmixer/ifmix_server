@@ -26,7 +26,7 @@ open class ScanCollectionAggHandler(
         val id = UuidV7.generate()
         val model = ScanCollection {
             this.id = id
-            this.appId = sc.appId!!
+            this.projectId = sc.projectId!!
             this.customerId = ctx.actorId
             this.installId = ctx.installId
             this.isDefault = true
@@ -38,7 +38,7 @@ open class ScanCollectionAggHandler(
     }
 
     fun addItem(sc: ModuleCtx, collectionId: UUID, req: AddItemReq): AddItemRes {
-        val itemId = itemRepo.insertIfAbsent(sc, sc.appId!!, collectionId, req.scanRecordId)
+        val itemId = itemRepo.insertIfAbsent(sc, sc.projectId!!, collectionId, req.scanRecordId)
         return AddItemRes(id = itemId)
     }
 
@@ -46,19 +46,19 @@ open class ScanCollectionAggHandler(
         if (req.scanRecordIds.isEmpty()) throw com.ifmix.core.api.infra.http.ApiError(
             com.ifmix.core.api.infra.http.ErrorCode.INVALID_REQUEST, "scanRecordIds cannot be empty"
         )
-        val deletedCount = itemRepo.softDeleteByScanIds(sc, sc.appId!!, collectionId, req.scanRecordIds)
+        val deletedCount = itemRepo.softDeleteByScanIds(sc, sc.projectId!!, collectionId, req.scanRecordIds)
         return RemoveItemsRes(removed = deletedCount.toInt())
     }
 
     fun getDefault(sc: ModuleCtx): ScanCollection? {
         val ctx = sc.op
-        val appId = ctx.appId!!
-        return collectionRepo.findDefault(sc, appId, ctx.actorId)
+        val projectId = ctx.projectId!!
+        return collectionRepo.findDefault(sc, projectId, ctx.actorId)
     }
 
     fun findItemsByCursor(sc: ModuleCtx, collectionId: UUID, limit: Int?): Page<ScanCollectionItem> {
-        val appId = sc.op.appId!!
+        val projectId = sc.op.projectId!!
         val effectiveLimit = limit ?: 20
-        return itemRepo.findItemsByCursor(sc, appId, collectionId, effectiveLimit, null)
+        return itemRepo.findItemsByCursor(sc, projectId, collectionId, effectiveLimit, null)
     }
 }

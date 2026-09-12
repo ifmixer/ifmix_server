@@ -1,6 +1,6 @@
 package com.ifmix.core.api.entity.media
 
-import com.ifmix.core.api.entity.common.AppScopedProps
+import com.ifmix.core.api.entity.common.ProjectScopedProps
 import com.ifmix.core.api.entity.common.ActorType
 import com.ifmix.core.api.entity.common.UUIDProps
 import com.ifmix.core.api.entity.common.CreatedAtProps
@@ -13,7 +13,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "media_upload_record")
-interface UploadRecord : UUIDProps, AppScopedProps, CreatedAtProps {
+interface UploadRecord : UUIDProps, ProjectScopedProps, CreatedAtProps {
 
     /** 逻辑外键 → 主体 id（customer / manager，跨模块） */
     val actorId: UUID

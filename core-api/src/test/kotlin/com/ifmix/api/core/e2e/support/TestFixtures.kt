@@ -13,7 +13,7 @@ import java.util.UUID
 class TestFixtures(private val jdbcTemplate: JdbcTemplate) {
 
     companion object {
-        val APP_ID: UUID = UUID.fromString(E2eTestBase.TEST_APP_ID)
+        val PROJECT_ID: UUID = UUID.fromString(E2eTestBase.TEST_PROJECT_ID)
         val TENANT_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000010")
     }
 
@@ -30,23 +30,23 @@ class TestFixtures(private val jdbcTemplate: JdbcTemplate) {
             TENANT_ID.toString()
         )
 
-        // 2. AppInfo
+        // 2. ProjectInfo
         jdbcTemplate.update(
             """INSERT INTO core_app_info (id, name, slug, created_at, updated_at)
                VALUES (?::uuid, 'Test App', 'test-app', now(), now())
                ON CONFLICT (id) DO NOTHING""",
-            APP_ID.toString()
+            PROJECT_ID.toString()
         )
 
-        // 3. AppConfigRevision (new schema: content JSONB aggregates all config)
+        // 3. ProjectConfigRevision (new schema: content JSONB aggregates all config)
         jdbcTemplate.update(
-            """INSERT INTO core_app_config_revision (id, app_id, auth_tenant_id, apple_bundle_id, android_package_name,
+            """INSERT INTO core_project_config_revision (id, project_id, auth_tenant_id, apple_bundle_id, android_package_name,
                                                     content, revision_number, enabled, slug, note, created_at)
                VALUES (?::uuid, ?::uuid, ?::uuid, 'com.ifmix.test', 'com.ifmix.test',
-                       '{"apple":{"appAppleId":"123","issuerId":"iss","keyId":"kid","privateKey":"pk","servicesId":"sid"},"google":{"serviceAccount":"sa","clientIds":{"ios":"ios-id","android":"android-id","web":"web-id"}},"iap":{"productTierMap":{"pro_monthly":"PRO"},"env":"sandbox"},"wechat":{"appId":"wx_test_id","appSecret":"wx_test_secret"}}'::jsonb,
+                       '{"apple":{"appAppleId":"123","issuerId":"iss","keyId":"kid","privateKey":"pk","servicesId":"sid"},"google":{"serviceAccount":"sa","clientIds":{"ios":"ios-id","android":"android-id","web":"web-id"}},"iap":{"productTierMap":{"pro_monthly":"PRO"},"env":"sandbox"},"wechat":{"projectId":"wx_test_id","appSecret":"wx_test_secret"}}'::jsonb,
                        1, true, 'test', 'test seed', now())
                ON CONFLICT DO NOTHING""",
-            UUID.randomUUID().toString(), APP_ID.toString(), TENANT_ID.toString()
+            UUID.randomUUID().toString(), PROJECT_ID.toString(), TENANT_ID.toString()
         )
     }
 }

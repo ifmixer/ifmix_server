@@ -10,12 +10,12 @@ import java.util.UUID
  * 两种构造来源：
  *  - GraphQL 请求：由 [com.ifmix.core.api.infra.graphql.OperationContextProvider.fromDfe] 从
  *    HttpServletRequest 解析 header/token（并按需校验、失败即抛）后构造，持有已解析的值。
- *  - webhook / 内部调用：直接构造并塞入 appId/actorId（无 HTTP 请求）。
+ *  - webhook / 内部调用：直接构造并塞入 projectId/actorId（无 HTTP 请求）。
  *
  * 只持有「已解析成功的值」，不含错误状态——token 过期/无效等在 fromDfe 解析+校验时即时抛 ApiError。
  */
 data class OperationContext(
-    val appId: UUID? = null,
+    val projectId: UUID? = null,
     /** 主体 id（token sub）。null = 未认证。 */
     val actorId: UUID? = null,
     /** 主体类型：10=customer / 20=manager。未认证时 null。 */
@@ -45,6 +45,6 @@ data class OperationContext(
     /** true = 允许读缓存。mutation 时为 false，避免脏读。 */
     val readCache get() = !isMutation
 
-    fun mustGetAppId() = appId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-app-id is required")
+    fun mustGetProjectId() = projectId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-project-id is required")
     fun mustGetActorId() = actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
 }

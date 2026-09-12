@@ -1,6 +1,6 @@
 package com.ifmix.core.api.entity.ai
 
-import com.ifmix.core.api.entity.common.BaseAppEntity
+import com.ifmix.core.api.entity.common.BaseProjectEntity
 import com.ifmix.core.api.entity.common.CustomerIdProps
 import com.ifmix.core.api.entity.common.InstallIdProps
 import com.ifmix.core.api.entity.common.SoftDeletableProps
@@ -21,7 +21,7 @@ object ScanStatuses {
 
 @Entity
 @Table(name = "ai_scan_record")
-interface ScanRecord : BaseAppEntity, SoftDeletableProps, CustomerIdProps, InstallIdProps, UserPreferenceProps {
+interface ScanRecord : BaseProjectEntity, SoftDeletableProps, CustomerIdProps, InstallIdProps, UserPreferenceProps {
 
     @Serialized
     @Column(name = "image_keys")

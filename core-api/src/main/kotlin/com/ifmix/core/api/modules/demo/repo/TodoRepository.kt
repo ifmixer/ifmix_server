@@ -6,7 +6,7 @@ import com.ifmix.core.api.entity.demo.TodoItem
 import com.ifmix.core.api.entity.demo.TodoRecommend
 import com.ifmix.core.api.entity.demo.TodoProps
 import com.ifmix.core.api.entity.demo.toDomain
-import com.ifmix.core.api.entity.demo.appId
+import com.ifmix.core.api.entity.demo.projectId
 import com.ifmix.core.api.entity.demo.id
 import com.ifmix.core.api.entity.demo.title
 import com.ifmix.core.api.entity.demo.done
@@ -19,7 +19,7 @@ import com.ifmix.core.api.generated.types.TodoRecommendInput
 import com.ifmix.core.api.generated.types.TodoUnsetField
 import com.ifmix.core.api.generated.types.UpdateTodoInput
 import com.ifmix.core.api.infra.db.ModuleCtx
-import com.ifmix.core.api.infra.repo.AppCrudRepoTemplate
+import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
 import org.babyfish.jimmer.sql.ast.mutation.DeleteMode
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
@@ -31,7 +31,7 @@ import java.util.UUID
 class TodoRepository {
 
     companion object {
-        private val tpl = AppCrudRepoTemplate(Todo::class)
+        private val tpl = ProjectCrudRepoTemplate(Todo::class)
 
         /** 允许前端通过 FilterGroup 查询的字段（强类型白名单） */
         val FILTERABLE = listOf(
@@ -44,34 +44,34 @@ class TodoRepository {
         )
     }
 
-    fun findById(mc: ModuleCtx, appId: UUID, id: UUID): Todo? = tpl.findById(mc, appId, id)
-    fun findByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): List<Todo> = tpl.findByIds(mc, appId, ids)
+    fun findById(mc: ModuleCtx, projectId: UUID, id: UUID): Todo? = tpl.findById(mc, projectId, id)
+    fun findByIds(mc: ModuleCtx, projectId: UUID, ids: Collection<UUID>): List<Todo> = tpl.findByIds(mc, projectId, ids)
     fun save(mc: ModuleCtx, entity: Todo) = tpl.save(mc, entity)
-    fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID): Boolean = tpl.deleteById(mc, appId, id)
-    fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, appId, ids)
+    fun deleteById(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
+    fun deleteByIds(mc: ModuleCtx, projectId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, projectId, ids)
 
     /** 合并：把 fromCustomerId 名下 todo 归属改到 toCustomerId。返回改写行数。 */
-    fun reassignOwner(mc: ModuleCtx, appId: UUID, fromCustomerId: UUID, toCustomerId: UUID): Int =
+    fun reassignOwner(mc: ModuleCtx, projectId: UUID, fromCustomerId: UUID, toCustomerId: UUID): Int =
         mc.sql.createUpdate(Todo::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.customerId eq fromCustomerId)
             set(table.customerId, toCustomerId)
         }.execute()
 
     /** 阶段 6：物理删除某批 customer 名下 todo（含软删列，显式 PHYSICAL 硬删避免孤儿行）。 */
-    fun physicalDeleteByCustomers(mc: ModuleCtx, appId: UUID, customerIds: Collection<UUID>): Int {
+    fun physicalDeleteByCustomers(mc: ModuleCtx, projectId: UUID, customerIds: Collection<UUID>): Int {
         if (customerIds.isEmpty()) return 0
         return mc.sql.createDelete(Todo::class) {
             setMode(DeleteMode.PHYSICAL)
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.customerId valueIn customerIds)
         }.execute()
     }
 
-    fun findByOptions(mc: ModuleCtx, appId: UUID, findOptions: CommonFindOptions?): Page<Todo> =
-        tpl.findByOptions(mc, appId, findOptions, FILTERABLE)
+    fun findByOptions(mc: ModuleCtx, projectId: UUID, findOptions: CommonFindOptions?): Page<Todo> =
+        tpl.findByOptions(mc, projectId, findOptions, FILTERABLE)
 
-    fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoInput): Int {
+    fun partialUpdate(mc: ModuleCtx, projectId: UUID, input: UpdateTodoInput): Int {
         val set = input.set
         val unset = input.unset?.toSet() ?: emptySet()
 
@@ -79,7 +79,7 @@ class TodoRepository {
         if (set == null && unset.isEmpty()) return 0
 
         return mc.sql.createUpdate(Todo::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.id eq input.id)
 
             // unset 优先：如果字段同时出现在 set 和 unset，以 unset 为准
@@ -115,13 +115,13 @@ class TodoRepository {
      * ```sql
      * SELECT DISTINCT t.* FROM core_todo t
      * INNER JOIN core_demo_item ti ON t.id = ti.todo_id
-     * WHERE t.app_id = ? AND ti.done = false
+     * WHERE t.project_id = ? AND ti.done = false
      * ORDER BY t.id DESC
      * ```
      */
-    fun findWithPendingItems(mc: ModuleCtx, appId: UUID, cursor: UUID?, limit: Int): Page<Todo> {
+    fun findWithPendingItems(mc: ModuleCtx, projectId: UUID, cursor: UUID?, limit: Int): Page<Todo> {
         val rows = mc.sql.createQuery(Todo::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
 
             // 手动 join TodoItem 表
             val itemTable = table.asTableEx().weakJoin(TodoToItemJoin::class)
@@ -140,9 +140,9 @@ class TodoRepository {
      *
      * 返回 Pair<Todo, Long>（todo 对象 + 子项计数）。
      */
-    fun findWithItemCount(mc: ModuleCtx, appId: UUID, cursor: UUID?, limit: Int): List<Pair<Todo, Long>> {
+    fun findWithItemCount(mc: ModuleCtx, projectId: UUID, cursor: UUID?, limit: Int): List<Pair<Todo, Long>> {
         return mc.sql.createQuery(Todo::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
 
             val itemTable = table.asTableEx().weakJoin(TodoToItemJoin::class)
 

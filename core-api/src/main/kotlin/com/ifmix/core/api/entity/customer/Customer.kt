@@ -1,6 +1,6 @@
 package com.ifmix.core.api.entity.customer
 
-import com.ifmix.core.api.entity.common.BaseAppEntity
+import com.ifmix.core.api.entity.common.BaseProjectEntity
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
@@ -10,7 +10,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "customer")
-interface Customer : BaseAppEntity {
+interface Customer : BaseProjectEntity {
 
     /** 是否匿名（未转正）。app 启动即建匿名 customer，登录后转 false。 */
     val anonymous: Boolean

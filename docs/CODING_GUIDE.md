@@ -7,7 +7,7 @@ RequestContext      HTTP 请求级    构造于: AuthInterceptor / Header 解析
     ↓
 OperationContext    Operation 级   构造于: DataFetcher (ctxProvider.fromDfe)
     ↓
-ModuleCtx           模块调用级     构造于: Facade (ModuleCtxFactory.forApp)
+ModuleCtx           模块调用级     构造于: Facade (ModuleCtxFactory.forProject)
 ```
 
 ### RequestContext
@@ -16,7 +16,7 @@ ModuleCtx           模块调用级     构造于: Facade (ModuleCtxFactory.forA
 
 ```kotlin
 data class RequestContext(
-    val appId: UUID?,
+    val projectId: UUID?,
     val customerId: UUID?,   // 主体归一：actorType==customer 时 = actorId；null = 匿名/未认证
     val actorType: Int?,     // 10=customer / 20=manager
     val anonymous: Boolean,  // token ano claim
@@ -47,7 +47,7 @@ data class ModuleCtx(
     val clusterId: String = "default",
     val inTransaction: Boolean = false,
 ) {
-    val appId get() = op.appId
+    val projectId get() = op.projectId
     val customerId get() = op.customerId
     val actorType get() = op.actorType
     val anonymous get() = op.anonymous
@@ -61,7 +61,7 @@ data class ModuleCtx(
 ```kotlin
 @Component
 class ModuleCtxFactory(private val router: ClusterRouter) {
-    fun forApp(opCtx: OperationContext): ModuleCtx { ... }
+    fun forProject(opCtx: OperationContext): ModuleCtx { ... }
 
     private fun chooseSql(opCtx, pair): KSqlClient = when {
         opCtx.globalTxSql != null -> opCtx.globalTxSql  // 全局事务内，复用
@@ -139,10 +139,10 @@ class DemoFacade(
     private val handler: TodoAggHandler,
 ) {
     fun findById(ctx: OperationContext, id: UUID): Todo? =
-        handler.findById(mcFactory.forApp(ctx), ctx.mustGetAppId(), id)
+        handler.findById(mcFactory.forProject(ctx), ctx.mustGetProjectId(), id)
 
     fun create(ctx: OperationContext, input: CreateTodoInput): Todo =
-        handler.create(mcFactory.forApp(ctx), input)
+        handler.create(mcFactory.forProject(ctx), input)
 }
 ```
 
@@ -153,8 +153,8 @@ class DemoFacade(
 class TodoAggHandler(
     private val todoRepo: TodoRepository,
 ) {
-    fun findById(mc: ModuleCtx, appId: UUID, id: UUID): Todo? =
-        todoRepo.findById(mc, appId, id)
+    fun findById(mc: ModuleCtx, projectId: UUID, id: UUID): Todo? =
+        todoRepo.findById(mc, projectId, id)
 
     fun create(mc: ModuleCtx, input: CreateTodoInput): Todo {
         val todo = Todo { ... }
@@ -170,18 +170,18 @@ class TodoAggHandler(
 @Repository
 class TodoRepository {
     companion object {
-        private val tpl = AppCrudRepoTemplate(Todo::class)
+        private val tpl = ProjectCrudRepoTemplate(Todo::class)
         val FILTERABLE = listOf(TodoProps.TITLE, TodoProps.DONE, TodoProps.CUSTOMER_ID)
         val SORTABLE = setOf("id", "createdAt", "updatedAt")
     }
 
-    fun findById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.findById(mc, appId, id)
-    fun findByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>) = tpl.findByIds(mc, appId, ids)
+    fun findById(mc: ModuleCtx, projectId: UUID, id: UUID) = tpl.findById(mc, projectId, id)
+    fun findByIds(mc: ModuleCtx, projectId: UUID, ids: Collection<UUID>) = tpl.findByIds(mc, projectId, ids)
     fun save(mc: ModuleCtx, entity: Todo) = tpl.save(mc, entity)
-    fun deleteById(mc: ModuleCtx, appId: UUID, id: UUID) = tpl.deleteById(mc, appId, id)
+    fun deleteById(mc: ModuleCtx, projectId: UUID, id: UUID) = tpl.deleteById(mc, projectId, id)
 
-    fun findByOptions(mc: ModuleCtx, appId: UUID, options: CommonFindOptions?) =
-        tpl.findByOptions(mc, appId, options, FILTERABLE, SORTABLE)
+    fun findByOptions(mc: ModuleCtx, projectId: UUID, options: CommonFindOptions?) =
+        tpl.findByOptions(mc, projectId, options, FILTERABLE, SORTABLE)
 }
 ```
 
@@ -206,7 +206,7 @@ class TodoItemsDataLoader(
 
 | 基类 | 字段 | 用于 |
 |------|------|------|
-| `BaseAppEntity` | id + appId + createdAt + updatedAt | 大部分 app 级实体 |
+| `BaseProjectEntity` | id + projectId + createdAt + updatedAt | 大部分 project 级实体 |
 | `BaseEntity` | id + createdAt + updatedAt | 全局实体 |
 | `UUIDProps` | @Id val id: UUID | 只需 ID 的组合 |
 
@@ -232,7 +232,7 @@ fun TodoRecommendInput.toDomain() = TodoRecommend(...)
 | 模板 | 适用 | 签名特征 |
 |------|------|----------|
 | `CrudRepoTemplate<E>` | 全局实体 | `findById(ctx, id)` |
-| `AppCrudRepoTemplate<E>` | App 级实体 | `findById(ctx, appId, id)` |
+| `ProjectCrudRepoTemplate<E>` | Project 级实体 | `findById(ctx, projectId, id)` |
 
 两者提供：
 - Read: `findById` / `findByIds` / `exists` / `existsByIds` / `findByCursor` / `findByOptions`
@@ -245,7 +245,7 @@ fun TodoRecommendInput.toDomain() = TodoRecommend(...)
 
 ```kotlin
 interface ClusterRouter {
-    fun forApp(appId: UUID): ClusterSqlPair
+    fun forProject(projectId: UUID): ClusterSqlPair
 }
 ```
 

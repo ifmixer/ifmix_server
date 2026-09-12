@@ -26,7 +26,7 @@ class PaymentWebhookHandler(
 
     fun handleNotification(mc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder, platform: String) {
         val ctx = mc.op
-        val appId = ctx.appId ?: return
+        val projectId = ctx.projectId ?: return
 
         val decodedPlatform = if (platform == "APPLE") com.ifmix.core.api.entity.common.Platforms.APPLE else com.ifmix.core.api.entity.common.Platforms.GOOGLE
         val decoderResult = decoder.decode(rawPayload, decodedPlatform)
@@ -35,13 +35,13 @@ class PaymentWebhookHandler(
 
         if (storeNotificationRepo.existsByPlatformAndToken(mc, platform, decoderResult.subscriptionPxid)) return
 
-        var subscription = subscriptionRepo.findActiveByPxid(mc, appId, decoderResult.subscriptionPxid)
+        var subscription = subscriptionRepo.findActiveByPxid(mc, projectId, decoderResult.subscriptionPxid)
         if (subscription == null) {
-            subscription = subscriptionRepo.findByPxid(mc, appId, decoderResult.subscriptionPxid)
+            subscription = subscriptionRepo.findByPxid(mc, projectId, decoderResult.subscriptionPxid)
         }
 
         if (subscription == null) {
-            createStoreNotification(mc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+            createStoreNotification(mc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, projectId, processed = true)
             return
         }
 
@@ -55,7 +55,7 @@ class PaymentWebhookHandler(
             else -> {}
         }
 
-        createStoreNotification(mc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, appId, processed = true)
+        createStoreNotification(mc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, projectId, processed = true)
     }
 
     private fun updateSubscription(
@@ -81,13 +81,13 @@ class PaymentWebhookHandler(
         subscriptionPxid: String,
         rawPayload: String,
         notificationType: NotificationType,
-        appId: UUID,
+        projectId: UUID,
         processed: Boolean = false,
     ) {
         val now = Instant.now()
         val notif = com.ifmix.core.api.entity.pay.StoreNotification {
             this.id = UuidV7.generate()
-            this.appId = appId
+            this.projectId = projectId
             this.platform = platform
             this.subscriptionPxid = subscriptionPxid
             this.purchaseToken = subscriptionPxid

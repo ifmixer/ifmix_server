@@ -34,7 +34,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
     @Autowired
     lateinit var jdbcTemplate: JdbcTemplate
 
-    private val testAppId = UUID.fromString(TEST_APP_ID)
+    private val testProjectId = UUID.fromString(TEST_PROJECT_ID)
 
     /**
      * 场景 1：插入带嵌套 meta 的 Todo，验证存储正确。
@@ -54,7 +54,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
 
         val entity = new(Todo::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.title = "test-meta-insert"
             this.done = false
             this.meta = meta
@@ -101,7 +101,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
         // 1. 插入
         val entity = new(Todo::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.title = "test-meta-replace"
             this.done = false
             this.meta = originalMeta
@@ -117,7 +117,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
         )
         val updateEntity = new(Todo::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.meta = updatedMeta
         }
         sql.entities.save(updateEntity) { setMode(SaveMode.UPDATE_ONLY) }
@@ -145,7 +145,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
         // 1. 插入
         val entity = new(Todo::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.title = "test-unloaded-meta"
             this.done = false
             this.meta = originalMeta
@@ -155,7 +155,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
         // 2. 只更新 title，不碰 meta
         val updateEntity = new(Todo::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.title = "updated-title"
         }
         sql.entities.save(updateEntity) { setMode(SaveMode.UPDATE_ONLY) }
@@ -180,7 +180,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
         // 1. 插入
         val entity = new(Todo::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.title = "test-null-meta"
             this.done = false
             this.meta = mapOf("will_be_erased" to true)
@@ -190,7 +190,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
         // 2. 显式设 meta = null
         val updateEntity = new(Todo::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.meta = null
         }
         sql.entities.save(updateEntity) { setMode(SaveMode.UPDATE_ONLY) }
@@ -219,7 +219,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
         // 1. 插入
         val entity = new(Todo::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.title = "test-native-jsonb-set"
             this.done = false
             this.meta = originalMeta
@@ -267,7 +267,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
         // 1. 插入
         val entity = new(Todo::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.title = "test-read-modify-write"
             this.done = false
             this.meta = originalMeta
@@ -291,7 +291,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
         // 写回
         val updateEntity = new(Todo::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.meta = currentMeta
         }
         sql.entities.save(updateEntity) { setMode(SaveMode.UPDATE_ONLY) }

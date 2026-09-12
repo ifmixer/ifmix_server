@@ -21,7 +21,7 @@ class StorageAggHandler(
     private val objectStorage: ObjectStorage,
 ) {
     fun presignUpload(mc: ModuleCtx, input: PresignUploadInput): PresignUploadResult {
-        val appId = mc.op.mustGetAppId()
+        val projectId = mc.op.mustGetProjectId()
         val actorId = mc.op.mustGetActorId()
         val actorType = mc.op.actorType ?: throw IllegalStateException("actorType missing on authenticated request")
         val mediaId = UuidV7.generate()
@@ -34,13 +34,13 @@ class StorageAggHandler(
         val mimeType = ContentTypes.mimeType(input.contentType)
             ?: throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
 
-        val objectKey = "$typeGroup/app/${appId.toBase58()}/$prefix/${mediaId.toBase58()}.$ext"
+        val objectKey = "$typeGroup/project/${projectId.toBase58()}/$prefix/${mediaId.toBase58()}.$ext"
         val uploadUrl = objectStorage.presignUpload("ugc", objectKey, mimeType, Duration.ofSeconds(300))
         val downloadUrl = objectStorage.getPublicUrl("ugc", objectKey)
 
         val entity = UploadRecord {
             id = mediaId
-            this.appId = appId
+            this.projectId = projectId
             this.actorId = actorId
             this.actorType = actorType
             this.objectKey = objectKey
@@ -66,14 +66,14 @@ class StorageAggHandler(
     }
 
     /**
-     * objectKey 格式校验：必须含 "/app/" 段，不得包含 ".." 或绝对路径。
-     * 新格式 ${typeGroup}/app/${appId}/${prefix}/${mediaId}.ext
+     * objectKey 格式校验：必须含 "/project/" 段，不得包含 ".." 或绝对路径。
+     * 新格式 ${typeGroup}/project/${projectId}/${prefix}/${mediaId}.ext
      * 防止客户端传入任意 S3 key 实现路径遍历。
      */
     private fun validateObjectKey(key: String) {
         require(!key.startsWith("/")) { "invalid objectKey: absolute path not allowed" }
         require(!key.contains("..")) { "invalid objectKey: path traversal detected" }
-        require(key.contains("/app/")) { "invalid objectKey: must contain /app/ segment" }
+        require(key.contains("/project/")) { "invalid objectKey: must contain /project/ segment" }
     }
 
     /**

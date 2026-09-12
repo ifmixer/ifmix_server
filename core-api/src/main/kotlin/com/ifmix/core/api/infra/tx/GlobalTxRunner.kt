@@ -23,11 +23,11 @@ class GlobalTxRunner(
 ) {
 
     /**
-     * 按 appId 路由到集群 writer，开启全局事务。
+     * 按 projectId 路由到集群 writer，开启全局事务。
      * ModuleCtxFactory 检测到 opCtx.globalTxSql != null → 复用事务 writer。
      */
     fun <R> withTx(opCtx: OperationContext, body: (OperationContext) -> R): R {
-        val pair = router.forApp(opCtx.mustGetAppId())
+        val pair = router.forProject(opCtx.mustGetProjectId())
         val txCtx = opCtx.copy(globalTxSql = pair.writer, inGlobalTx = true)
         val template = TransactionTemplate(txManager).apply {
             propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRED

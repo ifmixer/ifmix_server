@@ -3,7 +3,7 @@ package com.ifmix.core.api.dto.cs
 import com.ifmix.core.api.entity.common.MediaRef
 
 /**
- * 创建工单请求体。身份（appId/customerId/installId）由 header 推导，客户端不可指定；
+ * 创建工单请求体。身份（projectId/customerId/installId）由 header 推导，客户端不可指定；
  * status 固定 OPEN、各回复/关闭时间戳固定为 null，客户端不可指定。
  */
 data class CreateSupportRequestReq(

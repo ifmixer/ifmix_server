@@ -17,7 +17,7 @@ import java.util.Date
  *
  * 统一 claim 结构：
  * - sub: actorId（customer / 未来 manager）
- * - aud: appId
+ * - aud: projectId
  * - act: actorType（10=customer / 20=manager，Int）；用 act 不用 typ（避免与 JOSE header typ 混）
  * - ano: 是否匿名（Boolean，缺省 false）
  */
@@ -33,12 +33,12 @@ class AuthJwtService(
     }
 
     /** access token：sub=actorId, act=actorType, ano=anonymous */
-    fun signAccess(actorId: String, actorType: ActorType, appId: String, anonymous: Boolean = false): String {
+    fun signAccess(actorId: String, actorType: ActorType, projectId: String, anonymous: Boolean = false): String {
         val now = Date()
         val claims = JWTClaimsSet.Builder()
             .issuer(issuer)
             .subject(actorId)
-            .audience(listOf(appId))
+            .audience(listOf(projectId))
             .jwtID(UuidV7.generate().toString())
             .issueTime(now)
             .expirationTime(Date(now.time + accessTtlSec * 1000))
@@ -72,7 +72,7 @@ class AuthJwtService(
         if (claims.issuer != issuer) return null
         return VerifiedToken(
             actorId = claims.subject,
-            appId = claims.audience?.firstOrNull(),
+            projectId = claims.audience?.firstOrNull(),
             actorType = claims.getIntegerClaim("act") ?: ACTOR_CUSTOMER,
             anonymous = runCatching { claims.getBooleanClaim("ano") }.getOrNull() ?: false,
         )
@@ -86,7 +86,7 @@ class TokenExpiredException : RuntimeException("access token expired")
 
 data class VerifiedToken(
     val actorId: String?,
-    val appId: String?,
+    val projectId: String?,
     val actorType: ActorType,
     val anonymous: Boolean = false,
 ) {

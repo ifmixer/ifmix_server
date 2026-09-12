@@ -34,28 +34,28 @@ class CustomerMergeHandler(
      *  3. is_default 去重：existing 名下只保留一个 isDefault=true。
      *  4. cur 置 mergedTo=existing（tombstone）。
      */
-    fun merge(mc: ModuleCtx, appId: UUID, curId: UUID, existingId: UUID) {
+    fun merge(mc: ModuleCtx, projectId: UUID, curId: UUID, existingId: UUID) {
         require(curId != existingId) { "merge: curId must differ from existingId" }
 
         // 1. 合并前捕获 existing 原有的默认收藏夹 id（若有），作为去重保留目标
-        val existingDefaultId = scanCollectionRepo.findDefault(mc, appId, existingId)?.id
+        val existingDefaultId = scanCollectionRepo.findDefault(mc, projectId, existingId)?.id
 
         // 2. 改写 cur 名下资源归属 → existing
-        scanRecordRepo.reassignOwner(mc, appId, curId, existingId)
-        scanCollectionRepo.reassignOwner(mc, appId, curId, existingId)
-        uploadRecordRepo.reassignOwner(mc, appId, curId, existingId)
-        todoRepo.reassignOwner(mc, appId, curId, existingId)
-        subscriptionRepo.reassignOwner(mc, appId, curId, existingId)
+        scanRecordRepo.reassignOwner(mc, projectId, curId, existingId)
+        scanCollectionRepo.reassignOwner(mc, projectId, curId, existingId)
+        uploadRecordRepo.reassignOwner(mc, projectId, curId, existingId)
+        todoRepo.reassignOwner(mc, projectId, curId, existingId)
+        subscriptionRepo.reassignOwner(mc, projectId, curId, existingId)
 
         // 3. is_default 去重：existing 每 customer 只能一个默认收藏夹。
         //    existing 原有默认优先保留；existing 原本无默认则保留迁移过来的其中一个。
         val keepId = existingDefaultId
-            ?: scanCollectionRepo.findDefault(mc, appId, existingId)?.id
+            ?: scanCollectionRepo.findDefault(mc, projectId, existingId)?.id
         if (keepId != null) {
-            scanCollectionRepo.demoteOtherDefaults(mc, appId, existingId, keepId)
+            scanCollectionRepo.demoteOtherDefaults(mc, projectId, existingId, keepId)
         }
 
         // 4. cur 置 mergedTo=existing（tombstone，清理任务回收）
-        customerRepo.markMerged(mc, appId, curId, existingId)
+        customerRepo.markMerged(mc, projectId, curId, existingId)
     }
 }

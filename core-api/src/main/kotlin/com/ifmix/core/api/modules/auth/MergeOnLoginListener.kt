@@ -20,6 +20,6 @@ class MergeOnLoginListener(
     @EventListener
     fun onLogin(e: AuthLoggedInEvent) {
         // TODO(阶段4): 匿名 customer 数据归并（把匿名 customerId 下的 scan/collection 归属到登录 customerId）
-        log.debug("Login event: app={}, customer={}", e.appId, e.customerId)
+        log.debug("Login event: app={}, customer={}", e.projectId, e.customerId)
     }
 }

@@ -15,7 +15,7 @@ import com.ifmix.core.api.dto.payment.VerifyReq
 import com.ifmix.core.api.dto.payment.VerifyRes
 import com.ifmix.core.api.dto.payment.statusFromExpiry
 import com.ifmix.core.api.dto.payment.tierOf
-import com.ifmix.core.api.modules.app.AppConfigFacade
+import com.ifmix.core.api.modules.project.ProjectConfigFacade
 import com.ifmix.core.api.modules.pay.repo.SubscriptionRepository
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
@@ -26,7 +26,7 @@ class PaymentAggHandler(
     @Qualifier("appleVerifier") private val appleVerifier: PurchaseVerifier,
     @Qualifier("googleVerifier") private val googleVerifier: PurchaseVerifier,
     private val subscriptionRepo: SubscriptionRepository,
-    private val appConfigFacade: AppConfigFacade,
+    private val projectConfigFacade: ProjectConfigFacade,
 ) {
     private val verifierMap: Map<String, PurchaseVerifier> = hashMapOf(
         "APPLE" to appleVerifier,
@@ -39,9 +39,9 @@ class PaymentAggHandler(
      * 此方法仅处理 DB 写入逻辑（由调用方在 tx.withTx 内调用）。
      */
     fun verifyAndUpsert(mc: ModuleCtx, req: VerifyReq, verifyResult: VerifyResult): VerifyRes {
-        val appId = mc.op.appId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
+        val projectId = mc.op.projectId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
-        val productTierMap = appConfigFacade.findActiveByAppId(mc, appId)
+        val productTierMap = projectConfigFacade.findActiveByAppId(mc, projectId)
             ?.content?.iap?.productTierMap
             ?: throw ApiError(ErrorCode.APP_CONFIG_MISSING)
         val tier = tierOf(req.productId, productTierMap) ?: Tiers.FREE
@@ -50,13 +50,13 @@ class PaymentAggHandler(
             "pxid-${req.platform}-${UuidV7.generate()}"
         }
 
-        val existingSub = subscriptionRepo.findActiveByPxid(mc, appId, subscriptionPxid)
+        val existingSub = subscriptionRepo.findActiveByPxid(mc, projectId, subscriptionPxid)
         if (existingSub != null) {
             // restore purchases：命中已存在订阅，若归属与当前主体不一致则刷新 customerId
             // （合并/换设备后同一订阅需归到当前登录的 customer）。方向以当前主体为准。
             val curCustomerId = mc.op.actorId
             if (curCustomerId != null && existingSub.customerId != curCustomerId) {
-                subscriptionRepo.updateOwner(mc, appId, existingSub.id, curCustomerId)
+                subscriptionRepo.updateOwner(mc, projectId, existingSub.id, curCustomerId)
             }
             return VerifyRes(
                 expiresAt = existingSub.expiryDate?.toEpochMilli(),
@@ -83,7 +83,7 @@ class PaymentAggHandler(
         val now = Instant.now()
         val subscription = Subscription {
             this.id = UuidV7.generate()
-            this.appId = appId
+            this.projectId = projectId
             this.customerId = mc.op.actorId
             this.subscriptionPxid = subscriptionPxid
             this.originalTransactionId = verifyResult.originalTransactionId
@@ -120,12 +120,12 @@ class PaymentAggHandler(
 
         val purchaseToken = req.purchaseToken ?: req.signedTransaction
             ?: throw ApiError(ErrorCode.INVALID_REQUEST, "purchaseToken or signedTransaction required")
-        val appId = "" // not needed for verification
+        val projectId = "" // not needed for verification
         val input = VerifyInput(
             platform = req.platform,
             purchaseToken = purchaseToken,
             productId = req.productId,
-            appId = appId,
+            projectId = projectId,
         )
         return verifier.verify(input)
     }

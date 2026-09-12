@@ -11,7 +11,7 @@ import java.util.UUID
  */
 data class DeepResearchResult(
     val scanRecordId: UUID,
-    val appId: UUID,
+    val projectId: UUID,
     val basicResult: Map<String, Any?>?,
     val premiumResult: Map<String, Any?>?,
     val promptVersion: String,

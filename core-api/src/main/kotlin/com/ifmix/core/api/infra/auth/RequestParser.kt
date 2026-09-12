@@ -23,14 +23,14 @@ data class Actor(val actorId: UUID, val actorType: ActorType, val anonymous: Boo
 class RequestParser(private val jwt: AuthJwtService) {
 
     /** 缺失(required)→抛 required；传了值但格式非法→抛 invalid format；required=false 且未传→null。 */
-    fun parseAppId(request: HttpServletRequest, required: Boolean): UUID? {
+    fun parseProjectId(request: HttpServletRequest, required: Boolean): UUID? {
         (request.getAttribute(ATTR_APP_ID) as? UUID)?.let { return it }
-        val raw = request.getHeader(RequestHeaders.APP_ID)
+        val raw = request.getHeader(RequestHeaders.PROJECT_ID)
         if (raw.isNullOrBlank()) {
-            if (required) throw ApiError(ErrorCode.INVALID_REQUEST, "${RequestHeaders.APP_ID} is required")
+            if (required) throw ApiError(ErrorCode.INVALID_REQUEST, "${RequestHeaders.PROJECT_ID} is required")
             return null
         }
-        val uuid = tryUuid(raw) ?: throw ApiError(ErrorCode.INVALID_REQUEST, "invalid ${RequestHeaders.APP_ID} format")
+        val uuid = tryUuid(raw) ?: throw ApiError(ErrorCode.INVALID_REQUEST, "invalid ${RequestHeaders.PROJECT_ID} format")
         request.setAttribute(ATTR_APP_ID, uuid)
         return uuid
     }
@@ -39,7 +39,7 @@ class RequestParser(private val jwt: AuthJwtService) {
      * 解析并校验主体（actor）——遇到问题**直接抛**（不经中间状态）。
      * - 没带 token：requireActorType!=null（需登录）→ UNAUTHORIZED；否则返回 null。
      * - 带了 token：过期→TOKEN_EXPIRED；验签失败→UNAUTHORIZED（invalid token: signature…）；
-     *   跨 app（aud≠x-app-id）→ UNAUTHORIZED（invalid token: app mismatch）；缺 subject→UNAUTHORIZED。
+     *   跨 app（aud≠x-project-id）→ UNAUTHORIZED（invalid token: app mismatch）；缺 subject→UNAUTHORIZED。
      * - valid：requireActorType 不匹配→FORBIDDEN。
      * requireActorType != null 即「必须登录」。
      */
@@ -63,9 +63,9 @@ class RequestParser(private val jwt: AuthJwtService) {
             throw ApiError(ErrorCode.TOKEN_EXPIRED, "access token expired")
         } ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: signature verification failed")
 
-        // aud 校验：token 的 appId(aud) 必须与 header x-app-id 一致，防跨 app 重放 token。
-        val headerAppId = request.getHeader(RequestHeaders.APP_ID)?.let { tryUuid(it) }
-        val tokenAppId = verified.appId?.let { tryUuid(it) }
+        // aud 校验：token 的 projectId(aud) 必须与 header x-project-id 一致，防跨 app 重放 token。
+        val headerAppId = request.getHeader(RequestHeaders.PROJECT_ID)?.let { tryUuid(it) }
+        val tokenAppId = verified.projectId?.let { tryUuid(it) }
         if (headerAppId != null && tokenAppId != headerAppId)
             throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: app mismatch")
 
@@ -159,7 +159,7 @@ class RequestParser(private val jwt: AuthJwtService) {
     private fun tryUuid(s: String): UUID? = try { UUID.fromString(s) } catch (_: Exception) { null }
 
     companion object {
-        private const val ATTR_APP_ID = "com.ifmix.parsed.appId"
+        private const val ATTR_APP_ID = "com.ifmix.parsed.projectId"
         private const val ATTR_ACTOR = "com.ifmix.parsed.actor"
         private val CURRENCY_RE = Regex("^[A-Z]{3}$")   // ISO 4217（大写后校验）
         private val COUNTRY_RE = Regex("^[A-Z]{2}$")    // ISO 3166-1 alpha-2（大写后校验）

@@ -51,10 +51,10 @@ class CrudServiceOps<T : Any>(
         id: UUID,
         loader: (ModuleCtx, UUID, UUID) -> T?,
     ): T? {
-        val appId = mc.mustGetAppId()
-        if (cache == null || !mc.op.readCache) return loader(mc, appId, id)
-        return cache.getOrLoadNullable(cacheKey(appId, id), type) {
-            loader(mc, appId, id)
+        val projectId = mc.mustGetProjectId()
+        if (cache == null || !mc.op.readCache) return loader(mc, projectId, id)
+        return cache.getOrLoadNullable(cacheKey(projectId, id), type) {
+            loader(mc, projectId, id)
         }
     }
 
@@ -64,15 +64,15 @@ class CrudServiceOps<T : Any>(
         loader: (ModuleCtx, UUID, Collection<UUID>) -> List<T>,
     ): List<T> {
         if (ids.isEmpty()) return emptyList()
-        val appId = mc.mustGetAppId()
-        if (cache == null || !mc.op.readCache) return loader(mc, appId, ids)
+        val projectId = mc.mustGetProjectId()
+        if (cache == null || !mc.op.readCache) return loader(mc, projectId, ids)
         return cache.loadMany(
             ids = ids.map { it.toString() },
-            keyOf = { cacheKey(appId, UUID.fromString(it)) },
+            keyOf = { cacheKey(projectId, UUID.fromString(it)) },
             type = type,
             idOf = { idExtractor(it).toString() },
         ) { missIds ->
-            loader(mc, appId, missIds.map { UUID.fromString(it) })
+            loader(mc, projectId, missIds.map { UUID.fromString(it) })
         }
     }
 
@@ -82,10 +82,10 @@ class CrudServiceOps<T : Any>(
         limit: Int?,
         loader: (ModuleCtx, UUID, UUID?, Int) -> List<T>,
     ): Page<T> {
-        val appId = mc.mustGetAppId()
+        val projectId = mc.mustGetProjectId()
         val effectiveLimit = (limit ?: 20).coerceIn(1, 100)
         val cursorUuid = cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-        val items = loader(mc, appId, cursorUuid, effectiveLimit + 1)
+        val items = loader(mc, projectId, cursorUuid, effectiveLimit + 1)
         val hasMore = items.size > effectiveLimit
         val resultItems = items.take(effectiveLimit)
         return Page(
@@ -104,9 +104,9 @@ class CrudServiceOps<T : Any>(
         id: UUID,
         deleter: (ModuleCtx, UUID, UUID) -> Boolean,
     ): Boolean {
-        val appId = mc.mustGetAppId()
-        val deleted = deleter(mc, appId, id)
-        if (deleted) evict(appId, id)
+        val projectId = mc.mustGetProjectId()
+        val deleted = deleter(mc, projectId, id)
+        if (deleted) evict(projectId, id)
         return deleted
     }
 
@@ -116,19 +116,19 @@ class CrudServiceOps<T : Any>(
         deleter: (ModuleCtx, UUID, Collection<UUID>) -> Int,
     ): Int {
         if (ids.isEmpty()) return 0
-        val appId = mc.mustGetAppId()
-        val count = deleter(mc, appId, ids)
-        ids.forEach { evict(appId, it) }
+        val projectId = mc.mustGetProjectId()
+        val count = deleter(mc, projectId, ids)
+        ids.forEach { evict(projectId, it) }
         return count
     }
 
     // ===== Evict =====
 
-    fun evict(mc: ModuleCtx, id: UUID) = evict(mc.mustGetAppId(), id)
+    fun evict(mc: ModuleCtx, id: UUID) = evict(mc.mustGetProjectId(), id)
 
-    private fun evict(appId: UUID, id: UUID) {
-        cache?.evict(cacheKey(appId, id))
+    private fun evict(projectId: UUID, id: UUID) {
+        cache?.evict(cacheKey(projectId, id))
     }
 
-    private fun cacheKey(appId: UUID, id: UUID) = "$cachePrefix:$appId:$id"
+    private fun cacheKey(projectId: UUID, id: UUID) = "$cachePrefix:$projectId:$id"
 }

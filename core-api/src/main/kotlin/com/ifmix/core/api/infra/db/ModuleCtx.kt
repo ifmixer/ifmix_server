@@ -14,13 +14,13 @@ data class ModuleCtx(
     val inTransaction: Boolean = false,
 ) {
     // ===== 便捷委托 =====
-    val appId get() = op.appId
+    val projectId get() = op.projectId
     val actorId get() = op.actorId
     val actorType get() = op.actorType
     val anonymous get() = op.anonymous
     val readCache get() = op.readCache
 
-    fun mustGetAppId() = op.mustGetAppId()
+    fun mustGetProjectId() = op.mustGetProjectId()
     fun mustGetActorId() = op.mustGetActorId()
 }
 

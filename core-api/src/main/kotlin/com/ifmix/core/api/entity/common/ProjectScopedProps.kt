@@ -4,6 +4,6 @@ import org.babyfish.jimmer.sql.MappedSuperclass
 import java.util.UUID
 
 @MappedSuperclass
-interface AppScopedProps {
-    val appId: UUID
+interface ProjectScopedProps {
+    val projectId: UUID
 }

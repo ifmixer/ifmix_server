@@ -36,8 +36,8 @@ abstract class E2eTestBase {
     }
 
     companion object {
-        /** 测试用 appId */
-        const val TEST_APP_ID = "00000000-0000-0000-0000-000000000001"
+        /** 测试用 projectId */
+        const val TEST_PROJECT_ID = "00000000-0000-0000-0000-000000000001"
         const val TEST_INSTALL_ID = "00000000-0000-0000-0000-000000000099"
 
         /** WireMock server shared by all E2E tests (for mocking external APIs like WeChat) */
@@ -74,18 +74,18 @@ abstract class E2eTestBase {
         }
     }
 
-    /** PUT 请求 with appId header */
+    /** PUT 请求 with projectId header */
     protected fun put(path: String, body: Any? = null) = webClient.put()
         .uri(path)
-        .header("x-app-id", TEST_APP_ID)
+        .header("x-project-id", TEST_PROJECT_ID)
         .header("x-install-id", TEST_INSTALL_ID)
         .contentType(MediaType.APPLICATION_JSON)
         .apply { if (body != null) bodyValue(body) }
 
-    /** POST 请求 with appId header */
+    /** POST 请求 with projectId header */
     protected fun post(path: String, body: Any? = null) = webClient.post()
         .uri(path)
-        .header("x-app-id", TEST_APP_ID)
+        .header("x-project-id", TEST_PROJECT_ID)
         .header("x-install-id", TEST_INSTALL_ID)
         .contentType(MediaType.APPLICATION_JSON)
         .apply { if (body != null) bodyValue(body) }

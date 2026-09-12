@@ -11,7 +11,7 @@ import java.time.Duration
  * ```
  * cache.getOrLoad(key, MyType::class.java) { repo.getById(id) }
  *
- * cache.loadMany(ids, { "todo:$appId:$it" }, MyType::class.java, { it.id.toString() }) { missIds ->
+ * cache.loadMany(ids, { "todo:$projectId:$it" }, MyType::class.java, { it.id.toString() }) { missIds ->
  *     repo.findByIds(missIds)
  * }
  * ```

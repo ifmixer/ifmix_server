@@ -2,7 +2,7 @@ package com.ifmix.core.api.infra.http
 
 /** 请求头名常量。 */
 object RequestHeaders {
-    const val APP_ID = "x-app-id"
+    const val PROJECT_ID = "x-project-id"
     const val INSTALL_ID = "x-install-id"
     const val LOCALE = "x-locale"
     const val CURRENCY = "x-currency"

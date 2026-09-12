@@ -192,9 +192,9 @@ class ScanRecordsDataLoader(
 ) : MappedBatchLoader<UUID, ScanRecord?> {
     override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanRecord?>> {
         val opCtx = OperationContextHolder.current()
-        val mc = mcFactory.forApp(opCtx)
-        val appId = opCtx.mustGetAppId()
-        val records = scanRecordRepo.findByIdsListView(mc, appId, ids)
+        val mc = mcFactory.forProject(opCtx)
+        val projectId = opCtx.mustGetProjectId()
+        val records = scanRecordRepo.findByIdsListView(mc, projectId, ids)
         val map = records.associateBy { it.id }
         return CompletableFuture.completedFuture(ids.associateWith { map[it] })
     }

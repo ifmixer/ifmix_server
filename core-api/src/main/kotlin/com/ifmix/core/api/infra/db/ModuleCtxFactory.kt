@@ -14,10 +14,10 @@ import java.util.UUID
 @Component
 class ModuleCtxFactory(private val router: ClusterRouter) {
 
-    /** 按 appId 路由（大多数模块用这个） */
-    fun forApp(opCtx: OperationContext): ModuleCtx = ModuleCtx(
+    /** 按 projectId 路由（大多数模块用这个） */
+    fun forProject(opCtx: OperationContext): ModuleCtx = ModuleCtx(
         op = opCtx,
-        sql = chooseSql(opCtx, router.forApp(opCtx.mustGetAppId())),
+        sql = chooseSql(opCtx, router.forProject(opCtx.mustGetProjectId())),
         inTransaction = opCtx.inGlobalTx,
     )
 
@@ -28,8 +28,8 @@ class ModuleCtxFactory(private val router: ClusterRouter) {
         inTransaction = opCtx.inGlobalTx,
     )
 
-    /** 默认（不需要路由参数，直接用 router.forApp） */
-    fun default(opCtx: OperationContext): ModuleCtx = forApp(opCtx)
+    /** 默认（不需要路由参数，直接用 router.forProject） */
+    fun default(opCtx: OperationContext): ModuleCtx = forProject(opCtx)
 
     private fun chooseSql(opCtx: OperationContext, pair: ClusterSqlPair): KSqlClient = when {
         opCtx.globalTxSql != null -> opCtx.globalTxSql!!  // 全局事务内，复用事务连接

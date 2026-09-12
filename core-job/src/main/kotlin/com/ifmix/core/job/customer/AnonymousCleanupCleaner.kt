@@ -52,14 +52,14 @@ class AnonymousCleanupCleaner(
         )
     }
 
-    private data class Candidate(val id: UUID, val appId: UUID, val anonymous: Boolean, val merged: Boolean)
+    private data class Candidate(val id: UUID, val projectId: UUID, val anonymous: Boolean, val merged: Boolean)
 
     /** 执行一次全量清理（由 Spring Batch tasklet 调用，返回 RepeatStatus.FINISHED）。 */
     fun runOnce() {
         val started = Instant.now()
         val cutoff = Instant.now().minus(config.tombstoneWindowDays, ChronoUnit.DAYS)
 
-        // 单库全库扫（ifmix_core_test 单 app）。SQL 仍带 app_id 字段回读，删除按 id 精确。
+        // 单库全库扫（ifmix_core_test 单 app）。SQL 仍带 project_id 字段回读，删除按 id 精确。
         val zombieDeleted = drain { afterId -> fetchZombies(afterId) }
         val tombstoneDeleted = drain { afterId -> fetchTombstones(cutoff, afterId) }
 
@@ -91,7 +91,7 @@ class AnonymousCleanupCleaner(
     private fun fetchZombies(afterId: UUID?): List<Candidate> =
         jdbc.sql(
             """
-            SELECT id, app_id, anonymous, (merged_to IS NOT NULL) AS merged
+            SELECT id, project_id, anonymous, (merged_to IS NOT NULL) AS merged
             FROM customer
             WHERE anonymous = true AND merged_to IS NULL AND (:afterId::uuid IS NULL OR id > :afterId::uuid)
             ORDER BY id
@@ -101,7 +101,7 @@ class AnonymousCleanupCleaner(
             .query { rs, _ ->
                 Candidate(
                     id = rs.getObject("id", UUID::class.java),
-                    appId = rs.getObject("app_id", UUID::class.java),
+                    projectId = rs.getObject("project_id", UUID::class.java),
                     anonymous = rs.getBoolean("anonymous"),
                     merged = rs.getBoolean("merged"),
                 )
@@ -111,7 +111,7 @@ class AnonymousCleanupCleaner(
     private fun fetchTombstones(cutoff: Instant, afterId: UUID?): List<Candidate> =
         jdbc.sql(
             """
-            SELECT id, app_id, anonymous, (merged_to IS NOT NULL) AS merged
+            SELECT id, project_id, anonymous, (merged_to IS NOT NULL) AS merged
             FROM customer
             WHERE merged_to IS NOT NULL AND updated_at < :cutoff
               AND (:afterId::uuid IS NULL OR id > :afterId::uuid)
@@ -123,7 +123,7 @@ class AnonymousCleanupCleaner(
             .query { rs, _ ->
                 Candidate(
                     id = rs.getObject("id", UUID::class.java),
-                    appId = rs.getObject("app_id", UUID::class.java),
+                    projectId = rs.getObject("project_id", UUID::class.java),
                     anonymous = rs.getBoolean("anonymous"),
                     merged = rs.getBoolean("merged"),
                 )

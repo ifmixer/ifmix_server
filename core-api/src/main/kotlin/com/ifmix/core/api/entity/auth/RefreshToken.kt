@@ -1,6 +1,6 @@
 package com.ifmix.core.api.entity.auth
 
-import com.ifmix.core.api.entity.common.BaseAppEntity
+import com.ifmix.core.api.entity.common.BaseProjectEntity
 import com.ifmix.core.api.entity.common.ActorType
 import org.babyfish.jimmer.sql.*
 import java.time.Instant
@@ -11,7 +11,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "auth_refreshtoken")
-interface RefreshToken : BaseAppEntity {
+interface RefreshToken : BaseProjectEntity {
 
     /** 逻辑外键 → 主体 id（customer / manager，跨模块） */
     val actorId: UUID

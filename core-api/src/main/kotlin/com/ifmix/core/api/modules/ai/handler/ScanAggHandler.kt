@@ -55,7 +55,7 @@ class ScanAggHandler(
 
         return AiScanResult(
             scanId = scanId,
-            appId = opCtx.mustGetAppId(),
+            projectId = opCtx.mustGetProjectId(),
             locale = opCtx.locale,
             country = opCtx.country,
             currency = opCtx.currency,
@@ -73,7 +73,7 @@ class ScanAggHandler(
     fun saveNewScan(sc: ModuleCtx, result: AiScanResult): ScanRecord {
         val record = ScanRecord {
             id = result.scanId
-            this.appId = result.appId
+            this.projectId = result.projectId
             this.images = result.images.map { ImageRef(key = it.imageKey, category = it.category ?: ImageCategories.MAIN) }
             this.basicResult = result.basicResult
             this.status = com.ifmix.core.api.entity.ai.ScanStatuses.READY
@@ -97,11 +97,11 @@ class ScanAggHandler(
     }
 
     fun updateScan(sc: ModuleCtx, input: UpdateScanInput): Boolean {
-        val appId = sc.op.mustGetAppId()
-        if (!scanRepo.exists(sc, appId, input.id)) throw com.ifmix.core.api.infra.http.ApiError(
+        val projectId = sc.op.mustGetProjectId()
+        if (!scanRepo.exists(sc, projectId, input.id)) throw com.ifmix.core.api.infra.http.ApiError(
             com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND
         )
-        scanRepo.partialUpdate(sc, appId, input.id, input)
+        scanRepo.partialUpdate(sc, projectId, input.id, input)
         return true
     }
 
@@ -110,39 +110,39 @@ class ScanAggHandler(
      * ids 为空视为非法请求。
      */
     fun batchUpdateScan(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): Int {
-        val appId = sc.op.mustGetAppId()
+        val projectId = sc.op.mustGetProjectId()
         val customerId = sc.op.mustGetActorId()
         if (input.ids.isEmpty()) throw com.ifmix.core.api.infra.http.ApiError(
             com.ifmix.core.api.infra.http.ErrorCode.INVALID_REQUEST, "ids cannot be empty"
         )
         return scanRepo.batchPartialUpdate(
-            sc, appId, customerId, input.ids,
+            sc, projectId, customerId, input.ids,
             collected = input.set.collected,
             isPublic = input.set.isPublic,
         )
     }
 
     fun deleteScan(sc: ModuleCtx, id: UUID): Boolean {
-        val appId = sc.op.mustGetAppId()
-        scanRepo.deleteById(sc, appId, id)
+        val projectId = sc.op.mustGetProjectId()
+        scanRepo.deleteById(sc, projectId, id)
         return true
     }
 
     fun findById(sc: ModuleCtx, id: UUID): ScanRecord? =
-        scanRepo.findById(sc, sc.op.mustGetAppId(), id)
+        scanRepo.findById(sc, sc.op.mustGetProjectId(), id)
 
     /** 批量按 scanRecordId 查询 DeepResearch（DataLoader 用）。 */
     fun findDeepResearchByScanRecordIds(sc: ModuleCtx, scanRecordIds: Collection<UUID>): List<com.ifmix.core.api.entity.ai.ScanDeepResearch> =
-        deepResearchRepo.findByScanRecordIds(sc, sc.op.mustGetAppId(), scanRecordIds)
+        deepResearchRepo.findByScanRecordIds(sc, sc.op.mustGetProjectId(), scanRecordIds)
 
     /**
      * DeepResearch 第一步（事务内）：校验归属并整体替换 images。
      * 即使随后的 AI 调用失败，图片也已提交。images 顺序即数组顺序；category 为图片分类。
      */
     fun updateDeepResearchImages(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.RunDeepResearchInput) {
-        val appId = sc.op.mustGetAppId()
+        val projectId = sc.op.mustGetProjectId()
         val imageRefs = input.images.map { ImageRef(key = it.imageKey, category = it.category ?: ImageCategories.MAIN) }
-        val updated = scanRepo.updateImages(sc, appId, input.scanRecordId, imageRefs)
+        val updated = scanRepo.updateImages(sc, projectId, input.scanRecordId, imageRefs)
         if (updated == 0) throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
     }
 
@@ -151,8 +151,8 @@ class ScanAggHandler(
      * 图片已在 updateDeepResearchImages 提交，这里只读取归属信息并调用 AI。
      */
     fun runDeepResearch(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.RunDeepResearchInput): com.ifmix.core.api.dto.ai.DeepResearchResult {
-        val appId = sc.op.mustGetAppId()
-        val existing = scanRepo.findById(sc, appId, input.scanRecordId)
+        val projectId = sc.op.mustGetProjectId()
+        val existing = scanRepo.findById(sc, projectId, input.scanRecordId)
             ?: throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
 
         val resolved = input.images.map { img ->
@@ -179,7 +179,7 @@ class ScanAggHandler(
 
         return com.ifmix.core.api.dto.ai.DeepResearchResult(
             scanRecordId = input.scanRecordId,
-            appId = appId,
+            projectId = projectId,
             basicResult = basicResult,
             premiumResult = premiumResult,
             promptVersion = scanPrompt.promptVersion,
@@ -193,14 +193,14 @@ class ScanAggHandler(
      */
     fun saveDeepResearch(sc: ModuleCtx, result: com.ifmix.core.api.dto.ai.DeepResearchResult): Boolean {
         val updated = scanRepo.updateResultAfterDeepResearch(
-            sc, result.appId, result.scanRecordId, result.basicResult, result.promptVersion,
+            sc, result.projectId, result.scanRecordId, result.basicResult, result.promptVersion,
         )
         if (updated == 0) throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
 
-        val existing = deepResearchRepo.findByScanRecordId(sc, result.appId, result.scanRecordId)
+        val existing = deepResearchRepo.findByScanRecordId(sc, result.projectId, result.scanRecordId)
         val entity = com.ifmix.core.api.entity.ai.ScanDeepResearch {
             id = existing?.id ?: UuidV7.generate()
-            this.appId = result.appId
+            this.projectId = result.projectId
             this.scanRecordId = result.scanRecordId
             this.premiumResult = result.premiumResult
             this.promptVersion = result.promptVersion
@@ -219,9 +219,9 @@ class ScanAggHandler(
         objectStorage.getPublicUrl("ugc", objectKey)
 
     fun findMyScans(sc: ModuleCtx, findOptions: CommonFindOptions?): Page<ScanRecord> {
-        val appId = sc.op.mustGetAppId()
+        val projectId = sc.op.mustGetProjectId()
         val customerId = sc.op.mustGetActorId()
-        return scanRepo.findMyScans(sc, appId, customerId, findOptions)
+        return scanRepo.findMyScans(sc, projectId, customerId, findOptions)
     }
 
     private fun guessMediaType(key: String, mediaType: String?): String =

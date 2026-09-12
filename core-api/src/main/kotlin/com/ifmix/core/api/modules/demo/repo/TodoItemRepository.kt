@@ -2,7 +2,7 @@ package com.ifmix.core.api.modules.demo.repo
 
 import com.ifmix.core.api.entity.demo.TodoItem
 import com.ifmix.core.api.entity.demo.todoId
-import com.ifmix.core.api.entity.demo.appId
+import com.ifmix.core.api.entity.demo.projectId
 import com.ifmix.core.api.entity.demo.id
 import com.ifmix.core.api.entity.demo.content
 import com.ifmix.core.api.entity.demo.done
@@ -10,31 +10,31 @@ import com.ifmix.core.api.entity.demo.note
 import com.ifmix.core.api.generated.types.TodoItemUnsetField
 import com.ifmix.core.api.generated.types.UpdateTodoItemInput
 import com.ifmix.core.api.infra.db.ModuleCtx
-import com.ifmix.core.api.infra.repo.AppCrudRepoTemplate
+import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
 class TodoItemRepository {
-    private val tpl = AppCrudRepoTemplate(TodoItem::class)
+    private val tpl = ProjectCrudRepoTemplate(TodoItem::class)
 
     fun save(mc: ModuleCtx, entity: TodoItem) = tpl.save(mc, entity)
-    fun deleteByIds(mc: ModuleCtx, appId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, appId, ids)
+    fun deleteByIds(mc: ModuleCtx, projectId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, projectId, ids)
 
-    fun findByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>): List<TodoItem> {
+    fun findByTodoIds(mc: ModuleCtx, projectId: UUID, todoIds: Collection<UUID>): List<TodoItem> {
         if (todoIds.isEmpty()) return emptyList()
         return mc.sql.createQuery(TodoItem::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.todoId valueIn todoIds)
             select(table)
         }.execute()
     }
 
-    fun countByTodoIds(mc: ModuleCtx, appId: UUID, todoIds: Collection<UUID>): Map<UUID, TodoItemCounts> {
+    fun countByTodoIds(mc: ModuleCtx, projectId: UUID, todoIds: Collection<UUID>): Map<UUID, TodoItemCounts> {
         if (todoIds.isEmpty()) return emptyMap()
         return mc.sql.createQuery(TodoItem::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.todoId valueIn todoIds)
             groupBy(table.todoId)
             select(
@@ -52,7 +52,7 @@ class TodoItemRepository {
         }
     }
 
-    fun partialUpdate(mc: ModuleCtx, appId: UUID, input: UpdateTodoItemInput): Int {
+    fun partialUpdate(mc: ModuleCtx, projectId: UUID, input: UpdateTodoItemInput): Int {
         val set = input.set
         val unset = input.unset?.toSet() ?: emptySet()
 
@@ -60,7 +60,7 @@ class TodoItemRepository {
         if (set == null && unset.isEmpty()) return 0
 
         return mc.sql.createUpdate(TodoItem::class) {
-            where(table.appId eq appId)
+            where(table.projectId eq projectId)
             where(table.id eq input.id)
 
             // unset 优先

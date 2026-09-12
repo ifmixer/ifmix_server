@@ -33,7 +33,7 @@ class FeedbackReasonsArrayE2eTest : E2eTestBase() {
     @Autowired
     lateinit var jdbcTemplate: JdbcTemplate
 
-    private val testAppId = UUID.fromString(TEST_APP_ID)
+    private val testProjectId = UUID.fromString(TEST_PROJECT_ID)
 
     @Test
     fun `smallint array round-trips through jimmer`() {
@@ -41,7 +41,7 @@ class FeedbackReasonsArrayE2eTest : E2eTestBase() {
 
         val entity = new(Feedback::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.topic = FeedbackTopics.SCAN
             this.reasons = arrayOf(FeedbackReasons.PRICE_TOO_HIGH, FeedbackReasons.WRONG_IDENTIFICATION)
             this.createdAt = Instant.now()
@@ -66,7 +66,7 @@ class FeedbackReasonsArrayE2eTest : E2eTestBase() {
         val id = UuidV7.generate()
         val entity = new(Feedback::class).by {
             this.id = id
-            this.appId = testAppId
+            this.projectId = testProjectId
             this.topic = FeedbackTopics.APP
             this.reasons = emptyArray()
             this.createdAt = Instant.now()

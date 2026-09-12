@@ -1,6 +1,6 @@
 package com.ifmix.core.api.entity.auth
 
-import com.ifmix.core.api.entity.common.BaseAppEntity
+import com.ifmix.core.api.entity.common.BaseProjectEntity
 import org.babyfish.jimmer.sql.*
 
 /** 登录方式编码。typealias（Int 全链路透传），码表见 [LoginMethods]。 */
@@ -20,7 +20,7 @@ object LoginMethods {
  */
 @Entity
 @Table(name = "auth_identity")
-interface AuthIdentity : BaseAppEntity {
+interface AuthIdentity : BaseProjectEntity {
 
     /** 密码哈希（未设密码为 null）。 */
     val password: String?

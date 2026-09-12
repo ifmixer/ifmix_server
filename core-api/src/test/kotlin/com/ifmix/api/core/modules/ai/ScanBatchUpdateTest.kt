@@ -29,18 +29,18 @@ import java.util.UUID
 class ScanBatchUpdateTest {
 
     private val repo = ScanRecordRepository()
-    private val appId = UUID.randomUUID()
+    private val projectId = UUID.randomUUID()
     private val customerId = UUID.randomUUID()
 
     private fun ctx(sql: KSqlClient) = ModuleCtx(
-        op = OperationContext(appId = appId, actorId = customerId),
+        op = OperationContext(projectId = projectId, actorId = customerId),
         sql = sql,
     )
 
     @Test
     fun `empty ids short-circuits without touching sql`() {
         val sql = mock<KSqlClient>()
-        val n = repo.batchPartialUpdate(ctx(sql), appId, customerId, emptyList(), collected = true, isPublic = null)
+        val n = repo.batchPartialUpdate(ctx(sql), projectId, customerId, emptyList(), collected = true, isPublic = null)
         assertThat(n).isEqualTo(0)
         verifyNoInteractions(sql)
     }
@@ -48,7 +48,7 @@ class ScanBatchUpdateTest {
     @Test
     fun `all-null set short-circuits without touching sql`() {
         val sql = mock<KSqlClient>()
-        val n = repo.batchPartialUpdate(ctx(sql), appId, customerId, listOf(UUID.randomUUID()), collected = null, isPublic = null)
+        val n = repo.batchPartialUpdate(ctx(sql), projectId, customerId, listOf(UUID.randomUUID()), collected = null, isPublic = null)
         assertThat(n).isEqualTo(0)
         verifyNoInteractions(sql)
     }

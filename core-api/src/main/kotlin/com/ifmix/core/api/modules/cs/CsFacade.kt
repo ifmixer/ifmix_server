@@ -19,14 +19,14 @@ class CsFacade(
     private val supportRequestHandler: SupportRequestAggHandler,
 ) {
     fun submit(ctx: OperationContext, req: SubmitFeedbackReq): UUID =
-        handler.submit(mcFactory.forApp(ctx), req)
+        handler.submit(mcFactory.forProject(ctx), req)
 
     fun createSupportRequest(ctx: OperationContext, req: CreateSupportRequestReq): UUID =
-        supportRequestHandler.create(mcFactory.forApp(ctx), req)
+        supportRequestHandler.create(mcFactory.forProject(ctx), req)
 
     fun findMySupportRequestById(ctx: OperationContext, id: UUID): SupportRequest =
-        supportRequestHandler.findMineById(mcFactory.forApp(ctx), id)
+        supportRequestHandler.findMineById(mcFactory.forProject(ctx), id)
 
     fun findMySupportRequests(ctx: OperationContext, req: ListSupportRequestsReq?): Page<SupportRequest> =
-        supportRequestHandler.findMine(mcFactory.forApp(ctx), req)
+        supportRequestHandler.findMine(mcFactory.forProject(ctx), req)
 }

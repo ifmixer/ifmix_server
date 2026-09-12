@@ -1,6 +1,6 @@
-package com.ifmix.core.api.entity.app
+package com.ifmix.core.api.entity.project
 
-import com.ifmix.core.api.entity.common.AppScopedProps
+import com.ifmix.core.api.entity.common.ProjectScopedProps
 import com.ifmix.core.api.entity.common.UUIDProps
 import com.ifmix.core.api.entity.common.CreatedAtProps
 import org.babyfish.jimmer.sql.*
@@ -9,8 +9,8 @@ import org.babyfish.jimmer.sql.*
  * per-app 配置版本。追加式；enabled=true 的为当前生效版本。
  */
 @Entity
-@Table(name = "app_config_revision")
-interface AppConfigRevision : UUIDProps, AppScopedProps, CreatedAtProps {
+@Table(name = "project_config_revision")
+interface ProjectConfigRevision : UUIDProps, ProjectScopedProps, CreatedAtProps {
     val appleBundleId: String?
     val androidPackageName: String?
     /** JSONB, 整个字段替换 — 所有平台配置聚合 */

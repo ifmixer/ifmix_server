@@ -1,6 +1,6 @@
 package com.ifmix.core.api.entity.ai
 
-import com.ifmix.core.api.entity.common.BaseAppEntity
+import com.ifmix.core.api.entity.common.BaseProjectEntity
 import org.babyfish.jimmer.sql.*
 import java.time.Instant
 
@@ -12,7 +12,7 @@ typealias AgnesKeyType = Int
  */
 @Entity
 @Table(name = "ai_agnes_key")
-interface AgnesKey : BaseAppEntity {
+interface AgnesKey : BaseProjectEntity {
 
 
     val key: String

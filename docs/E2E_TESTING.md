@@ -27,7 +27,7 @@
 │  + Testcontainers (PostgreSQL, Redis)                          │
 ├───────────────────────────────────────────────────────────────┤
 │                                                                │
-│  TestFixtures         →  Seed data (AppInfo, AppConfig, Idp, etc)  │
+│  TestFixtures         →  Seed data (ProjectInfo, ProjectConfig, Idp, etc)  │
 │  WebTestClient        →  HTTP calls (real HTTP, real server)   │
 │  Assertions           →  Response code + body + DB state       │
 │                                                                │
@@ -49,12 +49,12 @@
 - [ ] IAP: verifyIapPurchase (stub verifier)
 
 ### Phase 2 — 边界 & 安全
-- [ ] 无 x-app-id 请求 → 400
-- [ ] 无效 appId 格式 → 400
+- [ ] 无 x-project-id 请求 → 400
+- [ ] 无效 projectId 格式 → 400
 - [ ] 过期 token → 匿名继续 (AuthInterceptor 非阻塞)
 - [ ] 限流超限 → 429
 - [ ] objectKey 路径遍历 → 400
-- [ ] objectKey appId 不匹配 → 400
+- [ ] objectKey projectId 不匹配 → 400
 
 ### Phase 3 — Webhook 安全
 - [ ] Apple webhook 无效签名 → 403

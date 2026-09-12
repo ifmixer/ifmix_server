@@ -1,6 +1,6 @@
 package com.ifmix.core.api.entity.pay
 
-import com.ifmix.core.api.entity.common.BaseAppEntity
+import com.ifmix.core.api.entity.common.BaseProjectEntity
 import com.ifmix.core.api.entity.common.Platform
 import com.ifmix.core.api.entity.common.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
@@ -9,7 +9,7 @@ import java.util.UUID
 
 @Entity
 @Table(name = "pay_subscription")
-interface Subscription : BaseAppEntity, SoftDeletableProps {
+interface Subscription : BaseProjectEntity, SoftDeletableProps {
 
     /** 归属 customer（本期补，存量留空）。 */
     @Column(name = "customer_id")

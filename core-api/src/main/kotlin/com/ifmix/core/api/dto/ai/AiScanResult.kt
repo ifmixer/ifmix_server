@@ -11,7 +11,7 @@ import java.util.UUID
  */
 data class AiScanResult(
     val scanId: UUID,
-    val appId: UUID,
+    val projectId: UUID,
     val locale: String?,
     val country: String?,
     val currency: String?,

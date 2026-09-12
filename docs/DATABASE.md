@@ -12,25 +12,25 @@
 |------|------|------|--------|
 | auth | `auth_idp` | 全局 | Idp |
 | auth | `auth_idpidentity` | 全局 | IdpIdentity |
-| auth | `auth_identity` | app | AuthIdentity |
-| auth | `auth_identity_to_idpidentity_relation` | app | AuthIdentityIdpRelation |
-| auth | `auth_app_to_idp_relation` | app | AppToIdpRelation |
-| auth | `auth_refreshtoken` | app | RefreshToken |
-| customer | `customer` | app | Customer |
-| demo | `demo_todo` | app | Todo |
-| demo | `demo_todo_item` | app | TodoItem |
-| app | `app_config_revision` | app | AppConfigRevision |
-| app | `app_info` | 全局 | AppInfo |
-| ai | `ai_scan_record` | app | ScanRecord |
-| ai | `ai_scan_deep_research` | app | ScanDeepResearch |
-| ai | `ai_scan_collection` | app | ScanCollection |
-| ai | `ai_scan_collection_item` | app | ScanCollectionItem |
-| ai | `ai_agnes_key` | app | AgnesKey |
-| pay | `pay_subscription` | app | Subscription |
-| pay | `pay_store_notification` | app | StoreNotification |
-| media | `media_upload_record` | app | UploadRecord |
-| cs | `cs_feedback` | app | Feedback |
-| cs | `cs_support_request` | app | SupportRequest |
+| auth | `auth_identity` | project | AuthIdentity |
+| auth | `auth_identity_to_idpidentity_relation` | project | AuthIdentityIdpRelation |
+| auth | `auth_project_to_idp_relation` | project | ProjectToIdpRelation |
+| auth | `auth_refreshtoken` | project | RefreshToken |
+| customer | `customer` | project | Customer |
+| demo | `demo_todo` | project | Todo |
+| demo | `demo_todo_item` | project | TodoItem |
+| project | `project_config_revision` | project | ProjectConfigRevision |
+| project | `project_info` | 全局 | ProjectInfo |
+| ai | `ai_scan_record` | project | ScanRecord |
+| ai | `ai_scan_deep_research` | project | ScanDeepResearch |
+| ai | `ai_scan_collection` | project | ScanCollection |
+| ai | `ai_scan_collection_item` | project | ScanCollectionItem |
+| ai | `ai_agnes_key` | project | AgnesKey |
+| pay | `pay_subscription` | project | Subscription |
+| pay | `pay_store_notification` | project | StoreNotification |
+| media | `media_upload_record` | project | UploadRecord |
+| cs | `cs_feedback` | project | Feedback |
+| cs | `cs_support_request` | project | SupportRequest |
 
 > `install_id`（`InstallIdProps`，entity/common）：客户端安装标识，由 `x-install-id` header 上报，服务端仅记录（可伪造，不用于鉴权），用于行为分析。已铺到 `ai_scan_record` / `ai_scan_collection` / `cs_feedback` / `cs_support_request`（均可空）。
 
@@ -44,13 +44,13 @@
 | AuthIdentity ↔ IdpIdentity | 关系表 `auth_identity_to_idpidentity_relation`（`auth_identity_id` / `idp_identity_id`） | M:N | 见下 |
 | RefreshToken → 主体 | `actor_type`(10=customer/20=manager) + `actor_id` | — | 主体无关，不直接绑 customer |
 | IdpIdentity → Idp | `idp_identity.idp_id`（可选） | N:1 | email/phone 等内建身份可无 idp |
-| AppToIdpRelation | `app_id` + `idp_id` | M:N | app 启用了哪些 IDP |
+| ProjectToIdpRelation | `project_id` + `idp_id` | M:N | project 启用了哪些 IDP |
 
-**M:N 双向（关系表按 `app_id` 隔离）**：
-- 一个 `IdpIdentity`（全局，跨 app）→ 多个 `AuthIdentity`（每 app 一个）：反查唯一索引 `(app_id, idp_identity_id) WHERE deleted_at IS NULL`。
-- 一个 `AuthIdentity`（app 级）→ 多个 `IdpIdentity`（同 app 多 provider：Google+Apple…）：正查索引 `(app_id, auth_identity_id)`。
+**M:N 双向（关系表按 `project_id` 隔离）**：
+- 一个 `IdpIdentity`（全局，跨 project）→ 多个 `AuthIdentity`（每 project 一个）：反查唯一索引 `(project_id, idp_identity_id) WHERE deleted_at IS NULL`。
+- 一个 `AuthIdentity`（project 级）→ 多个 `IdpIdentity`（同 app 多 provider：Google+Apple…）：正查索引 `(project_id, auth_identity_id)`。
 
-> `IdpIdentity`/`Idp` 全局跨 app，其余身份表为 app 级。账号权威资料（姓名/邮箱/手机/metadata）在 `AuthIdentity`；`Customer` 只保留匿名/合并语义 + `authIdentityId`。详见 [AUTH_DESIGN.md](AUTH_DESIGN.md)。
+> `IdpIdentity`/`Idp` 全局跨 project，其余身份表为 project 级。账号权威资料（姓名/邮箱/手机/metadata）在 `AuthIdentity`；`Customer` 只保留匿名/合并语义 + `authIdentityId`。详见 [AUTH_DESIGN.md](AUTH_DESIGN.md)。
 
 ## 主键
 
@@ -177,7 +177,7 @@ input CommonFindOptions {
 }
 ```
 
-后端 `AppCrudRepoTemplate.findByOptions` 统一处理，需声明 `filterable` 和 `sortable` 白名单。
+后端 `ProjectCrudRepoTemplate.findByOptions` 统一处理，需声明 `filterable` 和 `sortable` 白名单。
 
 ## Flyway
 

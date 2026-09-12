@@ -17,7 +17,7 @@ class FeedbackAggHandler(
         val id = UuidV7.generate()
         val feedback = Feedback {
             this.id = id
-            this.appId = mc.op.appId!!
+            this.projectId = mc.op.projectId!!
             this.customerId = mc.op.actorId
             this.installId = mc.op.installId
             this.topic = req.topic

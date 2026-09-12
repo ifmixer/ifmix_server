@@ -13,11 +13,11 @@ class CustomerFacade(
     private val customerRepo: CustomerRepository,
 ) {
     fun findById(ctx: OperationContext, id: UUID): Customer? =
-        customerRepo.findById(mcFactory.forApp(ctx), ctx.mustGetAppId(), id)
+        customerRepo.findById(mcFactory.forProject(ctx), ctx.mustGetProjectId(), id)
 
     fun createCustomer(ctx: OperationContext): UUID =
-        customerRepo.createCustomer(mcFactory.forApp(ctx), ctx.mustGetAppId())
+        customerRepo.createCustomer(mcFactory.forProject(ctx), ctx.mustGetProjectId())
 
     fun exists(ctx: OperationContext, id: UUID): Boolean =
-        customerRepo.exists(mcFactory.forApp(ctx), ctx.mustGetAppId(), id)
+        customerRepo.exists(mcFactory.forProject(ctx), ctx.mustGetProjectId(), id)
 }

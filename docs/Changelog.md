@@ -5,6 +5,16 @@
 ## 2026-09-12
 
 ### Changed
+- **业务概念 `app` 全量重命名为 `project`**（未上线，不考虑兼容性；顶层包 `com.ifmix.core.api` 与 Spring `Application`/`application.yml` 配置前缀不动）：
+  - Header：`x-app-id` → `x-project-id`（`RequestHeaders.PROJECT_ID`）。
+  - Kotlin：`appId`→`projectId`、`mustGetAppId`→`mustGetProjectId`、`forApp`→`forProject`、`AppScopedProps`→`ProjectScopedProps`、`BaseAppEntity`→`BaseProjectEntity`、`AppCrudRepoTemplate`→`ProjectCrudRepoTemplate`、`AppConfig*`→`ProjectConfig*`、`AppInfo`→`ProjectInfo`、`AppToIdpRelation`→`ProjectToIdpRelation`；包目录 `modules/app`→`modules/project`、`entity/app`→`entity/project`。
+  - DB（改 `V1__baseline.sql` + 重建库）：列 `app_id`→`project_id`；表 `app_config_revision`→`project_config_revision`、`app_info`→`project_info`、`auth_app_to_idp_relation`→`auth_project_to_idp_relation`。
+  - 对象存储 key 段 `.../app/{projectId}/...` → `.../project/{projectId}/...`。
+  - JWT 仍以 `aud` 承载 projectId（无自定义 claim key，语义不变）。
+  - 客户端 `ifmix_apps`：`x-app-id`→`x-project-id`，config `appId`→`projectId`，env `EXPO_PUBLIC_APP_ID`→`EXPO_PUBLIC_PROJECT_ID`。
+  - **保留未改**（denylist）：Apple 相关（`apple*`/`AppleConfigValue`/`appAppleId`）、WeChat 凭据字段（`WechatConfigValue.appId`/`appSecret`）、Spring `Application`/`app.*` 配置前缀、legacy `appuser`/`app_user` 表名。
+
+### Changed（续）
 - **DB 迁移 squash**：历史 `V1`–`V10` 合并为单个 `V1__baseline.sql`（未上线，不考虑兼容性）。
   baseline 由 `core_api_local`（v10 真实态）`pg_dump --schema-only` 生成，剔除 `flyway_schema_history`；
   已在全新库验证：应用后与原 v10 schema **列/索引零差异**。旧环境需 drop 库后用新 `V1` 重新迁移。

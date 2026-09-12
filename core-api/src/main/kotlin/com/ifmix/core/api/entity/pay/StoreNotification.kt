@@ -1,13 +1,13 @@
 package com.ifmix.core.api.entity.pay
 
-import com.ifmix.core.api.entity.common.BaseAppEntity
+import com.ifmix.core.api.entity.common.BaseProjectEntity
 import com.ifmix.core.api.entity.common.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
 import java.time.Instant
 
 @Entity
 @Table(name = "pay_store_notification")
-interface StoreNotification : BaseAppEntity, SoftDeletableProps {
+interface StoreNotification : BaseProjectEntity, SoftDeletableProps {
 
 
 

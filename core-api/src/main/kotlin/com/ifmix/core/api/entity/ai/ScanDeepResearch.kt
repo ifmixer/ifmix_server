@@ -1,6 +1,6 @@
 package com.ifmix.core.api.entity.ai
 
-import com.ifmix.core.api.entity.common.BaseAppEntity
+import com.ifmix.core.api.entity.common.BaseProjectEntity
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
@@ -10,7 +10,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "ai_scan_deep_research")
-interface ScanDeepResearch : BaseAppEntity {
+interface ScanDeepResearch : BaseProjectEntity {
 
     @Key
     @Column(name = "scan_record_id")

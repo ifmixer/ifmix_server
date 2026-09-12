@@ -1,7 +1,7 @@
 package com.ifmix.core.api.bff.webhooks
 
 import com.ifmix.core.api.infra.http.OperationContext
-import com.ifmix.core.api.modules.app.AppConfigFacade
+import com.ifmix.core.api.modules.project.ProjectConfigFacade
 import com.ifmix.core.api.modules.pay.PaymentFacade
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
 import com.ifmix.core.api.modules.pay.NotificationDecoder
@@ -25,7 +25,7 @@ import java.util.UUID
  * - Apple: 验证 JWS 签名（Apple Server Notifications v2 用 ES256 签名）
  * - Google: 验证请求中的 token（后续可扩展 OAuth bearer token 验证）
  *
- * 从 payload 中解析 appId（通过 bundleId/packageName 反查 AppConfig），不再硬编码。
+ * 从 payload 中解析 projectId（通过 bundleId/packageName 反查 ProjectConfig），不再硬编码。
  */
 @RestController
 @RequestMapping("/webhooks/iap")
@@ -34,7 +34,7 @@ class WebhookController(
     private val iapService: PaymentFacade,
     @Qualifier("appleDecoder") private val appleDecoder: NotificationDecoder,
     @Qualifier("googleDecoder") private val googleDecoder: NotificationDecoder,
-    private val appConfigFacade: AppConfigFacade,
+    private val projectConfigFacade: ProjectConfigFacade,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -76,18 +76,18 @@ class WebhookController(
             val payloadJson = jwsObject.payload.toString()
             val bundleId = extractBundleId(payloadJson)
 
-            // 4. 通过 bundleId 反查 appId
-            val appId = if (bundleId != null) {
-                appConfigFacade.findAppIdByBundleId(bundleId)
+            // 4. 通过 bundleId 反查 projectId
+            val projectId = if (bundleId != null) {
+                projectConfigFacade.findAppIdByBundleId(bundleId)
             } else null
 
-            if (appId == null) {
-                log.warn("Apple webhook: could not resolve appId from bundleId=$bundleId")
+            if (projectId == null) {
+                log.warn("Apple webhook: could not resolve projectId from bundleId=$bundleId")
                 return ResponseEntity.badRequest().body("unknown app")
             }
 
             // 5. 构建 OperationContext 并处理通知
-            val ctx = OperationContext(appId = appId, actorId = SYSTEM_USER_ID)
+            val ctx = OperationContext(projectId = projectId, actorId = SYSTEM_USER_ID)
             iapService.handleAppleNotification(ctx, rawPayload, appleDecoder)
             return ResponseEntity.ok("ok")
 
@@ -109,18 +109,18 @@ class WebhookController(
             // 1. 提取 packageName 从 Pub/Sub message
             val packageName = extractGooglePackageName(rawPayload)
 
-            // 2. 通过 packageName 反查 appId
-            val appId = if (packageName != null) {
-                appConfigFacade.findAppIdByAndroidPackage(packageName)
+            // 2. 通过 packageName 反查 projectId
+            val projectId = if (packageName != null) {
+                projectConfigFacade.findAppIdByAndroidPackage(packageName)
             } else null
 
-            if (appId == null) {
-                log.warn("Google webhook: could not resolve appId from packageName=$packageName")
+            if (projectId == null) {
+                log.warn("Google webhook: could not resolve projectId from packageName=$packageName")
                 return ResponseEntity.badRequest().body("unknown app")
             }
 
             // 3. 处理通知
-            val ctx = OperationContext(appId = appId, actorId = SYSTEM_USER_ID)
+            val ctx = OperationContext(projectId = projectId, actorId = SYSTEM_USER_ID)
             iapService.handleGoogleNotification(ctx, rawPayload, googleDecoder)
             return ResponseEntity.ok("ok")
 

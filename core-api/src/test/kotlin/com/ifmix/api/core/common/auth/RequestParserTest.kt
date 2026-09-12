@@ -19,7 +19,7 @@ class RequestParserTest {
     private val jwt = mock<AuthJwtService>()
     private val parser = RequestParser(jwt)
 
-    private val appId = "00000000-0000-0000-0000-000000000099"
+    private val projectId = "00000000-0000-0000-0000-000000000099"
     private val actorId = "00000000-0000-0000-0000-000000000001"
 
     private fun req(vararg headers: Pair<String, String>) =
@@ -27,21 +27,21 @@ class RequestParserTest {
 
     private fun bearer(v: VerifiedToken?) = whenever(jwt.verify("tok")).thenReturn(v)
 
-    // ── appId ──
-    @Test fun `appId valid`() {
-        assertThat(parser.parseAppId(req(RequestHeaders.APP_ID to appId), required = true)).isEqualTo(UUID.fromString(appId))
+    // ── projectId ──
+    @Test fun `projectId valid`() {
+        assertThat(parser.parseProjectId(req(RequestHeaders.PROJECT_ID to projectId), required = true)).isEqualTo(UUID.fromString(projectId))
     }
-    @Test fun `appId required missing throws required`() {
-        val ex = assertThrows<ApiError> { parser.parseAppId(req(), required = true) }
+    @Test fun `projectId required missing throws required`() {
+        val ex = assertThrows<ApiError> { parser.parseProjectId(req(), required = true) }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.INVALID_REQUEST)
         assertThat(ex.message).contains("required")
     }
-    @Test fun `appId malformed throws invalid format (even not required)`() {
-        val ex = assertThrows<ApiError> { parser.parseAppId(req(RequestHeaders.APP_ID to "bad"), required = false) }
+    @Test fun `projectId malformed throws invalid format (even not required)`() {
+        val ex = assertThrows<ApiError> { parser.parseProjectId(req(RequestHeaders.PROJECT_ID to "bad"), required = false) }
         assertThat(ex.message).contains("invalid")
     }
-    @Test fun `appId absent not required returns null`() {
-        assertThat(parser.parseAppId(req(), required = false)).isNull()
+    @Test fun `projectId absent not required returns null`() {
+        assertThat(parser.parseProjectId(req(), required = false)).isNull()
     }
 
     // ── clientPlatform ──
@@ -92,15 +92,15 @@ class RequestParserTest {
 
     // ── parseActor：抛错全在此 ──
     @Test fun `no token and requireActorType (login required) throws UNAUTHORIZED`() {
-        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestHeaders.APP_ID to appId), requireActorType = ActorTypes.CUSTOMER) }
+        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId), requireActorType = ActorTypes.CUSTOMER) }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
     @Test fun `no token and not required returns null`() {
-        assertThat(parser.parseActor(req(RequestHeaders.APP_ID to appId), requireActorType = null)).isNull()
+        assertThat(parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId), requireActorType = null)).isNull()
     }
     @Test fun `valid token returns Actor`() {
-        bearer(VerifiedToken(actorId = actorId, appId = appId, actorType = ActorTypes.CUSTOMER, anonymous = true))
-        val a = parser.parseActor(req(RequestHeaders.APP_ID to appId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER)!!
+        bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.CUSTOMER, anonymous = true))
+        val a = parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER)!!
         assertThat(a.actorId).isEqualTo(UUID.fromString(actorId))
         assertThat(a.anonymous).isTrue()
     }
@@ -115,23 +115,23 @@ class RequestParserTest {
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
     @Test fun `token aud mismatch (cross-app) throws UNAUTHORIZED`() {
-        // token.aud != header x-app-id → INVALID → 401000（防跨 app 重放）
-        bearer(VerifiedToken(actorId = actorId, appId = "00000000-0000-0000-0000-000000000077", actorType = ActorTypes.CUSTOMER))
+        // token.aud != header x-project-id → INVALID → 401000（防跨 app 重放）
+        bearer(VerifiedToken(actorId = actorId, projectId = "00000000-0000-0000-0000-000000000077", actorType = ActorTypes.CUSTOMER))
         val ex = assertThrows<ApiError> {
-            parser.parseActor(req(RequestHeaders.APP_ID to appId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER)
+            parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
     @Test fun `wrong actorType throws FORBIDDEN`() {
-        bearer(VerifiedToken(actorId = actorId, appId = appId, actorType = ActorTypes.MANAGER))
-        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestHeaders.APP_ID to appId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER) }
+        bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.MANAGER))
+        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER) }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
     }
 
     // ── peekActorId：不抛 ──
     @Test fun `peekActorId returns actorId for valid, null otherwise`() {
-        bearer(VerifiedToken(actorId = actorId, appId = appId, actorType = ActorTypes.CUSTOMER))
-        assertThat(parser.peekActorId(req(RequestHeaders.APP_ID to appId, "Authorization" to "Bearer tok")))
+        bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.CUSTOMER))
+        assertThat(parser.peekActorId(req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok")))
             .isEqualTo(UUID.fromString(actorId))
         assertThat(parser.peekActorId(req())).isNull()
     }

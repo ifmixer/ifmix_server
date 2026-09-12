@@ -4,7 +4,7 @@ import com.ifmix.core.api.infra.http.OperationContext
 
 /**
  * OperationContext holder for thread-local storage during request processing.
- * Used by controllers to propagate appId and other context to services/repositories.
+ * Used by controllers to propagate projectId and other context to services/repositories.
  */
 object OperationContextHolder {
     private val holder = ThreadLocal<OperationContext>()
@@ -15,5 +15,5 @@ object OperationContextHolder {
     fun clear() = holder.remove()
 }
 
-// Note: AppScopedFilter implementation will be added after verifying correct Jimmer API usage.
+// Note: ProjectScopedFilter implementation will be added after verifying correct Jimmer API usage.
 // For now, tenant isolation is handled manually in repositories/services.

@@ -20,36 +20,36 @@ class DemoFacade(
     // --- Queries (no tx) ---
 
     fun findById(ctx: OperationContext, id: UUID): Todo? =
-        handler.findById(mcFactory.forApp(ctx), ctx.mustGetAppId(), id)
+        handler.findById(mcFactory.forProject(ctx), ctx.mustGetProjectId(), id)
 
     fun findByIds(ctx: OperationContext, ids: List<UUID>): List<Todo> =
-        handler.findByIds(mcFactory.forApp(ctx), ctx.mustGetAppId(), ids)
+        handler.findByIds(mcFactory.forProject(ctx), ctx.mustGetProjectId(), ids)
 
     fun findTodos(ctx: OperationContext, findOptions: CommonFindOptions?): Page<Todo> =
-        handler.findTodos(mcFactory.forApp(ctx), ctx.mustGetAppId(), findOptions)
+        handler.findTodos(mcFactory.forProject(ctx), ctx.mustGetProjectId(), findOptions)
 
     fun findItemsByTodoIds(ctx: OperationContext, todoIds: Collection<UUID>): List<com.ifmix.core.api.entity.demo.TodoItem> =
-        handler.findItemsByTodoIds(mcFactory.forApp(ctx), ctx.mustGetAppId(), todoIds)
+        handler.findItemsByTodoIds(mcFactory.forProject(ctx), ctx.mustGetProjectId(), todoIds)
 
     fun countItemsByTodoIds(ctx: OperationContext, todoIds: Collection<UUID>) =
-        handler.countItemsByTodoIds(mcFactory.forApp(ctx), ctx.mustGetAppId(), todoIds)
+        handler.countItemsByTodoIds(mcFactory.forProject(ctx), ctx.mustGetProjectId(), todoIds)
 
     // --- Mutations (no tx — managed by DataFetcher via GlobalTxRunner) ---
 
     fun create(ctx: OperationContext, input: CreateTodoInput): Todo =
-        handler.create(mcFactory.forApp(ctx), input)
+        handler.create(mcFactory.forProject(ctx), input)
 
     fun partialUpdate(ctx: OperationContext, input: UpdateTodoInput) {
-        handler.partialUpdate(mcFactory.forApp(ctx), ctx.mustGetAppId(), input)
+        handler.partialUpdate(mcFactory.forProject(ctx), ctx.mustGetProjectId(), input)
     }
 
     fun batchUpdateItems(ctx: OperationContext, input: UpdateTodoItemsMutationInput) {
-        handler.batchUpdateItems(mcFactory.forApp(ctx), ctx.mustGetAppId(), input)
+        handler.batchUpdateItems(mcFactory.forProject(ctx), ctx.mustGetProjectId(), input)
     }
 
     fun deleteById(ctx: OperationContext, id: UUID): Boolean =
-        handler.deleteById(mcFactory.forApp(ctx), ctx.mustGetAppId(), id)
+        handler.deleteById(mcFactory.forProject(ctx), ctx.mustGetProjectId(), id)
 
     fun deleteByIds(ctx: OperationContext, ids: List<UUID>): Int =
-        handler.deleteByIds(mcFactory.forApp(ctx), ctx.mustGetAppId(), ids)
+        handler.deleteByIds(mcFactory.forProject(ctx), ctx.mustGetProjectId(), ids)
 }

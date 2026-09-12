@@ -26,7 +26,7 @@ import java.util.UUID
  */
 class SupportRequestHandlerTest {
 
-    private val appId = UUID.randomUUID()
+    private val projectId = UUID.randomUUID()
     private val customerId = UUID.randomUUID()
 
     /** 捕获 save 的实体；查询方法此测试不覆盖。 */
@@ -37,7 +37,7 @@ class SupportRequestHandlerTest {
 
     private fun ctx(actorId: UUID?, installId: String?) = ModuleCtx(
         op = OperationContext(
-            appId = appId,
+            projectId = projectId,
             actorId = actorId,
             installId = installId,
             locale = "zh-CN",
