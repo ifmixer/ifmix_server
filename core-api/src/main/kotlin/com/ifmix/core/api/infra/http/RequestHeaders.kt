@@ -7,7 +7,8 @@ object RequestHeaders {
     const val LOCALE = "x-locale"
     const val CURRENCY = "x-currency"
     const val COUNTRY = "x-country"
-    const val NATIVE_VERSION = "x-native-version"
-    const val BUNDLE_VERSION = "x-bundle-version"
+    const val APP_VERSION = "x-app-version"
+    const val BUILD_VERSION = "x-build-version"
+    const val UPDATE_VERSION = "x-update-version"
     const val CLIENT_PLATFORM = "x-client-platform"
 }

@@ -287,7 +287,9 @@ DB (via Jimmer KSqlClient)
 | `x-country` | ISO 3166-1 alpha-2, 大写 | 用户所在国家，如 `US`, `GB`, `JP`, `MY`, `SG`, `CN` |
 | `x-currency` | ISO 4217, 大写 | 用户货币偏好，如 `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD` |
 | `x-client-platform` | `ios` \| `android` | 客户端平台 |
-| `x-native-version` | 字符串 | 原生版本号 |
+| `x-app-version` | 字符串 | App 版本号，如 `1.2.3` |
+| `x-build-version` | 字符串 | 构建号，如 `23` |
+| `x-update-version` | 字符串 | 热更新版本号，如 `1.5` |
 | `x-js-version` | 字符串 | JS Bundle 版本号 |
 
 #### locale 归一
