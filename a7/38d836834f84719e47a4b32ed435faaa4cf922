@@ -1,0 +1,18 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestHeaders.kt
+  h_734c7d988c19fa 10-12
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilter.kt
+  h_734c7d988c19fa 127-129
+docs/ARCHITECTURE.md
+  h_734c7d988c19fa 290-292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a738d836834f84719e47a4b32ed435faaa4cf922",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
