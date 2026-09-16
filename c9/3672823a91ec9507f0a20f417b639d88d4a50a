@@ -1,0 +1,116 @@
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/AiScanResult.kt
+  h_734c7d988c19fa 14
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/DeepResearchResult.kt
+  h_734c7d988c19fa 14
+core-api/src/main/kotlin/com/ifmix/core/api/entity/common/ProjectScopedProps.kt
+  h_734c7d988c19fa 7-8
+core-api/src/main/kotlin/com/ifmix/core/api/entity/common/StringIdProps.kt
+  h_734c7d988c19fa 1-13
+core-api/src/main/kotlin/com/ifmix/core/api/entity/project/ProjectInfo.kt
+  h_734c7d988c19fa 3-4,8-9,13
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/RequestParser.kt
+  h_734c7d988c19fa 26-27,33-36,68-69,167-168
+core-api/src/main/kotlin/com/ifmix/core/api/infra/db/ClusterRouter.kt
+  h_734c7d988c19fa 10,18
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/OperationContext.kt
+  h_734c7d988c19fa 18
+core-api/src/main/kotlin/com/ifmix/core/api/infra/repo/CrudRepoTemplate.kt
+  h_734c7d988c19fa 16-23,31,36,38,43,45,49,52,57,60,68,73,75,94,96,101,104,111,113,122,128-129,133,135,144,146-147,151,154-155,160,163,171-172,177-178,180,194,210,213,217,221,228,252-253,259,262,289,291-292,297,300-301,308,310,317
+core-api/src/main/kotlin/com/ifmix/core/api/infra/service/CrudServiceOps.kt
+  h_734c7d988c19fa 6,9,20,22,24-25,30,32-34,40,42,46-47,54-55,66-67,74,78,86,90-91,107-108,118-119,130,132,136-139
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/AgnesKeyRepository.kt
+  h_734c7d988c19fa 20,27,30,50-52
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanCollectionItemRepository.kt
+  h_734c7d988c19fa 24,26,28,49,52,58,60,79-81,84,88
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanCollectionRepository.kt
+  h_734c7d988c19fa 19,21,24,32,35,47,55-56,61,71
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanDeepResearchRepository.kt
+  h_734c7d988c19fa 16,25,33
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanRecordRepository.kt
+  h_734c7d988c19fa 33,46,54,78,87,105,115,127,138,141,153-154,157
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/AuthLoggedInEvent.kt
+  h_734c7d988c19fa 8
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/handler/AuthAggHandler.kt
+  h_734c7d988c19fa 355,381
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/repo/AuthIdentityIdpRelationRepository.kt
+  h_734c7d988c19fa 17,20,30
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/repo/AuthIdentityRepository.kt
+  h_734c7d988c19fa 13,16,29
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/repo/IdpIdentityRepository.kt
+  h_734c7d988c19fa 14
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/repo/IdpRepository.kt
+  h_734c7d988c19fa 11
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/repo/ProjectToIdpRelationRepository.kt
+  h_734c7d988c19fa 16,19
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/repo/RefreshTokenRepository.kt
+  h_734c7d988c19fa 25,27,59,77
+core-api/src/main/kotlin/com/ifmix/core/api/modules/cs/repo/FeedbackRepository.kt
+  h_734c7d988c19fa 16,21
+core-api/src/main/kotlin/com/ifmix/core/api/modules/cs/repo/SupportRequestRepository.kt
+  h_734c7d988c19fa 20,25,34,46
+core-api/src/main/kotlin/com/ifmix/core/api/modules/customer/handler/CustomerMergeHandler.kt
+  h_734c7d988c19fa 37
+core-api/src/main/kotlin/com/ifmix/core/api/modules/customer/repo/CustomerRepository.kt
+  h_734c7d988c19fa 27,29,45,54,63,72,75,83-85,95,109,123
+core-api/src/main/kotlin/com/ifmix/core/api/modules/demo/handler/TodoAggHandler.kt
+  h_734c7d988c19fa 28,31,34,37,40,80,84,101,104,107
+core-api/src/main/kotlin/com/ifmix/core/api/modules/demo/repo/TodoItemRepository.kt
+  h_734c7d988c19fa 20,23,25,34,55
+core-api/src/main/kotlin/com/ifmix/core/api/modules/demo/repo/TodoRepository.kt
+  h_734c7d988c19fa 34,47-48,50-51,54,62,71,74,122,143
+core-api/src/main/kotlin/com/ifmix/core/api/modules/media/handler/StorageAggHandler.kt
+  h_734c7d988c19fa 37
+core-api/src/main/kotlin/com/ifmix/core/api/modules/media/repo/UploadRecordRepository.kt
+  h_734c7d988c19fa 18,23,32
+core-api/src/main/kotlin/com/ifmix/core/api/modules/pay/handler/PaymentWebhookHandler.kt
+  h_734c7d988c19fa 84
+core-api/src/main/kotlin/com/ifmix/core/api/modules/pay/repo/StoreNotificationRepository.kt
+  h_734c7d988c19fa 11,17
+core-api/src/main/kotlin/com/ifmix/core/api/modules/pay/repo/SubscriptionRepository.kt
+  h_734c7d988c19fa 20,22,24,31,33,39,41,54,57,65,71-72,80,89
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/ProjectConfigFacade.kt
+  h_734c7d988c19fa 23,26,30
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/handler/ProjectConfigAggHandler.kt
+  h_734c7d988c19fa 48,51,54
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/repo/ProjectConfigRepository.kt
+  h_734c7d988c19fa 19,21,46,62-64
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/repo/ProjectInfoRepository.kt
+  h_734c7d988c19fa 11,13-14,17
+core-api/src/main/resources/db/migration/V1__baseline.sql
+  h_734c7d988c19fa 18,37,52,66,80,107,123,136,149,174,223,241,263,291,308,325,339,354,373
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/AuthJwtServiceTest.kt
+  h_734c7d988c19fa 5,41,44
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/RequestParserTest.kt
+  h_734c7d988c19fa 22,32,40,119
+core-api/src/test/kotlin/com/ifmix/api/core/common/ratelimit/RateLimiterTest.kt
+  h_734c7d988c19fa 27
+core-api/src/test/kotlin/com/ifmix/api/core/e2e/FeedbackReasonsArrayE2eTest.kt
+  h_734c7d988c19fa 36
+core-api/src/test/kotlin/com/ifmix/api/core/e2e/TodoMetaJsonbE2eTest.kt
+  h_734c7d988c19fa 37
+core-api/src/test/kotlin/com/ifmix/api/core/e2e/support/E2eTestBase.kt
+  h_734c7d988c19fa 39-40
+core-api/src/test/kotlin/com/ifmix/api/core/e2e/support/TestFixtures.kt
+  h_734c7d988c19fa 16,27,33,35-36,38,43,45,49
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/DeepResearchResultTest.kt
+  h_734c7d988c19fa 15
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanBatchUpdateTest.kt
+  h_734c7d988c19fa 32
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCollectedTest.kt
+  h_734c7d988c19fa 44
+core-api/src/test/kotlin/com/ifmix/api/core/modules/cs/SupportRequestHandlerTest.kt
+  h_734c7d988c19fa 29
+core-job/src/main/kotlin/com/ifmix/core/job/customer/AnonymousCleanupCleaner.kt
+  h_734c7d988c19fa 55,104,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c93672823a91ec9507f0a20f417b639d88d4a50a",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
