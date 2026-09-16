@@ -36,8 +36,8 @@ abstract class E2eTestBase {
     }
 
     companion object {
-        /** 测试用 projectId */
-        const val TEST_PROJECT_ID = "00000000-0000-0000-0000-000000000001"
+        /** 测试用 projectId（slug 主键） */
+        const val TEST_PROJECT_ID = "test-app"
         const val TEST_INSTALL_ID = "00000000-0000-0000-0000-000000000099"
 
         /** WireMock server shared by all E2E tests (for mocking external APIs like WeChat) */

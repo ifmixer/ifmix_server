@@ -15,7 +15,7 @@
 
 CREATE TABLE public.ai_agnes_key (
     id uuid CONSTRAINT agnes_key_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT agnes_key_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT agnes_key_project_id_not_null NOT NULL,
     key character varying(512) CONSTRAINT agnes_key_key_not_null NOT NULL,
     email character varying(255),
     rate_limit bigint DEFAULT '-1'::integer CONSTRAINT agnes_key_rate_limit_not_null NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE public.ai_agnes_key (
 
 CREATE TABLE public.ai_scan_collection (
     id uuid CONSTRAINT collection_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT collection_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT collection_project_id_not_null NOT NULL,
     customer_id uuid,
     is_default boolean DEFAULT false CONSTRAINT collection_is_default_not_null NOT NULL,
     created_at timestamp with time zone DEFAULT now() CONSTRAINT collection_created_at_not_null NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE public.ai_scan_collection (
 
 CREATE TABLE public.ai_scan_collection_item (
     id uuid CONSTRAINT collection_item_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT collection_item_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT collection_item_project_id_not_null NOT NULL,
     collection_id uuid CONSTRAINT collection_item_collection_id_not_null NOT NULL,
     scan_record_id uuid CONSTRAINT collection_item_scan_record_id_not_null NOT NULL,
     created_at timestamp with time zone DEFAULT now() CONSTRAINT collection_item_created_at_not_null NOT NULL,
@@ -63,7 +63,7 @@ CREATE TABLE public.ai_scan_collection_item (
 
 CREATE TABLE public.ai_scan_deep_research (
     id uuid NOT NULL,
-    project_id uuid NOT NULL,
+    project_id character varying(30) NOT NULL,
     scan_record_id uuid NOT NULL,
     premium_result jsonb,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE public.ai_scan_deep_research (
 
 CREATE TABLE public.ai_scan_record (
     id uuid CONSTRAINT scan_record_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT scan_record_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT scan_record_project_id_not_null NOT NULL,
     status smallint DEFAULT 100 CONSTRAINT core_scan_record_status_not_null NOT NULL,
     client_ip character varying(45),
     created_at timestamp with time zone DEFAULT now() CONSTRAINT scan_record_created_at_not_null NOT NULL,
@@ -104,7 +104,7 @@ CREATE TABLE public.ai_scan_record (
 
 CREATE TABLE public.project_config_revision (
     id uuid CONSTRAINT project_config_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT project_config_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT project_config_project_id_not_null NOT NULL,
     apple_bundle_id character varying(255),
     android_package_name character varying(255),
     revision_number integer DEFAULT 1 CONSTRAINT project_config_revision_not_null NOT NULL,
@@ -120,10 +120,9 @@ CREATE TABLE public.project_config_revision (
 --
 
 CREATE TABLE public.project_info (
-    id uuid NOT NULL,
+    id character varying(30) NOT NULL,
     name character varying(255),
     description text,
-    slug character varying(255) CONSTRAINT core_project_info_slug_not_null NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -134,7 +133,7 @@ CREATE TABLE public.project_info (
 
 CREATE TABLE public.auth_project_to_idp_relation (
     id uuid NOT NULL,
-    project_id uuid NOT NULL,
+    project_id character varying(30) NOT NULL,
     idp_id uuid NOT NULL,
     created_at timestamp with time zone NOT NULL,
     updated_at timestamp with time zone NOT NULL,
@@ -147,7 +146,7 @@ CREATE TABLE public.auth_project_to_idp_relation (
 
 CREATE TABLE public.auth_identity (
     id uuid NOT NULL,
-    project_id uuid NOT NULL,
+    project_id character varying(30) NOT NULL,
     password character varying(255),
     first_name character varying(255),
     last_name character varying(255),
@@ -172,7 +171,7 @@ CREATE TABLE public.auth_identity (
 
 CREATE TABLE public.auth_identity_to_idpidentity_relation (
     id uuid NOT NULL,
-    project_id uuid NOT NULL,
+    project_id character varying(30) NOT NULL,
     auth_identity_id uuid NOT NULL,
     idp_identity_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -221,7 +220,7 @@ CREATE TABLE public.auth_idpidentity (
 
 CREATE TABLE public.auth_refreshtoken (
     id uuid CONSTRAINT auth_appuser_refreshtoken_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT auth_appuser_refreshtoken_app_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT auth_appuser_refreshtoken_app_id_not_null NOT NULL,
     actor_id uuid CONSTRAINT auth_appuser_refreshtoken_app_user_id_not_null NOT NULL,
     token_hash character varying(128) CONSTRAINT auth_appuser_refreshtoken_token_hash_not_null NOT NULL,
     login_install_id uuid,
@@ -239,7 +238,7 @@ CREATE TABLE public.auth_refreshtoken (
 
 CREATE TABLE public.cs_feedback (
     id uuid CONSTRAINT feedback_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT feedback_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT feedback_project_id_not_null NOT NULL,
     customer_id uuid,
     scan_record_id uuid,
     comment character varying(1000),
@@ -261,7 +260,7 @@ CREATE TABLE public.cs_feedback (
 
 CREATE TABLE public.cs_support_request (
     id uuid NOT NULL,
-    project_id uuid NOT NULL,
+    project_id character varying(30) NOT NULL,
     install_id character varying(128),
     customer_id uuid,
     locale character varying(35),
@@ -289,7 +288,7 @@ CREATE TABLE public.cs_support_request (
 
 CREATE TABLE public.customer (
     id uuid CONSTRAINT app_user_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT app_user_app_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT app_user_app_id_not_null NOT NULL,
     created_at timestamp with time zone DEFAULT now() CONSTRAINT app_user_created_at_not_null NOT NULL,
     updated_at timestamp with time zone DEFAULT now() CONSTRAINT app_user_updated_at_not_null NOT NULL,
     anonymous boolean DEFAULT true NOT NULL,
@@ -306,7 +305,7 @@ CREATE TABLE public.demo_todo (
     id uuid CONSTRAINT todo_id_not_null NOT NULL,
     title character varying(255) CONSTRAINT todo_title_not_null NOT NULL,
     done boolean DEFAULT false CONSTRAINT todo_done_not_null NOT NULL,
-    project_id uuid CONSTRAINT todo_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT todo_project_id_not_null NOT NULL,
     created_at timestamp with time zone CONSTRAINT todo_created_at_not_null NOT NULL,
     updated_at timestamp with time zone CONSTRAINT todo_updated_at_not_null NOT NULL,
     deleted_at timestamp with time zone,
@@ -323,7 +322,7 @@ CREATE TABLE public.demo_todo (
 CREATE TABLE public.demo_todo_item (
     id uuid CONSTRAINT todo_item_id_not_null NOT NULL,
     todo_id uuid CONSTRAINT todo_item_todo_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT todo_item_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT todo_item_project_id_not_null NOT NULL,
     content character varying(1000) CONSTRAINT todo_item_content_not_null NOT NULL,
     done boolean DEFAULT false CONSTRAINT todo_item_done_not_null NOT NULL,
     created_at timestamp with time zone CONSTRAINT todo_item_created_at_not_null NOT NULL,
@@ -337,7 +336,7 @@ CREATE TABLE public.demo_todo_item (
 
 CREATE TABLE public.media_upload_record (
     id uuid CONSTRAINT core_upload_record_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT core_upload_record_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT core_upload_record_project_id_not_null NOT NULL,
     object_key text CONSTRAINT core_upload_record_object_key_not_null NOT NULL,
     content_type character varying(64) CONSTRAINT core_upload_record_content_type_not_null NOT NULL,
     client_ip character varying(64),
@@ -352,7 +351,7 @@ CREATE TABLE public.media_upload_record (
 
 CREATE TABLE public.pay_store_notification (
     id uuid CONSTRAINT store_notification_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT store_notification_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT store_notification_project_id_not_null NOT NULL,
     platform character varying(32),
     subscription_pxid character varying(255),
     purchase_token text,
@@ -371,7 +370,7 @@ CREATE TABLE public.pay_store_notification (
 
 CREATE TABLE public.pay_subscription (
     id uuid CONSTRAINT subscription_id_not_null NOT NULL,
-    project_id uuid CONSTRAINT subscription_project_id_not_null NOT NULL,
+    project_id character varying(30) CONSTRAINT subscription_project_id_not_null NOT NULL,
     subscription_pxid character varying(255),
     original_transaction_id text,
     product_id character varying(255),
@@ -575,12 +574,6 @@ CREATE INDEX app_config_bundle_idx ON public.project_config_revision USING btree
 --
 
 CREATE INDEX project_config_package_idx ON public.project_config_revision USING btree (android_package_name) WHERE (android_package_name IS NOT NULL);
-
---
--- Name: project_info_slug_uq; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX project_info_slug_uq ON public.project_info USING btree (slug) WHERE (slug IS NOT NULL);
 
 --
 -- Name: auth_project_to_idp_relation_project_idp_idx; Type: INDEX; Schema: public; Owner: -

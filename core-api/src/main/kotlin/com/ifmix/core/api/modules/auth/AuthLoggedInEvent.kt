@@ -5,7 +5,7 @@ import java.util.UUID
 
 /** 登录成功事件：MergeOnLoginListener 监听，回填匿名数据归属。 */
 data class AuthLoggedInEvent(
-    val projectId: UUID,
+    val projectId: String,
     val authIdentityId: String,
     val customerId: UUID,
     val clientIp: String? = null,

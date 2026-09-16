@@ -13,10 +13,10 @@ import java.util.UUID
 
 @Repository
 class ProjectToIdpRelationRepository {
-    companion object { private val tpl = ProjectCrudRepoTemplate(ProjectToIdpRelation::class) }
+    companion object { private val tpl = ProjectCrudRepoTemplate(ProjectToIdpRelation::class, UUID::class) }
 
     /** 查该 app 是否启用了指定 IDP */
-    fun findByAppAndIdp(mc: ModuleCtx, projectId: UUID, idpId: UUID): ProjectToIdpRelation? {
+    fun findByAppAndIdp(mc: ModuleCtx, projectId: String, idpId: UUID): ProjectToIdpRelation? {
         return mc.sql.createQuery(ProjectToIdpRelation::class) {
             where(table.projectId eq projectId)
             where(table.idpId eq idpId)

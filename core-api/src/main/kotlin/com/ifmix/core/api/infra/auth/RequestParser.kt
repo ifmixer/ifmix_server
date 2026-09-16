@@ -23,16 +23,17 @@ data class Actor(val actorId: UUID, val actorType: ActorType, val anonymous: Boo
 class RequestParser(private val jwt: AuthJwtService) {
 
     /** 缺失(required)→抛 required；传了值但格式非法→抛 invalid format；required=false 且未传→null。 */
-    fun parseProjectId(request: HttpServletRequest, required: Boolean): UUID? {
-        (request.getAttribute(ATTR_APP_ID) as? UUID)?.let { return it }
+    fun parseProjectId(request: HttpServletRequest, required: Boolean): String? {
+        (request.getAttribute(ATTR_APP_ID) as? String)?.let { return it }
         val raw = request.getHeader(RequestHeaders.PROJECT_ID)
         if (raw.isNullOrBlank()) {
             if (required) throw ApiError(ErrorCode.INVALID_REQUEST, "${RequestHeaders.PROJECT_ID} is required")
             return null
         }
-        val uuid = tryUuid(raw) ?: throw ApiError(ErrorCode.INVALID_REQUEST, "invalid ${RequestHeaders.PROJECT_ID} format")
-        request.setAttribute(ATTR_APP_ID, uuid)
-        return uuid
+        if (!raw.matches(PROJECT_ID_RE))
+            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid ${RequestHeaders.PROJECT_ID} format")
+        request.setAttribute(ATTR_APP_ID, raw)
+        return raw
     }
 
     /**
@@ -64,8 +65,8 @@ class RequestParser(private val jwt: AuthJwtService) {
         } ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: signature verification failed")
 
         // aud 校验：token 的 projectId(aud) 必须与 header x-project-id 一致，防跨 app 重放 token。
-        val headerAppId = request.getHeader(RequestHeaders.PROJECT_ID)?.let { tryUuid(it) }
-        val tokenAppId = verified.projectId?.let { tryUuid(it) }
+        val headerAppId = request.getHeader(RequestHeaders.PROJECT_ID)?.takeIf { it.isNotBlank() }
+        val tokenAppId = verified.projectId
         if (headerAppId != null && tokenAppId != headerAppId)
             throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: app mismatch")
 
@@ -163,6 +164,8 @@ class RequestParser(private val jwt: AuthJwtService) {
         private const val ATTR_ACTOR = "com.ifmix.parsed.actor"
         private val CURRENCY_RE = Regex("^[A-Z]{3}$")   // ISO 4217（大写后校验）
         private val COUNTRY_RE = Regex("^[A-Z]{2}$")    // ISO 3166-1 alpha-2（大写后校验）
+        /** project slug 主键：小写字母开头，小写字母/数字/连字符，3-30 字符。创建后不可变。 */
+        private val PROJECT_ID_RE = Regex("^[a-z][a-z0-9-]{2,29}$")
 
         /** 非中文的受支持语言：language subtag（小写）→ 规范值。 */
         private val SUPPORTED_LANGS = setOf("en", "ja", "fr", "es", "pt", "de", "it", "nl")

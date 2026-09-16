@@ -17,28 +17,28 @@ import java.util.UUID
 
 @Repository
 class SubscriptionRepository {
-    companion object { private val tpl = ProjectCrudRepoTemplate(Subscription::class) }
+    companion object { private val tpl = ProjectCrudRepoTemplate(Subscription::class, UUID::class) }
 
-    fun findActiveByPxid(mc: ModuleCtx, projectId: UUID, pxid: String): Subscription? {
+    fun findActiveByPxid(mc: ModuleCtx, projectId: String, pxid: String): Subscription? {
         return mc.sql.createQuery(Subscription::class) {
-            where(table.get<UUID>("projectId") eq projectId)
+            where(table.get<String>("projectId") eq projectId)
             where(table.subscriptionPxid eq pxid)
             where(table.active eq true)
             select(table)
         }.limit(1).execute().firstOrNull()
     }
 
-    fun findByPxid(mc: ModuleCtx, projectId: UUID, pxid: String): Subscription? {
+    fun findByPxid(mc: ModuleCtx, projectId: String, pxid: String): Subscription? {
         return mc.sql.createQuery(Subscription::class) {
-            where(table.get<UUID>("projectId") eq projectId)
+            where(table.get<String>("projectId") eq projectId)
             where(table.subscriptionPxid eq pxid)
             select(table)
         }.limit(1).execute().firstOrNull()
     }
 
-    fun findByOriginalTxn(mc: ModuleCtx, projectId: UUID, originalTxnId: String): Subscription? {
+    fun findByOriginalTxn(mc: ModuleCtx, projectId: String, originalTxnId: String): Subscription? {
         return mc.sql.createQuery(Subscription::class) {
-            where(table.get<UUID>("projectId") eq projectId)
+            where(table.get<String>("projectId") eq projectId)
             where(table.originalTransactionId eq originalTxnId)
             select(table)
         }.limit(1).execute().firstOrNull()
@@ -51,10 +51,10 @@ class SubscriptionRepository {
     }
 
     fun save(mc: ModuleCtx, entity: Subscription) = tpl.save(mc, entity)
-    fun findById(mc: ModuleCtx, projectId: UUID, id: UUID) = tpl.findById(mc, projectId, id)
+    fun findById(mc: ModuleCtx, projectId: String, id: UUID) = tpl.findById(mc, projectId, id)
 
     /** 合并：把 fromCustomerId 名下订阅归属改到 toCustomerId。返回改写行数。 */
-    fun reassignOwner(mc: ModuleCtx, projectId: UUID, fromCustomerId: UUID, toCustomerId: UUID): Int =
+    fun reassignOwner(mc: ModuleCtx, projectId: String, fromCustomerId: UUID, toCustomerId: UUID): Int =
         mc.sql.createUpdate(Subscription::class) {
             where(table.projectId eq projectId)
             where(table.customerId eq fromCustomerId)
@@ -62,14 +62,14 @@ class SubscriptionRepository {
         }.execute()
 
     /** restore purchases：命中已存在订阅但归属不一致时，按当前主体刷新 customerId。 */
-    fun updateOwner(mc: ModuleCtx, projectId: UUID, id: UUID, customerId: UUID): Int =
+    fun updateOwner(mc: ModuleCtx, projectId: String, id: UUID, customerId: UUID): Int =
         mc.sql.createUpdate(Subscription::class) {
             where(table.projectId eq projectId)
             where(table.id eq id)
             set(table.customerId, customerId)
         }.execute()
-    fun deleteById(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
-    fun exists(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.exists(mc, projectId, id)
+    fun deleteById(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
+    fun exists(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.exists(mc, projectId, id)
 
     // ===== 阶段 6：匿名清理 =====
 
@@ -77,7 +77,7 @@ class SubscriptionRepository {
      * 清理前置校验：某 customer 名下是否存在 active=true 的订阅。
      * 命中则跳过删除 + 告警（避免误删「匿名却付费」边界数据）。
      */
-    fun hasActiveByCustomer(mc: ModuleCtx, projectId: UUID, customerId: UUID): Boolean =
+    fun hasActiveByCustomer(mc: ModuleCtx, projectId: String, customerId: UUID): Boolean =
         mc.sql.createQuery(Subscription::class) {
             where(table.projectId eq projectId)
             where(table.customerId eq customerId)
@@ -86,7 +86,7 @@ class SubscriptionRepository {
         }.limit(1).execute().isNotEmpty()
 
     /** 物理删除某批 customer 名下的订阅（含软删列，显式 PHYSICAL 硬删避免孤儿行）。 */
-    fun physicalDeleteByCustomers(mc: ModuleCtx, projectId: UUID, customerIds: Collection<UUID>): Int {
+    fun physicalDeleteByCustomers(mc: ModuleCtx, projectId: String, customerIds: Collection<UUID>): Int {
         if (customerIds.isEmpty()) return 0
         return mc.sql.createDelete(Subscription::class) {
             setMode(DeleteMode.PHYSICAL)

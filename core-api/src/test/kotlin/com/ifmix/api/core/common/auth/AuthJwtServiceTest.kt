@@ -2,6 +2,7 @@ package com.ifmix.core.api.infra.auth
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.util.UUID
 
 class AuthJwtServiceTest {
@@ -37,10 +38,10 @@ class AuthJwtServiceTest {
         assertThat(svc.verify("not.a.jwt")).isNull()
     }
 
-    @Test fun `verify returns null when expired`() {
+    @Test fun `verify throws TokenExpiredException when expired`() {
         val shortSvc = AuthJwtService(AuthJwtKeys(null), "test-issuer", -1)
         val token = shortSvc.signAccess(customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId)
-        assertThat(shortSvc.verify(token)).isNull()
+        assertThrows<TokenExpiredException> { shortSvc.verify(token) }
     }
 
     @Test fun `jwkSet contains public key and no private d`() {

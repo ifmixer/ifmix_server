@@ -45,13 +45,13 @@ class ProjectConfigAggHandler(
         return revision
     }
 
-    fun findAppIdByBundleId(mc: ModuleCtx, bundleId: String): UUID? =
+    fun findAppIdByBundleId(mc: ModuleCtx, bundleId: String): String? =
         revisionRepo.findByBundleId(mc, bundleId)?.projectId
 
-    fun findAppIdByAndroidPackage(mc: ModuleCtx, packageName: String): UUID? =
+    fun findAppIdByAndroidPackage(mc: ModuleCtx, packageName: String): String? =
         revisionRepo.findByAndroidPackage(mc, packageName)?.projectId
 
-    fun findActiveByAppId(mc: ModuleCtx, projectId: UUID): ProjectConfigRevision? =
+    fun findActiveByAppId(mc: ModuleCtx, projectId: String): ProjectConfigRevision? =
         revisionRepo.findActiveByAppId(mc, projectId)
 
     fun toggleRevision(mc: ModuleCtx, revisionId: UUID, enabled: Boolean): ProjectConfigRevision {

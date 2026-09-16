@@ -16,9 +16,9 @@ import java.util.UUID
 
 @Repository
 class ProjectConfigRepository {
-    companion object { private val tpl = ProjectCrudRepoTemplate(ProjectConfigRevision::class) }
+    companion object { private val tpl = ProjectCrudRepoTemplate(ProjectConfigRevision::class, UUID::class) }
 
-    fun findActiveByAppId(mc: ModuleCtx, projectId: UUID): ProjectConfigRevision? {
+    fun findActiveByAppId(mc: ModuleCtx, projectId: String): ProjectConfigRevision? {
         return mc.sql.createQuery(ProjectConfigRevision::class) {
             where(table.projectId eq projectId)
             where(table.enabled eq true)
@@ -43,7 +43,7 @@ class ProjectConfigRepository {
         }.limit(1).execute().firstOrNull()
     }
 
-    fun disableCurrentRevisions(mc: ModuleCtx, projectId: UUID): Int {
+    fun disableCurrentRevisions(mc: ModuleCtx, projectId: String): Int {
         return mc.sql.createUpdate(ProjectConfigRevision::class) {
             where(table.projectId eq projectId)
             where(table.enabled eq true)
@@ -59,7 +59,7 @@ class ProjectConfigRepository {
     }
 
     fun save(mc: ModuleCtx, entity: ProjectConfigRevision) = tpl.save(mc, entity)
-    fun findById(mc: ModuleCtx, projectId: UUID, id: UUID) = tpl.findById(mc, projectId, id)
-    fun deleteById(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
-    fun exists(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.exists(mc, projectId, id)
+    fun findById(mc: ModuleCtx, projectId: String, id: UUID) = tpl.findById(mc, projectId, id)
+    fun deleteById(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
+    fun exists(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.exists(mc, projectId, id)
 }

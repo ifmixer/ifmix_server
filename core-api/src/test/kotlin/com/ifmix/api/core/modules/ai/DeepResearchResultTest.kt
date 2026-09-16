@@ -12,7 +12,7 @@ class DeepResearchResultTest {
 
     private fun result(basicResult: Map<String, Any?>?) = DeepResearchResult(
         scanRecordId = UUID.randomUUID(),
-        projectId = UUID.randomUUID(),
+        projectId = "test-app",
         basicResult = basicResult,
         premiumResult = null,
         promptVersion = "v10",

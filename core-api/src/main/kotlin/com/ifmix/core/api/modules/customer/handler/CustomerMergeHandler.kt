@@ -34,7 +34,7 @@ class CustomerMergeHandler(
      *  3. is_default 去重：existing 名下只保留一个 isDefault=true。
      *  4. cur 置 mergedTo=existing（tombstone）。
      */
-    fun merge(mc: ModuleCtx, projectId: UUID, curId: UUID, existingId: UUID) {
+    fun merge(mc: ModuleCtx, projectId: String, curId: UUID, existingId: UUID) {
         require(curId != existingId) { "merge: curId must differ from existingId" }
 
         // 1. 合并前捕获 existing 原有的默认收藏夹 id（若有），作为去重保留目标

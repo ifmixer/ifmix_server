@@ -8,7 +8,7 @@ import java.util.UUID
 
 @Repository
 class IdpRepository {
-    companion object { private val tpl = CrudRepoTemplate(Idp::class) }
+    companion object { private val tpl = CrudRepoTemplate(Idp::class, UUID::class) }
 
     fun findById(mc: ModuleCtx, id: UUID) = tpl.findById(mc, id)
     fun findByIds(mc: ModuleCtx, ids: Collection<UUID>) = tpl.findByIds(mc, ids)

@@ -352,7 +352,7 @@ class AuthAggHandler(
         return entity
     }
 
-    private fun createRelation(mc: ModuleCtx, projectId: UUID, authIdentityId: UUID, idpIdentityId: UUID) {
+    private fun createRelation(mc: ModuleCtx, projectId: String, authIdentityId: UUID, idpIdentityId: UUID) {
         val now = Instant.now()
         relationRepo.save(mc, AuthIdentityIdpRelation {
             this.id = UuidV7.generate()
@@ -378,7 +378,7 @@ class AuthAggHandler(
         idpIdentityRepo.save(mc, entity)
     }
 
-    private fun findPrimaryEmail(mc: ModuleCtx, projectId: UUID, customerId: UUID): String? {
+    private fun findPrimaryEmail(mc: ModuleCtx, projectId: String, customerId: UUID): String? {
         // ponytail: 简单实现，后续可优化为专门查询
         val customer = customerRepo.findById(mc, projectId, customerId) ?: return null
         val authIdentityId = customer.authIdentityId ?: return null

@@ -25,19 +25,19 @@ class TodoAggHandler(
 
     // --- Queries ---
 
-    fun findById(mc: ModuleCtx, projectId: UUID, id: UUID): Todo? =
+    fun findById(mc: ModuleCtx, projectId: String, id: UUID): Todo? =
         todoRepo.findById(mc, projectId, id)
 
-    fun findByIds(mc: ModuleCtx, projectId: UUID, ids: List<UUID>): List<Todo> =
+    fun findByIds(mc: ModuleCtx, projectId: String, ids: List<UUID>): List<Todo> =
         todoRepo.findByIds(mc, projectId, ids)
 
-    fun findTodos(mc: ModuleCtx, projectId: UUID, findOptions: CommonFindOptions?): Page<Todo> =
+    fun findTodos(mc: ModuleCtx, projectId: String, findOptions: CommonFindOptions?): Page<Todo> =
         todoRepo.findByOptions(mc, projectId, findOptions)
 
-    fun findItemsByTodoIds(mc: ModuleCtx, projectId: UUID, todoIds: Collection<UUID>): List<TodoItem> =
+    fun findItemsByTodoIds(mc: ModuleCtx, projectId: String, todoIds: Collection<UUID>): List<TodoItem> =
         todoItemRepo.findByTodoIds(mc, projectId, todoIds)
 
-    fun countItemsByTodoIds(mc: ModuleCtx, projectId: UUID, todoIds: Collection<UUID>) =
+    fun countItemsByTodoIds(mc: ModuleCtx, projectId: String, todoIds: Collection<UUID>) =
         todoItemRepo.countByTodoIds(mc, projectId, todoIds)
 
     // --- Mutations ---
@@ -77,11 +77,11 @@ class TodoAggHandler(
         return todoRepo.findById(mc, projectId, id)!!
     }
 
-    fun partialUpdate(mc: ModuleCtx, projectId: UUID, input: UpdateTodoInput) {
+    fun partialUpdate(mc: ModuleCtx, projectId: String, input: UpdateTodoInput) {
         todoRepo.partialUpdate(mc, projectId, input)
     }
 
-    fun batchUpdateItems(mc: ModuleCtx, projectId: UUID, input: UpdateTodoItemsMutationInput) {
+    fun batchUpdateItems(mc: ModuleCtx, projectId: String, input: UpdateTodoItemsMutationInput) {
         // Delete
         input.delete?.let { ids ->
             if (ids.isNotEmpty()) todoItemRepo.deleteByIds(mc, projectId, ids)
@@ -98,13 +98,13 @@ class TodoAggHandler(
         }
     }
 
-    fun deleteById(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean =
+    fun deleteById(mc: ModuleCtx, projectId: String, id: UUID): Boolean =
         todoRepo.deleteById(mc, projectId, id)
 
-    fun deleteByIds(mc: ModuleCtx, projectId: UUID, ids: List<UUID>): Int =
+    fun deleteByIds(mc: ModuleCtx, projectId: String, ids: List<UUID>): Int =
         todoRepo.deleteByIds(mc, projectId, ids)
 
-    private fun createItem(mc: ModuleCtx, projectId: UUID, item: CreateTodoItemForTodoInput) {
+    private fun createItem(mc: ModuleCtx, projectId: String, item: CreateTodoItemForTodoInput) {
         val now = Instant.now()
         val todoItem = TodoItem {
             this.id = UuidV7.generate()

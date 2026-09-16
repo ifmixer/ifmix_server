@@ -34,7 +34,7 @@ class TodoMetaJsonbE2eTest : E2eTestBase() {
     @Autowired
     lateinit var jdbcTemplate: JdbcTemplate
 
-    private val testProjectId = UUID.fromString(TEST_PROJECT_ID)
+    private val testProjectId = TEST_PROJECT_ID
 
     /**
      * 场景 1：插入带嵌套 meta 的 Todo，验证存储正确。

@@ -11,7 +11,7 @@ import java.util.UUID
 
 @Repository
 class IdpIdentityRepository {
-    companion object { private val tpl = CrudRepoTemplate(IdpIdentity::class) }
+    companion object { private val tpl = CrudRepoTemplate(IdpIdentity::class, UUID::class) }
 
     /** 按 (idpId, providerSubjectId) 查找唯一身份 */
     fun findByIdpAndSubject(mc: ModuleCtx, idpId: UUID, providerSubjectId: String): IdpIdentity? {

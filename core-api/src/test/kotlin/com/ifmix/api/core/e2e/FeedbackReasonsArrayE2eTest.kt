@@ -33,7 +33,7 @@ class FeedbackReasonsArrayE2eTest : E2eTestBase() {
     @Autowired
     lateinit var jdbcTemplate: JdbcTemplate
 
-    private val testProjectId = UUID.fromString(TEST_PROJECT_ID)
+    private val testProjectId = TEST_PROJECT_ID
 
     @Test
     fun `smallint array round-trips through jimmer`() {

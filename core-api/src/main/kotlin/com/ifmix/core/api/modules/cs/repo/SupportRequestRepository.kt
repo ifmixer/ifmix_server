@@ -17,12 +17,12 @@ import java.util.UUID
 
 @Repository
 open class SupportRequestRepository {
-    companion object { private val tpl = ProjectCrudRepoTemplate(SupportRequest::class) }
+    companion object { private val tpl = ProjectCrudRepoTemplate(SupportRequest::class, UUID::class) }
 
     open fun save(mc: ModuleCtx, entity: SupportRequest) = tpl.save(mc, entity)
 
     /** owner-scoped 详情：仅返回 projectId + customerId 名下的记录。 */
-    fun findByIdOwned(mc: ModuleCtx, projectId: UUID, customerId: UUID, id: UUID): SupportRequest? =
+    fun findByIdOwned(mc: ModuleCtx, projectId: String, customerId: UUID, id: UUID): SupportRequest? =
         mc.sql.createQuery(SupportRequest::class) {
             where(table.projectId eq projectId)
             where(table.customerId eq customerId)
@@ -31,7 +31,7 @@ open class SupportRequestRepository {
         }.limit(1).execute().firstOrNull()
 
     /** owner-scoped 列表：按 id 倒序（UuidV7 单调 ≈ 创建时间）游标翻页。 */
-    fun findMineByCursor(mc: ModuleCtx, projectId: UUID, customerId: UUID, limit: Int, cursor: UUID?): Page<SupportRequest> {
+    fun findMineByCursor(mc: ModuleCtx, projectId: String, customerId: UUID, limit: Int, cursor: UUID?): Page<SupportRequest> {
         val items = mc.sql.createQuery(SupportRequest::class) {
             where(table.projectId eq projectId)
             where(table.customerId eq customerId)
@@ -43,7 +43,7 @@ open class SupportRequestRepository {
     }
 
     /** 阶段 6：物理删除某批 customer 名下工单（有 customer_id，避免孤儿行）。 */
-    fun physicalDeleteByCustomers(mc: ModuleCtx, projectId: UUID, customerIds: Collection<UUID>): Int {
+    fun physicalDeleteByCustomers(mc: ModuleCtx, projectId: String, customerIds: Collection<UUID>): Int {
         if (customerIds.isEmpty()) return 0
         return mc.sql.createDelete(SupportRequest::class) {
             setMode(DeleteMode.PHYSICAL)

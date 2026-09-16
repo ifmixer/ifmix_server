@@ -14,10 +14,10 @@ import java.util.UUID
 
 @Repository
 class AuthIdentityIdpRelationRepository {
-    companion object { private val tpl = ProjectCrudRepoTemplate(AuthIdentityIdpRelation::class) }
+    companion object { private val tpl = ProjectCrudRepoTemplate(AuthIdentityIdpRelation::class, UUID::class) }
 
     /** 按 (projectId, idpIdentityId) 查该身份在此 app 下绑定的账号关系（反查方向）。 */
-    fun findByAppAndIdpIdentity(mc: ModuleCtx, projectId: UUID, idpIdentityId: UUID): AuthIdentityIdpRelation? {
+    fun findByAppAndIdpIdentity(mc: ModuleCtx, projectId: String, idpIdentityId: UUID): AuthIdentityIdpRelation? {
         return mc.sql.createQuery(AuthIdentityIdpRelation::class) {
             where(table.projectId eq projectId)
             where(table.idpIdentityId eq idpIdentityId)
@@ -27,7 +27,7 @@ class AuthIdentityIdpRelationRepository {
     }
 
     /** 按 (projectId, authIdentityId) 查账号名下第一个身份关系。 */
-    fun findFirstByAuthIdentity(mc: ModuleCtx, projectId: UUID, authIdentityId: UUID): AuthIdentityIdpRelation? {
+    fun findFirstByAuthIdentity(mc: ModuleCtx, projectId: String, authIdentityId: UUID): AuthIdentityIdpRelation? {
         return mc.sql.createQuery(AuthIdentityIdpRelation::class) {
             where(table.projectId eq projectId)
             where(table.authIdentityId eq authIdentityId)

@@ -52,7 +52,7 @@ class AnonymousCleanupCleaner(
         )
     }
 
-    private data class Candidate(val id: UUID, val projectId: UUID, val anonymous: Boolean, val merged: Boolean)
+    private data class Candidate(val id: UUID, val projectId: String, val anonymous: Boolean, val merged: Boolean)
 
     /** 执行一次全量清理（由 Spring Batch tasklet 调用，返回 RepeatStatus.FINISHED）。 */
     fun runOnce() {
@@ -101,7 +101,7 @@ class AnonymousCleanupCleaner(
             .query { rs, _ ->
                 Candidate(
                     id = rs.getObject("id", UUID::class.java),
-                    projectId = rs.getObject("project_id", UUID::class.java),
+                    projectId = rs.getString("project_id"),
                     anonymous = rs.getBoolean("anonymous"),
                     merged = rs.getBoolean("merged"),
                 )
@@ -123,7 +123,7 @@ class AnonymousCleanupCleaner(
             .query { rs, _ ->
                 Candidate(
                     id = rs.getObject("id", UUID::class.java),
-                    projectId = rs.getObject("project_id", UUID::class.java),
+                    projectId = rs.getString("project_id"),
                     anonymous = rs.getBoolean("anonymous"),
                     merged = rs.getBoolean("merged"),
                 )

@@ -19,7 +19,7 @@ class RequestParserTest {
     private val jwt = mock<AuthJwtService>()
     private val parser = RequestParser(jwt)
 
-    private val projectId = "00000000-0000-0000-0000-000000000099"
+    private val projectId = "test-app"
     private val actorId = "00000000-0000-0000-0000-000000000001"
 
     private fun req(vararg headers: Pair<String, String>) =
@@ -29,7 +29,7 @@ class RequestParserTest {
 
     // ── projectId ──
     @Test fun `projectId valid`() {
-        assertThat(parser.parseProjectId(req(RequestHeaders.PROJECT_ID to projectId), required = true)).isEqualTo(UUID.fromString(projectId))
+        assertThat(parser.parseProjectId(req(RequestHeaders.PROJECT_ID to projectId), required = true)).isEqualTo(projectId)
     }
     @Test fun `projectId required missing throws required`() {
         val ex = assertThrows<ApiError> { parser.parseProjectId(req(), required = true) }
@@ -37,7 +37,7 @@ class RequestParserTest {
         assertThat(ex.message).contains("required")
     }
     @Test fun `projectId malformed throws invalid format (even not required)`() {
-        val ex = assertThrows<ApiError> { parser.parseProjectId(req(RequestHeaders.PROJECT_ID to "bad"), required = false) }
+        val ex = assertThrows<ApiError> { parser.parseProjectId(req(RequestHeaders.PROJECT_ID to "1bad"), required = false) }
         assertThat(ex.message).contains("invalid")
     }
     @Test fun `projectId absent not required returns null`() {
@@ -116,7 +116,7 @@ class RequestParserTest {
     }
     @Test fun `token aud mismatch (cross-app) throws UNAUTHORIZED`() {
         // token.aud != header x-project-id → INVALID → 401000（防跨 app 重放）
-        bearer(VerifiedToken(actorId = actorId, projectId = "00000000-0000-0000-0000-000000000077", actorType = ActorTypes.CUSTOMER))
+        bearer(VerifiedToken(actorId = actorId, projectId = "other-app", actorType = ActorTypes.CUSTOMER))
         val ex = assertThrows<ApiError> {
             parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER)
         }

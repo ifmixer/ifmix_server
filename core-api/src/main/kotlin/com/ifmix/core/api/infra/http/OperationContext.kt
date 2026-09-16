@@ -15,7 +15,7 @@ import java.util.UUID
  * 只持有「已解析成功的值」，不含错误状态——token 过期/无效等在 fromDfe 解析+校验时即时抛 ApiError。
  */
 data class OperationContext(
-    val projectId: UUID? = null,
+    val projectId: String? = null,
     /** 主体 id（token sub）。null = 未认证。 */
     val actorId: UUID? = null,
     /** 主体类型：10=customer / 20=manager。未认证时 null。 */

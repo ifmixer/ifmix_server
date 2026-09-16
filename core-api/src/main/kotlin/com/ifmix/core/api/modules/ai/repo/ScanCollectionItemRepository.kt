@@ -21,11 +21,11 @@ import java.util.UUID
 
 @Repository
 class ScanCollectionItemRepository {
-    companion object { private val tpl = ProjectCrudRepoTemplate(ScanCollectionItem::class) }
+    companion object { private val tpl = ProjectCrudRepoTemplate(ScanCollectionItem::class, UUID::class) }
 
-    fun insertIfAbsent(mc: ModuleCtx, projectId: UUID, collectionId: UUID, scanRecordId: UUID): UUID {
+    fun insertIfAbsent(mc: ModuleCtx, projectId: String, collectionId: UUID, scanRecordId: UUID): UUID {
         val existing = mc.sql.createQuery(ScanCollectionItem::class) {
-            where(table.get<UUID>("projectId") eq projectId)
+            where(table.get<String>("projectId") eq projectId)
             where(table.get<UUID>("collectionId") eq collectionId)
             where(table.get<UUID>("scanRecordId") eq scanRecordId)
             select(table)
@@ -46,18 +46,18 @@ class ScanCollectionItemRepository {
         return id
     }
 
-    fun softDeleteByScanIds(mc: ModuleCtx, projectId: UUID, collectionId: UUID, scanRecordIds: List<UUID>): Int {
+    fun softDeleteByScanIds(mc: ModuleCtx, projectId: String, collectionId: UUID, scanRecordIds: List<UUID>): Int {
         if (scanRecordIds.isEmpty()) return 0
         return mc.sql.createUpdate(ScanCollectionItem::class) {
-            where(table.get<UUID>("projectId") eq projectId)
+            where(table.get<String>("projectId") eq projectId)
             where(table.get<UUID>("collectionId") eq collectionId)
             where(table.get<UUID>("scanRecordId") valueIn scanRecordIds)
         }.execute()
     }
 
-    fun findItemsByCursor(mc: ModuleCtx, projectId: UUID, collectionId: UUID, limit: Int, cursor: UUID?): Page<ScanCollectionItem> {
+    fun findItemsByCursor(mc: ModuleCtx, projectId: String, collectionId: UUID, limit: Int, cursor: UUID?): Page<ScanCollectionItem> {
         val items = mc.sql.createQuery(ScanCollectionItem::class) {
-            where(table.get<UUID>("projectId") eq projectId)
+            where(table.get<String>("projectId") eq projectId)
             where(table.get<UUID>("collectionId") eq collectionId)
             cursor?.let { where(table.getId<UUID>() lt it) }
             orderBy(table.getId<UUID>().desc())
@@ -76,16 +76,16 @@ class ScanCollectionItemRepository {
     }
 
     fun save(mc: ModuleCtx, entity: ScanCollectionItem) = tpl.save(mc, entity)
-    fun findById(mc: ModuleCtx, projectId: UUID, id: UUID) = tpl.findById(mc, projectId, id)
-    fun deleteById(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
-    fun exists(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.exists(mc, projectId, id)
+    fun findById(mc: ModuleCtx, projectId: String, id: UUID) = tpl.findById(mc, projectId, id)
+    fun deleteById(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
+    fun exists(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.exists(mc, projectId, id)
 
     /** 阶段 6：级联物理删除某批收藏夹下的所有 item（无软删列，避免孤儿行）。 */
-    fun physicalDeleteByCollections(mc: ModuleCtx, projectId: UUID, collectionIds: Collection<UUID>): Int {
+    fun physicalDeleteByCollections(mc: ModuleCtx, projectId: String, collectionIds: Collection<UUID>): Int {
         if (collectionIds.isEmpty()) return 0
         return mc.sql.createDelete(ScanCollectionItem::class) {
             setMode(DeleteMode.PHYSICAL)
-            where(table.get<UUID>("projectId") eq projectId)
+            where(table.get<String>("projectId") eq projectId)
             where(table.collectionId valueIn collectionIds)
         }.execute()
     }

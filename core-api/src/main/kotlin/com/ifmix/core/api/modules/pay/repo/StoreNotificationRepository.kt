@@ -8,12 +8,13 @@ import com.ifmix.core.api.entity.pay.processed
 import com.ifmix.core.api.entity.pay.purchaseToken
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
+import java.util.UUID
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.stereotype.Repository
 
 @Repository
 class StoreNotificationRepository {
-    companion object { private val tpl = ProjectCrudRepoTemplate(StoreNotification::class) }
+    companion object { private val tpl = ProjectCrudRepoTemplate(StoreNotification::class, UUID::class) }
 
     fun existsByPlatformAndToken(mc: ModuleCtx, platform: String, purchaseToken: String): Boolean {
         return mc.sql.createQuery(StoreNotification::class) {

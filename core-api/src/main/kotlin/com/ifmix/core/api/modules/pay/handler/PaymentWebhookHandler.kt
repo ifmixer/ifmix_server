@@ -81,7 +81,7 @@ class PaymentWebhookHandler(
         subscriptionPxid: String,
         rawPayload: String,
         notificationType: NotificationType,
-        projectId: UUID,
+        projectId: String,
         processed: Boolean = false,
     ) {
         val now = Instant.now()

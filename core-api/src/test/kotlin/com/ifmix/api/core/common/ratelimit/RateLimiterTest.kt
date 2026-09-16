@@ -24,7 +24,7 @@ class RateLimiterTest {
     private lateinit var ops: org.springframework.data.redis.core.ValueOperations<String, String>
 
     private lateinit var limiter: RateLimiter
-    private val ctx = OperationContext(projectId = UUID.fromString("00000000-0000-0000-0000-000000000099"))
+    private val ctx = OperationContext(projectId = "test-app")
 
     @BeforeEach
     fun setUp() {

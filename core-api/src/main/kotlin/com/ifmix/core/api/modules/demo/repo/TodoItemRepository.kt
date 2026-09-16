@@ -17,12 +17,12 @@ import java.util.UUID
 
 @Repository
 class TodoItemRepository {
-    private val tpl = ProjectCrudRepoTemplate(TodoItem::class)
+    private val tpl = ProjectCrudRepoTemplate(TodoItem::class, UUID::class)
 
     fun save(mc: ModuleCtx, entity: TodoItem) = tpl.save(mc, entity)
-    fun deleteByIds(mc: ModuleCtx, projectId: UUID, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, projectId, ids)
+    fun deleteByIds(mc: ModuleCtx, projectId: String, ids: Collection<UUID>): Int = tpl.deleteByIds(mc, projectId, ids)
 
-    fun findByTodoIds(mc: ModuleCtx, projectId: UUID, todoIds: Collection<UUID>): List<TodoItem> {
+    fun findByTodoIds(mc: ModuleCtx, projectId: String, todoIds: Collection<UUID>): List<TodoItem> {
         if (todoIds.isEmpty()) return emptyList()
         return mc.sql.createQuery(TodoItem::class) {
             where(table.projectId eq projectId)
@@ -31,7 +31,7 @@ class TodoItemRepository {
         }.execute()
     }
 
-    fun countByTodoIds(mc: ModuleCtx, projectId: UUID, todoIds: Collection<UUID>): Map<UUID, TodoItemCounts> {
+    fun countByTodoIds(mc: ModuleCtx, projectId: String, todoIds: Collection<UUID>): Map<UUID, TodoItemCounts> {
         if (todoIds.isEmpty()) return emptyMap()
         return mc.sql.createQuery(TodoItem::class) {
             where(table.projectId eq projectId)
@@ -52,7 +52,7 @@ class TodoItemRepository {
         }
     }
 
-    fun partialUpdate(mc: ModuleCtx, projectId: UUID, input: UpdateTodoItemInput): Int {
+    fun partialUpdate(mc: ModuleCtx, projectId: String, input: UpdateTodoItemInput): Int {
         val set = input.set
         val unset = input.unset?.toSet() ?: emptySet()
 

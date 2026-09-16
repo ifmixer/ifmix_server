@@ -30,7 +30,7 @@ import java.util.UUID
 @Repository
 class ScanRecordRepository {
     companion object {
-        private val tpl = ProjectCrudRepoTemplate(ScanRecord::class)
+        private val tpl = ProjectCrudRepoTemplate(ScanRecord::class, UUID::class)
         val FILTERABLE = listOf(
             ScanRecordProps.STATUS,
             ScanRecordProps.COLLECTED,
@@ -43,7 +43,7 @@ class ScanRecordRepository {
     }
 
     /** 列表视图：不加载 basicResult JSONB 大字段 */
-    fun findMyScans(mc: ModuleCtx, projectId: UUID, customerId: UUID, findOptions: CommonFindOptions?): Page<ScanRecord> =
+    fun findMyScans(mc: ModuleCtx, projectId: String, customerId: UUID, findOptions: CommonFindOptions?): Page<ScanRecord> =
         tpl.findByOptions(mc, projectId, findOptions, FILTERABLE, fetchBy = { fetchBy {
             allScalarFields()
             basicResult(false)
@@ -51,7 +51,7 @@ class ScanRecordRepository {
             where(table.customerId eq customerId)
         }
 
-    fun partialUpdate(mc: ModuleCtx, projectId: UUID, id: UUID, req: UpdateScanInput): Int {
+    fun partialUpdate(mc: ModuleCtx, projectId: String, id: UUID, req: UpdateScanInput): Int {
         val unset = req.unset?.toSet() ?: emptySet()
         return mc.sql.createUpdate(ScanRecord::class) {
             where(table.projectId eq projectId)
@@ -75,7 +75,7 @@ class ScanRecordRepository {
     }
 
     fun save(mc: ModuleCtx, entity: ScanRecord) = tpl.save(mc, entity)
-    fun findById(mc: ModuleCtx, projectId: UUID, id: UUID) = tpl.findById(mc, projectId, id)
+    fun findById(mc: ModuleCtx, projectId: String, id: UUID) = tpl.findById(mc, projectId, id)
 
     /**
      * 批量部分更新（owner-scoped）：仅更新 projectId + customerId 名下、且 id 在列表内的记录。
@@ -84,7 +84,7 @@ class ScanRecordRepository {
      */
     fun batchPartialUpdate(
         mc: ModuleCtx,
-        projectId: UUID,
+        projectId: String,
         customerId: UUID,
         ids: Collection<UUID>,
         collected: Boolean?,
@@ -102,7 +102,7 @@ class ScanRecordRepository {
     }
 
     /** 合并：把 fromCustomerId 名下扫描记录归属改到 toCustomerId。返回改写行数。 */
-    fun reassignOwner(mc: ModuleCtx, projectId: UUID, fromCustomerId: UUID, toCustomerId: UUID): Int =
+    fun reassignOwner(mc: ModuleCtx, projectId: String, fromCustomerId: UUID, toCustomerId: UUID): Int =
         mc.sql.createUpdate(ScanRecord::class) {
             where(table.projectId eq projectId)
             where(table.customerId eq fromCustomerId)
@@ -112,7 +112,7 @@ class ScanRecordRepository {
     /** DeepResearch 前置：整体替换 images（AI 失败也已提交）。 */
     fun updateImages(
         mc: ModuleCtx,
-        projectId: UUID,
+        projectId: String,
         id: UUID,
         images: List<ImageRef>,
     ): Int = mc.sql.createUpdate(ScanRecord::class) {
@@ -124,7 +124,7 @@ class ScanRecordRepository {
     /** DeepResearch 后置：回写 basicResult + hasDeepSearch + promptVersion。 */
     fun updateResultAfterDeepResearch(
         mc: ModuleCtx,
-        projectId: UUID,
+        projectId: String,
         id: UUID,
         basicResult: Map<String, Any?>?,
         promptVersion: String,
@@ -135,10 +135,10 @@ class ScanRecordRepository {
         set(table.hasDeepSearch, true)
         set(table.promptVersion, promptVersion)
     }.execute()
-    fun findByIds(mc: ModuleCtx, projectId: UUID, ids: Collection<UUID>): List<ScanRecord> = tpl.findByIds(mc, projectId, ids)
+    fun findByIds(mc: ModuleCtx, projectId: String, ids: Collection<UUID>): List<ScanRecord> = tpl.findByIds(mc, projectId, ids)
 
     /** 列表视图批量查询：不加载 basicResult */
-    fun findByIdsListView(mc: ModuleCtx, projectId: UUID, ids: Collection<UUID>): List<ScanRecord> {
+    fun findByIdsListView(mc: ModuleCtx, projectId: String, ids: Collection<UUID>): List<ScanRecord> {
         if (ids.isEmpty()) return emptyList()
         return mc.sql.createQuery(ScanRecord::class) {
             where(table.projectId eq projectId)
@@ -150,11 +150,11 @@ class ScanRecordRepository {
         }.execute()
     }
 
-    fun deleteById(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
-    fun exists(mc: ModuleCtx, projectId: UUID, id: UUID): Boolean = tpl.exists(mc, projectId, id)
+    fun deleteById(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
+    fun exists(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.exists(mc, projectId, id)
 
     /** 阶段 6：物理删除某批 customer 名下扫描记录（含软删列，显式 PHYSICAL 硬删避免孤儿行）。 */
-    fun physicalDeleteByCustomers(mc: ModuleCtx, projectId: UUID, customerIds: Collection<UUID>): Int {
+    fun physicalDeleteByCustomers(mc: ModuleCtx, projectId: String, customerIds: Collection<UUID>): Int {
         if (customerIds.isEmpty()) return 0
         return mc.sql.createDelete(ScanRecord::class) {
             setMode(DeleteMode.PHYSICAL)

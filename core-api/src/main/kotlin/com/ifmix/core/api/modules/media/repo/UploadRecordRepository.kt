@@ -15,12 +15,12 @@ import java.util.UUID
 
 @Repository
 class UploadRecordRepository {
-    companion object { private val tpl = ProjectCrudRepoTemplate(UploadRecord::class) }
+    companion object { private val tpl = ProjectCrudRepoTemplate(UploadRecord::class, UUID::class) }
 
     fun save(mc: ModuleCtx, entity: UploadRecord) = tpl.save(mc, entity)
 
     /** 合并：把 fromCustomerId 名下（actorType=customer）上传记录归属改到 toCustomerId。返回改写行数。 */
-    fun reassignOwner(mc: ModuleCtx, projectId: UUID, fromCustomerId: UUID, toCustomerId: UUID): Int =
+    fun reassignOwner(mc: ModuleCtx, projectId: String, fromCustomerId: UUID, toCustomerId: UUID): Int =
         mc.sql.createUpdate(UploadRecord::class) {
             where(table.projectId eq projectId)
             where(table.actorType eq AuthJwtService.ACTOR_CUSTOMER)
@@ -29,7 +29,7 @@ class UploadRecordRepository {
         }.execute()
 
     /** 阶段 6：物理删除某批 customer（actorType=customer）名下上传记录（避免孤儿行）。 */
-    fun physicalDeleteByCustomers(mc: ModuleCtx, projectId: UUID, customerIds: Collection<UUID>): Int {
+    fun physicalDeleteByCustomers(mc: ModuleCtx, projectId: String, customerIds: Collection<UUID>): Int {
         if (customerIds.isEmpty()) return 0
         return mc.sql.createDelete(UploadRecord::class) {
             setMode(DeleteMode.PHYSICAL)

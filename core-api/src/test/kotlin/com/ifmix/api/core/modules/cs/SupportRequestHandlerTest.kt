@@ -26,7 +26,7 @@ import java.util.UUID
  */
 class SupportRequestHandlerTest {
 
-    private val projectId = UUID.randomUUID()
+    private val projectId = "test-app"
     private val customerId = UUID.randomUUID()
 
     /** 捕获 save 的实体；查询方法此测试不覆盖。 */

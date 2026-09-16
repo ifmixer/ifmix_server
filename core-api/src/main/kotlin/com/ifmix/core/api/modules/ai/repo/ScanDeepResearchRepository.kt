@@ -13,7 +13,7 @@ import java.util.UUID
 @Repository
 class ScanDeepResearchRepository {
     companion object {
-        private val tpl = ProjectCrudRepoTemplate(ScanDeepResearch::class)
+        private val tpl = ProjectCrudRepoTemplate(ScanDeepResearch::class, UUID::class)
     }
 
     /**
@@ -22,7 +22,7 @@ class ScanDeepResearchRepository {
      */
     fun upsert(mc: ModuleCtx, entity: ScanDeepResearch): Boolean = tpl.save(mc, entity)
 
-    fun findByScanRecordId(mc: ModuleCtx, projectId: UUID, scanRecordId: UUID): ScanDeepResearch? =
+    fun findByScanRecordId(mc: ModuleCtx, projectId: String, scanRecordId: UUID): ScanDeepResearch? =
         mc.sql.createQuery(ScanDeepResearch::class) {
             where(table.projectId eq projectId)
             where(table.scanRecordId eq scanRecordId)
@@ -30,7 +30,7 @@ class ScanDeepResearchRepository {
         }.limit(1).execute().firstOrNull()
 
     /** 批量按 scanRecordId 查询（DataLoader 用）。 */
-    fun findByScanRecordIds(mc: ModuleCtx, projectId: UUID, scanRecordIds: Collection<UUID>): List<ScanDeepResearch> {
+    fun findByScanRecordIds(mc: ModuleCtx, projectId: String, scanRecordIds: Collection<UUID>): List<ScanDeepResearch> {
         if (scanRecordIds.isEmpty()) return emptyList()
         return mc.sql.createQuery(ScanDeepResearch::class) {
             where(table.projectId eq projectId)

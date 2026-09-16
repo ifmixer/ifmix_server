@@ -13,6 +13,14 @@ import org.babyfish.jimmer.meta.TypedProp
 import java.util.UUID
 import kotlin.reflect.KClass
 
+/** 从字符串解析主键值。支持 UUID / String，其它类型显式报错（新增主键类型时在此扩展）。 */
+@Suppress("UNCHECKED_CAST")
+internal fun <ID : Any> parseIdOrNull(idType: KClass<ID>, raw: String): ID? = when (idType) {
+    UUID::class -> runCatching { UUID.fromString(raw) }.getOrNull() as ID?
+    String::class -> raw as ID
+    else -> throw IllegalArgumentException("Unsupported id type: ${idType.qualifiedName}")
+}
+
 /**
  * 全局实体 CRUD 模板（无租户隔离）。
  *
@@ -20,35 +28,36 @@ import kotlin.reflect.KClass
  * ```kotlin
  * @Repository
  * class AuthTenantRepository {
- *     private val tpl = CrudRepoTemplate(AuthTenant::class)
+ *     private val tpl = CrudRepoTemplate(AuthTenant::class, UUID::class)
  *     fun findById(ctx: ModuleCtx, id: UUID) = tpl.findById(ctx, id)
  * }
  * ```
  */
-class CrudRepoTemplate<E : Any>(
+class CrudRepoTemplate<E : Any, ID : Comparable<ID>>(
     private val entityType: KClass<E>,
+    private val idType: KClass<ID>,
     /** id 字段名（默认 "id"）。 */
     private val id: String = "id",
 ) {
 
-    fun findById(ctx: ModuleCtx, id: UUID): E? =
+    fun findById(ctx: ModuleCtx, id: ID): E? =
         ctx.sql.createQuery(entityType) {
-            where(table.get<UUID>(this@CrudRepoTemplate.id) eq id)
+            where(table.get<ID>(this@CrudRepoTemplate.id) eq id)
             select(table)
         }.limit(1).execute().firstOrNull()
 
-    fun findByIds(ctx: ModuleCtx, ids: Collection<UUID>): List<E> {
+    fun findByIds(ctx: ModuleCtx, ids: Collection<ID>): List<E> {
         if (ids.isEmpty()) return emptyList()
         return ctx.sql.createQuery(entityType) {
-            where(table.get<UUID>(this@CrudRepoTemplate.id) valueIn ids)
+            where(table.get<ID>(this@CrudRepoTemplate.id) valueIn ids)
             select(table)
         }.execute()
     }
 
-    fun exists(ctx: ModuleCtx, id: UUID): Boolean =
+    fun exists(ctx: ModuleCtx, id: ID): Boolean =
         findById(ctx, id) != null
 
-    fun existsByIds(ctx: ModuleCtx, ids: Collection<UUID>): Map<UUID, Boolean> {
+    fun existsByIds(ctx: ModuleCtx, ids: Collection<ID>): Map<ID, Boolean> {
         if (ids.isEmpty()) return emptyMap()
         val found = findByIds(ctx, ids).mapTo(mutableSetOf()) { extractId(it) }
         return ids.associateWith { it in found }
@@ -56,14 +65,14 @@ class CrudRepoTemplate<E : Any>(
 
     fun findByCursor(
         ctx: ModuleCtx,
-        cursor: UUID?,
+        cursor: ID?,
         limit: Int,
         where: (KMutableRootQuery.ForEntity<E>.() -> Unit)? = null,
     ): Page<E> {
         val rows = ctx.sql.createQuery(entityType) {
-            cursor?.let { where(table.get<UUID>(this@CrudRepoTemplate.id) lt it) }
+            cursor?.let { where(table.get<ID>(this@CrudRepoTemplate.id) lt it) }
             where?.invoke(this)
-            orderBy(table.get<UUID>(this@CrudRepoTemplate.id).desc())
+            orderBy(table.get<ID>(this@CrudRepoTemplate.id).desc())
             select(table)
         }.limit(limit + 1).execute()
 
@@ -82,26 +91,26 @@ class CrudRepoTemplate<E : Any>(
 
     // ===== Delete =====
 
-    fun deleteById(ctx: ModuleCtx, id: UUID): Boolean {
+    fun deleteById(ctx: ModuleCtx, id: ID): Boolean {
         val count = ctx.sql.createDelete(entityType) {
-            where(table.get<UUID>(this@CrudRepoTemplate.id) eq id)
+            where(table.get<ID>(this@CrudRepoTemplate.id) eq id)
         }.execute()
         return count > 0
     }
 
-    fun deleteByIds(ctx: ModuleCtx, ids: Collection<UUID>): Int {
+    fun deleteByIds(ctx: ModuleCtx, ids: Collection<ID>): Int {
         if (ids.isEmpty()) return 0
         return ctx.sql.createDelete(entityType) {
-            where(table.get<UUID>(this@CrudRepoTemplate.id) valueIn ids)
+            where(table.get<ID>(this@CrudRepoTemplate.id) valueIn ids)
         }.execute()
     }
 
     // ===== Internal =====
 
     @Suppress("UNCHECKED_CAST")
-    private fun extractId(entity: E): UUID {
+    private fun extractId(entity: E): ID {
         val spi = entity as org.babyfish.jimmer.runtime.ImmutableSpi
-        return spi.__get(id) as UUID
+        return spi.__get(id) as ID
     }
 
     private fun idString(entity: E): String? = extractId(entity).toString()
@@ -110,18 +119,20 @@ class CrudRepoTemplate<E : Any>(
 
 /**
  * App 级 CRUD 模板（带租户隔离，所有操作强制要求 projectId）。
+ * projectId 固定为 String（slug 逻辑外键）；实体自身主键类型 ID 泛型化。
  *
  * 用法：
  * ```kotlin
  * @Repository
  * class TodoRepository {
- *     private val tpl = ProjectCrudRepoTemplate(Todo::class)
- *     fun findById(ctx: ModuleCtx, projectId: UUID, id: UUID) = tpl.findById(ctx, projectId, id)
+ *     private val tpl = ProjectCrudRepoTemplate(Todo::class, UUID::class)
+ *     fun findById(ctx: ModuleCtx, projectId: String, id: UUID) = tpl.findById(ctx, projectId, id)
  * }
  * ```
  */
-class ProjectCrudRepoTemplate<E : Any>(
+class ProjectCrudRepoTemplate<E : Any, ID : Comparable<ID>>(
     private val entityType: KClass<E>,
+    private val idType: KClass<ID>,
     /** id 字段名（默认 "id"）。 */
     private val id: String = "id",
     /** projectId 字段名（默认 "projectId"）。 */
@@ -130,26 +141,26 @@ class ProjectCrudRepoTemplate<E : Any>(
 
     // ===== Read =====
 
-    fun findById(ctx: ModuleCtx, projectId: UUID, id: UUID): E? =
+    fun findById(ctx: ModuleCtx, projectId: String, id: ID): E? =
         ctx.sql.createQuery(entityType) {
-            where(table.get<UUID>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
-            where(table.get<UUID>(this@ProjectCrudRepoTemplate.id) eq id)
+            where(table.get<String>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
+            where(table.get<ID>(this@ProjectCrudRepoTemplate.id) eq id)
             select(table)
         }.limit(1).execute().firstOrNull()
 
-    fun findByIds(ctx: ModuleCtx, projectId: UUID, ids: Collection<UUID>): List<E> {
+    fun findByIds(ctx: ModuleCtx, projectId: String, ids: Collection<ID>): List<E> {
         if (ids.isEmpty()) return emptyList()
         return ctx.sql.createQuery(entityType) {
-            where(table.get<UUID>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
-            where(table.get<UUID>(this@ProjectCrudRepoTemplate.id) valueIn ids)
+            where(table.get<String>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
+            where(table.get<ID>(this@ProjectCrudRepoTemplate.id) valueIn ids)
             select(table)
         }.execute()
     }
 
-    fun exists(ctx: ModuleCtx, projectId: UUID, id: UUID): Boolean =
+    fun exists(ctx: ModuleCtx, projectId: String, id: ID): Boolean =
         findById(ctx, projectId, id) != null
 
-    fun existsByIds(ctx: ModuleCtx, projectId: UUID, ids: Collection<UUID>): Map<UUID, Boolean> {
+    fun existsByIds(ctx: ModuleCtx, projectId: String, ids: Collection<ID>): Map<ID, Boolean> {
         if (ids.isEmpty()) return emptyMap()
         val found = findByIds(ctx, projectId, ids).mapTo(mutableSetOf()) { extractId(it) }
         return ids.associateWith { it in found }
@@ -157,16 +168,16 @@ class ProjectCrudRepoTemplate<E : Any>(
 
     fun findByCursor(
         ctx: ModuleCtx,
-        projectId: UUID,
-        cursor: UUID?,
+        projectId: String,
+        cursor: ID?,
         limit: Int,
         where: (KMutableRootQuery.ForEntity<E>.() -> Unit)? = null,
     ): Page<E> {
         val rows = ctx.sql.createQuery(entityType) {
-            where(table.get<UUID>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
-            cursor?.let { where(table.get<UUID>(this@ProjectCrudRepoTemplate.id) lt it) }
+            where(table.get<String>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
+            cursor?.let { where(table.get<ID>(this@ProjectCrudRepoTemplate.id) lt it) }
             where?.invoke(this)
-            orderBy(table.get<UUID>(this@ProjectCrudRepoTemplate.id).desc())
+            orderBy(table.get<ID>(this@ProjectCrudRepoTemplate.id).desc())
             select(table)
         }.limit(limit + 1).execute()
 
@@ -180,7 +191,7 @@ class ProjectCrudRepoTemplate<E : Any>(
      */
     fun findByOptions(
         ctx: ModuleCtx,
-        projectId: UUID,
+        projectId: String,
         findOptions: CommonFindOptions?,
         filterable: List<TypedProp.Scalar<E, *>>,
         sortable: Set<String> = setOf(this.id),
@@ -196,25 +207,25 @@ class ProjectCrudRepoTemplate<E : Any>(
         // 解析复合 cursor（整体 Base58 编码）: 解码后 sortBy==id → "{id}", 否则 → "{sortValue},{id}"
         val rawCursor = findOptions?.cursor?.let { runCatching { Base58.decodeString(it) }.getOrNull() }
         val cursorParts = rawCursor?.split(",", limit = 2)
-        val cursorId: UUID?
+        val cursorId: ID?
         val cursorSortValue: String?
         if (sortBy == this.id) {
-            cursorId = cursorParts?.firstOrNull()?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+            cursorId = cursorParts?.firstOrNull()?.let { parseIdOrNull(idType, it) }
             cursorSortValue = null
         } else {
             cursorSortValue = cursorParts?.firstOrNull()
-            cursorId = cursorParts?.getOrNull(1)?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+            cursorId = cursorParts?.getOrNull(1)?.let { parseIdOrNull(idType, it) }
         }
 
         val rows = ctx.sql.createQuery(entityType) {
-            where(table.get<UUID>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
+            where(table.get<String>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
             FilterGroupResolver.apply(this, findOptions?.filter, filterable)
             where?.invoke(this)
 
             // cursor 条件
             if (cursorSortValue != null && cursorId != null) {
                 val sortCol = table.get<Any>(sortBy)
-                val idCol = table.get<UUID>(this@ProjectCrudRepoTemplate.id)
+                val idCol = table.get<ID>(this@ProjectCrudRepoTemplate.id)
                 // 复合 cursor: (sortBy < val) OR (sortBy = val AND id < cursorId)
                 if (desc) {
                     where(
@@ -238,17 +249,17 @@ class ProjectCrudRepoTemplate<E : Any>(
                     )
                 }
             } else if (cursorId != null) {
-                if (desc) where(table.get<UUID>(this@ProjectCrudRepoTemplate.id) lt cursorId)
-                else where(table.get<UUID>(this@ProjectCrudRepoTemplate.id) gt cursorId)
+                if (desc) where(table.get<ID>(this@ProjectCrudRepoTemplate.id) lt cursorId)
+                else where(table.get<ID>(this@ProjectCrudRepoTemplate.id) gt cursorId)
             }
 
             // 排序: 主排序字段 + id 做 tiebreaker
             if (desc) {
                 orderBy(table.get<Any>(sortBy).desc())
-                if (sortBy != this@ProjectCrudRepoTemplate.id) orderBy(table.get<UUID>(this@ProjectCrudRepoTemplate.id).desc())
+                if (sortBy != this@ProjectCrudRepoTemplate.id) orderBy(table.get<ID>(this@ProjectCrudRepoTemplate.id).desc())
             } else {
                 orderBy(table.get<Any>(sortBy).asc())
-                if (sortBy != this@ProjectCrudRepoTemplate.id) orderBy(table.get<UUID>(this@ProjectCrudRepoTemplate.id).asc())
+                if (sortBy != this@ProjectCrudRepoTemplate.id) orderBy(table.get<ID>(this@ProjectCrudRepoTemplate.id).asc())
             }
             if (fetchBy != null) select(fetchBy.invoke(table)) else select(table)
         }.limit(limit + 1).execute()
@@ -275,34 +286,34 @@ class ProjectCrudRepoTemplate<E : Any>(
 
     // ===== Delete =====
 
-    fun deleteById(ctx: ModuleCtx, projectId: UUID, id: UUID): Boolean {
+    fun deleteById(ctx: ModuleCtx, projectId: String, id: ID): Boolean {
         val count = ctx.sql.createDelete(entityType) {
-            where(table.get<UUID>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
-            where(table.get<UUID>(this@ProjectCrudRepoTemplate.id) eq id)
+            where(table.get<String>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
+            where(table.get<ID>(this@ProjectCrudRepoTemplate.id) eq id)
         }.execute()
         return count > 0
     }
 
-    fun deleteByIds(ctx: ModuleCtx, projectId: UUID, ids: Collection<UUID>): Int {
+    fun deleteByIds(ctx: ModuleCtx, projectId: String, ids: Collection<ID>): Int {
         if (ids.isEmpty()) return 0
         return ctx.sql.createDelete(entityType) {
-            where(table.get<UUID>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
-            where(table.get<UUID>(this@ProjectCrudRepoTemplate.id) valueIn ids)
+            where(table.get<String>(this@ProjectCrudRepoTemplate.projectId) eq projectId)
+            where(table.get<ID>(this@ProjectCrudRepoTemplate.id) valueIn ids)
         }.execute()
     }
 
     // ===== Internal =====
 
     @Suppress("UNCHECKED_CAST")
-    private fun extractId(entity: E): UUID {
+    private fun extractId(entity: E): ID {
         val spi = entity as org.babyfish.jimmer.runtime.ImmutableSpi
-        return spi.__get(id) as UUID
+        return spi.__get(id) as ID
     }
-
 
     private fun extractField(entity: E, field: String): Any? {
         val spi = entity as org.babyfish.jimmer.runtime.ImmutableSpi
         return spi.__get(field)
     }
+
     private fun idString(entity: E): String? = extractId(entity).toString()
 }

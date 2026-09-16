@@ -29,7 +29,7 @@ import java.util.UUID
 class ScanBatchUpdateTest {
 
     private val repo = ScanRecordRepository()
-    private val projectId = UUID.randomUUID()
+    private val projectId = "test-app"
     private val customerId = UUID.randomUUID()
 
     private fun ctx(sql: KSqlClient) = ModuleCtx(
