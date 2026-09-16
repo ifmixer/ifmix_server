@@ -1,0 +1,21 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  h_734c7d988c19fa 91-94,100-101,103
+  h_734c7d988c19fa 102
+core-api/src/main/resources/prompts/antique-scan-system-basic_v10.md
+  h_734c7d988c19fa 31-41
+core-api/src/main/resources/prompts/antique-scan-system-deep-research_v10.md
+  h_734c7d988c19fa 39-40
+docs/Changelog.md
+  h_734c7d988c19fa 5-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c445289627f5ace442fac557dd371b1c81add88",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
