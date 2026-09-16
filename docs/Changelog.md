@@ -2,6 +2,24 @@
 
 本文件按时间倒序记录 core-api 面向客户端/数据库的变更。DateTime 用 ISO-8601；数据库变更标注对应 Flyway 版本。
 
+## 2026-09-17
+
+### Changed
+- **`projectId` 主键由 UUID 改为 String（slug 即主键，方案 A）**（未上线，不考虑兼容性）：
+  - `project_info.id` 即 slug（String 主键），移除原独立 `slug` 列及其唯一索引（唯一性由主键保证）。
+  - `ProjectScopedProps.projectId: UUID → String`；`OperationContext`/`ModuleCtx`/`ClusterRouter.forProject` 等全链路改 String。
+  - 通用 Repo/Service 主键类型泛型化：`CrudRepoTemplate<E, ID>`、`ProjectCrudRepoTemplate<E, ID>`（projectId 固定 String）、`CrudServiceOps<T, ID>`，含 cursor 泛型化（新增 `parseIdOrNull(idType, raw)`，支持 UUID/String）。现存 UUID 主键表用 `<E, UUID>`，未来 String 主键表用 `<E, String>`。
+  - 新增 `StringIdProps`（`@Id val id: String`）作为 String 主键基类，`UUIDProps`/`BaseEntity` 不变。
+  - slug 格式受控：`RequestParser.parseProjectId` 用 `^[a-z][a-z0-9-]{2,29}$`（长度 3-30，小写字母开头，含小写字母/数字/连字符），创建后不可变（Firebase project ID 契约）。JWT `aud` 本即 String，去掉 `tryUuid`。
+  - 对象存储 key 段 `.../project/{projectId}/...` 直接用 slug（不再 base58）。
+  - DB（改 `V1__baseline.sql` + 重建库）：`project_info.id` 与全部业务表 `project_id` `uuid → varchar(30)`（30 与正则最长值对齐，作 DB 层长度防线）；逻辑外键，无物理 FK。
+
+### Changed（续）
+- **扫描 prompt 语言规则强化**（`antique-scan-system-basic_v10.md` / `antique-scan-system-deep-research_v10.md`，直接改 v10）：
+  - 新增全局约束——凡字段名**不以 `_en` 结尾**必须完全用 `{{RESPONSE_LOCALE}}` 输出、不得混入英文；**以 `_en` 结尾**必须完全英文，明确点名含 `description` 等长文本字段。修复模型偶发把 `description` 输出成英文的问题。
+  - basic 补齐**语言判定来源禁令**（原仅 deep-research 有）：不得从 image text（如图中中文款识/铭文）、object origin、`{{MARKET_REGION}}`、`{{VALUATION_CURRENCY}}` 推断语言，语言只由 `{{RESPONSE_LOCALE}}` 决定。修复「传 en 但图含中文时 basic 经常夹中文、deep-research 却正常」的行为差异（两份 prompt 语言判定对齐）。
+  - 均为降发生率，非硬保证（LLM 层面无法 100% 消除）。
+
 ## 2026-09-12
 
 ### Changed

@@ -28,6 +28,17 @@ Fields marked `{{RESPONSE_LOCALE}}` MUST use this language.
 
 Fields marked `ENGLISH` MUST always be English.
 
+Any field whose name is NOT suffixed with `_en` MUST be written entirely in `{{RESPONSE_LOCALE}}`; never mix English words or sentences into a `{{RESPONSE_LOCALE}}` field. Every field whose name IS suffixed with `_en` MUST be written entirely in English. This applies to all fields, including long free-text fields such as `description`.
+
+Do not infer response language from:
+
+* image text (e.g. Chinese marks or inscriptions on the object),
+* object origin,
+* `{{MARKET_REGION}}`,
+* `{{VALUATION_CURRENCY}}`.
+
+The response language is determined ONLY by `{{RESPONSE_LOCALE}}`.
+
 ENUM values remain English tokens.
 
 ## `{{MARKET_REGION}}`

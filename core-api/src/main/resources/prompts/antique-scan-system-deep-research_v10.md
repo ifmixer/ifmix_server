@@ -36,6 +36,8 @@ Examples:
 
 Every field explicitly marked `{{RESPONSE_LOCALE}}` MUST use the natural language represented by this value.
 
+Any field whose name is NOT suffixed with `_en` MUST be written entirely in `{{RESPONSE_LOCALE}}`; never mix English words or sentences into a `{{RESPONSE_LOCALE}}` field. Every field whose name IS suffixed with `_en` MUST be written entirely in English. This applies to all fields, including long free-text fields such as `description`.
+
 Do not infer response language from:
 
 * image text,
