@@ -27,6 +27,7 @@
 | [编码指南](docs/CODING_GUIDE.md) | 每层怎么写、Context 模型、事务、示例代码 |
 | [认证设计](docs/AUTH_DESIGN.md) | IDP + AuthIdentity 模型、登录判定表 |
 | [数据库约定](docs/DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup |
+| [Agnes Key 导入](docs/scripts/agnes-key-import.md) | `ai_agnes_key` key 导入脚本（`scripts/agnes_keys/`）用法、配对/去重逻辑 |
 
 ## 代码约定速查
 

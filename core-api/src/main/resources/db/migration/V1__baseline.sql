@@ -15,7 +15,6 @@
 
 CREATE TABLE public.ai_agnes_key (
     id uuid CONSTRAINT agnes_key_id_not_null NOT NULL,
-    project_id character varying(30) CONSTRAINT agnes_key_project_id_not_null NOT NULL,
     key character varying(512) CONSTRAINT agnes_key_key_not_null NOT NULL,
     email character varying(255),
     rate_limit bigint DEFAULT '-1'::integer CONSTRAINT agnes_key_rate_limit_not_null NOT NULL,
@@ -25,7 +24,7 @@ CREATE TABLE public.ai_agnes_key (
     created_at timestamp with time zone DEFAULT now() CONSTRAINT agnes_key_created_at_not_null NOT NULL,
     updated_at timestamp with time zone DEFAULT now() CONSTRAINT agnes_key_updated_at_not_null NOT NULL,
     deleted_at timestamp with time zone,
-    type smallint DEFAULT 100 CONSTRAINT core_agnes_key_type_not_null NOT NULL
+    type smallint CONSTRAINT core_agnes_key_type_not_null NOT NULL
 );
 
 --
@@ -532,12 +531,6 @@ ALTER TABLE ONLY public.demo_todo_item
 
 ALTER TABLE ONLY public.demo_todo
     ADD CONSTRAINT todo_pkey PRIMARY KEY (id);
-
---
--- Name: agnes_key_project_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX agnes_key_project_idx ON public.ai_agnes_key USING btree (project_id) WHERE (deleted_at IS NULL);
 
 --
 -- Name: agnes_key_unavailable_idx; Type: INDEX; Schema: public; Owner: -

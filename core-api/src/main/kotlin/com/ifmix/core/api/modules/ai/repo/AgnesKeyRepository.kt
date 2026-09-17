@@ -1,12 +1,11 @@
 package com.ifmix.core.api.modules.ai.repo
 
 import com.ifmix.core.api.entity.ai.AgnesKey
-import com.ifmix.core.api.entity.ai.projectId
 import com.ifmix.core.api.entity.ai.id
 import com.ifmix.core.api.entity.ai.unavailableUntil
 import com.ifmix.core.api.entity.ai.updatedAt
 import com.ifmix.core.api.infra.db.ModuleCtx
-import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
+import com.ifmix.core.api.infra.repo.CrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.isNull
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
@@ -17,17 +16,16 @@ import java.util.UUID
 
 @Repository
 class AgnesKeyRepository {
-    companion object { private val tpl = ProjectCrudRepoTemplate(AgnesKey::class, UUID::class) }
+    companion object { private val tpl = CrudRepoTemplate(AgnesKey::class, UUID::class) }
 
     fun findAllEnabled(mc: ModuleCtx): List<AgnesKey> =
         mc.sql.createQuery(AgnesKey::class) {
             select(table)
         }.execute()
 
-    fun findAvailable(mc: ModuleCtx, projectId: String): List<AgnesKey> {
+    fun findAvailable(mc: ModuleCtx): List<AgnesKey> {
         val now = Instant.now()
         return mc.sql.createQuery(AgnesKey::class) {
-            where(table.get<String>("projectId") eq projectId)
             where(
                 or(
                     table.unavailableUntil.isNull(),
@@ -47,7 +45,7 @@ class AgnesKeyRepository {
     }
 
     fun save(mc: ModuleCtx, entity: AgnesKey) = tpl.save(mc, entity)
-    fun findById(mc: ModuleCtx, projectId: String, id: UUID) = tpl.findById(mc, projectId, id)
-    fun deleteById(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
-    fun exists(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.exists(mc, projectId, id)
+    fun findById(mc: ModuleCtx, id: UUID) = tpl.findById(mc, id)
+    fun deleteById(mc: ModuleCtx, id: UUID): Boolean = tpl.deleteById(mc, id)
+    fun exists(mc: ModuleCtx, id: UUID): Boolean = tpl.exists(mc, id)
 }

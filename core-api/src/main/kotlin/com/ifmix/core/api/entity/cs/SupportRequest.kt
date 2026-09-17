@@ -35,7 +35,7 @@ object SupportRequestCategories {
     const val ACCOUNT: SupportRequestCategory = 30
     const val PAYMENT: SupportRequestCategory = 40
     const val CONTENT_ERROR: SupportRequestCategory = 50
-    const val OTHER: SupportRequestCategory = 100
+    const val OTHER: SupportRequestCategory = 1000
 }
 
 /**

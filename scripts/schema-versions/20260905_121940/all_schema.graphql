@@ -539,7 +539,7 @@ extend type Mutation {
 
 # --- customer/media.graphqls ---
 input PresignUploadInput {
-    "对象存储路径前缀（业务分类，如 antique_scan）"
+    "对象存储路径前缀（业务分类，如 antique-scan）"
     prefix: String!
     "内容类型。10=IMAGE_JPEG, 20=IMAGE_PNG, 30=IMAGE_WEBP"
     contentType: Int!

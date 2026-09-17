@@ -18,7 +18,7 @@ package com.ifmix.core.api.entity.ai
  * | 70   | PRICE_TAG   | 价签                          |
  * | 80   | DOCUMENTS   | 文件 / 来源证明               |
  * | 90   | DETAIL      | 局部细节（通用，可选）         |
- * | 100  | OTHER       | 其它                          |
+ * | 1000 | OTHER       | 其它                          |
  */
 data class ImageRef(val key: String, val category: ImageCategory? = null)
 
@@ -38,5 +38,5 @@ object ImageCategories {
     const val PRICE_TAG: ImageCategory = 70
     const val DOCUMENTS: ImageCategory = 80
     const val DETAIL: ImageCategory = 90
-    const val OTHER: ImageCategory = 100
+    const val OTHER: ImageCategory = 1000
 }

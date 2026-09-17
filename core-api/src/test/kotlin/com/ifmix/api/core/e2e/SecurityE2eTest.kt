@@ -88,7 +88,7 @@ class SecurityE2eTest : E2eTestBase() {
         @Test
         fun `valid objectKey with install prefix succeeds`() {
             post("/customer/mutation/core/storage/presignUpload")
-                .bodyValue(mapOf("contentType" to "IMAGE_JPEG", "prefix" to "antique_scan"))
+                .bodyValue(mapOf("contentType" to "IMAGE_JPEG", "prefix" to "antique-scan"))
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
