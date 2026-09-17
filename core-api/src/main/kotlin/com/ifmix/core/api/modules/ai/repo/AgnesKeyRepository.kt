@@ -1,6 +1,7 @@
 package com.ifmix.core.api.modules.ai.repo
 
 import com.ifmix.core.api.entity.ai.AgnesKey
+import com.ifmix.core.api.entity.ai.enabled
 import com.ifmix.core.api.entity.ai.id
 import com.ifmix.core.api.entity.ai.unavailableUntil
 import com.ifmix.core.api.entity.ai.updatedAt
@@ -20,12 +21,14 @@ class AgnesKeyRepository {
 
     fun findAllEnabled(mc: ModuleCtx): List<AgnesKey> =
         mc.sql.createQuery(AgnesKey::class) {
+            where(table.enabled eq true)
             select(table)
         }.execute()
 
     fun findAvailable(mc: ModuleCtx): List<AgnesKey> {
         val now = Instant.now()
         return mc.sql.createQuery(AgnesKey::class) {
+            where(table.enabled eq true)
             where(
                 or(
                     table.unavailableUntil.isNull(),

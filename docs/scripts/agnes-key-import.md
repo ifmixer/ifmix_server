@@ -10,6 +10,7 @@
 | `key` | API key，**唯一索引** `agnes_key_uq`，去重靠它 |
 | `email` | 关联邮箱（见配对规则） |
 | `type` | **NOT NULL 无默认值**。`10`=PERSONAL（`sk-` 前缀）/ `20`=ENTERPRISE（`wk-` 前缀）。码表见 `entity/ai/AgnesKey.kt` 的 `AgnesKeyTypes` |
+| `enabled` | 是否启用，**默认 `true`**。`false` 的 key 不参与加载/挑选（查询时过滤）。导入不传 → 走默认 true |
 | `rate_limit` / `window_sec` | 走表默认（-1 / 86400） |
 
 `type` 码表登记于 `entity/ai/AgnesKey.kt`（`AgnesKeyTypes`）和 `docs/DATABASE.md` 枚举表。

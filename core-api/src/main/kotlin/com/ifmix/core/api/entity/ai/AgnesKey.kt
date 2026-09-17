@@ -27,6 +27,8 @@ interface AgnesKey : BaseEntity {
     val email: String?
     /** 类型编码，码表见 [AgnesKeyTypes]（10=个人 / 20=企业）。 */
     val type: AgnesKeyType
+    /** 是否启用。false 的 key 不参与加载/挑选（DB 列默认 true）。 */
+    val enabled: Boolean
     val rateLimit: Long
     val windowSec: Long
     val models: String?

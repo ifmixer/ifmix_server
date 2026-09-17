@@ -1,1 +1,0 @@
-ALTER TABLE core_todo ADD COLUMN note TEXT;

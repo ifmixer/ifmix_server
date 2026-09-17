@@ -1,6 +1,8 @@
 package com.ifmix.core.api.modules.ai.service
 
 import com.ifmix.core.api.modules.ai.repo.AgnesKeyRepository
+import com.ifmix.core.api.entity.ai.enabled
+import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.springframework.beans.factory.annotation.Value
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.springframework.context.annotation.Bean
@@ -21,8 +23,9 @@ class AiConfig(
 ) {
     @Bean
     fun agnesKeyStore(): AgnesKeyStore = AgnesKeyStore(redis) {
-        // 用全局 sqlClient 加载所有 key（不依赖 ModuleCtx，因为 key 加载是 infra 级操作）
+        // 用全局 sqlClient 加载所有启用的 key（不依赖 ModuleCtx，因为 key 加载是 infra 级操作）
         val keys = sqlClient.createQuery(com.ifmix.core.api.entity.ai.AgnesKey::class) {
+            where(table.enabled eq true)
             select(table)
         }.execute()
         keys.map { k ->

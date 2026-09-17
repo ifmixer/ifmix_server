@@ -121,7 +121,7 @@
 | typealias | 常量 object | 码表 |
 |-----------|------------|------|
 | `ContentType` (dto/common) | `ContentTypes` | 10=IMAGE_JPEG, 20=IMAGE_PNG, 30=IMAGE_WEBP |
-| `ScanStatus` (entity/ai) | `ScanStatuses` | 20=READY（其余待补） |
+| `ScanStatus` (entity/ai) | `ScanStatuses` | 10=CREATED（DB 列默认）, 20=READY |
 | `FeedbackTopic` (entity/cs) | `FeedbackTopics` | 0=UNKNOWN, 10=SCAN, 20=DEEP_RESEARCH, 30=APP |
 | `MediaType`（媒体大类，`MediaRef.type`）(entity/common) | `MediaTypes` | 0=UNKNOWN, 10=IMAGE, 20=VIDEO, 30=AUDIO, 40=DOCUMENT |
 | `SupportRequestStatus` (entity/cs) | `SupportRequestStatuses` | 10=OPEN, 20=IN_PROGRESS, 30=PENDING_CUSTOMER, 40=RESOLVED, 50=CLOSED |

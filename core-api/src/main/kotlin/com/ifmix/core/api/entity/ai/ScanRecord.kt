@@ -12,10 +12,10 @@ typealias ScanStatus = Int
 
 /**
  * 扫描状态码表（0 保留，从 10 起步长 10）。
- * ponytail: 目前代码中仅确证 READY=20（saveNewScan 落库时）；其余状态（如处理中/失败）
- * 尚未在代码出现，未臆造。后续新增状态时在此登记。
+ * CREATED=10（记录创建，DB 列默认值）；READY=20（basicResult 落库完成）。
  */
 object ScanStatuses {
+    const val CREATED: ScanStatus = 10
     const val READY: ScanStatus = 20
 }
 
