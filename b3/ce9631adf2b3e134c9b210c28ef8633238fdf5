@@ -1,0 +1,38 @@
+scripts/schema-versions/20260905_121940/all_schema.graphql
+  h_734c7d988c19fa 542
+core-api/src/test/kotlin/com/ifmix/api/core/e2e/SecurityE2eTest.kt
+  h_734c7d988c19fa 91
+scripts/schema-versions/20260905_121940/schema/customer/media.graphqls
+  h_734c7d988c19fa 2
+core-api/src/main/resources/schema/customer/media.graphqls
+  h_734c7d988c19fa 2
+AGENTS.md
+  h_734c7d988c19fa 30
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/AgnesKey.kt
+  h_734c7d988c19fa 3,7,10-17,19,23,28
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ImageRef.kt
+  h_734c7d988c19fa 21,41
+core-api/src/main/kotlin/com/ifmix/core/api/entity/cs/SupportRequest.kt
+  h_734c7d988c19fa 38
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/AgnesKeyRepository.kt
+  h_734c7d988c19fa 8,19,26,48-50
+core-api/src/main/resources/db/migration/V1__baseline.sql
+  h_734c7d988c19fa 27
+docs/DATABASE.md
+  h_734c7d988c19fa 28,108,128-129
+docs/scripts/agnes-key-import.md
+  h_734c7d988c19fa 1-79
+scripts/agnes_keys/import_from_register.sh
+  h_734c7d988c19fa 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3ce9631adf2b3e134c9b210c28ef8633238fdf5",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
