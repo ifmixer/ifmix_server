@@ -1,0 +1,26 @@
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/AgnesKey.kt
+  h_734c7d988c19fa 30-31
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanRecord.kt
+  h_734c7d988c19fa 15,18
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/AgnesKeyRepository.kt
+  h_734c7d988c19fa 4,24,31
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiConfig.kt
+  h_734c7d988c19fa 4-5,26,28
+core-api/src/main/resources/db/migration/V1__baseline.sql
+  h_734c7d988c19fa 1-4,10,14-29,45-46,49,65,80,92,95,103,108,118-119,149,164,174,179,201-215,234,250,257,286,302,321,337,353,373,384,396,398,401-413,416,419-426,429,432-434,437,440-442,459,467,475,483-491,499,507,515,523,531,539-555,563,571,579,587,602,609,618,621,630,637,644,651,653,656-657,660,663-664,672,679,686-693,700,707,714,721,723,726-727,730,733-734,742,749-756,763,770,777,779,782-783,786,789-790,798,800,803-804,812,814,817-818,827,835,841-4015
+docs/DATABASE.md
+  h_734c7d988c19fa 124
+docs/scripts/agnes-key-import.md
+  h_734c7d988c19fa 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec77278cec2a31f0fa7558543ae9b97eab0d963c",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
