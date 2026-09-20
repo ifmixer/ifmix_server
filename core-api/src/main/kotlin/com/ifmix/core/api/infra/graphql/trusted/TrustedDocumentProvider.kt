@@ -11,15 +11,15 @@ import java.util.function.Function
 /**
  * Trusted Document 执行入口（graphql-java [PreparsedDocumentProvider]）。
  *
- * trusted-documents 机制**恒定开启**：请求带 x-api-name 时一律走 allowlist（命中执行、未命中拒绝）。
- * [allowRawQuery] 仅控制「未传 x-api-name 时是否允许回退 body raw query」：
+ * trusted-documents 机制**恒定开启**：APQ 请求（path 带 apiName）一律走 allowlist（命中执行、未命中拒绝）。
+ * [allowRawQuery] 仅控制「未带 apiName（走 GQL raw 入口）时是否允许回退 body raw query」：
  *  - true（本地/dev）→ 回退 raw query，供 GraphiQL/API 探索。
  *  - false（uat/prod）→ 拒绝，强制所有请求走 persisted query。
  *
  * 流程（不碰 body）：
- *  1. 从 GraphQLContext 取 [ApiNameHeaderInterceptor.CTX_API_NAME]（来自 x-api-name header）。
- *  2. 传了 x-api-name：命中 allowlist → 返回预解析 Document；未命中 → 拒绝（无论 allowRawQuery）。
- *  3. 未传 x-api-name：allowRawQuery=true → 回退 raw query；false → 拒绝。
+ *  1. 从 GraphQLContext 取 [ApiNamePathInterceptor.CTX_API_NAME]（来自 APQ path 末段）。
+ *  2. 有 apiName：命中 allowlist → 返回预解析 Document；未命中 → 拒绝（无论 allowRawQuery）。
+ *  3. 无 apiName：allowRawQuery=true → 回退 raw query；false → 拒绝。
  *
  * bff 当前固定 customer（单端点）；未来多 BFF 时从 context/path 区分。
  */
@@ -35,22 +35,22 @@ class TrustedDocumentProvider(
         executionInput: ExecutionInput,
         parseAndValidate: Function<ExecutionInput, PreparsedDocumentEntry>,
     ): CompletableFuture<PreparsedDocumentEntry> {
-        val apiName = executionInput.graphQLContext.get<String?>(ApiNameHeaderInterceptor.CTX_API_NAME)
+        val apiName = executionInput.graphQLContext.get<String?>(ApiNamePathInterceptor.CTX_API_NAME)
 
         if (!apiName.isNullOrBlank()) {
             val entry = store.getByApiName(apiName, bff)
             if (entry != null) {
                 return CompletableFuture.completedFuture(PreparsedDocumentEntry(entry.document))
             }
-            // 传了 x-api-name 但不在白名单 → 一律拒绝
-            log.warn("trusted-documents: unknown x-api-name={} bff={}", apiName, bff)
+            // 有 apiName 但不在白名单 → 一律拒绝
+            log.warn("trusted-documents: unknown apiName={} bff={}", apiName, bff)
             return CompletableFuture.completedFuture(reject("unknown api-name: $apiName"))
         }
 
-        // 未传 x-api-name
+        // 无 apiName（走 GQL raw 入口）
         if (!allowRawQuery) {
-            log.warn("trusted-documents: request without x-api-name rejected (allow-raw-query=false) bff={}", bff)
-            return CompletableFuture.completedFuture(reject("x-api-name header is required"))
+            log.warn("trusted-documents: request without apiName rejected (allow-raw-query=false) bff={}", bff)
+            return CompletableFuture.completedFuture(reject("persisted query apiName is required"))
         }
 
         // 本地：回退 raw query（body 里的 query），供 API 探索

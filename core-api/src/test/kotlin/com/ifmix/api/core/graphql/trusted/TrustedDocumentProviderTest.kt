@@ -28,7 +28,7 @@ class TrustedDocumentProviderTest {
     /** 构造带 apiName 的 ExecutionInput；apiName=null 表示未传。 */
     private fun input(apiName: String?, rawQuery: String = "{__typename}"): ExecutionInput {
         val ctxMap: Map<Any, Any> =
-            if (apiName != null) mapOf(ApiNameHeaderInterceptor.CTX_API_NAME to apiName) else emptyMap()
+            if (apiName != null) mapOf(ApiNamePathInterceptor.CTX_API_NAME to apiName) else emptyMap()
         return ExecutionInput.newExecutionInput().query(rawQuery).graphQLContext(ctxMap).build()
     }
 
@@ -60,7 +60,7 @@ class TrustedDocumentProviderTest {
         val provider = TrustedDocumentProvider(storeWith("q_auth_me"), allowRawQuery = false)
         val entry = provider.getDocumentAsync(input(null), fallback).get()
         assertThat(entry.hasErrors()).isTrue()
-        assertThat(entry.errors[0].message).contains("x-api-name header is required")
+        assertThat(entry.errors[0].message).contains("persisted query apiName is required")
     }
 
     @Test

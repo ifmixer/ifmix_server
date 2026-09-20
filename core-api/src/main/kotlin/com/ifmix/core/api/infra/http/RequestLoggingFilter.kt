@@ -119,7 +119,6 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
         private val LOGGED_HEADERS = listOf(
             RequestHeaders.PROJECT_ID,
             RequestHeaders.INSTALL_ID,
-            "x-api-name",
             RequestHeaders.CLIENT_PLATFORM,
             RequestHeaders.LOCALE,
             RequestHeaders.CURRENCY,

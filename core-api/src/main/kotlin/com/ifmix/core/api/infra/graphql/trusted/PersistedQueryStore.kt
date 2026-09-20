@@ -23,7 +23,7 @@ data class PersistedQueryEntry(
 /**
  * Persisted query allowlist 存储：按 (apiName, bff) 查预注册 query。
  *
- * apiName = 前端约定的 API 标识（x-api-name header 值），格式 `${q|m}_${module}_${action}`，
+ * apiName = 前端约定的 API 标识（APQ path 末段值），格式 `${q|m}_${module}_${action}`，
  * 如 `q_ai_findMyScanById`。它是 manifest 的 key，全局唯一，不必等于 GraphQL 顶层 field name。
  *
  * 接口抽象，当前 classpath JSON 实现，后续可换 Redis 而不动调用方。
