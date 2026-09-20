@@ -1,0 +1,96 @@
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/AgnesKey.kt
+  h_734c7d988c19fa 22
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanCollection.kt
+  h_734c7d988c19fa 9
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanCollectionItem.kt
+  h_734c7d988c19fa 8
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanDeepResearch.kt
+  h_734c7d988c19fa 12
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanRecord.kt
+  h_734c7d988c19fa 23
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/AuthIdentity.kt
+  h_734c7d988c19fa 22
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/AuthIdentityIdpRelation.kt
+  h_734c7d988c19fa 13
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/Idp.kt
+  h_734c7d988c19fa 13
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/IdpIdentity.kt
+  h_734c7d988c19fa 13
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/ProjectToIdpRelation.kt
+  h_734c7d988c19fa 12
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/RefreshToken.kt
+  h_734c7d988c19fa 13
+core-api/src/main/kotlin/com/ifmix/core/api/entity/cs/Feedback.kt
+  h_734c7d988c19fa 43
+core-api/src/main/kotlin/com/ifmix/core/api/entity/cs/SupportRequest.kt
+  h_734c7d988c19fa 48
+core-api/src/main/kotlin/com/ifmix/core/api/entity/customer/Customer.kt
+  h_734c7d988c19fa 12
+core-api/src/main/kotlin/com/ifmix/core/api/entity/demo/Todo.kt
+  h_734c7d988c19fa 12
+core-api/src/main/kotlin/com/ifmix/core/api/entity/demo/TodoItem.kt
+  h_734c7d988c19fa 8
+core-api/src/main/kotlin/com/ifmix/core/api/entity/media/UploadRecord.kt
+  h_734c7d988c19fa 15
+core-api/src/main/kotlin/com/ifmix/core/api/entity/pay/StoreNotification.kt
+  h_734c7d988c19fa 9
+core-api/src/main/kotlin/com/ifmix/core/api/entity/pay/Subscription.kt
+  h_734c7d988c19fa 11
+core-api/src/main/kotlin/com/ifmix/core/api/entity/project/ProjectConfigRevision.kt
+  h_734c7d988c19fa 12
+core-api/src/main/kotlin/com/ifmix/core/api/entity/project/ProjectInfo.kt
+  h_734c7d988c19fa 12
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/RequestParser.kt
+  h_734c7d988c19fa 10-11,29-34,37-54,152-158,162,165-167,170,173-196,205,210,227-230,237-245,247-248,251,255,258-260,263-269
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/OperationContextProvider.kt
+  h_734c7d988c19fa 62-64
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/PersistedQueryStore.kt
+  h_734c7d988c19fa 13,18,24,26,32,40,54,70,75,78,86-87
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/TrustedDocumentConfig.kt
+  h_734c7d988c19fa 15-17
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/TrustedDocumentProvider.kt
+  h_734c7d988c19fa 14-15,20-22,38,40-41,45-47,50,52-53
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/OperationContext.kt
+  h_734c7d988c19fa 34-37
+core-api/src/main/resources/application-local.yml
+  h_734c7d988c19fa 15-16
+core-api/src/main/resources/application.yml
+  h_734c7d988c19fa 16,18,23,64-69
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/RequestParserTest.kt
+  h_734c7d988c19fa 20-21,93-130
+core-api/src/test/kotlin/com/ifmix/api/core/e2e/FeedbackReasonsArrayE2eTest.kt
+  h_734c7d988c19fa 53
+core-api/src/test/kotlin/com/ifmix/api/core/e2e/support/E2eTestBase.kt
+  h_734c7d988c19fa 20
+core-api/src/test/kotlin/com/ifmix/api/core/e2e/support/TestFixtures.kt
+  h_734c7d988c19fa 35,43
+core-api/src/test/kotlin/com/ifmix/api/core/graphql/trusted/ClasspathPersistedQueryStoreTest.kt
+  h_734c7d988c19fa 10,26-27,29,35,39-40
+core-api/src/test/kotlin/com/ifmix/api/core/graphql/trusted/TrustedDocumentProviderTest.kt
+  h_734c7d988c19fa 12,24,28-29,31,49,54,59,63,67
+core-job/src/main/kotlin/com/ifmix/core/job/customer/AnonymousCleanupCleaner.kt
+  h_734c7d988c19fa 46-51,95,115,153-154,159,165,172
+docs/ARCHITECTURE.md
+  h_734c7d988c19fa 32,176,194,198-199,296-298,301-314,325-328,341-342,352
+docs/CODING_GUIDE.md
+  h_734c7d988c19fa 273,276-290
+docs/Changelog.md
+  h_734c7d988c19fa 5-17
+docs/DATABASE.md
+  h_734c7d988c19fa 5-6,8,14-36,44-45,47,95,132,186,191-193
+docs/DEPLOY.md
+  h_734c7d988c19fa 23,54-55
+docs/GRAPHQL_TRUSTED_DOCUMENTS.md
+  h_734c7d988c19fa 5,11,14,21,24-26,28,31,37-39,44,48-50,54,56-57,67-69,82-83,103,107,111,114,118,122,124,128-143,146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "095a3863f4e8651632230809fc36e14e9b6b5507",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
