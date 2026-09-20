@@ -45,7 +45,7 @@ object SupportRequestCategories {
  * 但 status 与各回复时间戳字段已预留，便于后续扩展。追加式，不软删。
  */
 @Entity
-@Table(name = "cs_support_request")
+@Table(name = "core_cs_support_request")
 interface SupportRequest : BaseProjectEntity, InstallIdProps, CustomerIdProps, UserPreferenceProps {
 
     val title: String

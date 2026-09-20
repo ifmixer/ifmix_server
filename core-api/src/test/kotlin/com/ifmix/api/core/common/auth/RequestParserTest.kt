@@ -17,7 +17,8 @@ import java.util.UUID
  */
 class RequestParserTest {
     private val jwt = mock<AuthJwtService>()
-    private val parser = RequestParser(jwt)
+    private val parser = RequestParser(jwt)                       // strict=true（默认，测试环境）
+    private val lenient = RequestParser(jwt, strict = false)      // strict=false（线上：WARN 不报错）
 
     private val projectId = "test-app"
     private val actorId = "00000000-0000-0000-0000-000000000001"
@@ -84,10 +85,47 @@ class RequestParserTest {
     @Test fun `locale unsupported returns null (not throw)`() {
         assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ko"))).isNull()
         assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ru-RU"))).isNull()
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "!!bad"))).isNull()
     }
     @Test fun `optional header absent returns null`() {
         assertThat(parser.parseCurrency(req())).isNull()
+    }
+
+    // ── version 格式校验（strict 抛 / lenient 返回 null）──
+    @Test fun `app-version valid`() {
+        assertThat(parser.parseAppVersion(req(RequestHeaders.APP_VERSION to "1.2.0"))).isEqualTo("1.2.0")
+    }
+    @Test fun `app-version malformed throws in strict`() {
+        assertThrows<ApiError> { parser.parseAppVersion(req(RequestHeaders.APP_VERSION to "1.2")) }
+        assertThrows<ApiError> { parser.parseAppVersion(req(RequestHeaders.APP_VERSION to "v1.2.3")) }
+    }
+    @Test fun `build-version and update-version integer`() {
+        assertThat(parser.parseBuildVersion(req(RequestHeaders.BUILD_VERSION to "42"))).isEqualTo("42")
+        assertThat(parser.parseUpdateVersion(req(RequestHeaders.UPDATE_VERSION to "7"))).isEqualTo("7")
+        assertThrows<ApiError> { parser.parseBuildVersion(req(RequestHeaders.BUILD_VERSION to "1.0")) }
+        assertThrows<ApiError> { parser.parseUpdateVersion(req(RequestHeaders.UPDATE_VERSION to "-1")) }
+    }
+
+    // ── 线上（strict=false）：格式非法不报错，返回 null（打 WARN log）──
+    @Test fun `lenient mode does not throw on bad format, returns null`() {
+        assertThat(lenient.parseCurrency(req(RequestHeaders.CURRENCY to "usdd"))).isNull()
+        assertThat(lenient.parseCountry(req(RequestHeaders.COUNTRY to "CHN"))).isNull()
+        assertThat(lenient.parseAppVersion(req(RequestHeaders.APP_VERSION to "bad"))).isNull()
+        assertThat(lenient.parseBuildVersion(req(RequestHeaders.BUILD_VERSION to "x"))).isNull()
+        assertThat(lenient.parseLocale(req(RequestHeaders.LOCALE to "!!bad"))).isNull()
+    }
+    @Test fun `lenient mode still returns valid values normally`() {
+        assertThat(lenient.parseCurrency(req(RequestHeaders.CURRENCY to "usd"))).isEqualTo("USD")
+        assertThat(lenient.parseLocale(req(RequestHeaders.LOCALE to "zh-cn"))).isEqualTo("zh-CN")
+        assertThat(lenient.parseAppVersion(req(RequestHeaders.APP_VERSION to "2.0.1"))).isEqualTo("2.0.1")
+    }
+    @Test fun `strict mode throws on malformed locale`() {
+        // 无法解析出 language subtag → 格式非法 → strict 抛
+        assertThrows<ApiError> { parser.parseLocale(req(RequestHeaders.LOCALE to "!!bad")) }
+    }
+    @Test fun `unsupported-but-valid locale returns null even in strict (not a format bug)`() {
+        // ko/ru 是合法 BCP 47，只是不支持 → 任何环境都 null，不抛
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ko"))).isNull()
+        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ru-RU"))).isNull()
     }
 
     // ── parseActor：抛错全在此 ──

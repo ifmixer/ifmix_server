@@ -270,5 +270,21 @@ Query → reader, Mutation → writer（通过 GlobalTxRunner）。
 其他约定：
 
 - **静默降级点必须打 log**：吞掉外部故障 / 兜底返回 null 的分支（如 Redis `INCR` 返回 null 降级放行、webhook 载荷解析失败）记 `warn`，便于排查。
+- **header 格式软校验（线上宽松模式）**：`RequestParser` 在 `strict=false`（线上）时，遇到 `x-locale`/`x-country`/`x-currency`/各 `x-*-version` 格式非法，会 `warn` 一条 `bad header format ignored: {header}={raw} ({reason})` 并当作未提供；`strict=true`（测试/开发默认）时直接抛 `ApiError`。见 `docs/ARCHITECTURE.md`「格式软校验」。
 - **不要给正常路径打 log**：合法默认值（`?: false`）、用户输入校验失败（无效 UUID/日期/token）属正常流程，打 log 只是噪音。
 - logger 声明：`private val log = LoggerFactory.getLogger(X::class.java)`；占位符 `log.warn("... {}", arg)`，只有 `error` 带异常对象打 stack。
+
+### 文件日志（logback-spring.xml）
+
+日志按级别分文件落盘（`core-api/src/main/resources/logback-spring.xml`，Spring Boot 自动识别）：
+
+| 文件 | 级别 |
+|------|------|
+| `${LOG_PATH}/info.log` | DEBUG / INFO |
+| `${LOG_PATH}/warn.log` | 仅 WARN |
+| `${LOG_PATH}/error.log` | 仅 ERROR |
+
+- 目录由 `LOG_PATH` 控制（默认 `./logs`；线上见 `docs/DEPLOY.md`）。
+- 均按天 + 单文件 50MB 滚动，gzip 归档，保留 30 天，总量上限 3GB；文件写入走 `AsyncAppender`。
+- 控制台仅 `local` profile 输出；`local` 以外只写文件。
+- 各 logger 级别仍由 `logging.level.*`（application.yml）控制，`logback-spring.xml` 尊重这些配置。

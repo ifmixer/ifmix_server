@@ -29,7 +29,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  BFF — GraphQL (DGS DataFetcher) + REST                              │
-│  POST /customer/core/apq/{apqName}  (主 API · persisted query)       │
+│  POST /customer/core/greq/{reqName}  (主 API · persisted query)      │
 │  POST /customer/core/gql            (raw query · GraphiQL/本地探索)   │
 │  POST /webhooks/iap/*     (Apple/Google 回调)                        │
 │  GET  /.well-known/jwks                                              │
@@ -173,7 +173,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   ├── repo/                   # CrudRepoTemplate, ProjectCrudRepoTemplate, FilterGroupResolver
 │   ├── codec/                  # Base58 (UUID ↔ 22-char URL-safe)
 │   ├── graphql/                # OperationContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
-│   │                           # trusted/ (APQ persisted query: ApqNamePathInterceptor, ApqRouterConfig, TrustedDocumentProvider)
+│   │                           # trusted/ (GReq persisted query: ReqNamePathInterceptor, GReqRouterConfig, TrustedDocumentProvider)
 │   ├── http/                   # OperationContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
 │   ├── auth/                   # AuthInterceptor, AuthJwtService, AuthJwtKeys, Hashing
 │   ├── redis/                  # CacheAside, RedisConfig
@@ -191,11 +191,12 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 ## GraphQL 设计
 
 - **Endpoint**:
-  - `POST /customer/core/apq/{apqName}`（主 API，persisted query；apqName 在 path 末段决定执行哪个预注册 query，供 CF/nginx 按具体路径分流。详见 [Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md)）
+  - `POST /customer/core/greq/{reqName}`（主 API，persisted query；reqName 在 path 末段决定执行哪个预注册 query，供 CF/nginx 按具体路径分流。详见 [Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md)）
   - `POST /customer/core/gql`（raw query 入口，供 GraphiQL/本地探索）
   - 均需 `x-project-id` header
 - **GraphiQL**: `/apidocs/core/customer/gql`
-- **Operation 命名**: `${q|m}_${module}_${action}`（如 `q_demo_findTodos`, `m_auth_login`）；同时作为 APQ 的 apqName（path 末段）
+- **HTTP 状态码**: 有 error 时按 `errors[0].extensions.code` 前 3 位设 HTTP status（`GraphQlHttpStatusFilter`）；无 errors → 200。详见 [Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md#http-状态码映射)
+- **Operation 命名**: `${q|m}_${module}_${action}`（如 `q_demo_findTodos`, `m_auth_login`）；同时作为 GReq 的 reqName（path 末段）
 - **DateTime**: ISO-8601 UTC 字符串（输入接受 ISO 或 epoch millis）
 - **input 全链路透传**: Fetcher→Facade→Handler 直传 input 对象
 - **Update 语义**: set/unset 防 null vs undefined 歧义
@@ -292,10 +293,24 @@ DB (via Jimmer KSqlClient)
 | `x-country` | ISO 3166-1 alpha-2, 大写 | 用户所在国家，如 `US`, `GB`, `JP`, `MY`, `SG`, `CN` |
 | `x-currency` | ISO 4217, 大写 | 用户货币偏好，如 `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD` |
 | `x-client-platform` | `ios` \| `android` | 客户端平台 |
-| `x-app-version` | 字符串 | App 版本号，如 `1.2.3` |
-| `x-build-version` | 字符串 | 构建号，如 `23` |
-| `x-update-version` | 字符串 | 热更新版本号，如 `1.5` |
+| `x-app-version` | 语义化 `major.minor.patch` | App 版本号，如 `1.2.3`（各段 1-4 位数字） |
+| `x-build-version` | 正整数 | 构建号，如 `23` |
+| `x-update-version` | 正整数 | 热更新版本号，如 `15` |
 | `x-js-version` | 字符串 | JS Bundle 版本号 |
+
+#### 格式软校验（严格 / 宽松）
+
+`x-locale` / `x-country` / `x-currency` / `x-app-version` / `x-build-version` / `x-update-version`
+带了值但**格式非法**时的处理由 `app.header-validation.strict` 开关决定（`RequestParser`）：
+
+| 环境 | `strict` | 行为 |
+|------|----------|------|
+| 测试 / 开发（默认） | `true` | 抛 `ApiError(INVALID_REQUEST)`，整个请求报错，尽早暴露客户端 bug |
+| 线上 | `false` | 打 `warn` log 并当作未提供（`null`），请求照常处理 |
+
+线上通过环境变量 `APP_HEADER_VALIDATION_STRICT=false` 切换。
+注意：此开关只作用于「带了值但格式非法」的软校验；`required` 缺失、`x-project-id`、token 等硬校验**任何环境都抛**，不受影响。
+`x-locale` 特例：合法 BCP 47 但不在支持集（如 `ko`/`ru`）**任何环境都返回 `null` 不抛**（不算格式 bug，见下方「locale 归一」）；只有无法解析出 language subtag 的畸形输入才走上表软校验。
 
 #### locale 归一
 
@@ -307,7 +322,10 @@ DB (via Jimmer KSqlClient)
 - 中文按 script/region 分简繁：
   - 简体：`zh` / `zh-Hans*` / `zh-CN` / `zh-SG` / `zh-MY` → `zh-CN`（裸 `zh` 默认简体）
   - 繁体：`zh-TW` / `zh-HK` / `zh-MO` / `zh-Hant*` → `zh-TW`
-- 其它语言（`ko`/`ru`/…）或无法解析 → `null`
+- 其它合法但不支持的语言（`ko`/`ru`/…）→ `null`（任何环境都不抛，视为未提供）
+- 无法解析出 language subtag 的畸形输入（如 `!!bad`）→ 走「格式软校验」：`strict` 抛、线上 WARN
+
+> 内部用 `normalizeLocaleResult` 区分 `Ok` / `Unsupported`（合法但不支持）/ `Malformed`（畸形）；旧的 `normalizeLocale` 保留为薄封装（只关心是否命中支持集时用）。
 
 ## 环境变量
 
@@ -320,6 +338,8 @@ DB (via Jimmer KSqlClient)
 | `STORAGE_TYPE` | 存储 | `none` |
 | `SPRING_AI_OPENAI_API_KEY` | AI Key | placeholder |
 | `AUTH_ISSUER` | JWT issuer | `ifmix` |
+| `APP_HEADER_VALIDATION_STRICT` | header 格式软校验：`true` 非法抛错 / `false` 只 WARN | `true`（线上设 `false`） |
+| `LOG_PATH` | 日志文件目录（logback-spring.xml） | `./logs` |
 | `PORT` | 端口 | `3001` |
 
 ## 详细文档
@@ -329,7 +349,7 @@ DB (via Jimmer KSqlClient)
 | [编码指南](CODING_GUIDE.md) | Context 模型、事务管理、分层示例代码、Entity 设计、CrudRepoTemplate |
 | [认证设计](AUTH_DESIGN.md) | IDP 模型、AuthIdentity、登录判定表、idpType |
 | [数据库约定](DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup、游标分页 |
-| [GraphQL Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md) | persisted query allowlist、APQ path 契约（/customer/core/apq/{apqName}）、PreparsedDocumentProvider |
+| [GraphQL Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md) | persisted query allowlist、GReq path 契约（/customer/core/greq/{reqName}）、PreparsedDocumentProvider |
 
 ## 构建与测试
 

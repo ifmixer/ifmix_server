@@ -5,7 +5,7 @@ import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 @Entity
-@Table(name = "demo_todo_item")
+@Table(name = "core_demo_todo_item")
 interface TodoItem : BaseProjectEntity {
 
     val todoId: UUID

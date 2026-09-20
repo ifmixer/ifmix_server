@@ -10,7 +10,7 @@ import java.util.UUID
  * 唯一键: (projectId, authIdentityId, idpIdentityId) 在未删除记录中唯一。
  */
 @Entity
-@Table(name = "auth_identity_to_idpidentity_relation")
+@Table(name = "core_auth_identity_to_idpidentity_relation")
 interface AuthIdentityIdpRelation : BaseProjectEntity, SoftDeletableProps {
 
     /** 逻辑外键 → auth_identity（app 级账号）。 */

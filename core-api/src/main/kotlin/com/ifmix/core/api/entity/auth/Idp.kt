@@ -10,7 +10,7 @@ import org.babyfish.jimmer.sql.*
  * 一旦创建只能改 name/desc。
  */
 @Entity
-@Table(name = "auth_idp")
+@Table(name = "core_auth_idp")
 interface Idp : UUIDProps, CreatedAtProps {
     val name: String
     /** 10:apple 20:google */

@@ -32,7 +32,7 @@ class TestFixtures(private val jdbcTemplate: JdbcTemplate) {
 
         // 2. ProjectInfo（id 即 slug）
         jdbcTemplate.update(
-            """INSERT INTO project_info (id, name, created_at, updated_at)
+            """INSERT INTO core_project_info (id, name, created_at, updated_at)
                VALUES (?, 'Test App', now(), now())
                ON CONFLICT (id) DO NOTHING""",
             PROJECT_ID
@@ -40,7 +40,7 @@ class TestFixtures(private val jdbcTemplate: JdbcTemplate) {
 
         // 3. ProjectConfigRevision (new schema: content JSONB aggregates all config)
         jdbcTemplate.update(
-            """INSERT INTO project_config_revision (id, project_id, auth_tenant_id, apple_bundle_id, android_package_name,
+            """INSERT INTO core_project_config_revision (id, project_id, auth_tenant_id, apple_bundle_id, android_package_name,
                                                     content, revision_number, enabled, slug, note, created_at)
                VALUES (?::uuid, ?, ?::uuid, 'com.ifmix.test', 'com.ifmix.test',
                        '{"apple":{"appAppleId":"123","issuerId":"iss","keyId":"kid","privateKey":"pk","servicesId":"sid"},"google":{"serviceAccount":"sa","clientIds":{"ios":"ios-id","android":"android-id","web":"web-id"}},"iap":{"productTierMap":{"pro_monthly":"PRO"},"env":"sandbox"},"wechat":{"projectId":"wx_test_id","appSecret":"wx_test_secret"}}'::jsonb,

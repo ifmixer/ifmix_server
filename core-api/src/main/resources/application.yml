@@ -13,14 +13,14 @@ spring:
       locations: classpath:schema/common/,classpath:schema/customer/
 
 # GraphQL Trusted Documents (persisted query allowlist)
-# APQ 入口 /customer/core/apq/{apqName}：path 带 apqName 的请求一律走 allowlist（命中执行、未命中拒绝）。
+# GReq 入口 /customer/core/greq/{reqName}：path 带 reqName 的请求一律走 allowlist（命中执行、未命中拒绝）。
 # GQL 入口 /customer/core/gql：raw query，供 GraphiQL/本地探索。
-# allow-raw-query：无 apqName（走 GQL 入口）时是否允许 body raw query 兜底。
+# allow-raw-query：无 reqName（走 GQL 入口）时是否允许 body raw query 兜底。
 #   默认 false（uat/prod）：禁止 raw query，强制走 persisted query。
 #   local profile 覆盖为 true 以允许 raw query 探索（见 application-local.yml）。
 graphql:
   trusted-documents:
-    apq-path: /customer/core/apq
+    greq-path: /customer/core/greq
     allow-raw-query: false
     allowlist-path: classpath:graphql/persisted-queries/customer/
 
@@ -61,6 +61,12 @@ app:
       password: ${PG_PASSWORD:postgres}
 
   expose-errors: ${APP_EXPOSE_ERRORS:true}
+  # header 格式软校验（locale/country/currency/各种 version）严格程度：
+  #   true（默认，测试/开发环境）：格式非法 → 整个请求报错，尽早暴露客户端 bug。
+  #   false（线上）：格式非法 → 打 WARN log 并当作缺失，不影响请求。
+  # 线上部署设置环境变量 APP_HEADER_VALIDATION_STRICT=false。
+  header-validation:
+    strict: ${APP_HEADER_VALIDATION_STRICT:true}
   storage:
     type: ${STORAGE_TYPE:none}
     region: ${STORAGE_REGION:us-east-1}

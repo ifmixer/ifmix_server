@@ -2,6 +2,19 @@
 
 本文件按时间倒序记录 core-api 面向客户端/数据库的变更。DateTime 用 ISO-8601；数据库变更标注对应 Flyway 版本。
 
+## 2026-09-20
+
+### Added
+- **文件日志按级别分文件**（`core-api/src/main/resources/logback-spring.xml`，Spring Boot 自动识别）：`info.log`（DEBUG/INFO）/ `warn.log`（仅 WARN）/ `error.log`（仅 ERROR），按天+50MB 滚动、gzip 归档、留 30 天、3GB 上限、`AsyncAppender` 异步写。控制台仅 `local` profile 输出；目录由 `LOG_PATH` 控制（默认 `./logs`，线上设 `/data/app/log/core-api`）。`logging.level.*` 仍生效。
+
+### Changed
+- **header 格式软校验支持宽松模式**（`RequestParser`）：新增 `app.header-validation.strict` 开关（`APP_HEADER_VALIDATION_STRICT`，默认 `true`）。
+  - `strict=true`（测试/开发默认）：`x-locale`/`x-country`/`x-currency`/各 `x-*-version` 格式非法 → 抛 `ApiError(INVALID_REQUEST)`，整个请求报错。
+  - `strict=false`（线上）：格式非法 → 打 `warn`（`bad header format ignored: ...`）并当作未提供（`null`），请求照常。
+  - `required` 缺失、`x-project-id`、token 等硬校验不受开关影响，任何环境都抛。
+  - 新增 `parseAppVersion`（`major.minor.patch`，各段 1-4 位数字）/ `parseBuildVersion` / `parseUpdateVersion`（正整数）——此前这些 version header **只记日志、无校验**；并入 `OperationContext`（`appVersion`/`buildVersion`/`updateVersion`）。
+  - `parseLocale` 细分 `Malformed`（无 language subtag → 走软校验）与 `Unsupported`（合法 BCP 47 但不支持，如 `ko`/`ru` → 任何环境返回 `null` 不抛），内部用 `normalizeLocaleResult`；旧 `normalizeLocale` 保留为薄封装。
+
 ## 2026-09-17
 
 ### Changed

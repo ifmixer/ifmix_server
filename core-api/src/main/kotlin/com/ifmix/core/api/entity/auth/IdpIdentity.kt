@@ -10,7 +10,7 @@ import java.util.UUID
  * 唯一键: (idpId, providerSubjectId)
  */
 @Entity
-@Table(name = "auth_idpidentity")
+@Table(name = "core_auth_idpidentity")
 interface IdpIdentity : BaseEntity {
 
     /** idp 类型（10:apple 20:google）。 */

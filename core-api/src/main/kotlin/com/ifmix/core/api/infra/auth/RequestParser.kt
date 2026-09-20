@@ -7,6 +7,8 @@ import com.ifmix.core.api.infra.http.ClientPlatform
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.http.RequestHeaders
 import jakarta.servlet.http.HttpServletRequest
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.util.UUID
 
@@ -24,9 +26,32 @@ data class Actor(
  *
  * 校验与抛错**全部在本类内**（parseXxx 自校验自抛，风格统一）；fromDfe 只负责按 require 调用 + 组装。
  * 规则：`if (hasValue || required)` 才校验；带了值就必须合法（否则抛），required 且缺失也抛。
+ *
+ * 格式软校验（locale/country/currency/各种 version）的严格程度由 [strict] 控制：
+ *  - strict=true（测试环境默认）：格式非法 → 抛 ApiError，整个请求报错，尽早暴露客户端 bug。
+ *  - strict=false（线上）：格式非法 → 打 WARN log + 当作缺失（null），不影响请求。
+ * 通过 `app.header-validation.strict` 配置（默认 true；prod profile 覆盖为 false）。
+ * 注意：required 缺失、token、projectId 等硬校验不受此开关影响，任何环境都抛。
  */
 @Component
-class RequestParser(private val jwt: AuthJwtService) {
+class RequestParser(
+    private val jwt: AuthJwtService,
+    @param:Value("\${app.header-validation.strict:true}") private val strict: Boolean = true,
+) {
+    private val log = LoggerFactory.getLogger(RequestParser::class.java)
+
+    /**
+     * 格式软校验失败的统一处理：strict 抛错；否则打 WARN 并返回 null（当作未提供）。
+     * @param header 头名（用于日志/错误信息）
+     * @param raw 原始值（用于日志排查）
+     * @param reason 简短原因（如 "invalid format" / "unsupported"）
+     */
+    private fun onBadFormat(header: String, raw: String, reason: String): Nothing? {
+        if (strict) throw ApiError(ErrorCode.INVALID_REQUEST, "invalid $header: $reason")
+        log.warn("bad header format ignored: {}={} ({})", header, raw, reason)
+        return null
+    }
+
 
     /** 缺失(required)→抛 required；传了值但格式非法→抛 invalid format；required=false 且未传→null。 */
     fun parseProjectId(request: HttpServletRequest, required: Boolean): String? {
@@ -124,27 +149,51 @@ class RequestParser(private val jwt: AuthJwtService) {
             if (required) throw ApiError(ErrorCode.INVALID_REQUEST, "${RequestHeaders.LOCALE} is required")
             return null
         }
-        val normalized = normalizeLocale(raw)
-        if (normalized == null && required) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "unsupported ${RequestHeaders.LOCALE}")
+        // 区分两种「返回 null」：
+        //  - 格式非法（无法解析出 language subtag）：软校验，strict 抛 / 线上 WARN。
+        //  - 合法 BCP 47 但不在支持集（如 ko、ru）：任何环境都静默返回 null（不是格式 bug）。
+        return when (val r = normalizeLocaleResult(raw)) {
+            is LocaleResult.Ok -> r.value
+            LocaleResult.Malformed -> onBadFormat(RequestHeaders.LOCALE, raw, "invalid format")
+            LocaleResult.Unsupported -> if (required) onBadFormat(RequestHeaders.LOCALE, raw, "unsupported") else null
         }
-        return normalized
     }
 
-    /** x-currency：ISO 4217 三字母，规范化大写；非法抛。 */
+    /** x-currency：ISO 4217 三字母，规范化大写；非法走软校验（strict 抛 / 线上 WARN）。 */
     fun parseCurrency(request: HttpServletRequest, required: Boolean = false): String? =
         parseHeader(request, RequestHeaders.CURRENCY, required) { raw ->
-            raw.uppercase().also {
-                if (!it.matches(CURRENCY_RE)) throw ApiError(ErrorCode.INVALID_REQUEST, "invalid ${RequestHeaders.CURRENCY}")
-            }
+            val up = raw.uppercase()
+            if (up.matches(CURRENCY_RE)) up
+            else onBadFormat(RequestHeaders.CURRENCY, raw, "invalid format")
         }
 
-    /** x-country：ISO 3166-1 alpha-2 两字母，规范化大写；非法抛。 */
+    /** x-country：ISO 3166-1 alpha-2 两字母，规范化大写；非法走软校验（strict 抛 / 线上 WARN）。 */
     fun parseCountry(request: HttpServletRequest, required: Boolean = false): String? =
         parseHeader(request, RequestHeaders.COUNTRY, required) { raw ->
-            raw.uppercase().also {
-                if (!it.matches(COUNTRY_RE)) throw ApiError(ErrorCode.INVALID_REQUEST, "invalid ${RequestHeaders.COUNTRY}")
-            }
+            val up = raw.uppercase()
+            if (up.matches(COUNTRY_RE)) up
+            else onBadFormat(RequestHeaders.COUNTRY, raw, "invalid format")
+        }
+
+    /** x-app-version：语义化版本 major.minor.patch（如 1.2.0）；非法走软校验。 */
+    fun parseAppVersion(request: HttpServletRequest, required: Boolean = false): String? =
+        parseHeader(request, RequestHeaders.APP_VERSION, required) { raw ->
+            if (raw.matches(APP_VERSION_RE)) raw
+            else onBadFormat(RequestHeaders.APP_VERSION, raw, "invalid format")
+        }
+
+    /** x-build-version：正整数构建号；非法走软校验。 */
+    fun parseBuildVersion(request: HttpServletRequest, required: Boolean = false): String? =
+        parseHeader(request, RequestHeaders.BUILD_VERSION, required) { raw ->
+            if (raw.matches(BUILD_VERSION_RE)) raw
+            else onBadFormat(RequestHeaders.BUILD_VERSION, raw, "invalid format")
+        }
+
+    /** x-update-version：正整数 OTA 版本号；非法走软校验。 */
+    fun parseUpdateVersion(request: HttpServletRequest, required: Boolean = false): String? =
+        parseHeader(request, RequestHeaders.UPDATE_VERSION, required) { raw ->
+            if (raw.matches(BUILD_VERSION_RE)) raw
+            else onBadFormat(RequestHeaders.UPDATE_VERSION, raw, "invalid format")
         }
 
     fun parseClientIp(request: HttpServletRequest): String = ClientIpResolver.resolve(request)
@@ -153,12 +202,12 @@ class RequestParser(private val jwt: AuthJwtService) {
     fun parseInstallId(request: HttpServletRequest): String? =
         request.getHeader(RequestHeaders.INSTALL_ID)?.trim()?.takeIf { it.isNotEmpty() }
 
-    /** 通用 header：required 且缺失→抛；有值则经 normalize 规范化+校验（非法在 normalize 内抛）。 */
+    /** 通用 header：required 且缺失→抛；有值则经 normalize 规范化+校验（非法在 normalize 内抛或按软校验返回 null）。 */
     private fun parseHeader(
         request: HttpServletRequest,
         name: String,
         required: Boolean,
-        normalize: (String) -> String,
+        normalize: (String) -> String?,
     ): String? {
         val raw = request.getHeader(name)?.takeIf { it.isNotBlank() }
         if (raw == null) {
@@ -175,28 +224,48 @@ class RequestParser(private val jwt: AuthJwtService) {
         private const val ATTR_ACTOR = "com.ifmix.parsed.actor"
         private val CURRENCY_RE = Regex("^[A-Z]{3}$")   // ISO 4217（大写后校验）
         private val COUNTRY_RE = Regex("^[A-Z]{2}$")    // ISO 3166-1 alpha-2（大写后校验）
+        /** app 版本：语义化 major.minor.patch，各段 1-4 位数字（如 1.0.0 / 12.34.5）。 */
+        private val APP_VERSION_RE = Regex("^\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}$")
+        /** build / update 版本：正整数（1-9 位，无前导 0）。 */
+        private val BUILD_VERSION_RE = Regex("^(0|[1-9]\\d{0,8})$")
         /** project slug 主键：小写字母开头，小写字母/数字/连字符，3-30 字符。创建后不可变。 */
         private val PROJECT_ID_RE = Regex("^[a-z][a-z0-9-]{2,29}$")
 
         /** 非中文的受支持语言：language subtag（小写）→ 规范值。 */
         private val SUPPORTED_LANGS = setOf("en", "ja", "fr", "es", "pt", "de", "it", "nl")
 
+        /** locale 归一结果：区分「格式非法」与「合法但不支持」。 */
+        sealed interface LocaleResult {
+            data class Ok(val value: String) : LocaleResult
+            /** 无法解析出 language subtag（垃圾输入）——格式 bug。 */
+            data object Malformed : LocaleResult
+            /** 合法 BCP 47 但不在支持集（如 ko、ru）——不是格式 bug。 */
+            data object Unsupported : LocaleResult
+        }
+
         /**
-         * 归一任意 BCP 47 输入到受支持集，识别不了返回 null。以后加语言改这里。
+         * 归一任意 BCP 47 输入。识别不了区分 [LocaleResult.Malformed]（无 language subtag）
+         * 与 [LocaleResult.Unsupported]（有 subtag 但不在支持集）。以后加语言改这里。
          * 支持集：en, zh-CN, zh-TW, ja, fr, es, pt, de, it, nl。
          */
-        fun normalizeLocale(raw: String): String? {
+        fun normalizeLocaleResult(raw: String): LocaleResult {
             val locale = try {
                 java.util.Locale.forLanguageTag(raw.trim())
             } catch (_: Exception) {
-                return null
+                return LocaleResult.Malformed
             }
             val lang = locale.language.lowercase()
-            if (lang.isEmpty()) return null
-
-            if (lang == "zh") return normalizeChinese(locale)
-            return if (lang in SUPPORTED_LANGS) lang else null
+            if (lang.isEmpty()) return LocaleResult.Malformed
+            if (lang == "zh") return LocaleResult.Ok(normalizeChinese(locale))
+            return if (lang in SUPPORTED_LANGS) LocaleResult.Ok(lang) else LocaleResult.Unsupported
         }
+
+        /**
+         * 归一任意 BCP 47 输入到受支持集，识别不了返回 null（不区分 malformed/unsupported）。
+         * 保留给不关心细分的调用方。以后加语言改 [normalizeLocaleResult]。
+         */
+        fun normalizeLocale(raw: String): String? =
+            (normalizeLocaleResult(raw) as? LocaleResult.Ok)?.value
 
         /** 中文按 script/region 分简繁；裸 zh 默认简体。 */
         private fun normalizeChinese(locale: java.util.Locale): String {

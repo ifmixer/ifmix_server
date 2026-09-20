@@ -10,7 +10,7 @@ import java.util.UUID
  * Refresh Token（app 级）。主体无关：以 actorId + actorType 关联（customer / manager）。
  */
 @Entity
-@Table(name = "auth_refreshtoken")
+@Table(name = "core_auth_refreshtoken")
 interface RefreshToken : BaseProjectEntity {
 
     /** 逻辑外键 → 主体 id（customer / manager，跨模块） */

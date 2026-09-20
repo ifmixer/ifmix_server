@@ -40,7 +40,7 @@ object FeedbackTopics {
  * Feedback 实体。追加式写入，不软删（无 @LogicalDeleted）。
  */
 @Entity
-@Table(name = "cs_feedback")
+@Table(name = "core_cs_feedback")
 interface Feedback : UUIDProps, ProjectScopedProps, CreatedAtProps, CustomerIdProps, InstallIdProps, UserPreferenceProps {
 
     val scanRecordId: UUID?

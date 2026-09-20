@@ -19,7 +19,7 @@ object LoginMethods {
  * 承载账号权威资料（姓名/邮箱/手机/metadata）与密码。
  */
 @Entity
-@Table(name = "auth_identity")
+@Table(name = "core_auth_identity")
 interface AuthIdentity : BaseProjectEntity {
 
     /** 密码哈希（未设密码为 null）。 */

@@ -17,7 +17,7 @@ import org.testcontainers.containers.PostgreSQLContainer
  * E2E 测试基类。
  *
  * 使用 Singleton Container Pattern：PostgreSQL + Redis 容器在整个 JVM 生命周期内共享。
- * Flyway 自动执行所有 migration（含 V8 core_ 前缀）。
+ * Flyway 自动执行所有 migration（含 V2 core_ 前缀）。
  *
  * 用法：继承此类，用 webClient 发真实 HTTP 请求。
  */

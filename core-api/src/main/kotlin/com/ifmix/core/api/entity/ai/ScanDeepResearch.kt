@@ -9,7 +9,7 @@ import java.util.UUID
  * scanRecordId 为逻辑外键（跨聚合，不用 @ManyToOne）。
  */
 @Entity
-@Table(name = "ai_scan_deep_research")
+@Table(name = "core_ai_scan_deep_research")
 interface ScanDeepResearch : BaseProjectEntity {
 
     @Key

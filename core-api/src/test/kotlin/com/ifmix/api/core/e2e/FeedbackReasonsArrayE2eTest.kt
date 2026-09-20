@@ -50,7 +50,7 @@ class FeedbackReasonsArrayE2eTest : E2eTestBase() {
 
         // 1. JDBC 直查 raw 值，确认 PG 存成 smallint[] 字面量 {20,30}
         val rawArray = jdbcTemplate.queryForObject(
-            "SELECT reasons::text FROM cs_feedback WHERE id = ?::uuid",
+            "SELECT reasons::text FROM core_cs_feedback WHERE id = ?::uuid",
             String::class.java,
             id.toString(),
         )

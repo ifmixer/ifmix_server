@@ -31,6 +31,10 @@ data class OperationContext(
     val clientIp: String? = null,
     /** 安装标识（x-install-id header）。客户端生成，仅记录用于分析，不用于鉴权。 */
     val installId: String? = null,
+    /** 客户端版本（x-app-version / x-build-version / x-update-version）。仅记录用途，格式软校验。 */
+    val appVersion: String? = null,
+    val buildVersion: String? = null,
+    val updateVersion: String? = null,
     // ===== 操作元信息 =====
     val opName: String? = null,
     val isMutation: Boolean = false,

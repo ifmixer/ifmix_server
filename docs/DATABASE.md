@@ -2,37 +2,38 @@
 
 ## 表名规则
 
-- 模块前缀: `{module}_`（如 `auth_`, `demo_`, `pay_`）
+- 统一前缀: `core_`（区分本服务与未来其它服务/schema）
+- 模块前缀: `core_{module}_`（如 `core_auth_`, `core_demo_`, `core_pay_`）
 - 实体名小写下划线
-- 关系表: `{module}_{from}_to_{to}_relation`
+- 关系表: `core_{module}_{from}_to_{to}_relation`
 
 ## 全部表
 
 | 模块 | 表名 | 级别 | Entity |
 |------|------|------|--------|
-| auth | `auth_idp` | 全局 | Idp |
-| auth | `auth_idpidentity` | 全局 | IdpIdentity |
-| auth | `auth_identity` | project | AuthIdentity |
-| auth | `auth_identity_to_idpidentity_relation` | project | AuthIdentityIdpRelation |
-| auth | `auth_project_to_idp_relation` | project | ProjectToIdpRelation |
-| auth | `auth_refreshtoken` | project | RefreshToken |
-| customer | `customer` | project | Customer |
-| demo | `demo_todo` | project | Todo |
-| demo | `demo_todo_item` | project | TodoItem |
-| project | `project_config_revision` | project | ProjectConfigRevision |
-| project | `project_info` | 全局 | ProjectInfo |
-| ai | `ai_scan_record` | project | ScanRecord |
-| ai | `ai_scan_deep_research` | project | ScanDeepResearch |
-| ai | `ai_scan_collection` | project | ScanCollection |
-| ai | `ai_scan_collection_item` | project | ScanCollectionItem |
-| ai | `ai_agnes_key` | 全局 | AgnesKey |
-| pay | `pay_subscription` | project | Subscription |
-| pay | `pay_store_notification` | project | StoreNotification |
-| media | `media_upload_record` | project | UploadRecord |
-| cs | `cs_feedback` | project | Feedback |
-| cs | `cs_support_request` | project | SupportRequest |
+| auth | `core_auth_idp` | 全局 | Idp |
+| auth | `core_auth_idpidentity` | 全局 | IdpIdentity |
+| auth | `core_auth_identity` | project | AuthIdentity |
+| auth | `core_auth_identity_to_idpidentity_relation` | project | AuthIdentityIdpRelation |
+| auth | `core_auth_project_to_idp_relation` | project | ProjectToIdpRelation |
+| auth | `core_auth_refreshtoken` | project | RefreshToken |
+| customer | `core_customer` | project | Customer |
+| demo | `core_demo_todo` | project | Todo |
+| demo | `core_demo_todo_item` | project | TodoItem |
+| project | `core_project_config_revision` | project | ProjectConfigRevision |
+| project | `core_project_info` | 全局 | ProjectInfo |
+| ai | `core_ai_scan_record` | project | ScanRecord |
+| ai | `core_ai_scan_deep_research` | project | ScanDeepResearch |
+| ai | `core_ai_scan_collection` | project | ScanCollection |
+| ai | `core_ai_scan_collection_item` | project | ScanCollectionItem |
+| ai | `core_ai_agnes_key` | 全局 | AgnesKey |
+| pay | `core_pay_subscription` | project | Subscription |
+| pay | `core_pay_store_notification` | project | StoreNotification |
+| media | `core_media_upload_record` | project | UploadRecord |
+| cs | `core_cs_feedback` | project | Feedback |
+| cs | `core_cs_support_request` | project | SupportRequest |
 
-> `install_id`（`InstallIdProps`，entity/common）：客户端安装标识，由 `x-install-id` header 上报，服务端仅记录（可伪造，不用于鉴权），用于行为分析。已铺到 `ai_scan_record` / `ai_scan_collection` / `cs_feedback` / `cs_support_request`（均可空）。
+> `install_id`（`InstallIdProps`，entity/common）：客户端安装标识，由 `x-install-id` header 上报，服务端仅记录（可伪造，不用于鉴权），用于行为分析。已铺到 `core_ai_scan_record` / `core_ai_scan_collection` / `core_cs_feedback` / `core_cs_support_request`（均可空）。
 
 ## Auth 身份模型映射
 
@@ -40,10 +41,10 @@
 
 | 关系 | 方向 / 列 | 基数 | 说明 |
 |------|-----------|------|------|
-| Customer → AuthIdentity | `customer.auth_identity_id` | N:1 | 匿名未登录为 null；customer 注销后可新建、复用同一账号 |
-| AuthIdentity ↔ IdpIdentity | 关系表 `auth_identity_to_idpidentity_relation`（`auth_identity_id` / `idp_identity_id`） | M:N | 见下 |
+| Customer → AuthIdentity | `core_customer.auth_identity_id` | N:1 | 匿名未登录为 null；customer 注销后可新建、复用同一账号 |
+| AuthIdentity ↔ IdpIdentity | 关系表 `core_auth_identity_to_idpidentity_relation`（`auth_identity_id` / `idp_identity_id`） | M:N | 见下 |
 | RefreshToken → 主体 | `actor_type`(10=customer/20=manager) + `actor_id` | — | 主体无关，不直接绑 customer |
-| IdpIdentity → Idp | `idp_identity.idp_id`（可选） | N:1 | email/phone 等内建身份可无 idp |
+| IdpIdentity → Idp | `core_auth_idpidentity.idp_id`（可选） | N:1 | email/phone 等内建身份可无 idp |
 | ProjectToIdpRelation | `project_id` + `idp_id` | M:N | project 启用了哪些 IDP |
 
 **M:N 双向（关系表按 `project_id` 隔离）**：
@@ -91,7 +92,7 @@
 
 ### 枚举码表登记
 
-#### `ImageRef.category`（图片分类，存于 `ai_scan_record.image_keys` JSONB）
+#### `ImageRef.category`（图片分类，存于 `core_ai_scan_record.image_keys` JSONB）
 
 | Code | 名称 | 说明 |
 |------|------|------|
@@ -128,7 +129,7 @@
 | `SupportRequestCategory` (entity/cs) | `SupportRequestCategories` | 0=UNSPECIFIED, 10=BUG, 20=FEATURE_REQUEST, 30=ACCOUNT, 40=PAYMENT, 50=CONTENT_ERROR, 1000=OTHER（允许客户端传未登记值） |
 | `AgnesKeyType` (entity/ai) | `AgnesKeyTypes` | 10=PERSONAL（`sk-` 前缀）, 20=ENTERPRISE（`wk-` 前缀） |
 
-#### `Feedback.reasons`（反馈原因，多选，存于 `cs_feedback.reasons` PG `smallint[]`）
+#### `Feedback.reasons`（反馈原因，多选，存于 `core_cs_feedback.reasons` PG `smallint[]`）
 
 typealias `FeedbackReason` / 常量 `FeedbackReasons`。多选数组，Jimmer 原生数组映射
 （`Array<Int>` + `@Column(sqlElementType = "smallint")`）。
@@ -182,13 +183,11 @@ input CommonFindOptions {
 
 ## Flyway
 
-- 当前 migration 目录为 V1–V5（历史迁移已压缩，旧版本归档在 `db/migration_archive/`），不可回退
+- 当前 migration 目录为 V1–V2（历史迁移已压缩进 baseline），不可回退
 - 迁移文件: `core-api/src/main/resources/db/migration/`
 - **手动执行**（不再随应用启动自动 migrate）：`./gradlew :core-api:flywayMigrate`
   - 连接由 `DB_URL`/`DB_USER`/`DB_PASSWORD` 决定（默认本地 `core_api_local`）
 - 版本一览:
-  - V1 baseline（压缩后的基线）
-  - V2 `actor_type` 改 Int（10=customer）；customer 加 `merged_to_at`
-  - V3 `auth_idpidentity` 列调整（`provider_subject_id` 改名、`idp_id` 可选、手机分段等）
-  - V4 身份模型改关系表：建 `auth_identity` + `auth_identity_to_idpidentity_relation`、`customer.auth_identity_id`、`auth_idpidentity` `provider_type`→`idp_type`
-  - V5 `auth_appuser_refreshtoken` → `auth_refreshtoken`
+  - V1 baseline（压缩后的基线，含全部建表 + 种子数据）
+  - V2 所有业务表加 `core_` 前缀（`ALTER TABLE ... RENAME TO core_*`，21 张；不改列/约束/索引名，不动 `flyway_schema_history`）
+    - 已在本机 `core_api_local` 执行并验证通过（21 张表全部改名、数据随 RENAME 保留）；**线上待执行** `flywayMigrate`

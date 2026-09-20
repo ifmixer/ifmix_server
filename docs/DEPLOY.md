@@ -20,7 +20,7 @@
 | PostgreSQL | **18.6**（Ubuntu 官方源），数据目录迁至 `/data/postgresql/18/main`，监听 `localhost:5432` |
 | Redis | **8.0.5**（Ubuntu 官方源），数据目录 `/data/redis`，监听 `localhost:6379`，`requirepass` 已设 |
 | JDK | Temurin **25.0.4.1 LTS**（ARM64）→ `/usr/lib/jvm/temurin-25-jdk-arm64` |
-| 日志（全部落数据盘，按应用分目录） | `/data/app/log/core-api/`、`/data/app/log/core-job/`、`/data/app/log/nginx/`；PG `/data/postgresql/log/`、Redis `/data/redis/redis.log` |
+| 日志（全部落数据盘，按应用分目录） | `/data/app/log/core-api/`、`/data/app/log/core-job/`、`/data/app/log/nginx/`；PG `/data/postgresql/log/`、Redis `/data/redis/redis.log`。core-api 由 logback 分 `info.log`/`warn.log`/`error.log`（按天+50MB 滚动、gzip、留 30 天、3GB 上限），需设 `LOG_PATH=/data/app/log/core-api` |
 | 防膨胀 | journald `SystemMaxUse=500M`；PG `logging_collector=on` 写数据盘；PG 数据+WAL、Redis RDB 均在 `/data` |
 
 > **命名约定**：全部基础设施统一用 `app` 前缀（系统用户/组 `app`、目录 `/opt/app`、服务 `app-core-api`、PG 角色 `app`）。**系统盘只放程序，凡是会持续增长的（数据、WAL、各类日志）一律落 `/data`**，避免 8 GB 系统盘被撑满。
@@ -51,6 +51,8 @@ PG_USERNAME=app
 PG_PASSWORD=0tTvtqzcSly3X4nzKFJHnDJ4
 REDIS_URL=redis://:xx0epuZ2XOZcP1WfEt2d7J45@localhost:6379
 APP_EXPOSE_ERRORS=false
+APP_HEADER_VALIDATION_STRICT=false
+LOG_PATH=/data/app/log/core-api
 ```
 
 `core-job` 的 `application.yml` **把库连接硬编码成了 `localhost:5432/core_api_local` / `core_job_local`**，没有占位符。用 Spring 宽松绑定（relaxed binding）环境变量覆盖：

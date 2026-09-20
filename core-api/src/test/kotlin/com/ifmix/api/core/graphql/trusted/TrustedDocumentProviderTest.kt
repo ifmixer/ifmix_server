@@ -9,7 +9,7 @@ import java.util.function.Function
 
 /**
  * TrustedDocumentProvider 核心逻辑单测（不依赖 Spring/DGS）。
- * 覆盖：命中缓存 doc / 未知 apqName 拒 / 未传 apqName 在 allowRawQuery 两态的行为。
+ * 覆盖：命中缓存 doc / 未知 reqName 拒 / 未传 reqName 在 allowRawQuery 两态的行为。
  */
 class TrustedDocumentProviderTest {
 
@@ -21,14 +21,14 @@ class TrustedDocumentProviderTest {
             PersistedQueryEntry(name, q, parser.parseDocument(q))
         }
         return object : PersistedQueryStore {
-            override fun getByApqName(apqName: String, bff: String) = map[apqName]
+            override fun getByReqName(reqName: String, bff: String) = map[reqName]
         }
     }
 
-    /** 构造带 apqName 的 ExecutionInput；apqName=null 表示未传。 */
-    private fun input(apqName: String?, rawQuery: String = "{__typename}"): ExecutionInput {
+    /** 构造带 reqName 的 ExecutionInput；reqName=null 表示未传。 */
+    private fun input(reqName: String?, rawQuery: String = "{__typename}"): ExecutionInput {
         val ctxMap: Map<Any, Any> =
-            if (apqName != null) mapOf(ApqNamePathInterceptor.CTX_APQ_NAME to apqName) else emptyMap()
+            if (reqName != null) mapOf(ReqNamePathInterceptor.CTX_REQ_NAME to reqName) else emptyMap()
         return ExecutionInput.newExecutionInput().query(rawQuery).graphQLContext(ctxMap).build()
     }
 
@@ -46,25 +46,25 @@ class TrustedDocumentProviderTest {
     }
 
     @Test
-    fun `unknown apqName is rejected regardless of allowRawQuery`() {
+    fun `unknown reqName is rejected regardless of allowRawQuery`() {
         for (allowRaw in listOf(true, false)) {
             val provider = TrustedDocumentProvider(storeWith("q_auth_me"), allowRawQuery = allowRaw)
             val entry = provider.getDocumentAsync(input("q_bogus"), fallback).get()
             assertThat(entry.hasErrors()).`as`("allowRawQuery=$allowRaw").isTrue()
-            assertThat(entry.errors[0].message).contains("unknown apq-name")
+            assertThat(entry.errors[0].message).contains("unknown req-name")
         }
     }
 
     @Test
-    fun `no apqName rejected when raw query not allowed`() {
+    fun `no reqName rejected when raw query not allowed`() {
         val provider = TrustedDocumentProvider(storeWith("q_auth_me"), allowRawQuery = false)
         val entry = provider.getDocumentAsync(input(null), fallback).get()
         assertThat(entry.hasErrors()).isTrue()
-        assertThat(entry.errors[0].message).contains("persisted query apqName is required")
+        assertThat(entry.errors[0].message).contains("persisted query reqName is required")
     }
 
     @Test
-    fun `no apqName falls back to raw query when allowed`() {
+    fun `no reqName falls back to raw query when allowed`() {
         val provider = TrustedDocumentProvider(storeWith("q_auth_me"), allowRawQuery = true)
         val entry = provider.getDocumentAsync(input(null, rawQuery = "{__typename}"), fallback).get()
         assertThat(entry.hasErrors()).isFalse()

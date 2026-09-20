@@ -43,12 +43,12 @@ class AnonymousCleanupCleaner(
         private const val MAX_BATCHES = 10_000
         /** 先删的资源表（均以 customer_id 关联），最后才删 customer。 */
         private val RESOURCE_TABLES = listOf(
-            "ai_scan_collection",
-            "ai_scan_record",
-            "media_upload_record",
-            "demo_todo",
-            "cs_feedback",
-            "pay_subscription",
+            "core_ai_scan_collection",
+            "core_ai_scan_record",
+            "core_media_upload_record",
+            "core_demo_todo",
+            "core_cs_feedback",
+            "core_pay_subscription",
         )
     }
 
@@ -92,7 +92,7 @@ class AnonymousCleanupCleaner(
         jdbc.sql(
             """
             SELECT id, project_id, anonymous, (merged_to IS NOT NULL) AS merged
-            FROM customer
+            FROM core_customer
             WHERE anonymous = true AND merged_to IS NULL AND (:afterId::uuid IS NULL OR id > :afterId::uuid)
             ORDER BY id
             LIMIT :batch
@@ -112,7 +112,7 @@ class AnonymousCleanupCleaner(
         jdbc.sql(
             """
             SELECT id, project_id, anonymous, (merged_to IS NOT NULL) AS merged
-            FROM customer
+            FROM core_customer
             WHERE merged_to IS NOT NULL AND updated_at < :cutoff
               AND (:afterId::uuid IS NULL OR id > :afterId::uuid)
             ORDER BY id
@@ -150,26 +150,26 @@ class AnonymousCleanupCleaner(
 
         // 先删资源避免孤儿行，最后删 customer。
         jdbc.sql(
-            "DELETE FROM ai_scan_collection_item WHERE collection_id IN " +
-                "(SELECT id FROM ai_scan_collection WHERE customer_id IN (:ids))",
+            "DELETE FROM core_ai_scan_collection_item WHERE collection_id IN " +
+                "(SELECT id FROM core_ai_scan_collection WHERE customer_id IN (:ids))",
         ).param("ids", toDelete).update()
 //        for (table in RESOURCE_TABLES) {
 //            jdbc.sql("DELETE FROM $table WHERE customer_id IN (:ids)").param("ids", toDelete).update()
 //        }
-        val n = jdbc.sql("DELETE FROM customer WHERE id IN (:ids)").param("ids", toDelete).update()
+        val n = jdbc.sql("DELETE FROM core_customer WHERE id IN (:ids)").param("ids", toDelete).update()
         log.info("[anon-cleanup] 删除 customer {} 个", n)
         return n
     }
 
     private fun hasActiveSubscription(id: UUID): Boolean =
-        jdbc.sql("SELECT EXISTS(SELECT 1 FROM pay_subscription WHERE customer_id = :id AND active = true)")
+        jdbc.sql("SELECT EXISTS(SELECT 1 FROM core_pay_subscription WHERE customer_id = :id AND active = true)")
             .param("id", id).query(Boolean::class.java).single()
 
     private fun hasValidToken(id: UUID): Boolean =
         jdbc.sql(
             """
             SELECT EXISTS(
-              SELECT 1 FROM auth_refreshtoken
+              SELECT 1 FROM core_auth_refreshtoken
               WHERE actor_id = :id AND actor_type = :actorType
                 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())
             )

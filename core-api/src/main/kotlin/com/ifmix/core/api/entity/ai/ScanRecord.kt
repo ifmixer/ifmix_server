@@ -20,7 +20,7 @@ object ScanStatuses {
 }
 
 @Entity
-@Table(name = "ai_scan_record")
+@Table(name = "core_ai_scan_record")
 interface ScanRecord : BaseProjectEntity, SoftDeletableProps, CustomerIdProps, InstallIdProps, UserPreferenceProps {
 
     @Serialized

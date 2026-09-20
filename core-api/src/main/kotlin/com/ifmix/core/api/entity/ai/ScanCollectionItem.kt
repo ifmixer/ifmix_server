@@ -5,7 +5,7 @@ import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
 @Entity
-@Table(name = "ai_scan_collection_item")
+@Table(name = "core_ai_scan_collection_item")
 interface ScanCollectionItem : BaseProjectEntity {
 
 

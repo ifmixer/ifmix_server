@@ -8,7 +8,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Table(name = "pay_subscription")
+@Table(name = "core_pay_subscription")
 interface Subscription : BaseProjectEntity, SoftDeletableProps {
 
     /** 归属 customer（本期补，存量留空）。 */

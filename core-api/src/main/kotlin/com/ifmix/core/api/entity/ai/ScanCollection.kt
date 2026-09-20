@@ -6,7 +6,7 @@ import com.ifmix.core.api.entity.common.InstallIdProps
 import org.babyfish.jimmer.sql.*
 
 @Entity
-@Table(name = "ai_scan_collection")
+@Table(name = "core_ai_scan_collection")
 interface ScanCollection : BaseProjectEntity, CustomerIdProps, InstallIdProps {
 
     val isDefault: Boolean

@@ -9,7 +9,7 @@ import org.babyfish.jimmer.sql.*
  * Todo 领域模型 (Jimmer entity)。
  */
 @Entity
-@Table(name = "demo_todo")
+@Table(name = "core_demo_todo")
 interface Todo : BaseProjectEntity, SoftDeletableProps, CustomerIdProps {
 
     val title: String

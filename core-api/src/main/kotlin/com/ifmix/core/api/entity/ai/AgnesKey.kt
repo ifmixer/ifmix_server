@@ -19,7 +19,7 @@ object AgnesKeyTypes {
  * Agnes AI Key 实体。infra 级全局资源（不按 project 隔离）。
  */
 @Entity
-@Table(name = "ai_agnes_key")
+@Table(name = "core_ai_agnes_key")
 interface AgnesKey : BaseEntity {
 
 
