@@ -1,16 +1,16 @@
 package com.ifmix.core.api.infra.jimmer
 
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 
 /**
  * OperationContext holder for thread-local storage during request processing.
  * Used by controllers to propagate projectId and other context to services/repositories.
  */
-object OperationContextHolder {
-    private val holder = ThreadLocal<OperationContext>()
+object ActionContextHolder {
+    private val holder = ThreadLocal<ActionContext>()
 
-    fun set(ctx: OperationContext) = holder.set(ctx)
-    fun current(): OperationContext = holder.get()
+    fun set(ctx: ActionContext) = holder.set(ctx)
+    fun current(): ActionContext = holder.get()
         ?: throw IllegalStateException("No OperationContext in current thread")
     fun clear() = holder.remove()
 }

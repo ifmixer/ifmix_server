@@ -9,7 +9,7 @@ import com.ifmix.core.api.dto.ai.ScanMediaItem
 import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.db.UuidV7
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.storage.ObjectStorage
 import com.ifmix.core.api.entity.ai.ImageRef
 import com.ifmix.core.api.entity.ai.ImageCategories
@@ -30,7 +30,7 @@ class ScanAggHandler(
     private val scanPrompt: com.ifmix.core.api.modules.ai.service.ScanPrompt,
 ) {
     /** 外部 AI 调用（无事务）— 解析 images、运行 AI、返回结果 DTO */
-    fun runAiScan(opCtx: OperationContext, input: NewScanInput): AiScanResult {
+    fun runAiScan(opCtx: ActionContext, input: NewScanInput): AiScanResult {
         val scanId = UuidV7.generate()
         val now = Instant.now()
 

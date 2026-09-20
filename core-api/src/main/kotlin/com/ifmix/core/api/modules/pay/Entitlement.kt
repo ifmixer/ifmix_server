@@ -1,6 +1,6 @@
 package com.ifmix.core.api.modules.pay
 
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.entity.common.Tiers
 import com.ifmix.core.api.infra.ratelimit.TierResolver
 
@@ -10,6 +10,6 @@ import com.ifmix.core.api.infra.ratelimit.TierResolver
  */
 fun createIapTierResolver(): TierResolver {
     return object : TierResolver {
-        override fun resolve(ctx: OperationContext): Int = Tiers.FREE // Stubbed - needs Jimmer subscription query
+        override fun resolve(ctx: ActionContext): Int = Tiers.FREE // Stubbed - needs Jimmer subscription query
     }
 }

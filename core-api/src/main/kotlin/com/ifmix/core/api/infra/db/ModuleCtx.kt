@@ -1,6 +1,6 @@
 package com.ifmix.core.api.infra.db
 
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import org.babyfish.jimmer.sql.kt.KSqlClient
 
 /**
@@ -8,7 +8,7 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
  * 包含 operation 信息 + 当前集群的 KSqlClient + 事务状态。
  */
 data class ModuleCtx(
-    val op: OperationContext,
+    val op: ActionContext,
     val sql: KSqlClient,
     val clusterId: String = "default",
     val inTransaction: Boolean = false,

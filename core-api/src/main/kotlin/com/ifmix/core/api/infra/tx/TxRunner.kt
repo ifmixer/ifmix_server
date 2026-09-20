@@ -1,11 +1,8 @@
 package com.ifmix.core.api.infra.tx
 
-import com.ifmix.core.api.infra.db.ClusterRouter
 import com.ifmix.core.api.infra.db.ModuleCtx
-import com.ifmix.core.api.infra.http.OperationContext
 import org.springframework.stereotype.Component
 import org.springframework.transaction.TransactionDefinition
-import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.support.TransactionTemplate
 
 /**

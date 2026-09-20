@@ -4,7 +4,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Instant
 import java.time.ZoneId
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import java.util.concurrent.TimeUnit.SECONDS
 
 /**
@@ -23,7 +23,7 @@ class RateLimiter(
      * 检查是否超限。命中则抛 RATE_LIMITED；未命中则消耗一次配额并返回 true。
      * 同时返回当前已用次数供调试。
      */
-    fun check(ctx: OperationContext, subject: String): CheckResult {
+    fun check(ctx: ActionContext, subject: String): CheckResult {
         val tier = tierResolver.resolve(ctx)
         val limit = config.limitFor(tier)
         val dayKey = utcDayKey(subject)

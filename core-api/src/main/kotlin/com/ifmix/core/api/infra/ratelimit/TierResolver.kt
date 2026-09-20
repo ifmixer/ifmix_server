@@ -1,16 +1,16 @@
 package com.ifmix.core.api.infra.ratelimit
 
 import com.ifmix.core.api.entity.common.Tiers
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 
 /** 将请求上下文映射为一个 Tier。默认实现一律返回 FREE。 */
 interface TierResolver {
-    fun resolve(ctx: OperationContext): Int
+    fun resolve(ctx: ActionContext): Int
 }
 
 /** 基础实现：所有用户走 FREE 档。后续可按付费等级/白名单等扩展。 */
 class FreeTierResolver : TierResolver {
-    override fun resolve(ctx: OperationContext): Int = Tiers.FREE
+    override fun resolve(ctx: ActionContext): Int = Tiers.FREE
 }
 
 /**
@@ -22,11 +22,11 @@ interface RateLimitSubjectResolver {
     /**
      * @param clientIp 客户端真实 IP（由调用方传入）
      */
-    fun resolve(ctx: OperationContext, clientIp: String): String
+    fun resolve(ctx: ActionContext, clientIp: String): String
 }
 
 /** 默认实现：userId ?: ip ?: "unknown"。 */
 class DefaultRateLimitSubjectResolver : RateLimitSubjectResolver {
-    override fun resolve(ctx: OperationContext, clientIp: String): String =
+    override fun resolve(ctx: ActionContext, clientIp: String): String =
         ctx.actorId?.toString() ?: if (clientIp.isNotBlank()) clientIp else "unknown"
 }

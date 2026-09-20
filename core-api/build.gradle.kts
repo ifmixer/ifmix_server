@@ -156,7 +156,7 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "ScanCollectionItem" to "com.ifmix.core.api.entity.ai.ScanCollectionItem",
         "ImageRef" to "com.ifmix.core.api.entity.ai.ImageRef",
         // OperationResult: 手写类型，不再由 codegen 生成
-        "OperationResult" to "com.ifmix.core.api.dto.common.OperationResult",
+        "ActionResult" to "com.ifmix.core.api.dto.common.ActionResult",
         // PageInfo: 手写类型
         "PageInfo" to "com.ifmix.core.api.dto.common.PageInfo",
         // Page types → 通用 Page<T>

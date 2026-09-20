@@ -5,7 +5,7 @@ import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.auth.RequestParser
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.netflix.graphql.dgs.context.DgsContext
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.internal.DgsWebMvcRequestData
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component
 import org.springframework.web.context.request.ServletRequestAttributes
 
 @Component
-class OperationContextProvider(private val parser: RequestParser) {
+class ActionContextProvider(private val parser: RequestParser) {
 
     /**
      * 从 DGS DataFetchingEnvironment 解析请求并构造 OperationContext。
@@ -33,7 +33,7 @@ class OperationContextProvider(private val parser: RequestParser) {
         requireLocale: Boolean = false,
         requireCountry: Boolean = false,
         requireCurrency: Boolean = false,
-    ): OperationContext {
+    ): ActionContext {
         val requestData = DgsContext.getRequestData(dfe) as? DgsWebMvcRequestData
             ?: throw ApiError(ErrorCode.INTERNAL, "GraphQL context not found")
         val servletRequest = (requestData.webRequest as? ServletRequestAttributes)?.request
@@ -47,7 +47,7 @@ class OperationContextProvider(private val parser: RequestParser) {
             (it as? GraphQLObjectType)?.name == "Mutation"
         } ?: false
 
-        val ctx = OperationContext(
+        val ctx = ActionContext(
             projectId = projectId,
             actorId = actor?.actorId,
             actorType = actor?.actorType,
@@ -66,7 +66,7 @@ class OperationContextProvider(private val parser: RequestParser) {
             isMutation = isMutation,
             preferReader = !isMutation,
         )
-        com.ifmix.core.api.infra.jimmer.OperationContextHolder.set(ctx)
+        com.ifmix.core.api.infra.jimmer.ActionContextHolder.set(ctx)
         return ctx
     }
 }

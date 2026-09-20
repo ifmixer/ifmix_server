@@ -4,7 +4,7 @@ import com.ifmix.core.api.generated.types.PresignDownloadInput
 import com.ifmix.core.api.generated.types.PresignDownloadResult
 import com.ifmix.core.api.generated.types.PresignUploadInput
 import com.ifmix.core.api.generated.types.PresignUploadResult
-import com.ifmix.core.api.infra.graphql.OperationContextProvider
+import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.modules.media.StorageFacade
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
@@ -14,7 +14,7 @@ import com.netflix.graphql.dgs.InputArgument
 @DgsComponent
 class StorageFetcher(
     private val storageService: StorageFacade,
-    private val ctxProvider: OperationContextProvider,
+    private val ctxProvider: ActionContextProvider,
 ) {
 
     @DgsMutation(field = "m_media_presignUpload")

@@ -1,8 +1,8 @@
 package com.ifmix.core.api.bff.graphql.customer.auth
 
-import com.ifmix.core.api.dto.common.OperationResult
+import com.ifmix.core.api.dto.common.ActionResult
 import com.ifmix.core.api.generated.types.*
-import com.ifmix.core.api.infra.graphql.OperationContextProvider
+import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.auth.AuthFacade
 import com.ifmix.core.api.modules.auth.handler.LoginReq
@@ -15,13 +15,12 @@ import com.netflix.graphql.dgs.DgsMutation
 import com.netflix.graphql.dgs.DgsQuery
 import com.netflix.graphql.dgs.InputArgument
 import java.time.Instant
-import java.util.UUID
 
 @DgsComponent
 class AuthFetcher(
     private val authService: AuthFacade,
     private val globalTx: GlobalTxRunner,
-    private val ctxProvider: OperationContextProvider,
+    private val ctxProvider: ActionContextProvider,
 ) {
 
     @DgsQuery(field = "q_auth_me")
@@ -61,19 +60,19 @@ class AuthFetcher(
     }
 
     @DgsMutation(field = "m_auth_logout")
-    fun logout(dfe: DgsDataFetchingEnvironment, @InputArgument input: LogoutInput): OperationResult {
+    fun logout(dfe: DgsDataFetchingEnvironment, @InputArgument input: LogoutInput): ActionResult {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx ->
             authService.logout(txCtx, LogoutReq(refreshToken = input.refreshToken))
         }
-        return OperationResult(success = true)
+        return ActionResult(success = true)
     }
 
     @DgsMutation(field = "m_auth_deleteAccount")
-    fun deleteAccount(dfe: DgsDataFetchingEnvironment): OperationResult {
+    fun deleteAccount(dfe: DgsDataFetchingEnvironment): ActionResult {
         val ctx = ctxProvider.fromDfe(dfe)
         authService.requestAccountDeletion(ctx)
-        return OperationResult(success = true)
+        return ActionResult(success = true)
     }
 
     private fun LoginRes.toResult() = LoginResult(

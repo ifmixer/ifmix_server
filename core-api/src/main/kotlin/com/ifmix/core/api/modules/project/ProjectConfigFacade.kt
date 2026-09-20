@@ -3,7 +3,7 @@ package com.ifmix.core.api.modules.project
 import com.ifmix.core.api.entity.project.ProjectConfigRevision
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.project.handler.ProjectConfigAggHandler
 import org.springframework.stereotype.Service
 import java.util.UUID
@@ -13,18 +13,18 @@ class ProjectConfigFacade(
     private val mcFactory: ModuleCtxFactory,
     private val handler: ProjectConfigAggHandler,
 ) {
-    fun createOneRevision(ctx: OperationContext, req: ProjectConfigAggHandler.CreateRevisionInput): ProjectConfigRevision =
+    fun createOneRevision(ctx: ActionContext, req: ProjectConfigAggHandler.CreateRevisionInput): ProjectConfigRevision =
         handler.createOneRevision(mcFactory.forProject(ctx), req)
 
-    fun toggleRevision(ctx: OperationContext, revisionId: UUID, enabled: Boolean): ProjectConfigRevision =
+    fun toggleRevision(ctx: ActionContext, revisionId: UUID, enabled: Boolean): ProjectConfigRevision =
         handler.toggleRevision(mcFactory.forProject(ctx), revisionId, enabled)
 
     /** webhook 无 x-project-id header，直接按 bundleId/androidPackageName 反查 projectId */
     fun findAppIdByBundleId(bundleId: String): String? =
-        handler.findAppIdByBundleId(mcFactory.default(OperationContext()), bundleId)
+        handler.findAppIdByBundleId(mcFactory.default(ActionContext()), bundleId)
 
     fun findAppIdByAndroidPackage(packageName: String): String? =
-        handler.findAppIdByAndroidPackage(mcFactory.default(OperationContext()), packageName)
+        handler.findAppIdByAndroidPackage(mcFactory.default(ActionContext()), packageName)
 
     /** 供外部模块按 projectId 获取当前生效配置 */
     fun findActiveByAppId(mc: ModuleCtx, projectId: String): ProjectConfigRevision? =

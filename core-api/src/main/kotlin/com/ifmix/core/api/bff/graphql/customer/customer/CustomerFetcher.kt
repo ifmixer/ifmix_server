@@ -2,10 +2,10 @@ package com.ifmix.core.api.bff.graphql.customer.customer
 
 import com.ifmix.core.api.entity.customer.Customer
 import com.ifmix.core.api.generated.types.CreateAnonymousResult
-import com.ifmix.core.api.infra.graphql.OperationContextProvider
+import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
-import com.ifmix.core.api.infra.jimmer.OperationContextHolder
+import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import com.ifmix.core.api.infra.ratelimit.RateLimiter
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.auth.AuthFacade
@@ -20,7 +20,7 @@ class CustomerFetcher(
     private val authService: AuthFacade,
     private val customerFacade: CustomerFacade,
     private val globalTx: GlobalTxRunner,
-    private val ctxProvider: OperationContextProvider,
+    private val ctxProvider: ActionContextProvider,
     private val rateLimiter: RateLimiter,
 ) {
 
@@ -49,7 +49,7 @@ class CustomerFetcher(
     fun customer(dfe: DgsDataFetchingEnvironment): Customer {
         val parent = dfe.getSource<CreateAnonymousResult>()
             ?: throw ApiError(ErrorCode.INTERNAL, "CreateAnonymousResult source missing")
-        val ctx = OperationContextHolder.current()
+        val ctx = ActionContextHolder.current()
         return customerFacade.findById(ctx, parent.customerId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "customer not found")
     }

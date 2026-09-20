@@ -1,7 +1,7 @@
 package com.ifmix.core.api.infra.tx
 
 import com.ifmix.core.api.infra.db.ClusterRouter
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import org.springframework.stereotype.Component
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
@@ -26,7 +26,7 @@ class GlobalTxRunner(
      * 按 projectId 路由到集群 writer，开启全局事务。
      * ModuleCtxFactory 检测到 opCtx.globalTxSql != null → 复用事务 writer。
      */
-    fun <R> withTx(opCtx: OperationContext, body: (OperationContext) -> R): R {
+    fun <R> withTx(opCtx: ActionContext, body: (ActionContext) -> R): R {
         val pair = router.forProject(opCtx.mustGetProjectId())
         val txCtx = opCtx.copy(globalTxSql = pair.writer, inGlobalTx = true)
         val template = TransactionTemplate(txManager).apply {
@@ -36,7 +36,7 @@ class GlobalTxRunner(
     }
 
     /** 按 authTenant 路由 */
-    fun <R> withTxForTenant(opCtx: OperationContext, tenantId: java.util.UUID, body: (OperationContext) -> R): R {
+    fun <R> withTxForTenant(opCtx: ActionContext, tenantId: java.util.UUID, body: (ActionContext) -> R): R {
         val pair = router.forTenant(tenantId)
         val txCtx = opCtx.copy(globalTxSql = pair.writer, inGlobalTx = true)
         val template = TransactionTemplate(txManager).apply {

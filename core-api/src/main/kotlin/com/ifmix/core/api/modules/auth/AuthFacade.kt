@@ -1,7 +1,7 @@
 package com.ifmix.core.api.modules.auth
 
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.auth.handler.AuthAggHandler
 import com.ifmix.core.api.modules.auth.handler.CreateAnonymousRes
 import com.ifmix.core.api.modules.auth.handler.DeleteAccountRes
@@ -19,21 +19,21 @@ class AuthFacade(
     private val mcFactory: ModuleCtxFactory,
     private val handler: AuthAggHandler,
 ) {
-    fun me(ctx: OperationContext): MeRes =
+    fun me(ctx: ActionContext): MeRes =
         handler.me(mcFactory.forProject(ctx))
 
-    fun login(ctx: OperationContext, req: LoginReq): LoginRes =
+    fun login(ctx: ActionContext, req: LoginReq): LoginRes =
         handler.login(mcFactory.forProject(ctx), req)
 
-    fun refresh(ctx: OperationContext, req: RefreshReq): RefreshRes =
+    fun refresh(ctx: ActionContext, req: RefreshReq): RefreshRes =
         handler.refresh(mcFactory.forProject(ctx), req)
 
-    fun logout(ctx: OperationContext, req: LogoutReq): LogoutRes =
+    fun logout(ctx: ActionContext, req: LogoutReq): LogoutRes =
         handler.logout(mcFactory.forProject(ctx), req)
 
-    fun createAnonymousCustomer(ctx: OperationContext): CreateAnonymousRes =
+    fun createAnonymousCustomer(ctx: ActionContext): CreateAnonymousRes =
         handler.createAnonymousCustomer(mcFactory.forProject(ctx))
 
-    fun requestAccountDeletion(ctx: OperationContext): DeleteAccountRes =
+    fun requestAccountDeletion(ctx: ActionContext): DeleteAccountRes =
         handler.requestAccountDeletion(mcFactory.forProject(ctx))
 }

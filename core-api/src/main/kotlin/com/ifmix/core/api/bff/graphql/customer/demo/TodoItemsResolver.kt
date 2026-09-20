@@ -2,7 +2,7 @@ package com.ifmix.core.api.bff.graphql.customer.demo
 
 import com.ifmix.core.api.entity.demo.Todo
 import com.ifmix.core.api.entity.demo.TodoItem
-import com.ifmix.core.api.infra.jimmer.OperationContextHolder
+import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import com.ifmix.core.api.modules.demo.DemoFacade
 import com.ifmix.core.api.modules.demo.repo.TodoItemCounts
 import com.netflix.graphql.dgs.DgsComponent
@@ -49,7 +49,7 @@ class TodoItemsDataLoader(
 ) : MappedBatchLoader<UUID, List<TodoItem>> {
 
     override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, List<TodoItem>>> {
-        val opCtx = OperationContextHolder.current()
+        val opCtx = ActionContextHolder.current()
         val allItems = demoFacade.findItemsByTodoIds(opCtx, ids)
         val grouped = allItems.groupBy { it.todoId }
         val result = ids.associateWith { grouped[it] ?: emptyList() }
@@ -67,7 +67,7 @@ class TodoItemCountsDataLoader(
 ) : MappedBatchLoader<UUID, TodoItemCounts> {
 
     override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, TodoItemCounts>> {
-        val opCtx = OperationContextHolder.current()
+        val opCtx = ActionContextHolder.current()
         val countsMap = demoFacade.countItemsByTodoIds(opCtx, ids)
         val result = ids.associateWith { countsMap[it] ?: ZERO }
         return CompletableFuture.completedFuture(result)

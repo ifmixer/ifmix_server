@@ -1,6 +1,6 @@
 package com.ifmix.core.api.modules.ai
 
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.dto.ai.ScanInput
 
 /**
@@ -9,5 +9,5 @@ import com.ifmix.core.api.dto.ai.ScanInput
  * 成功返回 AI 解析的 JSON Map；失败直接抛异常。
  */
 interface ScanRunner {
-    fun run(ctx: OperationContext, input: ScanInput): Map<String, Any?>
+    fun run(ctx: ActionContext, input: ScanInput): Map<String, Any?>
 }

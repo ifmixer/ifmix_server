@@ -1,6 +1,6 @@
 package com.ifmix.core.api.infra.db
 
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.springframework.stereotype.Component
 import java.util.UUID
@@ -15,23 +15,23 @@ import java.util.UUID
 class ModuleCtxFactory(private val router: ClusterRouter) {
 
     /** 按 projectId 路由（大多数模块用这个） */
-    fun forProject(opCtx: OperationContext): ModuleCtx = ModuleCtx(
+    fun forProject(opCtx: ActionContext): ModuleCtx = ModuleCtx(
         op = opCtx,
         sql = chooseSql(opCtx, router.forProject(opCtx.mustGetProjectId())),
         inTransaction = opCtx.inGlobalTx,
     )
 
     /** 按 auth tenant 路由 */
-    fun forTenant(opCtx: OperationContext, tenantId: UUID): ModuleCtx = ModuleCtx(
+    fun forTenant(opCtx: ActionContext, tenantId: UUID): ModuleCtx = ModuleCtx(
         op = opCtx,
         sql = chooseSql(opCtx, router.forTenant(tenantId)),
         inTransaction = opCtx.inGlobalTx,
     )
 
     /** 默认（不需要路由参数，直接用 router.forProject） */
-    fun default(opCtx: OperationContext): ModuleCtx = forProject(opCtx)
+    fun default(opCtx: ActionContext): ModuleCtx = forProject(opCtx)
 
-    private fun chooseSql(opCtx: OperationContext, pair: ClusterSqlPair): KSqlClient = when {
+    private fun chooseSql(opCtx: ActionContext, pair: ClusterSqlPair): KSqlClient = when {
         opCtx.globalTxSql != null -> opCtx.globalTxSql!!  // 全局事务内，复用事务连接
         opCtx.preferReader -> pair.reader
         else -> pair.writer

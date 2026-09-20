@@ -1,6 +1,6 @@
 package com.ifmix.core.api.infra.db
 
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import java.util.UUID
 
 /**
@@ -12,5 +12,5 @@ import java.util.UUID
  * @param customerId 行记录中的 customerId（可为 null）
  * @return 当前用户是否拥有该行
  */
-fun ownsRow(ctx: OperationContext, customerId: UUID?): Boolean =
+fun ownsRow(ctx: ActionContext, customerId: UUID?): Boolean =
     customerId == null || customerId == ctx.actorId

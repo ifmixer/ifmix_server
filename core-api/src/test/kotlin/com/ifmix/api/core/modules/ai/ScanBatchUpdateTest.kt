@@ -7,7 +7,7 @@ import com.ifmix.core.api.generated.types.BatchUpdateScanSetInput
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.storage.ObjectStorage
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
@@ -33,7 +33,7 @@ class ScanBatchUpdateTest {
     private val customerId = UUID.randomUUID()
 
     private fun ctx(sql: KSqlClient) = ModuleCtx(
-        op = OperationContext(projectId = projectId, actorId = customerId),
+        op = ActionContext(projectId = projectId, actorId = customerId),
         sql = sql,
     )
 
@@ -57,7 +57,7 @@ class ScanBatchUpdateTest {
     fun `handler rejects empty ids`() {
         val handler = ScanAggHandler(
             scanRunner = object : ScanRunner {
-                override fun run(ctx: OperationContext, input: com.ifmix.core.api.dto.ai.ScanInput) = emptyMap<String, Any?>()
+                override fun run(ctx: ActionContext, input: com.ifmix.core.api.dto.ai.ScanInput) = emptyMap<String, Any?>()
             },
             objectStorage = object : ObjectStorage {
                 override fun presignUpload(bucketId: String, objectKey: String, contentType: String, duration: Duration) = ""

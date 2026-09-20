@@ -2,7 +2,7 @@ package com.ifmix.core.api.bff.graphql.customer.demo
 
 import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.generated.types.*
-import com.ifmix.core.api.infra.graphql.OperationContextProvider
+import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.demo.DemoFacade
 import com.netflix.graphql.dgs.DgsComponent
@@ -16,7 +16,7 @@ import java.util.UUID
 class DemoFetcher(
     private val demoService: DemoFacade,
     private val globalTx: GlobalTxRunner,
-    private val ctxProvider: OperationContextProvider,
+    private val ctxProvider: ActionContextProvider,
 ) {
 
     @DgsQuery(field = "q_demo_findTodoById")
@@ -66,17 +66,17 @@ class DemoFetcher(
     }
 
     @DgsMutation(field = "m_demo_deleteTodo")
-    fun deleteTodo(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): com.ifmix.core.api.dto.common.OperationResult {
+    fun deleteTodo(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): com.ifmix.core.api.dto.common.ActionResult {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx -> demoService.deleteById(txCtx, id) }
-        return com.ifmix.core.api.dto.common.OperationResult(success = true)
+        return com.ifmix.core.api.dto.common.ActionResult(success = true)
     }
 
     @DgsMutation(field = "m_demo_deleteTodoByIds")
-    fun deleteTodoByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): com.ifmix.core.api.dto.common.OperationResult {
+    fun deleteTodoByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): com.ifmix.core.api.dto.common.ActionResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val count = globalTx.withTx(ctx) { txCtx -> demoService.deleteByIds(txCtx, ids) }
-        return com.ifmix.core.api.dto.common.OperationResult(success = true, modifiedCount = count)
+        return com.ifmix.core.api.dto.common.ActionResult(success = true, modifiedCount = count)
     }
 
     private fun tryParseUuid(s: String): UUID? =

@@ -1,12 +1,11 @@
 package com.ifmix.core.api.modules.ai
 
 import assertk.assertThat
-import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
 import com.ifmix.core.api.generated.types.NewScanImageInput
 import com.ifmix.core.api.generated.types.NewScanInput
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.storage.ObjectStorage
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
@@ -29,7 +28,7 @@ class ScanCollectedTest {
     }
 
     private val fakeRunner = object : ScanRunner {
-        override fun run(ctx: OperationContext, input: com.ifmix.core.api.dto.ai.ScanInput): Map<String, Any?> =
+        override fun run(ctx: ActionContext, input: com.ifmix.core.api.dto.ai.ScanInput): Map<String, Any?> =
             mapOf("basic_result" to mapOf("scan_status" to mapOf("status" to "SUCCESS")))
     }
 
@@ -41,7 +40,7 @@ class ScanCollectedTest {
         scanPrompt = ScanPrompt("v10"),
     )
 
-    private fun opCtx() = OperationContext(projectId = "test-app", actorId = UUID.randomUUID())
+    private fun opCtx() = ActionContext(projectId = "test-app", actorId = UUID.randomUUID())
 
     private fun input(collected: Boolean?) = NewScanInput(
         images = listOf(NewScanImageInput(imageKey = "k.jpg", category = 0, mediaType = "image/jpeg")),

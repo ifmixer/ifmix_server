@@ -2,7 +2,7 @@ package com.ifmix.core.api.modules.ai.service
 
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.dto.ai.ScanInput
 import com.ifmix.core.api.modules.ai.ScanRunner
 import org.slf4j.LoggerFactory
@@ -42,7 +42,7 @@ open class SpringAiScanRunner(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun run(ctx: OperationContext, input: ScanInput): Map<String, Any?> {
+    override fun run(ctx: ActionContext, input: ScanInput): Map<String, Any?> {
         val states = keyStore.init()
 
         if (states.isEmpty()) {

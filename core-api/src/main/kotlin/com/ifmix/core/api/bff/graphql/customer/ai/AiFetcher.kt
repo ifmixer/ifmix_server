@@ -4,15 +4,13 @@ import com.ifmix.core.api.generated.types.DeleteScanResult
 import com.ifmix.core.api.generated.types.NewScanInput
 import com.ifmix.core.api.generated.types.NewScanResult
 import com.ifmix.core.api.dto.common.Page
-import com.ifmix.core.api.generated.types.FilterGroup
 import com.ifmix.core.api.generated.types.UpdateScanInput
 import com.ifmix.core.api.generated.types.UpdateScanResult
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
-import com.ifmix.core.api.infra.graphql.OperationContextProvider
+import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
-import com.ifmix.core.api.infra.http.OperationContext
-import com.ifmix.core.api.infra.jimmer.OperationContextHolder
+import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.entity.ai.ScanRecord
 import com.ifmix.core.api.modules.ai.AiFacade
@@ -45,7 +43,7 @@ class AiFetcher(
     private val aiService: AiFacade,
     private val collectionService: ScanCollectionFacade,
     private val globalTx: GlobalTxRunner,
-    private val ctxProvider: OperationContextProvider,
+    private val ctxProvider: ActionContextProvider,
 ) {
     // --- Scan queries ---
 
@@ -191,7 +189,7 @@ class ScanRecordsDataLoader(
     private val mcFactory: ModuleCtxFactory,
 ) : MappedBatchLoader<UUID, ScanRecord?> {
     override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanRecord?>> {
-        val opCtx = OperationContextHolder.current()
+        val opCtx = ActionContextHolder.current()
         val mc = mcFactory.forProject(opCtx)
         val projectId = opCtx.mustGetProjectId()
         val records = scanRecordRepo.findByIdsListView(mc, projectId, ids)
@@ -210,7 +208,7 @@ class DeepResearchDataLoader(
     private val aiService: AiFacade,
 ) : MappedBatchLoader<UUID, com.ifmix.core.api.entity.ai.ScanDeepResearch?> {
     override fun load(scanRecordIds: Set<UUID>): CompletionStage<Map<UUID, com.ifmix.core.api.entity.ai.ScanDeepResearch?>> {
-        val opCtx = OperationContextHolder.current()
+        val opCtx = ActionContextHolder.current()
         val rows = aiService.findDeepResearchByScanRecordIds(opCtx, scanRecordIds)
         val map = rows.associateBy { it.scanRecordId }
         return CompletableFuture.completedFuture(scanRecordIds.associateWith { map[it] })

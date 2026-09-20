@@ -11,7 +11,7 @@ import com.ifmix.core.api.entity.cs.SupportRequestStatuses
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.cs.handler.SupportRequestAggHandler
 import com.ifmix.core.api.modules.cs.repo.SupportRequestRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -36,7 +36,7 @@ class SupportRequestHandlerTest {
     }
 
     private fun ctx(actorId: UUID?, installId: String?) = ModuleCtx(
-        op = OperationContext(
+        op = ActionContext(
             projectId = projectId,
             actorId = actorId,
             installId = installId,

@@ -5,9 +5,8 @@ import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.generated.types.CommonFindOptions
 import com.ifmix.core.api.generated.types.NewScanInput
 import com.ifmix.core.api.generated.types.UpdateScanInput
-import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.entity.ai.ScanRecord
 import org.springframework.stereotype.Service
@@ -19,51 +18,51 @@ class AiFacade(
     private val mcFactory: ModuleCtxFactory,
     private val scanHandler: ScanAggHandler,
 ) {
-    fun findById(opCtx: OperationContext, id: UUID): ScanRecord? =
+    fun findById(opCtx: ActionContext, id: UUID): ScanRecord? =
         scanHandler.findById(mcFactory.forProject(opCtx), id)
 
     /** 批量按 scanRecordId 查询 DeepResearch（DataLoader 用）。 */
-    fun findDeepResearchByScanRecordIds(opCtx: OperationContext, scanRecordIds: Collection<UUID>): List<com.ifmix.core.api.entity.ai.ScanDeepResearch> =
+    fun findDeepResearchByScanRecordIds(opCtx: ActionContext, scanRecordIds: Collection<UUID>): List<com.ifmix.core.api.entity.ai.ScanDeepResearch> =
         scanHandler.findDeepResearchByScanRecordIds(mcFactory.forProject(opCtx), scanRecordIds)
 
-    fun findMyScans(opCtx: OperationContext, findOptions: CommonFindOptions?): Page<ScanRecord> =
+    fun findMyScans(opCtx: ActionContext, findOptions: CommonFindOptions?): Page<ScanRecord> =
         scanHandler.findMyScans(mcFactory.forProject(opCtx), findOptions)
 
     /** AI 调用在事务外 */
-    fun runAiScan(opCtx: OperationContext, input: NewScanInput): AiScanResult =
+    fun runAiScan(opCtx: ActionContext, input: NewScanInput): AiScanResult =
         scanHandler.runAiScan(opCtx, input)
 
     /** DB 写入在事务内 */
-    fun saveScanRecord(opCtx: OperationContext, result: AiScanResult): ScanRecord =
+    fun saveScanRecord(opCtx: ActionContext, result: AiScanResult): ScanRecord =
         scanHandler.saveNewScan(mcFactory.forProject(opCtx), result)
 
     /** DeepResearch 第一步：先更新图片（事务内，AI 失败也已提交） */
-    fun updateDeepResearchImages(opCtx: OperationContext, input: com.ifmix.core.api.generated.types.RunDeepResearchInput) =
+    fun updateDeepResearchImages(opCtx: ActionContext, input: com.ifmix.core.api.generated.types.RunDeepResearchInput) =
         scanHandler.updateDeepResearchImages(mcFactory.forProject(opCtx), input)
 
     /** DeepResearch AI 调用在事务外（mc 在此构建） */
-    fun runDeepResearch(opCtx: OperationContext, input: com.ifmix.core.api.generated.types.RunDeepResearchInput): com.ifmix.core.api.dto.ai.DeepResearchResult =
+    fun runDeepResearch(opCtx: ActionContext, input: com.ifmix.core.api.generated.types.RunDeepResearchInput): com.ifmix.core.api.dto.ai.DeepResearchResult =
         scanHandler.runDeepResearch(mcFactory.forProject(opCtx), input)
 
     /** DeepResearch DB 写入在事务内 */
-    fun saveDeepResearch(opCtx: OperationContext, result: com.ifmix.core.api.dto.ai.DeepResearchResult): Boolean =
+    fun saveDeepResearch(opCtx: ActionContext, result: com.ifmix.core.api.dto.ai.DeepResearchResult): Boolean =
         scanHandler.saveDeepResearch(mcFactory.forProject(opCtx), result)
 
-    fun updateScan(opCtx: OperationContext, input: UpdateScanInput): Boolean =
+    fun updateScan(opCtx: ActionContext, input: UpdateScanInput): Boolean =
         scanHandler.updateScan(mcFactory.forProject(opCtx), input)
 
-    fun batchUpdateScan(opCtx: OperationContext, input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): Int =
+    fun batchUpdateScan(opCtx: ActionContext, input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): Int =
         scanHandler.batchUpdateScan(mcFactory.forProject(opCtx), input)
 
-    fun deleteScan(opCtx: OperationContext, id: UUID): Boolean =
+    fun deleteScan(opCtx: ActionContext, id: UUID): Boolean =
         scanHandler.deleteScan(mcFactory.forProject(opCtx), id)
 
-    fun presignedUploadUrl(opCtx: OperationContext, objectKey: String, contentType: String, duration: Duration): String =
+    fun presignedUploadUrl(opCtx: ActionContext, objectKey: String, contentType: String, duration: Duration): String =
         scanHandler.presignedUploadUrl(mcFactory.forProject(opCtx), objectKey, contentType, duration)
 
-    fun presignedDownloadUrl(opCtx: OperationContext, objectKey: String, duration: Duration): String =
+    fun presignedDownloadUrl(opCtx: ActionContext, objectKey: String, duration: Duration): String =
         scanHandler.presignedDownloadUrl(mcFactory.forProject(opCtx), objectKey, duration)
 
-    fun getPublicUrl(opCtx: OperationContext, objectKey: String): String =
+    fun getPublicUrl(opCtx: ActionContext, objectKey: String): String =
         scanHandler.getPublicUrl(mcFactory.forProject(opCtx), objectKey)
 }

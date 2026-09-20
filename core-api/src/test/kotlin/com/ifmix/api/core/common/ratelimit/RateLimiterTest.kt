@@ -1,6 +1,6 @@
 package com.ifmix.core.api.infra.ratelimit
 
-import com.ifmix.core.api.infra.http.OperationContext
+import com.ifmix.core.api.infra.http.ActionContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -11,7 +11,6 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.redis.core.StringRedisTemplate
-import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 @ExtendWith(MockitoExtension::class)
@@ -24,7 +23,7 @@ class RateLimiterTest {
     private lateinit var ops: org.springframework.data.redis.core.ValueOperations<String, String>
 
     private lateinit var limiter: RateLimiter
-    private val ctx = OperationContext(projectId = "test-app")
+    private val ctx = ActionContext(projectId = "test-app")
 
     @BeforeEach
     fun setUp() {

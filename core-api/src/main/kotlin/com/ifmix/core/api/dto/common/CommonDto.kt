@@ -9,7 +9,7 @@ data class ByIdRequest(val id: UUID)
 data class ByIdsRequest(val ids: List<UUID>)
 
 /** 通用操作结果 */
-data class OperationResult(val success: Boolean = true, val modifiedCount: Int?=null)
+data class ActionResult(val success: Boolean = true, val modifiedCount: Int?=null)
 
 /** 上传内容类型编码。typealias（Int 全链路透传），码表 + mime/ext 映射见 [ContentTypes]。 */
 typealias ContentType = Int

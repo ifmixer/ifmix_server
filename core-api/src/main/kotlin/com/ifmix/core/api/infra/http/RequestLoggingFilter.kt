@@ -4,7 +4,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import com.ifmix.core.api.infra.auth.RequestParser
-import com.ifmix.core.api.infra.jimmer.OperationContextHolder
+import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
@@ -54,7 +54,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             // 跳过 IntrospectionQuery 的日志输出（IDE/工具高频探测，无业务价值）
             if (requestBody.contains("IntrospectionQuery") || requestBody.contains("__schema")) {
                 wrappedResponse.copyBodyToResponse()
-                OperationContextHolder.clear()
+                ActionContextHolder.clear()
                 return
             }
 
@@ -82,7 +82,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             // 必须 copyBodyToResponse，否则客户端收不到响应体
             wrappedResponse.copyBodyToResponse()
             // 清理 ThreadLocal，防止虚拟线程池中的上下文泄漏
-            OperationContextHolder.clear()
+            ActionContextHolder.clear()
         }
     }
 

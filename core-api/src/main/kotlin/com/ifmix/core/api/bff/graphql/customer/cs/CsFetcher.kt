@@ -11,7 +11,7 @@ import com.ifmix.core.api.dto.cs.CreateSupportRequestReq
 import com.ifmix.core.api.dto.cs.ListSupportRequestsReq
 import com.ifmix.core.api.entity.common.MediaRef
 import com.ifmix.core.api.entity.cs.SupportRequest
-import com.ifmix.core.api.infra.graphql.OperationContextProvider
+import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.dto.cs.SubmitFeedbackReq
 import com.ifmix.core.api.modules.cs.CsFacade
@@ -30,7 +30,7 @@ import java.util.UUID
 class CsFetcher(
     private val csService: CsFacade,
     private val globalTx: GlobalTxRunner,
-    private val ctxProvider: OperationContextProvider,
+    private val ctxProvider: ActionContextProvider,
 ) {
 
     @DgsMutation(field = "m_cs_submitFeedback")

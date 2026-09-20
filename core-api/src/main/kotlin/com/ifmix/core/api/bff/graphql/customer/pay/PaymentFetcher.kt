@@ -2,7 +2,7 @@ package com.ifmix.core.api.bff.graphql.customer.pay
 
 import com.ifmix.core.api.generated.types.verifyIapPurchaseInput
 import com.ifmix.core.api.generated.types.VerifyIapPurchaseResult
-import com.ifmix.core.api.infra.graphql.OperationContextProvider
+import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.dto.payment.VerifyReq
 import com.ifmix.core.api.modules.pay.PaymentFacade
 import com.netflix.graphql.dgs.DgsComponent
@@ -14,7 +14,7 @@ import java.time.Instant
 @DgsComponent
 class PaymentFetcher(
     private val paymentService: PaymentFacade,
-    private val ctxProvider: OperationContextProvider,
+    private val ctxProvider: ActionContextProvider,
 ) {
 
     @DgsMutation(field = "m_pay_verifyIapPurchase")
