@@ -1,0 +1,80 @@
+docs/ARCHITECTURE.md
+  h_734c7d988c19fa 73,166,172,175,177,199
+.gitignore
+  h_734c7d988c19fa 87
+core-api/build.gradle.kts
+  h_734c7d988c19fa 158
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_734c7d988c19fa 192-194,211-212
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/demo/TodoItemsResolver.kt
+  h_734c7d988c19fa 52-53,70-71
+core-api/src/main/kotlin/com/ifmix/core/api/bff/webhooks/WebhookController.kt
+  h_734c7d988c19fa 88
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/RequestParser.kt
+  h_734c7d988c19fa 25
+core-api/src/main/kotlin/com/ifmix/core/api/infra/db/ModuleCtx.kt
+  h_734c7d988c19fa 8,11,17-21,23-24
+core-api/src/main/kotlin/com/ifmix/core/api/infra/db/ModuleCtxFactory.kt
+  h_734c7d988c19fa 11,18-21,25-28,32,34-36
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/ActionContextProvider.kt
+  h_734c7d988c19fa 20,65
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionContext.kt
+  h_734c7d988c19fa 8,39
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestContextExt.kt
+  h_734c7d988c19fa 5
+core-api/src/main/kotlin/com/ifmix/core/api/infra/jimmer/ProjectScopedFilter.kt
+  h_734c7d988c19fa 6,14
+core-api/src/main/kotlin/com/ifmix/core/api/infra/service/CrudServiceOps.kt
+  h_734c7d988c19fa 58,71
+core-api/src/main/kotlin/com/ifmix/core/api/infra/tx/GlobalTxRunner.kt
+  h_734c7d988c19fa 13,27,29-31,39,41
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/AiFacade.kt
+  h_734c7d988c19fa 21-22,25-26,28-29,32-33,36-37,40-41,44-45,48-49,51-52,54-55,57-58,60-61,63-64,66-67
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_734c7d988c19fa 33,47-49,51,58-62,81-82,100,113-114,126,132,136,143,154,173,222-223
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanCollectionAggHandler.kt
+  h_734c7d988c19fa 24,54,60
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/handler/AuthAggHandler.kt
+  h_734c7d988c19fa 130,152,161-162,193,225-227,327,356
+core-api/src/main/kotlin/com/ifmix/core/api/modules/cs/handler/FeedbackAggHandler.kt
+  h_734c7d988c19fa 20-22
+core-api/src/main/kotlin/com/ifmix/core/api/modules/cs/handler/SupportRequestAggHandler.kt
+  h_734c7d988c19fa 21,23,28-33,55-56,63-64
+core-api/src/main/kotlin/com/ifmix/core/api/modules/media/StorageFacade.kt
+  h_734c7d988c19fa 17-18,20-21
+core-api/src/main/kotlin/com/ifmix/core/api/modules/media/handler/StorageAggHandler.kt
+  h_734c7d988c19fa 24-26,48
+core-api/src/main/kotlin/com/ifmix/core/api/modules/pay/handler/PaymentAggHandler.kt
+  h_734c7d988c19fa 42,57,87
+core-api/src/main/kotlin/com/ifmix/core/api/modules/pay/handler/PaymentWebhookHandler.kt
+  h_734c7d988c19fa 28
+core-api/src/main/resources/schema/common/common.graphqls
+  h_734c7d988c19fa 10
+core-api/src/main/resources/schema/customer/auth.graphqls
+  h_734c7d988c19fa 47-48
+core-api/src/main/resources/schema/customer/demo.graphqls
+  h_734c7d988c19fa 152-153
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanBatchUpdateTest.kt
+  h_734c7d988c19fa 36
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCollectedTest.kt
+  h_734c7d988c19fa 43,52,57,62
+core-api/src/test/kotlin/com/ifmix/api/core/modules/cs/SupportRequestHandlerTest.kt
+  h_734c7d988c19fa 39
+docs/AUTH_DESIGN.md
+  h_734c7d988c19fa 76,92,113-114
+docs/CODING_GUIDE.md
+  h_734c7d988c19fa 8,13-14,30,33,35,47,52-55,66,68-70,89,118,143,146,198-199
+docs/Changelog.md
+  h_734c7d988c19fa 15,18-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f8549e342ecca377f63f7e2b4a485bdfd18f7e9",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
