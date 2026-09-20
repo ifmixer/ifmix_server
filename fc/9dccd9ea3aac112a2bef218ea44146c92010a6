@@ -1,0 +1,32 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/ApiNamePathInterceptor.kt
+  h_734c7d988c19fa 11,13-19,23,26,35-47,49-50
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/ApqRouterConfig.kt
+  h_734c7d988c19fa 1-41
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/PersistedQueryStore.kt
+  h_734c7d988c19fa 26
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/TrustedDocumentConfig.kt
+  h_734c7d988c19fa 15-17
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/TrustedDocumentProvider.kt
+  h_734c7d988c19fa 14-15,20-22,38,45-46,50,52-53
+core-api/src/main/resources/application-local.yml
+  h_734c7d988c19fa 15-16
+core-api/src/main/resources/application.yml
+  h_734c7d988c19fa 16-18,23
+core-api/src/test/kotlin/com/ifmix/api/core/graphql/trusted/ApiNamePathInterceptorTest.kt
+  h_734c7d988c19fa 1-45
+core-api/src/test/kotlin/com/ifmix/api/core/graphql/trusted/TrustedDocumentProviderTest.kt
+  h_734c7d988c19fa 31,63
+docs/ARCHITECTURE.md
+  h_734c7d988c19fa 32-33,176,193-196,198,332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc9dccd9ea3aac112a2bef218ea44146c92010a6",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
