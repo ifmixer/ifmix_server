@@ -1,0 +1,92 @@
+core-api/src/test/kotlin/com/ifmix/api/core/common/ratelimit/RateLimiterTest.kt
+  h_734c7d988c19fa 3,26
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/demo/DemoFetcher.kt
+  h_734c7d988c19fa 5,19,69,72,76,79
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/demo/TodoItemsResolver.kt
+  h_734c7d988c19fa 5,52,70
+core-api/src/main/kotlin/com/ifmix/core/api/bff/webhooks/WebhookController.kt
+  h_734c7d988c19fa 3,89,122
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/AuthFacade.kt
+  h_734c7d988c19fa 4,22,25,28,31,34,37
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  h_734c7d988c19fa 5,45
+core-api/build.gradle.kts
+  h_734c7d988c19fa 159
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/cs/CsFetcher.kt
+  h_734c7d988c19fa 14,33
+core-api/src/main/kotlin/com/ifmix/core/api/modules/cs/CsFacade.kt
+  h_734c7d988c19fa 4,21,24,27,30
+core-api/src/main/kotlin/com/ifmix/core/api/infra/db/ModuleCtxFactory.kt
+  h_734c7d988c19fa 3,18,25,32,34
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/ActionContextProvider.kt
+  h_734c7d988c19fa 8,17,36,50,69
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/AuthFetcher.kt
+  h_734c7d988c19fa 3,5,23,63,68,72,75
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/AuthLoggedInEvent.kt
+  h_734c7d988c19fa 3,13
+core-api/src/main/kotlin/com/ifmix/core/api/dto/common/CommonDto.kt
+  h_734c7d988c19fa 12
+core-api/src/test/kotlin/com/ifmix/api/core/modules/cs/SupportRequestHandlerTest.kt
+  h_734c7d988c19fa 14,39
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCollectedTest.kt
+  h_734c7d988c19fa 8,31,43
+core-api/src/main/kotlin/com/ifmix/core/api/infra/ratelimit/TierResolver.kt
+  h_734c7d988c19fa 4,8,13,25,30
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/media/StorageFetcher.kt
+  h_734c7d988c19fa 7,17
+core-api/src/main/kotlin/com/ifmix/core/api/infra/tx/GlobalTxRunner.kt
+  h_734c7d988c19fa 4,29,39
+core-api/src/main/kotlin/com/ifmix/core/api/modules/customer/CustomerFacade.kt
+  h_734c7d988c19fa 5,15,18,21
+core-api/src/main/kotlin/com/ifmix/core/api/modules/media/StorageFacade.kt
+  h_734c7d988c19fa 8,17,20
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_734c7d988c19fa 12,33
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_734c7d988c19fa 10,13,46,192,211
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/ProjectConfigFacade.kt
+  h_734c7d988c19fa 6,16,19,24,27
+core-api/src/main/kotlin/com/ifmix/core/api/infra/jimmer/ProjectScopedFilter.kt
+  h_734c7d988c19fa 3,9-10,12-13
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilter.kt
+  h_734c7d988c19fa 7,57,85
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/pay/PaymentFetcher.kt
+  h_734c7d988c19fa 5,17
+core-api/src/main/kotlin/com/ifmix/core/api/infra/config/WebConfig.kt
+  h_734c7d988c19fa 11
+core-api/src/main/kotlin/com/ifmix/core/api/modules/demo/DemoFacade.kt
+  h_734c7d988c19fa 10,22,25,28,31,34,39,42,46,50,53
+core-api/src/main/kotlin/com/ifmix/core/api/modules/pay/Entitlement.kt
+  h_734c7d988c19fa 3,13
+core-api/src/main/kotlin/com/ifmix/core/api/infra/ratelimit/RateLimiter.kt
+  h_734c7d988c19fa 7,26
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/customer/CustomerFetcher.kt
+  h_734c7d988c19fa 5,8,23,52
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanBatchUpdateTest.kt
+  h_734c7d988c19fa 10,36,60
+core-api/src/main/kotlin/com/ifmix/core/api/infra/db/Ownership.kt
+  h_734c7d988c19fa 3,15
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/AiFacade.kt
+  h_734c7d988c19fa 9,21,25,28,32,36,40,44,48,51,54,57,60,63,66
+core-api/src/main/kotlin/com/ifmix/core/api/infra/db/ModuleCtx.kt
+  h_734c7d988c19fa 3,11
+core-api/src/main/kotlin/com/ifmix/core/api/modules/pay/PaymentFacade.kt
+  h_734c7d988c19fa 6,20,25,28
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/ScanRunner.kt
+  h_734c7d988c19fa 3,12
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionContext.kt
+  h_734c7d988c19fa 1-56
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/ScanCollectionFacade.kt
+  h_734c7d988c19fa 5,21,25,32,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f5d60f6dbdb38d58c3b8b80b2353705bd49efda",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
