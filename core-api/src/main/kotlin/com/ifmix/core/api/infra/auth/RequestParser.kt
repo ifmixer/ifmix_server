@@ -11,7 +11,13 @@ import org.springframework.stereotype.Component
 import java.util.UUID
 
 /** 解析成功的主体（token 校验通过）。 */
-data class Actor(val actorId: UUID, val actorType: ActorType, val anonymous: Boolean)
+data class Actor(
+    val actorId: UUID,
+    val actorType: ActorType,
+    val anonymous: Boolean,
+    /** sessionId（token sid claim）。为将来 Redis session 预留，可能为 null（旧 token）。 */
+    val sessionId: String? = null,
+)
 
 /**
  * 逐字段解析请求信息，结果缓存到 request attribute（同请求多 operation 复用）。
@@ -73,7 +79,12 @@ class RequestParser(private val jwt: AuthJwtService) {
         val actorId = verified.actorId?.let { tryUuid(it) }
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: missing or invalid subject")
 
-        val actor = Actor(actorId = actorId, actorType = verified.actorType, anonymous = verified.anonymous)
+        val actor = Actor(
+            actorId = actorId,
+            actorType = verified.actorType,
+            anonymous = verified.anonymous,
+            sessionId = verified.sessionId,
+        )
         request.setAttribute(ATTR_ACTOR, actor)
         return checkActorType(actor, requireActorType)
     }

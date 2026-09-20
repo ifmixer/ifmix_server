@@ -12,9 +12,9 @@ import org.springframework.context.annotation.Configuration
  * 因此这里提供自定义 bean 后 DGS 会退让并采用本实现；DGS 的 sourceBuilderCustomizer
  * 会把它注入 GraphQlSource（官方扩展点，无需自写 GraphQlSourceBuilderCustomizer）。
  *
- * trusted-documents 机制恒开（APQ path 带 apiName 恒走 allowlist）。allow-raw-query：
- *  - false（默认，uat/prod）→ 无 apiName（走 GQL 入口）一律拒绝，强制走 persisted query。
- *  - true（local）→ 无 apiName 时回退 body raw query，供 GraphiQL/API 探索。
+ * trusted-documents 机制恒开（APQ path 带 apqName 恒走 allowlist）。allow-raw-query：
+ *  - false（默认，uat/prod）→ 无 apqName（走 GQL 入口）一律拒绝，强制走 persisted query。
+ *  - true（local）→ 无 apqName 时回退 body raw query，供 GraphiQL/API 探索。
  */
 @Configuration
 class TrustedDocumentConfig {

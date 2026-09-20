@@ -52,6 +52,7 @@ class OperationContextProvider(private val parser: RequestParser) {
             actorId = actor?.actorId,
             actorType = actor?.actorType,
             anonymous = actor?.anonymous ?: false,
+            sessionId = actor?.sessionId,
             locale = parser.parseLocale(servletRequest, requireLocale),
             currency = parser.parseCurrency(servletRequest, requireCurrency),
             country = parser.parseCountry(servletRequest, requireCountry),

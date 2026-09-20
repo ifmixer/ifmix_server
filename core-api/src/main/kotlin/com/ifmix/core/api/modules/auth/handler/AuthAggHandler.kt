@@ -194,11 +194,12 @@ class AuthAggHandler(
 
         // 6. 为 ownerId（existing / 转正后的 cur）签发 refresh token + access token
         val now = Instant.now()
+        val refreshTokenId = UuidV7.generate()
         val rawRefreshToken = Hashing.randomTokenBase64Url()
         val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
         val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         refreshTokenRepo.save(mc, RefreshToken {
-            this.id = UuidV7.generate()
+            this.id = refreshTokenId
             this.projectId = projectId
             this.actorId = ownerId
             this.actorType = AuthJwtService.ACTOR_CUSTOMER
@@ -210,8 +211,11 @@ class AuthAggHandler(
             this.updatedAt = now
         })
 
-        // 登录主体已转正/合并到 existing（非匿名）。token: sub=ownerId, act=customer, ano=false
-        val accessToken = jwt.signAccess(ownerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(), anonymous = false)
+        // 登录主体已转正/合并到 existing（非匿名）。token: sub=ownerId, act=customer, ano=false, sid=refreshTokenId
+        val accessToken = jwt.signAccess(
+            ownerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(),
+            sessionId = refreshTokenId.toString(), anonymous = false,
+        )
 
         // 7. Publish event
         events.publishEvent(AuthLoggedInEvent(
@@ -258,7 +262,10 @@ class AuthAggHandler(
         })
         refreshTokenRepo.revoke(mc, oldToken.id, replacedBy = newTokenId)
 
-        val accessToken = jwt.signAccess(oldToken.actorId.toString(), oldToken.actorType, projectId.toString())
+        val accessToken = jwt.signAccess(
+            oldToken.actorId.toString(), oldToken.actorType, projectId.toString(),
+            sessionId = newTokenId.toString(),
+        )
         return RefreshRes(
             accessToken = accessToken,
             refreshToken = rawNewToken,
@@ -286,11 +293,12 @@ class AuthAggHandler(
         val customerId = customerRepo.createCustomer(mc, projectId) // anonymous=true
 
         val now = Instant.now()
+        val refreshTokenId = UuidV7.generate()
         val rawRefreshToken = Hashing.randomTokenBase64Url()
         val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
         val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         refreshTokenRepo.save(mc, RefreshToken {
-            this.id = UuidV7.generate()
+            this.id = refreshTokenId
             this.projectId = projectId
             this.actorId = customerId
             this.actorType = AuthJwtService.ACTOR_CUSTOMER
@@ -303,7 +311,8 @@ class AuthAggHandler(
         })
 
         val accessToken = jwt.signAccess(
-            customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(), anonymous = true,
+            customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(),
+            sessionId = refreshTokenId.toString(), anonymous = true,
         )
         return CreateAnonymousRes(
             customerId = customerId,

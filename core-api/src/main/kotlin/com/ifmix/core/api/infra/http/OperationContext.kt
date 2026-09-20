@@ -22,6 +22,8 @@ data class OperationContext(
     val actorType: ActorType? = null,
     /** 是否匿名主体（token ano claim）。 */
     val anonymous: Boolean = true,
+    /** sessionId（token sid claim）= 签发该 access token 的 refresh token id。为将来 Redis session 预留；未认证/旧 token 时 null。 */
+    val sessionId: String? = null,
     val locale: String? = null,
     val currency: String? = null,
     val country: String? = null,

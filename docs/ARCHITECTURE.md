@@ -29,7 +29,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  BFF — GraphQL (DGS DataFetcher) + REST                              │
-│  POST /customer/core/apq/{apiName}  (主 API · persisted query)       │
+│  POST /customer/core/apq/{apqName}  (主 API · persisted query)       │
 │  POST /customer/core/gql            (raw query · GraphiQL/本地探索)   │
 │  POST /webhooks/iap/*     (Apple/Google 回调)                        │
 │  GET  /.well-known/jwks                                              │
@@ -173,7 +173,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   ├── repo/                   # CrudRepoTemplate, ProjectCrudRepoTemplate, FilterGroupResolver
 │   ├── codec/                  # Base58 (UUID ↔ 22-char URL-safe)
 │   ├── graphql/                # OperationContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
-│   │                           # trusted/ (APQ persisted query: ApiNamePathInterceptor, ApqRouterConfig, TrustedDocumentProvider)
+│   │                           # trusted/ (APQ persisted query: ApqNamePathInterceptor, ApqRouterConfig, TrustedDocumentProvider)
 │   ├── http/                   # OperationContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
 │   ├── auth/                   # AuthInterceptor, AuthJwtService, AuthJwtKeys, Hashing
 │   ├── redis/                  # CacheAside, RedisConfig
@@ -191,11 +191,11 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 ## GraphQL 设计
 
 - **Endpoint**:
-  - `POST /customer/core/apq/{apiName}`（主 API，persisted query；apiName 在 path 末段决定执行哪个预注册 query，供 CF/nginx 按具体路径分流。详见 [Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md)）
+  - `POST /customer/core/apq/{apqName}`（主 API，persisted query；apqName 在 path 末段决定执行哪个预注册 query，供 CF/nginx 按具体路径分流。详见 [Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md)）
   - `POST /customer/core/gql`（raw query 入口，供 GraphiQL/本地探索）
   - 均需 `x-project-id` header
 - **GraphiQL**: `/apidocs/core/customer/gql`
-- **Operation 命名**: `${q|m}_${module}_${action}`（如 `q_demo_findTodos`, `m_auth_login`）；同时作为 APQ 的 apiName（path 末段）
+- **Operation 命名**: `${q|m}_${module}_${action}`（如 `q_demo_findTodos`, `m_auth_login`）；同时作为 APQ 的 apqName（path 末段）
 - **DateTime**: ISO-8601 UTC 字符串（输入接受 ISO 或 epoch millis）
 - **input 全链路透传**: Fetcher→Facade→Handler 直传 input 对象
 - **Update 语义**: set/unset 防 null vs undefined 歧义
@@ -329,7 +329,7 @@ DB (via Jimmer KSqlClient)
 | [编码指南](CODING_GUIDE.md) | Context 模型、事务管理、分层示例代码、Entity 设计、CrudRepoTemplate |
 | [认证设计](AUTH_DESIGN.md) | IDP 模型、AuthIdentity、登录判定表、idpType |
 | [数据库约定](DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup、游标分页 |
-| [GraphQL Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md) | persisted query allowlist、APQ path 契约（/customer/core/apq/{apiName}）、PreparsedDocumentProvider |
+| [GraphQL Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md) | persisted query allowlist、APQ path 契约（/customer/core/apq/{apqName}）、PreparsedDocumentProvider |
 
 ## 构建与测试
 

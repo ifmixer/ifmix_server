@@ -12,8 +12,8 @@ spring:
         options:
           model: agnes-2.5-flash
 
-# 本地：trusted-documents 机制同样开启（APQ path 带 apiName 走 allowlist），
-# allow-raw-query=true 时允许无 apiName 的 raw query 兜底，方便 GraphiQL/API 探索。
+# 本地：trusted-documents 机制同样开启（APQ path 带 apqName 走 allowlist），
+# allow-raw-query=true 时允许无 apqName 的 raw query 兜底，方便 GraphiQL/API 探索。
 graphql:
   trusted-documents:
     allow-raw-query: false

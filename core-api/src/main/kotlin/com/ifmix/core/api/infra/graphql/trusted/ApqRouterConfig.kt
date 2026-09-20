@@ -15,10 +15,10 @@ import org.springframework.web.servlet.function.ServerResponse
  * 同一个 [GraphQlHttpHandler]。因此 APQ 与 GQL（`spring.graphql.path`）共用同一套
  * WebGraphQlInterceptor 链与执行引擎，仅入口路径不同：
  *  - GQL `/customer/core/gql`：raw query，供 GraphiQL / 本地探索（Spring Boot 默认注册）。
- *  - APQ `/customer/core/apq/{apiName}`：apiName 在 path 末段，[ApiNamePathInterceptor] 解析后
+ *  - APQ `/customer/core/apq/{apqName}`：apqName 在 path 末段，[ApqNamePathInterceptor] 解析后
  *    交 [TrustedDocumentProvider] 查 allowlist。前置层（CF/nginx）可按具体路径分流。
  *
- * 用单段通配（apq-path 后跟一个路径段）让 apiName 作为一个路径段透传；解析见 [ApiNamePathInterceptor]。
+ * 用单段通配（apq-path 后跟一个路径段）让 apqName 作为一个路径段透传；解析见 [ApqNamePathInterceptor]。
  */
 @Configuration
 class ApqRouterConfig {
@@ -35,7 +35,7 @@ class ApqRouterConfig {
     }
 
     companion object {
-        /** Spring 单段路径通配符（匹配一个路径段，即 apiName）。 */
+        /** Spring 单段路径通配符（匹配一个路径段，即 apqName）。 */
         private const val WILDCARD_SEGMENT = "*"
     }
 }

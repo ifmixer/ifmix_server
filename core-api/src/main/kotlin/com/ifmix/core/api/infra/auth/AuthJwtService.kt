@@ -20,6 +20,8 @@ import java.util.Date
  * - aud: projectId
  * - act: actorType（10=customer / 20=manager，Int）；用 act 不用 typ（避免与 JOSE header typ 混）
  * - ano: 是否匿名（Boolean，缺省 false）
+ * - sid: sessionId（= 签发本 token 的 refresh token id）；为将来迁移到 Redis session 预留。
+ *        refresh 轮换时沿用旧 token 的 sid → 一条会话链共享同一 sid。
  */
 class AuthJwtService(
     private val keys: AuthJwtKeys,
@@ -32,8 +34,14 @@ class AuthJwtService(
         const val ACTOR_CUSTOMER = ActorTypes.CUSTOMER
     }
 
-    /** access token：sub=actorId, act=actorType, ano=anonymous */
-    fun signAccess(actorId: String, actorType: ActorType, projectId: String, anonymous: Boolean = false): String {
+    /** access token：sub=actorId, act=actorType, ano=anonymous, sid=sessionId */
+    fun signAccess(
+        actorId: String,
+        actorType: ActorType,
+        projectId: String,
+        sessionId: String,
+        anonymous: Boolean = false,
+    ): String {
         val now = Date()
         val claims = JWTClaimsSet.Builder()
             .issuer(issuer)
@@ -44,6 +52,7 @@ class AuthJwtService(
             .expirationTime(Date(now.time + accessTtlSec * 1000))
             .claim("act", actorType)
             .claim("ano", anonymous)
+            .claim("sid", sessionId)
             .build()
         val header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(keys.kid).type(JOSEObjectType.JWT).build()
         val jwt = SignedJWT(header, claims)
@@ -75,6 +84,7 @@ class AuthJwtService(
             projectId = claims.audience?.firstOrNull(),
             actorType = claims.getIntegerClaim("act") ?: ACTOR_CUSTOMER,
             anonymous = runCatching { claims.getBooleanClaim("ano") }.getOrNull() ?: false,
+            sessionId = runCatching { claims.getStringClaim("sid") }.getOrNull(),
         )
     }
 
@@ -89,6 +99,8 @@ data class VerifiedToken(
     val projectId: String?,
     val actorType: ActorType,
     val anonymous: Boolean = false,
+    /** sessionId（sid claim）= 签发本 token 的 refresh token id；未来 Redis session 用。 */
+    val sessionId: String? = null,
 ) {
     val isCustomer get() = actorType == AuthJwtService.ACTOR_CUSTOMER
 }

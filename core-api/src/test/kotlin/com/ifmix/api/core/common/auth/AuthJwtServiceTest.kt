@@ -10,12 +10,14 @@ class AuthJwtServiceTest {
 
     private val customerId = UUID.fromString("00000000-0000-0000-0000-000000000001")
     private val projectId = "00000000-0000-0000-0000-000000000099"
+    private val sessionId = "00000000-0000-0000-0000-0000000000aa"
 
     @Test fun `sign then verify returns actorId actorType and anonymous`() {
         val token = svc.signAccess(
             actorId = customerId.toString(),
             actorType = AuthJwtService.ACTOR_CUSTOMER,
             projectId = projectId,
+            sessionId = sessionId,
             anonymous = true,
         )
         val result = svc.verify(token)
@@ -25,10 +27,11 @@ class AuthJwtServiceTest {
         assertThat(result.projectId).isEqualTo(projectId)
         assertThat(result.isCustomer).isTrue()
         assertThat(result.anonymous).isTrue()
+        assertThat(result.sessionId).isEqualTo(sessionId)
     }
 
     @Test fun `anonymous defaults to false when claim absent`() {
-        val token = svc.signAccess(customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId)
+        val token = svc.signAccess(customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId, sessionId)
         val result = svc.verify(token)
         assertThat(result).isNotNull
         assertThat(result!!.anonymous).isFalse()
@@ -40,7 +43,7 @@ class AuthJwtServiceTest {
 
     @Test fun `verify throws TokenExpiredException when expired`() {
         val shortSvc = AuthJwtService(AuthJwtKeys(null), "test-issuer", -1)
-        val token = shortSvc.signAccess(customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId)
+        val token = shortSvc.signAccess(customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId, sessionId)
         assertThrows<TokenExpiredException> { shortSvc.verify(token) }
     }
 
