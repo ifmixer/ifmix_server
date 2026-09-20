@@ -9,33 +9,33 @@ import org.springframework.web.servlet.function.RouterFunctions
 import org.springframework.web.servlet.function.ServerResponse
 
 /**
- * APQ（persisted query）HTTP 入口路由。
+ * GReq（persisted query）HTTP 入口路由。
  *
- * 把 APQ 请求（如 `/customer/core/apq/q_ai_findMyScanById`）映射到 Spring GraphQL 自动装配的
- * 同一个 [GraphQlHttpHandler]。因此 APQ 与 GQL（`spring.graphql.path`）共用同一套
+ * 把 GReq 请求（如 `/customer/core/greq/q_ai_findMyScanById`）映射到 Spring GraphQL 自动装配的
+ * 同一个 [GraphQlHttpHandler]。因此 GReq 与 GQL（`spring.graphql.path`）共用同一套
  * WebGraphQlInterceptor 链与执行引擎，仅入口路径不同：
  *  - GQL `/customer/core/gql`：raw query，供 GraphiQL / 本地探索（Spring Boot 默认注册）。
- *  - APQ `/customer/core/apq/{apqName}`：apqName 在 path 末段，[ApqNamePathInterceptor] 解析后
+ *  - GReq `/customer/core/greq/{reqName}`：reqName 在 path 末段，[ReqNamePathInterceptor] 解析后
  *    交 [TrustedDocumentProvider] 查 allowlist。前置层（CF/nginx）可按具体路径分流。
  *
- * 用单段通配（apq-path 后跟一个路径段）让 apqName 作为一个路径段透传；解析见 [ApqNamePathInterceptor]。
+ * 用单段通配（greq-path 后跟一个路径段）让 reqName 作为一个路径段透传；解析见 [ReqNamePathInterceptor]。
  */
 @Configuration
-class ApqRouterConfig {
+class GReqRouterConfig {
 
     @Bean
-    fun apqRouterFunction(
+    fun greqRouterFunction(
         graphQlHttpHandler: GraphQlHttpHandler,
-        @Value("\${graphql.trusted-documents.apq-path:/customer/core/apq}") apqPath: String,
+        @Value("\${graphql.trusted-documents.greq-path:/customer/core/greq}") greqPath: String,
     ): RouterFunction<ServerResponse> {
-        val pattern = apqPath.trimEnd('/') + "/" + WILDCARD_SEGMENT
+        val pattern = greqPath.trimEnd('/') + "/" + WILDCARD_SEGMENT
         return RouterFunctions.route()
             .POST(pattern, graphQlHttpHandler::handleRequest)
             .build()
     }
 
     companion object {
-        /** Spring 单段路径通配符（匹配一个路径段，即 apqName）。 */
+        /** Spring 单段路径通配符（匹配一个路径段，即 reqName）。 */
         private const val WILDCARD_SEGMENT = "*"
     }
 }
