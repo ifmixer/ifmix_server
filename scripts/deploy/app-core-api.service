@@ -1,0 +1,37 @@
+# /etc/systemd/system/app-core-api.service
+#
+# 增量部署版：跑 /opt/app/core-api-current（软链 → core-api-a|-b）里的瘦 jar。
+# 瘦 jar 的 manifest Class-Path 指向同目录 lib/，无需 fat jar。
+# 首次切换：见 scripts/deploy/README（或 DEPLOY.md「增量发布」）。
+#
+# 安装：
+#   sudo cp scripts/deploy/app-core-api.service /etc/systemd/system/app-core-api.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl restart app-core-api
+#
+# 注意 ExecStart 用了 shell 通配（core-api-*.jar），故用 /bin/sh -c 包一层。
+# 瘦 jar 文件名随版本号变化时无需改 unit。
+
+[Unit]
+Description=ifmix core-api (incremental deploy, thin jar + lib/)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=app
+Group=app
+EnvironmentFile=/opt/app/env
+WorkingDirectory=/opt/app/core-api-current
+ExecStart=/bin/sh -c '/usr/lib/jvm/temurin-25-jdk-arm64/bin/java \
+  --enable-native-access=ALL-UNNAMED \
+  -Xms256m -Xmx2g -XX:+UseG1GC \
+  -jar /opt/app/core-api-current/core-api-*.jar'
+Restart=on-failure
+RestartSec=3
+StandardOutput=append:/data/app/log/core-api/core-api.log
+StandardError=append:/data/app/log/core-api/core-api.log
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

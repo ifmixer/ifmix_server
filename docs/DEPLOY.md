@@ -175,7 +175,7 @@ certbot 会自动改上面的 server 块加 443/TLS 并配置 80→443 跳转，
 
 **思路**：服务器只装 JDK（已装 Temurin 25）。发布 = `scp` 一个 fat jar 上去 + 重启 systemd。fat jar 里的第三方依赖每次都在，但 `scp` 增量小、无镜像层，最贴合“网络慢、只更新业务代码”的诉求。
 
-> 实测 `core-api` fat jar 约 **142 MB**、`core-job` 约 **19 MB**（含全部依赖）。比 Docker 全量镜像小。若要进一步压缩传输，见文末「进阶：只传业务层」。
+> 实测 `core-api` fat jar 约 **142 MB**、`core-job` 约 **19 MB**（含全部依赖）。比 Docker 全量镜像小。日常若嫌整包大，见文末「进阶（已落地）：增量发布 — 只传变化的业务层」（142MB→~2.3MB）。
 
 ### 服务器端已就绪（本次已配置）
 
@@ -339,16 +339,48 @@ ssh app_us1 'cd /opt/app && docker compose pull && docker compose up -d'
 
 ---
 
-## 进阶：方案 1 也想“只传业务层”
+## 进阶（已落地）：增量发布 — 只传变化的业务层
 
-如果日常连 60 MB 都嫌大，可用 Spring Boot 分层 jar 在服务器上就地重组，只 `scp` 变化的 `application` 层：
+日常发布 fat jar 整包 142 MB，其中 **140 MB 是第三方依赖（232 个 jar，几乎不变）**，真正变的业务层只有 **~2.3 MB**。用 Spring Boot 4 的 `tools extract` 把依赖拆成独立文件，配合 `rsync --checksum` 增量同步，**日常发布传输量 142 MB → ~2.3 MB（省约 98%）**。
+
+### 机制：双目录蓝绿 + 软链原子切换
+
+```
+/opt/app/core-api-a/         # 版本 A：core-api-*.jar（瘦业务 jar）+ lib/（依赖）
+/opt/app/core-api-b/         # 版本 B
+/opt/app/core-api-current    # 软链 → a|b，systemd 跑这个
+```
+
+- `tools extract`（不带 `--layers`）产出：`lib/`（140MB 依赖，每个是独立 jar）+ 一个瘦 jar（~2.3MB，manifest `Class-Path` 指向 `lib/`）。运行就是 `java -jar core-api-*.jar`。
+- 发布：rsync 到 **idle** 目录（服务没在用的那个）→ 校验完整 → 原子切软链 → 重启 → 健康检查（失败自动回切）。
+- 依赖没升级时，`rsync --checksum` 按内容比对，140MB 依赖全部命中跳过，只传那个瘦 jar。
+- 回滚 = 软链切回另一个目录（上一版完整保留在 idle），秒级，无需重传。
+
+### 一次性切换（从整包 jar 方案迁移）
 
 ```bash
-# 服务器上首次：把 jar 拆层到 /opt/app/extracted
-ssh app_us1 'cd /opt/app && /usr/lib/jvm/temurin-25-jdk-arm64/bin/java -Djarmode=tools -jar core-api.jar extract --layers --destination extracted'
-# systemd ExecStart 改为运行拆层目录：java ... -jar /opt/app/extracted/application/... (或用 JarLauncher)
+# 1. 换 systemd unit（ExecStart 跑 current 软链下的瘦 jar）
+scp scripts/deploy/app-core-api.service app_us1:/tmp/
+ssh app_us1 'sudo cp /tmp/app-core-api.service /etc/systemd/system/app-core-api.service && sudo systemctl daemon-reload'
+
+# 2. 首次增量发布（脚本自举建 core-api-a + 软链，切换并重启）
+scripts/deploy/sync-core-api.sh
 ```
-依赖没变时，只 `rsync extracted/application/` 这一层（几 MB）。**但这增加了运维复杂度**，只在传输真的是瓶颈时才上。默认整包 `scp` 已经够用。
+
+### 日常发布 / 回滚
+
+```bash
+scripts/deploy/sync-core-api.sh            # 增量发布（构建→解压→rsync 增量→切软链→重启→健康检查）
+scripts/deploy/sync-core-api.sh --no-build # 用已有产物，跳过 gradle
+scripts/deploy/sync-core-api.sh --full     # 应急兜底：整包 scp 单 fat jar（老方式）
+
+scripts/deploy/rollback-core-api.sh          # 回滚到另一个目录（上一版）
+scripts/deploy/rollback-core-api.sh --status # 只看当前 active / 回滚目标
+```
+
+> SSH 目标默认 `app_us1`（本地 `~/.ssh/config` 别名），可用环境变量 `DEPLOY_SSH_HOST` 覆盖。
+> rsync 走两跳：本地 → `/tmp/core-api-sync`（`ubuntu` 属主中转）→ 服务器内 `sudo rsync` 就位到 `app` 属主的 idle 目录，避免 `sudo rsync` 直连的免密要求。
+> `--full` 跑单 fat jar，与增量的目录方式互斥，仅应急；日常用默认增量以维持双目录/软链状态。
 
 ---
 
