@@ -1,0 +1,16 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/RootController.kt
+  h_734c7d988c19fa 17
+core-api/src/main/kotlin/com/ifmix/core/api/modules/media/handler/StorageAggHandler.kt
+  h_734c7d988c19fa 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8743e806ac7a66e686209d402e096a32a99940e8",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
