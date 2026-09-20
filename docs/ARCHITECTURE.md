@@ -293,14 +293,14 @@ DB (via Jimmer KSqlClient)
 | `x-country` | ISO 3166-1 alpha-2, 大写 | 用户所在国家，如 `US`, `GB`, `JP`, `MY`, `SG`, `CN` |
 | `x-currency` | ISO 4217, 大写 | 用户货币偏好，如 `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD` |
 | `x-client-platform` | `ios` \| `android` | 客户端平台 |
-| `x-app-version` | 语义化 `major.minor.patch` | App 版本号，如 `1.2.3`（各段 1-4 位数字） |
-| `x-build-version` | 正整数 | 构建号，如 `23` |
-| `x-update-version` | 正整数 | 热更新版本号，如 `15` |
+| `x-app-version` | 字符串 | App 版本号，如 `1.2.3`；原样透传，不校验格式 |
+| `x-build-version` | 字符串 | 构建号，如 `23`；原样透传，不校验格式 |
+| `x-update-version` | 字符串 | 热更新版本号，如 `1.5`；原样透传，不校验格式 |
 | `x-js-version` | 字符串 | JS Bundle 版本号 |
 
 #### 格式软校验（严格 / 宽松）
 
-`x-locale` / `x-country` / `x-currency` / `x-app-version` / `x-build-version` / `x-update-version`
+`x-locale` / `x-country` / `x-currency`
 带了值但**格式非法**时的处理由 `app.header-validation.strict` 开关决定（`RequestParser`）：
 
 | 环境 | `strict` | 行为 |

@@ -175,26 +175,17 @@ class RequestParser(
             else onBadFormat(RequestHeaders.COUNTRY, raw, "invalid format")
         }
 
-    /** x-app-version：语义化版本 major.minor.patch（如 1.2.0）；非法走软校验。 */
+    /** x-app-version：客户端 App 版本号，原样透传（仅记录用途，不校验格式）。 */
     fun parseAppVersion(request: HttpServletRequest, required: Boolean = false): String? =
-        parseHeader(request, RequestHeaders.APP_VERSION, required) { raw ->
-            if (raw.matches(APP_VERSION_RE)) raw
-            else onBadFormat(RequestHeaders.APP_VERSION, raw, "invalid format")
-        }
+        parseHeader(request, RequestHeaders.APP_VERSION, required) { it }
 
-    /** x-build-version：正整数构建号；非法走软校验。 */
+    /** x-build-version：客户端构建号，原样透传（仅记录用途，不校验格式）。 */
     fun parseBuildVersion(request: HttpServletRequest, required: Boolean = false): String? =
-        parseHeader(request, RequestHeaders.BUILD_VERSION, required) { raw ->
-            if (raw.matches(BUILD_VERSION_RE)) raw
-            else onBadFormat(RequestHeaders.BUILD_VERSION, raw, "invalid format")
-        }
+        parseHeader(request, RequestHeaders.BUILD_VERSION, required) { it }
 
-    /** x-update-version：正整数 OTA 版本号；非法走软校验。 */
+    /** x-update-version：客户端热更新版本号，原样透传（仅记录用途，不校验格式）。 */
     fun parseUpdateVersion(request: HttpServletRequest, required: Boolean = false): String? =
-        parseHeader(request, RequestHeaders.UPDATE_VERSION, required) { raw ->
-            if (raw.matches(BUILD_VERSION_RE)) raw
-            else onBadFormat(RequestHeaders.UPDATE_VERSION, raw, "invalid format")
-        }
+        parseHeader(request, RequestHeaders.UPDATE_VERSION, required) { it }
 
     fun parseClientIp(request: HttpServletRequest): String = ClientIpResolver.resolve(request)
 
@@ -224,10 +215,6 @@ class RequestParser(
         private const val ATTR_ACTOR = "com.ifmix.parsed.actor"
         private val CURRENCY_RE = Regex("^[A-Z]{3}$")   // ISO 4217（大写后校验）
         private val COUNTRY_RE = Regex("^[A-Z]{2}$")    // ISO 3166-1 alpha-2（大写后校验）
-        /** app 版本：语义化 major.minor.patch，各段 1-4 位数字（如 1.0.0 / 12.34.5）。 */
-        private val APP_VERSION_RE = Regex("^\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}$")
-        /** build / update 版本：正整数（1-9 位，无前导 0）。 */
-        private val BUILD_VERSION_RE = Regex("^(0|[1-9]\\d{0,8})$")
         /** project slug 主键：小写字母开头，小写字母/数字/连字符，3-30 字符。创建后不可变。 */
         private val PROJECT_ID_RE = Regex("^[a-z][a-z0-9-]{2,29}$")
 

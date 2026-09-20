@@ -272,7 +272,7 @@ Query → reader, Mutation → writer（通过 GlobalTxRunner）。
 其他约定：
 
 - **静默降级点必须打 log**：吞掉外部故障 / 兜底返回 null 的分支（如 Redis `INCR` 返回 null 降级放行、webhook 载荷解析失败）记 `warn`，便于排查。
-- **header 格式软校验（线上宽松模式）**：`RequestParser` 在 `strict=false`（线上）时，遇到 `x-locale`/`x-country`/`x-currency`/各 `x-*-version` 格式非法，会 `warn` 一条 `bad header format ignored: {header}={raw} ({reason})` 并当作未提供；`strict=true`（测试/开发默认）时直接抛 `ApiError`。见 `docs/ARCHITECTURE.md`「格式软校验」。
+- **header 格式软校验（线上宽松模式）**：`RequestParser` 在 `strict=false`（线上）时，遇到 `x-locale`/`x-country`/`x-currency` 格式非法，会 `warn` 一条 `bad header format ignored: {header}={raw} ({reason})` 并当作未提供；`strict=true`（测试/开发默认）时直接抛 `ApiError`。version header（`x-app-version` 等）不参与格式校验，原样透传。见 `docs/ARCHITECTURE.md`「格式软校验」。
 - **不要给正常路径打 log**：合法默认值（`?: false`）、用户输入校验失败（无效 UUID/日期/token）属正常流程，打 log 只是噪音。
 - logger 声明：`private val log = LoggerFactory.getLogger(X::class.java)`；占位符 `log.warn("... {}", arg)`，只有 `error` 带异常对象打 stack。
 

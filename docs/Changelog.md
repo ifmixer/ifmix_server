@@ -9,10 +9,10 @@
 
 ### Changed
 - **header 格式软校验支持宽松模式**（`RequestParser`）：新增 `app.header-validation.strict` 开关（`APP_HEADER_VALIDATION_STRICT`，默认 `true`）。
-  - `strict=true`（测试/开发默认）：`x-locale`/`x-country`/`x-currency`/各 `x-*-version` 格式非法 → 抛 `ApiError(INVALID_REQUEST)`，整个请求报错。
+  - `strict=true`（测试/开发默认）：`x-locale`/`x-country`/`x-currency` 格式非法 → 抛 `ApiError(INVALID_REQUEST)`，整个请求报错。
   - `strict=false`（线上）：格式非法 → 打 `warn`（`bad header format ignored: ...`）并当作未提供（`null`），请求照常。
   - `required` 缺失、`x-project-id`、token 等硬校验不受开关影响，任何环境都抛。
-  - 新增 `parseAppVersion`（`major.minor.patch`，各段 1-4 位数字）/ `parseBuildVersion` / `parseUpdateVersion`（正整数）——此前这些 version header **只记日志、无校验**；并入 `ActionContext`（`appVersion`/`buildVersion`/`updateVersion`）。
+  - 新增 `parseAppVersion` / `parseBuildVersion` / `parseUpdateVersion`（原样透传，不校验格式——客户端 version 形态多样，如 `x-update-version=1.5`）——此前这些 version header 只记日志；现并入 `ActionContext`（`appVersion`/`buildVersion`/`updateVersion`）。
   - `parseLocale` 细分 `Malformed`（无 language subtag → 走软校验）与 `Unsupported`（合法 BCP 47 但不支持，如 `ko`/`ru` → 任何环境返回 `null` 不抛），内部用 `normalizeLocaleResult`；旧 `normalizeLocale` 保留为薄封装。
 
 ### Renamed
