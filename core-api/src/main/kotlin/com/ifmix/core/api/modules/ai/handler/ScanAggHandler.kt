@@ -30,7 +30,7 @@ class ScanAggHandler(
     private val scanPrompt: com.ifmix.core.api.modules.ai.service.ScanPrompt,
 ) {
     /** 外部 AI 调用（无事务）— 解析 images、运行 AI、返回结果 DTO */
-    fun runAiScan(opCtx: ActionContext, input: NewScanInput): AiScanResult {
+    fun runAiScan(actionCtx: ActionContext, input: NewScanInput): AiScanResult {
         val scanId = UuidV7.generate()
         val now = Instant.now()
 
@@ -44,22 +44,22 @@ class ScanAggHandler(
         val scanInput = ScanInput(
             scanId=scanId,
             items = resolved,
-            locale = opCtx.locale,
-            country = opCtx.country,
-            currency = opCtx.currency,
+            locale = actionCtx.locale,
+            country = actionCtx.country,
+            currency = actionCtx.currency,
         )
-        val aiResponse = scanRunner.run(opCtx, scanInput)
+        val aiResponse = scanRunner.run(actionCtx, scanInput)
 
         @Suppress("UNCHECKED_CAST")
         val basicResult = aiResponse["basic_result"] as? Map<String, Any?> ?: aiResponse
 
         return AiScanResult(
             scanId = scanId,
-            projectId = opCtx.mustGetProjectId(),
-            locale = opCtx.locale,
-            country = opCtx.country,
-            currency = opCtx.currency,
-            clientIp = opCtx.clientIp,
+            projectId = actionCtx.mustGetProjectId(),
+            locale = actionCtx.locale,
+            country = actionCtx.country,
+            currency = actionCtx.currency,
+            clientIp = actionCtx.clientIp,
             images = input.images,
             basicResult = basicResult,
             collected = input.collected ?: false,
@@ -78,8 +78,8 @@ class ScanAggHandler(
             this.basicResult = result.basicResult
             this.status = com.ifmix.core.api.entity.ai.ScanStatuses.READY
             this.clientIp = result.clientIp
-            this.customerId = sc.op.actorId
-            this.installId = sc.op.installId
+            this.customerId = sc.action.actorId
+            this.installId = sc.action.installId
             this.locale = result.locale
             this.country = result.country
             this.currency = result.currency
@@ -97,7 +97,7 @@ class ScanAggHandler(
     }
 
     fun updateScan(sc: ModuleCtx, input: UpdateScanInput): Boolean {
-        val projectId = sc.op.mustGetProjectId()
+        val projectId = sc.action.mustGetProjectId()
         if (!scanRepo.exists(sc, projectId, input.id)) throw com.ifmix.core.api.infra.http.ApiError(
             com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND
         )
@@ -110,8 +110,8 @@ class ScanAggHandler(
      * ids 为空视为非法请求。
      */
     fun batchUpdateScan(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): Int {
-        val projectId = sc.op.mustGetProjectId()
-        val customerId = sc.op.mustGetActorId()
+        val projectId = sc.action.mustGetProjectId()
+        val customerId = sc.action.mustGetActorId()
         if (input.ids.isEmpty()) throw com.ifmix.core.api.infra.http.ApiError(
             com.ifmix.core.api.infra.http.ErrorCode.INVALID_REQUEST, "ids cannot be empty"
         )
@@ -123,24 +123,24 @@ class ScanAggHandler(
     }
 
     fun deleteScan(sc: ModuleCtx, id: UUID): Boolean {
-        val projectId = sc.op.mustGetProjectId()
+        val projectId = sc.action.mustGetProjectId()
         scanRepo.deleteById(sc, projectId, id)
         return true
     }
 
     fun findById(sc: ModuleCtx, id: UUID): ScanRecord? =
-        scanRepo.findById(sc, sc.op.mustGetProjectId(), id)
+        scanRepo.findById(sc, sc.action.mustGetProjectId(), id)
 
     /** 批量按 scanRecordId 查询 DeepResearch（DataLoader 用）。 */
     fun findDeepResearchByScanRecordIds(sc: ModuleCtx, scanRecordIds: Collection<UUID>): List<com.ifmix.core.api.entity.ai.ScanDeepResearch> =
-        deepResearchRepo.findByScanRecordIds(sc, sc.op.mustGetProjectId(), scanRecordIds)
+        deepResearchRepo.findByScanRecordIds(sc, sc.action.mustGetProjectId(), scanRecordIds)
 
     /**
      * DeepResearch 第一步（事务内）：校验归属并整体替换 images。
      * 即使随后的 AI 调用失败，图片也已提交。images 顺序即数组顺序；category 为图片分类。
      */
     fun updateDeepResearchImages(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.RunDeepResearchInput) {
-        val projectId = sc.op.mustGetProjectId()
+        val projectId = sc.action.mustGetProjectId()
         val imageRefs = input.images.map { ImageRef(key = it.imageKey, category = it.category ?: ImageCategories.MAIN) }
         val updated = scanRepo.updateImages(sc, projectId, input.scanRecordId, imageRefs)
         if (updated == 0) throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
@@ -151,7 +151,7 @@ class ScanAggHandler(
      * 图片已在 updateDeepResearchImages 提交，这里只读取归属信息并调用 AI。
      */
     fun runDeepResearch(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.RunDeepResearchInput): com.ifmix.core.api.dto.ai.DeepResearchResult {
-        val projectId = sc.op.mustGetProjectId()
+        val projectId = sc.action.mustGetProjectId()
         val existing = scanRepo.findById(sc, projectId, input.scanRecordId)
             ?: throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
 
@@ -170,7 +170,7 @@ class ScanAggHandler(
             currency = existing.currency,
             type = com.ifmix.core.api.dto.ai.ScanType.DEEP_RESEARCH,
         )
-        val aiResponse = scanRunner.run(sc.op, scanInput)
+        val aiResponse = scanRunner.run(sc.action, scanInput)
 
         @Suppress("UNCHECKED_CAST")
         val basicResult = aiResponse["basic_result"] as? Map<String, Any?> ?: aiResponse
@@ -219,8 +219,8 @@ class ScanAggHandler(
         objectStorage.getPublicUrl("ugc", objectKey)
 
     fun findMyScans(sc: ModuleCtx, findOptions: CommonFindOptions?): Page<ScanRecord> {
-        val projectId = sc.op.mustGetProjectId()
-        val customerId = sc.op.mustGetActorId()
+        val projectId = sc.action.mustGetProjectId()
+        val customerId = sc.action.mustGetActorId()
         return scanRepo.findMyScans(sc, projectId, customerId, findOptions)
     }
 

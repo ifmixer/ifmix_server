@@ -18,19 +18,19 @@ import java.util.UUID
 class SupportRequestAggHandler(
     private val repo: SupportRequestRepository,
 ) {
-    /** 创建工单：status 固定 OPEN，各时间戳 null；身份/installId/locale 由 opCtx 落库。 */
+    /** 创建工单：status 固定 OPEN，各时间戳 null；身份/installId/locale 由 action 落库。 */
     fun create(mc: ModuleCtx, req: CreateSupportRequestReq): UUID {
-        val op = mc.op
+        val action = mc.action
         val id = UuidV7.generate()
         val now = Instant.now()
         val entity = SupportRequest {
             this.id = id
-            this.projectId = op.mustGetProjectId()
-            this.installId = op.installId
-            this.customerId = op.actorId
-            this.locale = op.locale
-            this.country = op.country
-            this.currency = op.currency
+            this.projectId = action.mustGetProjectId()
+            this.installId = action.installId
+            this.customerId = action.actorId
+            this.locale = action.locale
+            this.country = action.country
+            this.currency = action.currency
             this.title = req.title
             this.message = req.message
             this.email = req.email
@@ -52,16 +52,16 @@ class SupportRequestAggHandler(
 
     /** 我的工单详情（owner-scoped，需登录）。 */
     fun findMineById(mc: ModuleCtx, id: UUID): SupportRequest {
-        val projectId = mc.op.mustGetProjectId()
-        val customerId = mc.op.mustGetActorId()
+        val projectId = mc.action.mustGetProjectId()
+        val customerId = mc.action.mustGetActorId()
         return repo.findByIdOwned(mc, projectId, customerId, id)
             ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
     /** 我的工单列表（owner-scoped，需登录）。 */
     fun findMine(mc: ModuleCtx, req: ListSupportRequestsReq?): Page<SupportRequest> {
-        val projectId = mc.op.mustGetProjectId()
-        val customerId = mc.op.mustGetActorId()
+        val projectId = mc.action.mustGetProjectId()
+        val customerId = mc.action.mustGetActorId()
         val limit = (req?.limit ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
         val cursor = req?.cursor?.let { runCatching { UUID.fromString(it) }.getOrNull() }
         return repo.findMineByCursor(mc, projectId, customerId, limit, cursor)

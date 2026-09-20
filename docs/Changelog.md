@@ -12,8 +12,15 @@
   - `strict=true`（测试/开发默认）：`x-locale`/`x-country`/`x-currency`/各 `x-*-version` 格式非法 → 抛 `ApiError(INVALID_REQUEST)`，整个请求报错。
   - `strict=false`（线上）：格式非法 → 打 `warn`（`bad header format ignored: ...`）并当作未提供（`null`），请求照常。
   - `required` 缺失、`x-project-id`、token 等硬校验不受开关影响，任何环境都抛。
-  - 新增 `parseAppVersion`（`major.minor.patch`，各段 1-4 位数字）/ `parseBuildVersion` / `parseUpdateVersion`（正整数）——此前这些 version header **只记日志、无校验**；并入 `OperationContext`（`appVersion`/`buildVersion`/`updateVersion`）。
+  - 新增 `parseAppVersion`（`major.minor.patch`，各段 1-4 位数字）/ `parseBuildVersion` / `parseUpdateVersion`（正整数）——此前这些 version header **只记日志、无校验**；并入 `ActionContext`（`appVersion`/`buildVersion`/`updateVersion`）。
   - `parseLocale` 细分 `Malformed`（无 language subtag → 走软校验）与 `Unsupported`（合法 BCP 47 但不支持，如 `ko`/`ru` → 任何环境返回 `null` 不抛），内部用 `normalizeLocaleResult`；旧 `normalizeLocale` 保留为薄封装。
+
+### Renamed
+- **`Operation` → `Action`**（消除误解：原 `Operation` 指 GraphQL operation 里的**单个 top-level field 的一次执行**，与 GraphQL 规范的 operation 文档冲突）：
+  - 类/文件：`OperationContext` → `ActionContext`、`OperationContextProvider` → `ActionContextProvider`、`OperationContextHolder` → `ActionContextHolder`。
+  - 字段/变量：`ModuleCtx.op` → `action`、`ActionContext.opName` → `actionName`、`opCtx` 形参/局部 → `actionCtx`。
+  - GraphQL 规范术语 `q_/m_` 命名仍称 operation 命名（正确用法，未动）。
+- **GraphQL 类型 `OperationResult` → `ActionResult`**：schema（`common.graphqls` 定义 + `auth`/`demo` 引用）改名，与已改好的手写类 `dto.common.ActionResult` 及 codegen `typeMapping` 对齐（Kotlin 侧上一步已改，本步补齐 schema）。
 
 ## 2026-09-17
 

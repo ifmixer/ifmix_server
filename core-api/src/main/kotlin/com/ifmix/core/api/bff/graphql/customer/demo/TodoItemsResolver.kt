@@ -49,8 +49,8 @@ class TodoItemsDataLoader(
 ) : MappedBatchLoader<UUID, List<TodoItem>> {
 
     override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, List<TodoItem>>> {
-        val opCtx = ActionContextHolder.current()
-        val allItems = demoFacade.findItemsByTodoIds(opCtx, ids)
+        val actionCtx = ActionContextHolder.current()
+        val allItems = demoFacade.findItemsByTodoIds(actionCtx, ids)
         val grouped = allItems.groupBy { it.todoId }
         val result = ids.associateWith { grouped[it] ?: emptyList() }
         return CompletableFuture.completedFuture(result)
@@ -67,8 +67,8 @@ class TodoItemCountsDataLoader(
 ) : MappedBatchLoader<UUID, TodoItemCounts> {
 
     override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, TodoItemCounts>> {
-        val opCtx = ActionContextHolder.current()
-        val countsMap = demoFacade.countItemsByTodoIds(opCtx, ids)
+        val actionCtx = ActionContextHolder.current()
+        val countsMap = demoFacade.countItemsByTodoIds(actionCtx, ids)
         val result = ids.associateWith { countsMap[it] ?: ZERO }
         return CompletableFuture.completedFuture(result)
     }

@@ -73,7 +73,7 @@ ProjectToIdpRelation (project 级)               — Project 启用了哪些 IDP
 | ③ Merge | `cur` 匿名且 `existing != cur` | 合并 `cur → existing`，吊销 cur 的 refresh token |
 | ④ Conflict | `cur` 非匿名且 `existing != cur` | 报错（该账号已在其他设备使用） |
 
-> `cur` = 当前 token 主体（匿名 customer 或 null）；`curAnonymous` = `mc.op.anonymous`。
+> `cur` = 当前 token 主体（匿名 customer 或 null）；`curAnonymous` = `mc.action.anonymous`。
 
 ## idpType 编码
 
@@ -89,7 +89,7 @@ ProjectToIdpRelation (project 级)               — Project 启用了哪些 IDP
 ## AuthInterceptor
 
 - **非阻塞设计**：无效 token 不拦截，只是不填充 `customerId`
-- 需要强认证的接口由 Handler 层判断 `mc.op.customerId ?: throw ApiError(UNAUTHORIZED)`
+- 需要强认证的接口由 Handler 层判断 `mc.action.customerId ?: throw ApiError(UNAUTHORIZED)`
 - OPTIONS 请求自动跳过（CORS preflight）
 - token claim：`sub=actorId, act=actorType(Int), aud=projectId, ano=anonymous`（见 `AuthJwtService`）
 
@@ -110,8 +110,8 @@ input IdpLoginInput {
 extend type Mutation {
     m_auth_login(input: IdpLoginInput!): LoginResult!
     m_auth_refreshToken(input: RefreshInput!): RefreshResult!
-    m_auth_logout(input: LogoutInput!): OperationResult!
-    m_auth_deleteAccount: OperationResult!
+    m_auth_logout(input: LogoutInput!): ActionResult!
+    m_auth_deleteAccount: ActionResult!
 }
 
 extend type Query {

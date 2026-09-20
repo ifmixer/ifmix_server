@@ -127,7 +127,7 @@ class AuthAggHandler(
     }
 
     fun me(mc: ModuleCtx): MeRes {
-        val userId = mc.op.actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+        val userId = mc.action.actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         val projectId = mc.projectId!!
         val appUser = customerRepo.findById(mc, projectId, userId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "user not found")
@@ -149,7 +149,7 @@ class AuthAggHandler(
         val providerKey = providerKeyForType(idp.idpType)
         val verifier = verifiers[providerKey]
             ?: throw ApiError(ErrorCode.AUTH_PROVIDER_FAILED, "unsupported provider type: ${idp.idpType}")
-        val verified = verifier.verifyWithIdpConfig(idp, mc.op.clientPlatform, req.credential)
+        val verified = verifier.verifyWithIdpConfig(idp, mc.action.clientPlatform, req.credential)
 
         // 3. 找/建 IdpIdentity（全局）
         val idpIdentity = idpIdentityRepo.findByIdpAndSubject(mc, req.idpId, verified.accountId)
@@ -158,8 +158,8 @@ class AuthAggHandler(
         // 4. 走关系表 + auth_identity 判定该 idpIdentity 在此 app 下对应哪个 customer（existing）。
         //    idpIdentity(全局) → relation(app级) → auth_identity → customer.authIdentityId。
         //    cur = 当前 token 主体（可能为匿名 customer，也可能为 null——旧调用无匿名 token）。
-        val cur: UUID? = mc.op.actorId
-        val curAnonymous: Boolean = mc.op.anonymous
+        val cur: UUID? = mc.action.actorId
+        val curAnonymous: Boolean = mc.action.anonymous
         val relation = relationRepo.findByAppAndIdpIdentity(mc, projectId, idpIdentity.id)
         val existing: UUID? = relation?.let { customerRepo.findByAuthIdentity(mc, projectId, it.authIdentityId) }
 
@@ -190,7 +190,7 @@ class AuthAggHandler(
         }
 
         // 5. 更新 idpIdentity 登录信息
-        updateIdpIdentityLogin(mc, idpIdentity.id, verified, mc.op.clientIp)
+        updateIdpIdentityLogin(mc, idpIdentity.id, verified, mc.action.clientIp)
 
         // 6. 为 ownerId（existing / 转正后的 cur）签发 refresh token + access token
         val now = Instant.now()
@@ -222,9 +222,9 @@ class AuthAggHandler(
             projectId = projectId,
             authIdentityId = idpIdentity.id.toString(),
             customerId = ownerId,
-            clientIp = mc.op.clientIp,
-            clientPlatform = mc.op.clientPlatform?.name,
-            ctx = mc.op,
+            clientIp = mc.action.clientIp,
+            clientPlatform = mc.action.clientPlatform?.name,
+            ctx = mc.action,
         ))
 
         return LoginRes(
@@ -324,7 +324,7 @@ class AuthAggHandler(
     }
 
     fun requestAccountDeletion(mc: ModuleCtx): DeleteAccountRes {
-        mc.op.actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+        mc.action.actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
         val scheduledAt = Instant.now().plusSeconds(30L * 24 * 3600).toEpochMilli()
         return DeleteAccountRes(accepted = true, scheduledAt = scheduledAt)
     }
@@ -353,7 +353,7 @@ class AuthAggHandler(
             this.phoneNationalNumber = null
             this.phoneVerified = false
             this.profile = verified.userMetadata
-            this.loginIp = mc.op.clientIp
+            this.loginIp = mc.action.clientIp
             this.createdAt = now
             this.updatedAt = now
         }

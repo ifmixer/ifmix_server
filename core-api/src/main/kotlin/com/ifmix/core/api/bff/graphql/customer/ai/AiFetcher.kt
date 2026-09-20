@@ -189,9 +189,9 @@ class ScanRecordsDataLoader(
     private val mcFactory: ModuleCtxFactory,
 ) : MappedBatchLoader<UUID, ScanRecord?> {
     override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanRecord?>> {
-        val opCtx = ActionContextHolder.current()
-        val mc = mcFactory.forProject(opCtx)
-        val projectId = opCtx.mustGetProjectId()
+        val actionCtx = ActionContextHolder.current()
+        val mc = mcFactory.forProject(actionCtx)
+        val projectId = actionCtx.mustGetProjectId()
         val records = scanRecordRepo.findByIdsListView(mc, projectId, ids)
         val map = records.associateBy { it.id }
         return CompletableFuture.completedFuture(ids.associateWith { map[it] })
@@ -208,8 +208,8 @@ class DeepResearchDataLoader(
     private val aiService: AiFacade,
 ) : MappedBatchLoader<UUID, com.ifmix.core.api.entity.ai.ScanDeepResearch?> {
     override fun load(scanRecordIds: Set<UUID>): CompletionStage<Map<UUID, com.ifmix.core.api.entity.ai.ScanDeepResearch?>> {
-        val opCtx = ActionContextHolder.current()
-        val rows = aiService.findDeepResearchByScanRecordIds(opCtx, scanRecordIds)
+        val actionCtx = ActionContextHolder.current()
+        val rows = aiService.findDeepResearchByScanRecordIds(actionCtx, scanRecordIds)
         val map = rows.associateBy { it.scanRecordId }
         return CompletableFuture.completedFuture(scanRecordIds.associateWith { map[it] })
     }

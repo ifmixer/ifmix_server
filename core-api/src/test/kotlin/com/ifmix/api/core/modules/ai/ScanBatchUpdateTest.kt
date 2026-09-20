@@ -33,7 +33,7 @@ class ScanBatchUpdateTest {
     private val customerId = UUID.randomUUID()
 
     private fun ctx(sql: KSqlClient) = ModuleCtx(
-        op = ActionContext(projectId = projectId, actorId = customerId),
+        action = ActionContext(projectId = projectId, actorId = customerId),
         sql = sql,
     )
 

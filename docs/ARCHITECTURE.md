@@ -70,7 +70,7 @@
 ### 分层约束
 
 ```
-DataFetcher  →  只注入 Facade + GlobalTxRunner + OperationContextProvider
+DataFetcher  →  只注入 Facade + GlobalTxRunner + ActionContextProvider
 Facade       →  只注入 AggHandler + ModuleCtxFactory + 其他模块 Facade（跨模块）
 Handler      →  只注入 Repo + CacheAside + 同模块 infra service
 Repo         →  持有 CrudRepoTemplate（companion object）
@@ -163,18 +163,18 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │       ├── DemoFacade.kt
 │       ├── handler/TodoAggHandler.kt
 │       └── repo/
-├── dto/                         # 共享 DTO (Page, OperationResult, CursorQueryInput)
+├── dto/                         # 共享 DTO (Page, ActionResult, CursorQueryInput)
 ├── infra/
 │   ├── db/                     # ModuleCtx, ModuleCtxFactory, ClusterRouter, ClusterSqlPair, UuidV7
 │   ├── tx/                     # TxRunner, GlobalTxRunner, TxPropagation
 │   ├── jimmer/                 # ClusterRegistry, ClusterProperties, JimmerConfig
 │   │                           # ReadWriteRoutingDataSource, ProjectScopedFilter, TimestampDraftInterceptor
-│   │                           # OperationContextHolder
+│   │                           # ActionContextHolder
 │   ├── repo/                   # CrudRepoTemplate, ProjectCrudRepoTemplate, FilterGroupResolver
 │   ├── codec/                  # Base58 (UUID ↔ 22-char URL-safe)
-│   ├── graphql/                # OperationContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
+│   ├── graphql/                # ActionContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
 │   │                           # trusted/ (GReq persisted query: ReqNamePathInterceptor, GReqRouterConfig, TrustedDocumentProvider)
-│   ├── http/                   # OperationContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
+│   ├── http/                   # ActionContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
 │   ├── auth/                   # AuthInterceptor, AuthJwtService, AuthJwtKeys, Hashing
 │   ├── redis/                  # CacheAside, RedisConfig
 │   ├── ratelimit/              # RateLimiter, TierResolver, RateLimitConfig
@@ -196,7 +196,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
   - 均需 `x-project-id` header
 - **GraphiQL**: `/apidocs/core/customer/gql`
 - **HTTP 状态码**: 有 error 时按 `errors[0].extensions.code` 前 3 位设 HTTP status（`GraphQlHttpStatusFilter`）；无 errors → 200。详见 [Trusted Documents](GRAPHQL_TRUSTED_DOCUMENTS.md#http-状态码映射)
-- **Operation 命名**: `${q|m}_${module}_${action}`（如 `q_demo_findTodos`, `m_auth_login`）；同时作为 GReq 的 reqName（path 末段）
+- **Action 命名**: `${q|m}_${module}_${action}`（如 `q_demo_findTodos`, `m_auth_login`）；同时作为 GReq 的 reqName（path 末段）
 - **DateTime**: ISO-8601 UTC 字符串（输入接受 ISO 或 epoch millis）
 - **input 全链路透传**: Fetcher→Facade→Handler 直传 input 对象
 - **Update 语义**: set/unset 防 null vs undefined 歧义

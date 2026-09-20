@@ -25,7 +25,7 @@ class PaymentWebhookHandler(
     }
 
     fun handleNotification(mc: ModuleCtx, rawPayload: String, decoder: NotificationDecoder, platform: String) {
-        val ctx = mc.op
+        val ctx = mc.action
         val projectId = ctx.projectId ?: return
 
         val decodedPlatform = if (platform == "APPLE") com.ifmix.core.api.entity.common.Platforms.APPLE else com.ifmix.core.api.entity.common.Platforms.GOOGLE

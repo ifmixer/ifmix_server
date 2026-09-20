@@ -21,7 +21,7 @@ open class ScanCollectionAggHandler(
     private val itemRepo: ScanCollectionItemRepository,
 ) {
     fun createDefaultCollection(sc: ModuleCtx): ScanCollection {
-        val ctx = sc.op
+        val ctx = sc.action
         val now = Instant.now()
         val id = UuidV7.generate()
         val model = ScanCollection {
@@ -51,13 +51,13 @@ open class ScanCollectionAggHandler(
     }
 
     fun getDefault(sc: ModuleCtx): ScanCollection? {
-        val ctx = sc.op
+        val ctx = sc.action
         val projectId = ctx.projectId!!
         return collectionRepo.findDefault(sc, projectId, ctx.actorId)
     }
 
     fun findItemsByCursor(sc: ModuleCtx, collectionId: UUID, limit: Int?): Page<ScanCollectionItem> {
-        val projectId = sc.op.projectId!!
+        val projectId = sc.action.projectId!!
         val effectiveLimit = limit ?: 20
         return itemRepo.findItemsByCursor(sc, projectId, collectionId, effectiveLimit, null)
     }

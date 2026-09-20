@@ -5,7 +5,7 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import java.util.UUID
 
 /**
- * 操作上下文 — per-operation。
+ * 操作上下文 — per-action。
  *
  * 两种构造来源：
  *  - GraphQL 请求：由 [com.ifmix.core.api.infra.graphql.ActionContextProvider.fromDfe] 从
@@ -36,7 +36,7 @@ data class ActionContext(
     val buildVersion: String? = null,
     val updateVersion: String? = null,
     // ===== 操作元信息 =====
-    val opName: String? = null,
+    val actionName: String? = null,
     val isMutation: Boolean = false,
     /** true = 优先走 reader；mutation 时默认为 false，query 时默认为 true */
     val preferReader: Boolean = !isMutation,

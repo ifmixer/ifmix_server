@@ -149,6 +149,6 @@ extend type Mutation {
     m_demo_createTodo(input: CreateTodoInput!): CreateTodoResult!
     m_demo_updateTodo(input: UpdateTodoInput!): UpdateTodoResult!
     m_demo_batchUpdateTodoItems(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsResult!
-    m_demo_deleteTodo(id: UUID!): OperationResult!
-    m_demo_deleteTodoByIds(ids: [UUID!]!): OperationResult!
+    m_demo_deleteTodo(id: UUID!): ActionResult!
+    m_demo_deleteTodoByIds(ids: [UUID!]!): ActionResult!
 }

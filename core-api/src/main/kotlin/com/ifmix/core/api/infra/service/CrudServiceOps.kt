@@ -55,7 +55,7 @@ class CrudServiceOps<T : Any, ID : Comparable<ID>>(
         loader: (ModuleCtx, String, ID) -> T?,
     ): T? {
         val projectId = mc.mustGetProjectId()
-        if (cache == null || !mc.op.readCache) return loader(mc, projectId, id)
+        if (cache == null || !mc.action.readCache) return loader(mc, projectId, id)
         return cache.getOrLoadNullable(cacheKey(projectId, id), type) {
             loader(mc, projectId, id)
         }
@@ -68,7 +68,7 @@ class CrudServiceOps<T : Any, ID : Comparable<ID>>(
     ): List<T> {
         if (ids.isEmpty()) return emptyList()
         val projectId = mc.mustGetProjectId()
-        if (cache == null || !mc.op.readCache) return loader(mc, projectId, ids)
+        if (cache == null || !mc.action.readCache) return loader(mc, projectId, ids)
         return cache.loadMany(
             ids = ids.map { it.toString() },
             keyOf = { cacheKey(projectId, parseId(it)) },

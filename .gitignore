@@ -84,3 +84,4 @@ build/
 META-INF/
 org/
 .worktrees/
+logs/

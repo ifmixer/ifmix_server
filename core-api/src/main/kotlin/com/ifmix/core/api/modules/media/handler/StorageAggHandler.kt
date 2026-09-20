@@ -21,9 +21,9 @@ class StorageAggHandler(
     private val objectStorage: ObjectStorage,
 ) {
     fun presignUpload(mc: ModuleCtx, input: PresignUploadInput): PresignUploadResult {
-        val projectId = mc.op.mustGetProjectId()
-        val actorId = mc.op.mustGetActorId()
-        val actorType = mc.op.actorType ?: throw IllegalStateException("actorType missing on authenticated request")
+        val projectId = mc.action.mustGetProjectId()
+        val actorId = mc.action.mustGetActorId()
+        val actorType = mc.action.actorType ?: throw IllegalStateException("actorType missing on authenticated request")
         val mediaId = UuidV7.generate()
 
         val prefix = sanitizePrefix(input.prefix)
@@ -45,7 +45,7 @@ class StorageAggHandler(
             this.actorType = actorType
             this.objectKey = objectKey
             this.contentType = mimeType
-            this.clientIp = mc.op.clientIp
+            this.clientIp = mc.action.clientIp
             this.createdAt = Instant.now()
         }
         uploadRecordRepo.save(mc, entity)

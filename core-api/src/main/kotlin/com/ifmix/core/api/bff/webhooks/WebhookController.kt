@@ -85,7 +85,7 @@ class WebhookController(
                 return ResponseEntity.badRequest().body("unknown app")
             }
 
-            // 5. 构建 OperationContext 并处理通知
+            // 5. 构建 ActionContext 并处理通知
             val ctx = ActionContext(projectId = projectId, actorId = SYSTEM_USER_ID)
             iapService.handleAppleNotification(ctx, rawPayload, appleDecoder)
             return ResponseEntity.ok("ok")

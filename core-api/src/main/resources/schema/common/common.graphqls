@@ -7,7 +7,7 @@ type PageInfo {
     hasMore: Boolean!
 }
 
-type OperationResult {
+type ActionResult {
     success: Boolean!
     modifiedCount: Int
 }

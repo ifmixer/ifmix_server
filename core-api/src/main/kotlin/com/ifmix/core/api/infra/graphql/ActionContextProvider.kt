@@ -17,7 +17,7 @@ import org.springframework.web.context.request.ServletRequestAttributes
 class ActionContextProvider(private val parser: RequestParser) {
 
     /**
-     * 从 DGS DataFetchingEnvironment 解析请求并构造 OperationContext。
+     * 从 DGS DataFetchingEnvironment 解析请求并构造 ActionContext。
      * 解析 + 校验合一：按 require* 即时校验，失败抛 ApiError（→ GraphQLExceptionHandler → 统一 GraphQL 错误格式）。
      * 无中间 error 状态：token 过期/无效在此处直接抛。
      */
@@ -62,7 +62,7 @@ class ActionContextProvider(private val parser: RequestParser) {
             appVersion = parser.parseAppVersion(servletRequest),
             buildVersion = parser.parseBuildVersion(servletRequest),
             updateVersion = parser.parseUpdateVersion(servletRequest),
-            opName = dfe.field?.name,
+            actionName = dfe.field?.name,
             isMutation = isMutation,
             preferReader = !isMutation,
         )

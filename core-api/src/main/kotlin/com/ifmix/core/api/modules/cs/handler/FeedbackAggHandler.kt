@@ -17,9 +17,9 @@ class FeedbackAggHandler(
         val id = UuidV7.generate()
         val feedback = Feedback {
             this.id = id
-            this.projectId = mc.op.projectId!!
-            this.customerId = mc.op.actorId
-            this.installId = mc.op.installId
+            this.projectId = mc.action.projectId!!
+            this.customerId = mc.action.actorId
+            this.installId = mc.action.installId
             this.topic = req.topic
             this.reasons = req.reasons.toTypedArray()
             this.email = req.email

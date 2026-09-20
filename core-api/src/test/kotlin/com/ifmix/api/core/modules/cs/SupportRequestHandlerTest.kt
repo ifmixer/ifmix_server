@@ -36,7 +36,7 @@ class SupportRequestHandlerTest {
     }
 
     private fun ctx(actorId: UUID?, installId: String?) = ModuleCtx(
-        op = ActionContext(
+        action = ActionContext(
             projectId = projectId,
             actorId = actorId,
             installId = installId,

@@ -39,7 +39,7 @@ class PaymentAggHandler(
      * 此方法仅处理 DB 写入逻辑（由调用方在 tx.withTx 内调用）。
      */
     fun verifyAndUpsert(mc: ModuleCtx, req: VerifyReq, verifyResult: VerifyResult): VerifyRes {
-        val projectId = mc.op.projectId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
+        val projectId = mc.action.projectId ?: throw ApiError(ErrorCode.INVALID_REQUEST)
 
         val productTierMap = projectConfigFacade.findActiveByAppId(mc, projectId)
             ?.content?.iap?.productTierMap
@@ -54,7 +54,7 @@ class PaymentAggHandler(
         if (existingSub != null) {
             // restore purchases：命中已存在订阅，若归属与当前主体不一致则刷新 customerId
             // （合并/换设备后同一订阅需归到当前登录的 customer）。方向以当前主体为准。
-            val curCustomerId = mc.op.actorId
+            val curCustomerId = mc.action.actorId
             if (curCustomerId != null && existingSub.customerId != curCustomerId) {
                 subscriptionRepo.updateOwner(mc, projectId, existingSub.id, curCustomerId)
             }
@@ -84,7 +84,7 @@ class PaymentAggHandler(
         val subscription = Subscription {
             this.id = UuidV7.generate()
             this.projectId = projectId
-            this.customerId = mc.op.actorId
+            this.customerId = mc.action.actorId
             this.subscriptionPxid = subscriptionPxid
             this.originalTransactionId = verifyResult.originalTransactionId
             this.productId = req.productId

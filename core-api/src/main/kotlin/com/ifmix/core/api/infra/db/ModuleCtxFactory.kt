@@ -8,32 +8,32 @@ import java.util.UUID
 /**
  * ModuleCtx 工厂 — 按场景提供构建方式，替代各 Facade 里散落的 private fun mc()。
  *
- * 核心逻辑：如果 opCtx.globalTxSql 已存在（DataFetcher 开了全局事务），优先用它；
+ * 核心逻辑：如果 actionCtx.globalTxSql 已存在（DataFetcher 开了全局事务），优先用它；
  * 否则根据 preferReader 选择 writer 或 reader。
  */
 @Component
 class ModuleCtxFactory(private val router: ClusterRouter) {
 
     /** 按 projectId 路由（大多数模块用这个） */
-    fun forProject(opCtx: ActionContext): ModuleCtx = ModuleCtx(
-        op = opCtx,
-        sql = chooseSql(opCtx, router.forProject(opCtx.mustGetProjectId())),
-        inTransaction = opCtx.inGlobalTx,
+    fun forProject(actionCtx: ActionContext): ModuleCtx = ModuleCtx(
+        action = actionCtx,
+        sql = chooseSql(actionCtx, router.forProject(actionCtx.mustGetProjectId())),
+        inTransaction = actionCtx.inGlobalTx,
     )
 
     /** 按 auth tenant 路由 */
-    fun forTenant(opCtx: ActionContext, tenantId: UUID): ModuleCtx = ModuleCtx(
-        op = opCtx,
-        sql = chooseSql(opCtx, router.forTenant(tenantId)),
-        inTransaction = opCtx.inGlobalTx,
+    fun forTenant(actionCtx: ActionContext, tenantId: UUID): ModuleCtx = ModuleCtx(
+        action = actionCtx,
+        sql = chooseSql(actionCtx, router.forTenant(tenantId)),
+        inTransaction = actionCtx.inGlobalTx,
     )
 
     /** 默认（不需要路由参数，直接用 router.forProject） */
-    fun default(opCtx: ActionContext): ModuleCtx = forProject(opCtx)
+    fun default(actionCtx: ActionContext): ModuleCtx = forProject(actionCtx)
 
-    private fun chooseSql(opCtx: ActionContext, pair: ClusterSqlPair): KSqlClient = when {
-        opCtx.globalTxSql != null -> opCtx.globalTxSql!!  // 全局事务内，复用事务连接
-        opCtx.preferReader -> pair.reader
+    private fun chooseSql(actionCtx: ActionContext, pair: ClusterSqlPair): KSqlClient = when {
+        actionCtx.globalTxSql != null -> actionCtx.globalTxSql!!  // 全局事务内，复用事务连接
+        actionCtx.preferReader -> pair.reader
         else -> pair.writer
     }
 }

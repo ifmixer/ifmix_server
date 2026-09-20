@@ -40,7 +40,7 @@ class ScanCollectedTest {
         scanPrompt = ScanPrompt("v10"),
     )
 
-    private fun opCtx() = ActionContext(projectId = "test-app", actorId = UUID.randomUUID())
+    private fun actionCtx() = ActionContext(projectId = "test-app", actorId = UUID.randomUUID())
 
     private fun input(collected: Boolean?) = NewScanInput(
         images = listOf(NewScanImageInput(imageKey = "k.jpg", category = 0, mediaType = "image/jpeg")),
@@ -49,16 +49,16 @@ class ScanCollectedTest {
 
     @Test
     fun `collected true passes through`() {
-        assertThat(handler.runAiScan(opCtx(), input(true)).collected).isTrue()
+        assertThat(handler.runAiScan(actionCtx(), input(true)).collected).isTrue()
     }
 
     @Test
     fun `collected false passes through`() {
-        assertThat(handler.runAiScan(opCtx(), input(false)).collected).isFalse()
+        assertThat(handler.runAiScan(actionCtx(), input(false)).collected).isFalse()
     }
 
     @Test
     fun `collected omitted defaults to false`() {
-        assertThat(handler.runAiScan(opCtx(), input(null)).collected).isFalse()
+        assertThat(handler.runAiScan(actionCtx(), input(null)).collected).isFalse()
     }
 }

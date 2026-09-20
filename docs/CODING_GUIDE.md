@@ -5,10 +5,12 @@
 ```
 RequestContext      HTTP 请求级    构造于: AuthInterceptor / Header 解析
     ↓
-OperationContext    Operation 级   构造于: DataFetcher (ctxProvider.fromDfe)
+ActionContext       Action 级      构造于: DataFetcher (ctxProvider.fromDfe)
     ↓
 ModuleCtx           模块调用级     构造于: Facade (ModuleCtxFactory.forProject)
 ```
+
+> Action = GraphQL operation 里的**单个 top-level field 的一次解析/执行**（不是整个 GraphQL operation 文档）。一个请求含多个 top-level field 时，每个 field 各一个 ActionContext。
 
 ### RequestContext
 
@@ -25,12 +27,12 @@ data class RequestContext(
 )
 ```
 
-### OperationContext
+### ActionContext
 
 ```kotlin
-data class OperationContext(
+data class ActionContext(
     val req: RequestContext,
-    val opName: String? = null,
+    val actionName: String? = null,
     val isMutation: Boolean = false,
     val preferReader: Boolean = !isMutation,
     val globalTxSql: KSqlClient? = null,
@@ -42,15 +44,15 @@ data class OperationContext(
 
 ```kotlin
 data class ModuleCtx(
-    val op: OperationContext,
+    val action: ActionContext,
     val sql: KSqlClient,
     val clusterId: String = "default",
     val inTransaction: Boolean = false,
 ) {
-    val projectId get() = op.projectId
-    val customerId get() = op.customerId
-    val actorType get() = op.actorType
-    val anonymous get() = op.anonymous
+    val projectId get() = action.projectId
+    val customerId get() = action.customerId
+    val actorType get() = action.actorType
+    val anonymous get() = action.anonymous
 }
 ```
 
@@ -61,11 +63,11 @@ data class ModuleCtx(
 ```kotlin
 @Component
 class ModuleCtxFactory(private val router: ClusterRouter) {
-    fun forProject(opCtx: OperationContext): ModuleCtx { ... }
+    fun forProject(actionCtx: ActionContext): ModuleCtx { ... }
 
-    private fun chooseSql(opCtx, pair): KSqlClient = when {
-        opCtx.globalTxSql != null -> opCtx.globalTxSql  // 全局事务内，复用
-        opCtx.preferReader -> pair.reader
+    private fun chooseSql(actionCtx, pair): KSqlClient = when {
+        actionCtx.globalTxSql != null -> actionCtx.globalTxSql  // 全局事务内，复用
+        actionCtx.preferReader -> pair.reader
         else -> pair.writer
     }
 }
@@ -84,7 +86,7 @@ fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodo
 }
 ```
 
-**机制：** `withTx` 设置 `opCtx.globalTxSql = writer`，后续 `ModuleCtxFactory.chooseSql` 复用事务连接。
+**机制：** `withTx` 设置 `actionCtx.globalTxSql = writer`，后续 `ModuleCtxFactory.chooseSql` 复用事务连接。
 
 ### TxRunner（模块级，预留）
 
@@ -113,7 +115,7 @@ globalTx.withTx(ctx) { txCtx -> facade.save(txCtx, entity) }
 class DemoFetcher(
     private val demoService: DemoFacade,
     private val globalTx: GlobalTxRunner,
-    private val ctxProvider: OperationContextProvider,
+    private val ctxProvider: ActionContextProvider,
 ) {
     @DgsQuery(field = "q_demo_findTodoById")
     fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo {
@@ -138,10 +140,10 @@ class DemoFacade(
     private val mcFactory: ModuleCtxFactory,
     private val handler: TodoAggHandler,
 ) {
-    fun findById(ctx: OperationContext, id: UUID): Todo? =
+    fun findById(ctx: ActionContext, id: UUID): Todo? =
         handler.findById(mcFactory.forProject(ctx), ctx.mustGetProjectId(), id)
 
-    fun create(ctx: OperationContext, input: CreateTodoInput): Todo =
+    fun create(ctx: ActionContext, input: CreateTodoInput): Todo =
         handler.create(mcFactory.forProject(ctx), input)
 }
 ```
@@ -193,8 +195,8 @@ class TodoItemsDataLoader(
     private val demoFacade: DemoFacade,  // 通过 Facade，不直接注入 repo
 ) : MappedBatchLoader<UUID, List<TodoItem>> {
     override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, List<TodoItem>>> {
-        val opCtx = OperationContextHolder.current()
-        val items = demoFacade.findItemsByTodoIds(opCtx, ids)
+        val actionCtx = ActionContextHolder.current()
+        val items = demoFacade.findItemsByTodoIds(actionCtx, ids)
         return CompletableFuture.completedFuture(items.groupBy { it.todoId })
     }
 }

@@ -10,7 +10,7 @@ import org.springframework.transaction.support.TransactionTemplate
 /**
  * 全局事务管理器 — DataFetcher 层使用，用于跨模块编排的事务。
  *
- * 开启全局事务后，ModuleCtxFactory 构建 ModuleCtx 时检测到 opCtx.globalTxSql != null，
+ * 开启全局事务后，ModuleCtxFactory 构建 ModuleCtx 时检测到 actionCtx.globalTxSql != null，
  * 复用事务连接的 writer，不嵌套开启新的模块事务（TxRunner 检测 inTransaction=true → 跳过）。
  *
  * ponytail: 当前单库，globalTxSql 和模块 sql 相同。
@@ -24,11 +24,11 @@ class GlobalTxRunner(
 
     /**
      * 按 projectId 路由到集群 writer，开启全局事务。
-     * ModuleCtxFactory 检测到 opCtx.globalTxSql != null → 复用事务 writer。
+     * ModuleCtxFactory 检测到 actionCtx.globalTxSql != null → 复用事务 writer。
      */
-    fun <R> withTx(opCtx: ActionContext, body: (ActionContext) -> R): R {
-        val pair = router.forProject(opCtx.mustGetProjectId())
-        val txCtx = opCtx.copy(globalTxSql = pair.writer, inGlobalTx = true)
+    fun <R> withTx(actionCtx: ActionContext, body: (ActionContext) -> R): R {
+        val pair = router.forProject(actionCtx.mustGetProjectId())
+        val txCtx = actionCtx.copy(globalTxSql = pair.writer, inGlobalTx = true)
         val template = TransactionTemplate(txManager).apply {
             propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRED
         }
@@ -36,9 +36,9 @@ class GlobalTxRunner(
     }
 
     /** 按 authTenant 路由 */
-    fun <R> withTxForTenant(opCtx: ActionContext, tenantId: java.util.UUID, body: (ActionContext) -> R): R {
+    fun <R> withTxForTenant(actionCtx: ActionContext, tenantId: java.util.UUID, body: (ActionContext) -> R): R {
         val pair = router.forTenant(tenantId)
-        val txCtx = opCtx.copy(globalTxSql = pair.writer, inGlobalTx = true)
+        val txCtx = actionCtx.copy(globalTxSql = pair.writer, inGlobalTx = true)
         val template = TransactionTemplate(txManager).apply {
             propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRED
         }

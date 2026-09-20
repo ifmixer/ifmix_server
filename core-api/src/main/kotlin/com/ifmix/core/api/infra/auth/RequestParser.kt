@@ -22,7 +22,7 @@ data class Actor(
 )
 
 /**
- * 逐字段解析请求信息，结果缓存到 request attribute（同请求多 operation 复用）。
+ * 逐字段解析请求信息，结果缓存到 request attribute（同请求多 action 复用）。
  *
  * 校验与抛错**全部在本类内**（parseXxx 自校验自抛，风格统一）；fromDfe 只负责按 require 调用 + 组装。
  * 规则：`if (hasValue || required)` 才校验；带了值就必须合法（否则抛），required 且缺失也抛。
