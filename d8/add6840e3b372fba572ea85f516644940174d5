@@ -1,0 +1,30 @@
+core-api/src/main/resources/application.yml
+  h_734c7d988c19fa 78,85
+  h_734c7d988c19fa 1-3,6,16-18,29,35,38,41,46-51,53-66,68,70-71,77,81
+core-api/src/main/resources/application-prod.yml
+  h_734c7d988c19fa 1-42
+  h_734c7d988c19fa 43-63
+AGENTS.md
+  h_734c7d988c19fa 78
+core-api/build.gradle.kts
+  h_734c7d988c19fa 181-190
+core-api/src/main/kotlin/com/ifmix/core/api/infra/jimmer/FlywayRepair.kt
+  h_734c7d988c19fa 1-32
+core-api/src/main/resources/application-local.yml
+  h_734c7d988c19fa 20-33,39-41
+docs/Changelog.md
+  h_734c7d988c19fa 9-10,13
+docs/DATABASE.md
+  h_734c7d988c19fa 190,194-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d8add6840e3b372fba572ea85f516644940174d5",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
