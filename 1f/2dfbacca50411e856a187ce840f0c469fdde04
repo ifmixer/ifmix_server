@@ -1,0 +1,22 @@
+core-api/src/test/kotlin/com/ifmix/api/core/common/http/GraphQlHttpStatusFilterChainTest.kt
+  h_734c7d988c19fa 1-74
+docs/DEPLOY.md
+  h_734c7d988c19fa 178,342,344-359,362-367,369-383
+scripts/deploy/app-core-api.service
+  h_734c7d988c19fa 1-37
+scripts/deploy/rollback-core-api.sh
+  h_734c7d988c19fa 1-58
+scripts/deploy/sync-core-api.sh
+  h_734c7d988c19fa 1-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f2dfbacca50411e856a187ce840f0c469fdde04",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
