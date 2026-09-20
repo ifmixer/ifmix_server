@@ -17,11 +17,28 @@ spring:
 graphql:
   trusted-documents:
     allow-raw-query: false
+
+# 本地打开 GraphiQL 探索页（base 默认关闭）。
+dgs:
+  graphql:
+    graphiql:
+      enabled: true
+
+# 本地打开 Swagger/OpenAPI（base 默认关闭）。
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 server:
   port: 3001
 
 app:
   expose-errors: true
+  # 本地 header 格式严格：非法即整个请求报错，尽早暴露客户端 bug（base 默认 false）。
+  header-validation:
+    strict: true
   # show-sql: true
   auth:
     jwt-private-key: '{"kty":"OKP","crv":"Ed25519","kid":"dev-ephemeral","use":"sig","d":"SyR2r1MAt8RrOuvKdIEY1uF-ukq5Ph04yCQKr8GIK10","x":"yPmYi9PmtYaEQpLlvLZRmOL_bCwmYGpzgd4P6iTFIdY"}'

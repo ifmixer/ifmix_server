@@ -1,23 +1,21 @@
+# 基础配置：尽量少放，默认值一律取「生产安全」值。
+# 本地开发靠 application-local.yml 覆盖回宽松值（graphiql/swagger 打开、日志 DEBUG、header 严格等）。
+# 生产密钥/连接串走环境变量注入（见 application-prod.yml 与部署文档 /opt/app/env）。
 spring:
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE}
   threads:
     virtual:
       enabled: true
-  data:
-    redis:
-      url: ${REDIS_URL:redis://localhost:6379}
   graphql:
     path: /customer/core/gql
     schema:
       locations: classpath:schema/common/,classpath:schema/customer/
 
 # GraphQL Trusted Documents (persisted query allowlist)
-# GReq 入口 /customer/core/greq/{reqName}：path 带 reqName 的请求一律走 allowlist（命中执行、未命中拒绝）。
-# GQL 入口 /customer/core/gql：raw query，供 GraphiQL/本地探索。
-# allow-raw-query：无 reqName（走 GQL 入口）时是否允许 body raw query 兜底。
-#   默认 false（uat/prod）：禁止 raw query，强制走 persisted query。
-#   local profile 覆盖为 true 以允许 raw query 探索（见 application-local.yml）。
+# GReq 入口 /customer/core/greq/{reqName}：path 带 reqName 的请求一律走 allowlist。
+# GQL 入口 /customer/core/gql：raw query。
+# allow-raw-query 默认 false（生产强制走 persisted query）；local 覆盖为 true 供 GraphiQL/探索。
 graphql:
   trusted-documents:
     greq-path: /customer/core/greq
@@ -28,70 +26,66 @@ dgs:
   graphql:
     path: /customer/core/gql
     graphiql:
-      enabled: true
+      enabled: false            # 生产默认关闭；local 覆盖为 true
       path: /apidocs/core/customer/gql
-  ai:
-    openai:
-      api-key: ${SPRING_AI_OPENAI_API_KEY:sk-placeholder}
-      chat:
-        options:
-          model: ${SPRING_AI_OPENAI_MODEL:gpt-4o}
-      base-url: ${SPRING_AI_OPENAI_BASE_URL:https://api.openai.com}
 
 server:
   port: ${PORT:3001}
 
+# Swagger/OpenAPI 默认关闭；local 覆盖为 enabled 供本地探索。
 springdoc:
   api-docs:
+    enabled: false
     path: /core/api-docs/json
   swagger-ui:
+    enabled: false
     path: /core/api-docs/swagger-ui/index.html
     persist-authorization: true
   use-fqn: true
 
-app:
-  datasource:
-    writer:
-      jdbc-url: ${PG_WRITER_URL:jdbc:postgresql://localhost:5432/ifmix_core_local}
-      username: ${PG_USERNAME:postgres}
-      password: ${PG_PASSWORD:postgres}
-    reader:
-      jdbc-url: ${PG_READER_URL:jdbc:postgresql://localhost:5432/ifmix_core_local}
-      username: ${PG_USERNAME:postgres}
-      password: ${PG_PASSWORD:postgres}
+# 日志默认生产级（INFO / SQL 关）；local 覆盖为 DEBUG。
+logging:
+  level:
+    root: INFO
+    org.babyfish.jimmer.sql: WARN
+    com.ifmix.core.api: INFO
 
-  expose-errors: ${APP_EXPOSE_ERRORS:true}
-  # header 格式软校验（locale/country/currency/各种 version）严格程度：
-  #   true（默认，测试/开发环境）：格式非法 → 整个请求报错，尽早暴露客户端 bug。
-  #   false（线上）：格式非法 → 打 WARN log 并当作缺失，不影响请求。
-  # 线上部署设置环境变量 APP_HEADER_VALIDATION_STRICT=false。
+# actuator 默认只暴露 health、不显详情；local 覆盖放开 env/beans/mappings。
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+app:
+  # 生产默认：不外泄内部错误详情；local 覆盖为 true。
+  expose-errors: ${APP_EXPOSE_ERRORS:false}
+  # header 格式软校验：生产默认 false（非法→WARN 当缺失，不影响请求）；local 覆盖为 true 尽早暴露客户端 bug。
   header-validation:
-    strict: ${APP_HEADER_VALIDATION_STRICT:true}
+    strict: ${APP_HEADER_VALIDATION_STRICT:false}
   storage:
-    type: ${STORAGE_TYPE:none}
+    # 连接/密钥（endpoint/access-key/secret-key）由各环境自行配置（local 写死、prod 环境变量）。
+    type: ${STORAGE_TYPE:s3}
     region: ${STORAGE_REGION:us-east-1}
-    endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
-    access-key: ${STORAGE_ACCESS_KEY:minioadmin}
-    secret-key: ${STORAGE_SECRET_KEY:minioadmin}
     buckets: {}
   agnes:
-    # API key 轮换配置：预扣配额（每次扫描尝试预扣 1 次，成功消耗、失败/429 归还）
     ai:
       preDeductPerAttempt: 1
-      # 模型回退顺序：主模型 → fallback 列表（按逗号分隔的优先级）
-      modelFallbackOrder: "llama-4.0-mini,miro-4"
+      # 模型回退顺序：主模型 → fallback 列表（逗号分隔）
+      modelFallbackOrder: ""
       # 提示词版本：加载 prompts/${name}_${promptVersion}.md，并随扫描结果落库
       promptVersion: ${SCAN_PROMPT_VERSION:v10}
-    # AI 扫描模块专用限流：按 key 维度独立限制（防止单个 key 耗尽）
+    # AI 扫描按 key 维度限流（防单 key 耗尽）
     scanKeyRateLimit:
       enabled: true
       perKeyWindowSec: 3600
-      perKeyMaxAttempts: 50
+      perKeyMaxAttempts: 5
 
   auth:
-    # JWT 签发者标识
     issuer: ${AUTH_ISSUER:ifmix}
-    # Google / Apple JWKS endpoint
     google:
       jwks-uri: ${AUTH_GOOGLE_JWKS_URI:https://accounts.google.com/.well-known/openid-configuration}
     apple:

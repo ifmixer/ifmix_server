@@ -1,0 +1,63 @@
+# 生产 profile。基础 application.yml 只放共享/带默认的配置，且默认值已是「生产安全」
+# （GraphiQL/Swagger 关、expose-errors=false、header 宽松、日志 INFO、actuator 只 health）。
+# 「必须填」的密钥/连接串不放 base，由本文件用环境变量注入（local 则在 application-local.yml 写死）。
+#
+# 启动：SPRING_PROFILES_ACTIVE=prod java -jar core-api.jar
+# 环境变量来源：systemd EnvironmentFile=/opt/app/env（见 docs/DEPLOY.md）。
+#
+# 必须在 /opt/app/env 提供（缺失即启动失败，刻意为之）：
+#   PG_WRITER_URL / PG_READER_URL / PG_USERNAME / PG_PASSWORD
+#   REDIS_URL
+#   AUTH_JWT_PRIVATE_KEY          （Ed25519 JWK JSON，稳定私钥，勿用 dev-ephemeral）
+#   STORAGE_ENDPOINT / STORAGE_ACCESS_KEY / STORAGE_SECRET_KEY
+#   SPRING_AI_OPENAI_API_KEY / SPRING_AI_OPENAI_BASE_URL / SPRING_AI_OPENAI_MODEL
+
+server:
+  port: ${PORT:3001}
+
+spring:
+  data:
+    redis:
+      url: ${REDIS_URL}
+  ai:
+    openai:
+      api-key: ${SPRING_AI_OPENAI_API_KEY}
+      base-url: ${SPRING_AI_OPENAI_BASE_URL}
+      chat:
+        options:
+          model: ${SPRING_AI_OPENAI_MODEL}
+
+app:
+  auth:
+    # 生产签发私钥（Ed25519 JWK JSON）——必须环境变量注入，绝不写死进 repo。
+    jwt-private-key: ${AUTH_JWT_PRIVATE_KEY}
+    # access token 有效期（秒），默认 15 分钟，靠 refresh 续期。
+    access-ttl-sec: ${AUTH_ACCESS_TTL_SEC:900}
+
+  storage:
+    type: ${STORAGE_TYPE:s3}
+    region: ${STORAGE_REGION:auto}
+    endpoint: ${STORAGE_ENDPOINT}
+    access-key: ${STORAGE_ACCESS_KEY}
+    secret-key: ${STORAGE_SECRET_KEY}
+    # buckets 是嵌套 map，用索引式环境变量覆盖（APP_STORAGE_BUCKETS_UGC_BUCKETNAME 等），
+    # 或在此写生产桶名/域名。留占位，务必换成生产值。
+    buckets:
+      ugc:
+        bucket-name: ${STORAGE_UGC_BUCKET:ugc}
+        public-url: ${STORAGE_UGC_PUBLIC_URL:https://u1.ifmix.com}
+      static:
+        bucket-name: ${STORAGE_STATIC_BUCKET:static}
+        public-url: ${STORAGE_STATIC_PUBLIC_URL:https://s1.ifmix.com}
+
+  datasource:
+    writer:
+      jdbc-url: ${PG_WRITER_URL}
+      username: ${PG_USERNAME}
+      password: ${PG_PASSWORD}
+      maximum-pool-size: ${PG_WRITER_POOL_SIZE:20}
+    reader:
+      jdbc-url: ${PG_READER_URL}
+      username: ${PG_USERNAME}
+      password: ${PG_PASSWORD}
+      maximum-pool-size: ${PG_READER_POOL_SIZE:20}

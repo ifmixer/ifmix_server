@@ -178,3 +178,13 @@ tasks.register<JavaExec>("flywayMigrate") {
     mainClass.set("com.ifmix.core.api.infra.jimmer.FlywayMigrate")
     classpath = sourceSets["main"].runtimeClasspath
 }
+
+// Flyway repair — 重算历史表 checksum 使之与脚本一致（不改表结构）。
+// 用法: ./gradlew :core-api:flywayRepair
+// 覆盖连接: DB_URL=... DB_USER=... DB_PASSWORD=... ./gradlew :core-api:flywayRepair
+tasks.register<JavaExec>("flywayRepair") {
+    group = "database"
+    description = "Repair Flyway schema history checksums against DB_URL (default: local core_api_local)."
+    mainClass.set("com.ifmix.core.api.infra.jimmer.FlywayRepair")
+    classpath = sourceSets["main"].runtimeClasspath
+}

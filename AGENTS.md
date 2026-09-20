@@ -75,6 +75,7 @@
 ./gradlew :core-job:compileKotlin    # 编译 core-job（Spring Batch）
 ./gradlew :core-api:test              # 测试
 ./gradlew :core-api:flywayMigrate     # 手动执行 DB 迁移（不再随启动 migrate）
+./gradlew :core-api:flywayRepair      # 修正 flyway 历史 checksum（不改表结构）
 ./gradlew :core-api:bootRun           # 运行主服务 (需 PG + Redis)
 ./gradlew :core-job:bootRun           # 运行批处理任务 (需 PG)
 ```

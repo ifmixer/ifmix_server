@@ -187,7 +187,10 @@ input CommonFindOptions {
 - 迁移文件: `core-api/src/main/resources/db/migration/`
 - **手动执行**（不再随应用启动自动 migrate）：`./gradlew :core-api:flywayMigrate`
   - 连接由 `DB_URL`/`DB_USER`/`DB_PASSWORD` 决定（默认本地 `core_api_local`）
+- **修 checksum**：`./gradlew :core-api:flywayRepair`（重算历史表 checksum 使之与脚本一致，不改表结构）
 - 版本一览:
   - V1 baseline（压缩后的基线，含全部建表 + 种子数据）
   - V2 所有业务表加 `core_` 前缀（`ALTER TABLE ... RENAME TO core_*`，21 张；不改列/约束/索引名，不动 `flyway_schema_history`）
-    - 已在本机 `core_api_local` 执行并验证通过（21 张表全部改名、数据随 RENAME 保留）；**线上待执行** `flywayMigrate`
+    - 本机 `core_api_local` 与线上 `app_us1/core_api` **均已应用**（21 张表全部改名、数据随 RENAME 保留、物理 FK 自动跟随）。
+    - 线上是直接执行 V2 SQL + 手插 V2 历史记录（未走 `flywayMigrate`，避免触发早期 V1 checksum 差异校验）。
+    - 两库 flyway 历史现已完全一致：V1=`-1432007747`、V2=`-1291542121`（本地 V1 原 checksum 为空，已用 `flywayRepair` 对齐；无需改线上）。

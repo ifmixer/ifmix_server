@@ -6,8 +6,11 @@
 
 ### Added
 - **文件日志按级别分文件**（`core-api/src/main/resources/logback-spring.xml`，Spring Boot 自动识别）：`info.log`（DEBUG/INFO）/ `warn.log`（仅 WARN）/ `error.log`（仅 ERROR），按天+50MB 滚动、gzip 归档、留 30 天、3GB 上限、`AsyncAppender` 异步写。控制台仅 `local` profile 输出；目录由 `LOG_PATH` 控制（默认 `./logs`，线上设 `/data/app/log/core-api`）。`logging.level.*` 仍生效。
+- **增量部署脚本**（`scripts/deploy/`）：`sync-core-api.sh`（Boot4 `tools extract` 拆 `lib/` + 瘦 jar，`rsync --checksum` 增量同步到双目录 a/b + 软链原子切换 + 健康检查失败自动回切）、`rollback-core-api.sh`（软链切回上一版）、`app-core-api.service`（跑 `core-api-current` 软链下的瘦 jar）。日常发布传输量 142MB→~2.3MB。见 `docs/DEPLOY.md`「进阶（已落地）：增量发布」。
+- **`flywayRepair` gradle 任务**（`FlywayRepair`）：重算 `flyway_schema_history` checksum 使之与脚本一致（不改表结构），用于修历史 checksum 漂移。
 
 ### Changed
+- **DB 全业务表加 `core_` 前缀（V2 迁移）**：21 张业务表 `ALTER TABLE ... RENAME TO core_*`（`core_{module}_{entity}`，不改列/约束/索引名，不动 `flyway_schema_history`）。本机 `core_api_local` 与线上 `app_us1/core_api` 均已应用；物理 FK 自动跟随。两库 flyway 历史对齐（V1=`-1432007747`、V2=`-1291542121`；本地 V1 原 checksum 空，用 `flywayRepair` 修正）。
 - **header 格式软校验支持宽松模式**（`RequestParser`）：新增 `app.header-validation.strict` 开关（`APP_HEADER_VALIDATION_STRICT`，默认 `true`）。
   - `strict=true`（测试/开发默认）：`x-locale`/`x-country`/`x-currency` 格式非法 → 抛 `ApiError(INVALID_REQUEST)`，整个请求报错。
   - `strict=false`（线上）：格式非法 → 打 `warn`（`bad header format ignored: ...`）并当作未提供（`null`），请求照常。
