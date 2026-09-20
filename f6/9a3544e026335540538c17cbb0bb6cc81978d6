@@ -1,0 +1,30 @@
+scripts/schema-versions/20260905_121940/schema/customer/media.graphqls
+  h_734c7d988c19fa 2
+scripts/schema-versions/20260905_121940/all_schema.graphql
+  h_734c7d988c19fa 542
+core-api/src/test/kotlin/com/ifmix/api/core/e2e/SecurityE2eTest.kt
+  h_734c7d988c19fa 91
+core-api/src/main/resources/schema/customer/media.graphqls
+  h_734c7d988c19fa 2
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/RequestParser.kt
+  h_734c7d988c19fa 178,180,182,184,186,188
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/RequestParserTest.kt
+  h_734c7d988c19fa 93-101
+docs/ARCHITECTURE.md
+  h_734c7d988c19fa 296-298,303
+docs/CODING_GUIDE.md
+  h_734c7d988c19fa 275
+docs/Changelog.md
+  h_734c7d988c19fa 12,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f69a3544e026335540538c17cbb0bb6cc81978d6",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
