@@ -18,11 +18,11 @@ set -euo pipefail
 
 # ── 配置 ──
 SSH_HOST="${DEPLOY_SSH_HOST:-app_us1}"
-REMOTE_BASE="/opt/app"
+REMOTE_BASE="/data/app/core-api"
 APP="core-api"
-CURRENT_LINK="$REMOTE_BASE/$APP-current"          # 软链：指向 -a 或 -b
-DIR_A="$REMOTE_BASE/$APP-a"
-DIR_B="$REMOTE_BASE/$APP-b"
+CURRENT_LINK="$REMOTE_BASE/current"               # 软链：指向 a 或 b
+DIR_A="$REMOTE_BASE/a"
+DIR_B="$REMOTE_BASE/b"
 SERVICE="app-core-api"
 HEALTH_URL="http://localhost:3001/actuator/health"
 STAGING="/tmp/$APP-sync"                           # ubuntu 可写的中转区（rsync 落点）
@@ -73,7 +73,7 @@ fi
 # 产物：$LOCAL_EXTRACT/lib/*.jar（140MB，依赖，rsync 按文件跳过）
 #       $LOCAL_EXTRACT/core-api-*.jar（~2.4MB 瘦 jar，manifest Class-Path 指向 lib/，每次变）
 # 运行：java -jar core-api-*.jar（瘦 jar 自动加载 lib/）。
-log "本地解压 → $LOCAL_EXTRACT（lib/ 依赖 + 瘦业务 jar）"
+log "本地解压 → ${LOCAL_EXTRACT}（lib/ 依赖 + 瘦业务 jar）"
 rm -rf "$LOCAL_EXTRACT"
 mkdir -p "$LOCAL_EXTRACT"
 ( cd "$LOCAL_EXTRACT" && java -Djarmode=tools -jar "$JAR" extract --destination . >/dev/null )
@@ -102,11 +102,12 @@ log "active=${ACTIVE_DIR:-<none>}  →  写入 idle=$IDLE_DIR"
 # --delete：idle 目录里上一版残留（如已删除的旧依赖）被清掉，保持与本地一致。
 log "rsync 增量同步（--checksum，仅传变化文件）"
 ssh "$SSH_HOST" "mkdir -p $STAGING"
-rsync -az --checksum --delete --info=stats1,progress2 \
+# 注意：不用 --info=...（macOS 自带 openrsync 不支持，会导致命令失败）。用 -v 提供基本反馈。
+rsync -avz --checksum --delete \
   -e "ssh" \
   "$LOCAL_EXTRACT/" "$SSH_HOST:$STAGING/"
 
-log "服务器内就位到 $IDLE_DIR（属主 $APP_USER）"
+log "服务器内就位到 ${IDLE_DIR}（属主 ${APP_USER}）"
 ssh "$SSH_HOST" "
   set -e
   sudo mkdir -p $IDLE_DIR
@@ -118,7 +119,7 @@ ssh "$SSH_HOST" "
 "
 
 # ── 5. 原子切软链 + 重启 ──
-log "原子切换软链 $CURRENT_LINK → $IDLE_DIR，并重启"
+log "原子切换软链 ${CURRENT_LINK} → ${IDLE_DIR}，并重启"
 ssh "$SSH_HOST" "
   set -e
   # ln -sfn 是原子替换软链；先建临时软链再 mv 确保原子
@@ -136,7 +137,7 @@ for i in $(seq 1 20); do
 done
 
 if [ "$OK" -eq 1 ]; then
-  log "✓ 发布成功，active=$IDLE_DIR，健康 UP"
+  log "✓ 发布成功，active=${IDLE_DIR}，健康 UP"
 else
   printf '\033[1;31m✗ 健康检查失败\033[0m\n' >&2
   if [ -n "$ACTIVE_DIR" ]; then
@@ -146,7 +147,7 @@ else
       sudo mv -Tf ${CURRENT_LINK}.new $CURRENT_LINK
       sudo systemctl restart $SERVICE
     "
-    die "已回切到 $ACTIVE_DIR，请查 journalctl -u $SERVICE"
+    die "已回切到 ${ACTIVE_DIR}，请查 journalctl -u $SERVICE"
   else
     die "首次发布即失败，无可回切版本，请查 journalctl -u $SERVICE"
   fi

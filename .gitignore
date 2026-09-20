@@ -85,3 +85,8 @@ META-INF/
 org/
 .worktrees/
 logs/
+
+# 环境变量文件（含真实密钥，勿提交）；仅保留 .example 模板
+.env
+.env.*
+!.env.*.example

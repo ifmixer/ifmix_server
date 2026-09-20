@@ -16,7 +16,7 @@ spring:
 # allow-raw-query=true 时允许无 reqName 的 raw query 兜底，方便 GraphiQL/API 探索。
 graphql:
   trusted-documents:
-    allow-raw-query: false
+    allow-raw-query: true
 
 # 本地打开 GraphiQL 探索页（base 默认关闭）。
 dgs:
@@ -39,7 +39,7 @@ app:
   # 本地 header 格式严格：非法即整个请求报错，尽早暴露客户端 bug（base 默认 false）。
   header-validation:
     strict: true
-  # show-sql: true
+  show-sql: true
   auth:
     jwt-private-key: '{"kty":"OKP","crv":"Ed25519","kid":"dev-ephemeral","use":"sig","d":"SyR2r1MAt8RrOuvKdIEY1uF-ukq5Ph04yCQKr8GIK10","x":"yPmYi9PmtYaEQpLlvLZRmOL_bCwmYGpzgd4P6iTFIdY"}'
     # 本地 access token 过期时间设为 1 个月（30 天），方便调试不频繁重签

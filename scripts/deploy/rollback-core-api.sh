@@ -10,11 +10,11 @@
 set -euo pipefail
 
 SSH_HOST="${DEPLOY_SSH_HOST:-app_us1}"
-REMOTE_BASE="/opt/app"
+REMOTE_BASE="/data/app/core-api"
 APP="core-api"
-CURRENT_LINK="$REMOTE_BASE/$APP-current"
-DIR_A="$REMOTE_BASE/$APP-a"
-DIR_B="$REMOTE_BASE/$APP-b"
+CURRENT_LINK="$REMOTE_BASE/current"
+DIR_A="$REMOTE_BASE/a"
+DIR_B="$REMOTE_BASE/b"
 SERVICE="app-core-api"
 HEALTH_URL="http://localhost:3001/actuator/health"
 
@@ -41,7 +41,7 @@ fi
 ssh "$SSH_HOST" "[ -n \"\$(ls $TARGET/core-api-*.jar 2>/dev/null | head -1)\" ] && [ -d $TARGET/lib ]" \
   || die "回滚目标 $TARGET 不完整（可能只发布过一次，无上一版可回滚）"
 
-log "回滚：$CURRENT_LINK → $TARGET，重启"
+log "回滚：${CURRENT_LINK} → ${TARGET}，重启"
 ssh "$SSH_HOST" "
   set -e
   sudo ln -sfn $TARGET ${CURRENT_LINK}.new
@@ -55,4 +55,4 @@ for i in $(seq 1 20); do
   if ssh "$SSH_HOST" "curl -fsS $HEALTH_URL >/dev/null 2>&1"; then OK=1; break; fi
   sleep 2
 done
-[ "$OK" -eq 1 ] && log "✓ 已回滚到 $TARGET，健康 UP" || die "回滚后健康检查失败，查 journalctl -u $SERVICE"
+[ "$OK" -eq 1 ] && log "✓ 已回滚到 ${TARGET}，健康 UP" || die "回滚后健康检查失败，查 journalctl -u $SERVICE"

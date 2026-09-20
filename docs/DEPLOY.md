@@ -23,11 +23,13 @@
 | 日志（全部落数据盘，按应用分目录） | `/data/app/log/core-api/`、`/data/app/log/core-job/`、`/data/app/log/nginx/`；PG `/data/postgresql/log/`、Redis `/data/redis/redis.log`。core-api 由 logback 分 `info.log`/`warn.log`/`error.log`（按天+50MB 滚动、gzip、留 30 天、3GB 上限），需设 `LOG_PATH=/data/app/log/core-api` |
 | 防膨胀 | journald `SystemMaxUse=500M`；PG `logging_collector=on` 写数据盘；PG 数据+WAL、Redis RDB 均在 `/data` |
 
-> **命名约定**：全部基础设施统一用 `app` 前缀（系统用户/组 `app`、目录 `/opt/app`、服务 `app-core-api`、PG 角色 `app`）。**系统盘只放程序，凡是会持续增长的（数据、WAL、各类日志）一律落 `/data`**，避免 8 GB 系统盘被撑满。
+> **命名约定**：全部基础设施统一用 `app` 前缀（系统用户/组 `app`、服务 `app-core-api`、PG 角色 `app`）。应用程序、配置、日志**全部落 `/data`**（`/data/app/core-api/`）——这样只需备份 `/data` 即覆盖 程序+配置(含密钥)+日志 全套，无需备份系统盘。数据（PG/WAL、Redis RDB、各类日志）本就在 `/data`。
+
+> **目录迁移记录（2026-09）**：应用目录已从 `/opt/app` 迁到 **`/data/app/core-api`**（程序+配置+日志全落数据盘，便于统一备份）。本文档下方「服务器初始化历史」章节里仍出现的 `/opt/app` 是**当时一次性初始化的历史记录**，现行路径一律为 `/data/app/core-api`（`common/.env.prod`、`a/`|`b/` 蓝绿槽、`current` 软链、`scripts/`）。systemd unit 的 `EnvironmentFile`/`WorkingDirectory`/`ExecStart` 均已指向新路径。
 
 ### 数据库与凭据
 
-> 密码在初始化时随机生成，已写入服务器 `/opt/app/env`（`root:app 640`）。**请妥善保管，下面明文仅供首次记录。**
+> 密码在初始化时随机生成，已写入服务器 `/data/app/core-api/common/.env.prod`（`root:app 640`）。**请妥善保管，下面明文仅供首次记录。**
 
 - PostgreSQL 用户 `app` / 密码 `0tTvtqzcSly3X4nzKFJHnDJ4`
   - 库 `core_api`（业务库，对应本地 `core_api_local`）
@@ -38,9 +40,48 @@
 
 **安全说明**：PG 与 Redis 都只监听 `localhost`，应用与数据库同机通信，不对公网暴露。core-api 的 `3001` 也只在本机监听，**不在 `ufw` 放行之列**——公网流量统一走 **Nginx（80）→ 反代 `127.0.0.1:3001`**（配置见下文「Nginx 反向代理」）。生产建议再加 443/TLS（Let's Encrypt），见该节。
 
-### 关键：环境变量映射（`/opt/app/env`）
+### 生产数据库调优（PostgreSQL）
 
-`core-api` 用 `application.yml` 里的占位符（无 `prod` profile，`SPRING_PROFILES_ACTIVE=prod` 只是让它不落到 `local`）：
+线上 PG 相对默认值做过的调整（用 `ALTER SYSTEM`，写入 `/data/postgresql/18/main/postgresql.auto.conf`，需重启 PG 生效）：
+
+| 参数 | 默认 | 现设 | 说明 / 依据 |
+|------|------|------|------|
+| `max_connections` | 100 | **300** | 应用侧连接池：core-api writer 50 + reader 50 = 100，加 core-job、flyway、运维、余量。300 对当前 7.6GB 够用，升 16GB 更宽裕。 |
+| `shared_buffers` | 128MB | **1GB** | PG 页缓存。经验值 ≈ 内存 25%；当前 7.6GB 保守设 1GB，**升 16GB 后建议调到 4GB**。 |
+
+其余（`effective_cache_size`、`work_mem`、`maintenance_work_mem`）暂留 PG 默认，升配或出现性能瓶颈时再调。
+
+改法（线上无用户时执行；这两个参数都需**重启 PG**）：
+```bash
+ssh app_us1 "sudo -u postgres psql -c \"ALTER SYSTEM SET max_connections = 300;\" \
+  -c \"ALTER SYSTEM SET shared_buffers = '1GB';\" && sudo systemctl restart postgresql"
+# 校验：SHOW max_connections; SHOW shared_buffers;
+```
+
+> **应用侧连接池**在 `application-prod.yml`：`app.datasource.writer/reader.maximum-pool-size`（默认各 50，可用 `PG_WRITER_POOL_SIZE`/`PG_READER_POOL_SIZE` 覆盖）。**改动 PG `max_connections` 时务必同步核对**：所有客户端池之和（core-api 100 + core-job + 运维）必须 < `max_connections`，否则连接被拒。
+
+#### 换 DB provider 时要调整的点（RDS / Aurora / Supabase / 自建等）
+
+以后换到其它 PostgreSQL provider，逐项对照：
+
+1. **连接串**：改 `/data/app/core-api/common/.env.prod` 的 `PG_WRITER_URL` / `PG_READER_URL` / `PG_USERNAME` / `PG_PASSWORD`（core-job 另有 `APP_DATASOURCE_BUSINESS_*` / `APP_DATASOURCE_JOB_*`，见下节）。读写分离可把 reader 指向只读副本端点。
+2. **`max_connections`**：托管服务通常按规格固定或有上限（如 RDS 随实例内存）。**先查 provider 的上限**，再定应用池大小（`PG_WRITER_POOL_SIZE` + `PG_READER_POOL_SIZE` + core-job 池 + 余量 < provider 上限）。若 provider 上限低，考虑用 PgBouncer。
+3. **`shared_buffers` 等内核参数**：托管服务多不可直接改（由 provider 按规格管理），本项仅对**自建 PG** 有意义。换托管则忽略本机的 `ALTER SYSTEM` 调优。
+4. **SSL**：多数托管 PG 强制 TLS，连接串需加 `?sslmode=require`（或 `verify-full` + CA）。
+5. **迁移**：换库后先跑 `./gradlew :core-api:flywayMigrate`（含 `core_` 前缀等迁移）再发应用。
+6. **端点/网络**：托管库不在 localhost，注意安全组/VPC 白名单放行应用机出站。
+
+### 关键：环境变量映射（`/data/app/core-api/common/.env.prod`）
+
+> 环境变量完整清单见仓库根的 [`.env.prod.example`](../.env.prod.example)（复制为 `/data/app/core-api/common/.env.prod` 填真实值；勿提交真实值进 git）。
+>
+> **同步本地 env → 线上**：改完本地 `.env.prod` 后，用 `scripts/deploy/push-env.sh` 一键覆盖上传（远端自动备份、修正 `640 root:app`）：
+> ```bash
+> scripts/deploy/push-env.sh            # 仅上传覆盖
+> scripts/deploy/push-env.sh --restart  # 上传后重启 app-core-api + 健康检查
+> ```
+
+`core-api` 现有 `application-prod.yml`（`SPRING_PROFILES_ACTIVE=prod` 激活）。`application.yml` 的默认值已是「线上版本」（GraphiQL/Swagger 关、日志 INFO、actuator 只 health、`expose-errors`/`header strict` 生产值），密钥/连接串由环境变量注入：
 
 ```
 SPRING_PROFILES_ACTIVE=prod
@@ -84,7 +125,7 @@ APP_STORAGE_BUCKETS_STATIC_BUCKETNAME=<生产 static 桶名>
 APP_STORAGE_BUCKETS_STATIC_PUBLICURL=https://<static 公网域名>
 ```
 
-> ⚠️ 服务器当前 `/opt/app/env` 里**暂时填的是 local profile 的 dev R2 桶（ugcdev/staticdev）作占位以验证启动**，上线前**务必换成生产桶和生产密钥**。
+> 服务器 `/data/app/core-api/common/.env.prod` 已配置生产 R2 桶（`STORAGE_UGC_BUCKET=upro` / `STORAGE_STATIC_BUCKET=static`，公开域名 `u1.ifmix.com` / `s1.ifmix.com`）。若换 R2 账户/密钥，改本地 `.env.prod` 后跑 `scripts/deploy/push-env.sh --restart`。
 
 ### 首次数据库迁移（Flyway，任一方案上线前先跑一次）
 
@@ -180,9 +221,9 @@ certbot 会自动改上面的 server 块加 443/TLS 并配置 80→443 跳转，
 ### 服务器端已就绪（本次已配置）
 
 - 运行用户 `app`（`--system --shell nologin`）
-- 目录 `/opt/app/`（`core-api.jar`、`core-job.jar`、`env`、`scripts/`）、日志 `/data/app/log/`
+- 目录 `/data/app/core-api/`（`core-api.jar`、`core-job.jar`、`env`、`scripts/`）、日志 `/data/app/log/`
 - systemd 服务 `/etc/systemd/system/app-core-api.service`（常驻 web，`Restart=on-failure`，日志 append 到 `/data/app/log/core-api/core-api.log`）
-- `core-job` 触发脚本 `/opt/app/scripts/run-job.sh <jobName>`（`flock -n` 防重叠，cron 调度）
+- `core-job` 触发脚本 `/data/app/core-api/scripts/run-job.sh <jobName>`（`flock -n` 防重叠，cron 调度）
 
 ### 发布流程（首次）
 
@@ -196,8 +237,8 @@ scp core-job/build/libs/core-job-0.0.1-SNAPSHOT.jar app_us1:/tmp/core-job.jar
 
 # 3. 就位 + 迁移 + 启动（服务器上）
 ssh app_us1 '
-  sudo install -o app -g app -m 640 /tmp/core-api.jar /opt/app/core-api.jar
-  sudo install -o app -g app -m 640 /tmp/core-job.jar /opt/app/core-job.jar
+  sudo install -o app -g app -m 640 /tmp/core-api.jar /data/app/core-api/current/core-api.jar
+  sudo install -o app -g app -m 640 /tmp/core-job.jar /data/app/core-api/core-job.jar
   sudo systemctl enable --now app-core-api
   sudo systemctl status app-core-api --no-pager
 '
@@ -209,7 +250,7 @@ ssh app_us1 '
 ./gradlew :core-api:bootJar
 scp core-api/build/libs/core-api-0.0.1-SNAPSHOT.jar app_us1:/tmp/core-api.jar
 ssh app_us1 '
-  sudo install -o app -g app -m 640 /tmp/core-api.jar /opt/app/core-api.jar
+  sudo install -o app -g app -m 640 /tmp/core-api.jar /data/app/core-api/current/core-api.jar
   sudo systemctl restart app-core-api
 '
 # 观察启动
@@ -220,7 +261,7 @@ ssh app_us1 'journalctl -u app-core-api -n 50 --no-pager; tail -f /data/app/log/
 
 ```bash
 # 服务器上给 app 用户加 crontab（或用 /etc/cron.d/）
-ssh app_us1 'echo "30 3 * * * app /opt/app/scripts/run-job.sh anonymousCleanup >> /data/app/log/core-job/core-job.log 2>&1" | sudo tee /etc/cron.d/app-core-job'
+ssh app_us1 'echo "30 3 * * * app /data/app/core-api/scripts/run-job.sh anonymousCleanup >> /data/app/log/core-job/core-job.log 2>&1" | sudo tee /etc/cron.d/app-core-job'
 ```
 
 ### 健康检查
@@ -308,18 +349,18 @@ docker save app/core-api:latest | zstd | ssh app_us1 'zstd -d | docker load'
 
 ### 运行（docker compose，服务器上）
 
-`/opt/app/compose.yml`：
+`/data/app/core-api/compose.yml`：
 ```yaml
 services:
   core-api:
     image: <acct>.dkr.ecr.us-east-2.amazonaws.com/app/core-api:latest
     network_mode: host           # 直连本机 PG/Redis(localhost)，省去端口映射
-    env_file: /opt/app/env
+    env_file: /data/app/core-api/common/.env.prod
     restart: unless-stopped
     logging: { driver: json-file, options: { max-size: "50m", max-file: "3" } }
 ```
 ```bash
-ssh app_us1 'cd /opt/app && docker compose pull && docker compose up -d'
+ssh app_us1 'cd /data/app/core-api && docker compose pull && docker compose up -d'
 ```
 
 ---
@@ -346,9 +387,9 @@ ssh app_us1 'cd /opt/app && docker compose pull && docker compose up -d'
 ### 机制：双目录蓝绿 + 软链原子切换
 
 ```
-/opt/app/core-api-a/         # 版本 A：core-api-*.jar（瘦业务 jar）+ lib/（依赖）
-/opt/app/core-api-b/         # 版本 B
-/opt/app/core-api-current    # 软链 → a|b，systemd 跑这个
+/data/app/core-api/a/         # 版本 A：core-api-*.jar（瘦业务 jar）+ lib/（依赖）
+/data/app/core-api/b/         # 版本 B
+/data/app/core-api/current    # 软链 → a|b，systemd 跑这个
 ```
 
 - `tools extract`（不带 `--layers`）产出：`lib/`（140MB 依赖，每个是独立 jar）+ 一个瘦 jar（~2.3MB，manifest `Class-Path` 指向 `lib/`）。运行就是 `java -jar core-api-*.jar`。
@@ -394,7 +435,7 @@ scripts/deploy/rollback-core-api.sh --status # 只看当前 active / 回滚目�
 4. **PostgreSQL**：先试 PGDG `noble` 源 → **依赖冲突失败**（`libicu74`/`libxml2` ABI 不匹配 26.04）→ 改用 **Ubuntu 官方源**装 PG 18.6 → 停服务 → `rsync` 数据目录到 `/data/postgresql/18/main` → 改 `postgresql.conf` 的 `data_directory` → 重启 → 建用户 `app`（随机密码）+ 三库 → 授权 public schema → TCP+密码登录三库全部验证通过。
 5. **Redis**：Ubuntu 官方源 8.0.5（redis.io `noble` 源无更新版本）→ 数据目录改到 `/data/redis`（`chown redis:redis`）→ 设 `requirepass`（随机）→ 确认 `bind 127.0.0.1 -::1` + `protected-mode yes` → `PING`=PONG、无密码连接 `NOAUTH` 拒绝。
 6. **JDK**：Adoptium 源装 Temurin 25.0.4.1 LTS（ARM64）。
-7. **运行骨架**：建 `app` 系统用户（`nologin`）、`/opt/app/env`（`root:app 640`）、systemd `app-core-api.service`、`/opt/app/scripts/run-job.sh`（`flock -n` 防重叠）。
+7. **运行骨架**：建 `app` 系统用户（`nologin`）、`/data/app/core-api/common/.env.prod`（`root:app 640`）、systemd `app-core-api.service`、`/data/app/core-api/scripts/run-job.sh`（`flock -n` 防重叠）。
 
 ### 端到端验收（方案 1 全链路，已通过）
 
@@ -407,19 +448,19 @@ scripts/deploy/rollback-core-api.sh --status # 只看当前 active / 回滚目�
 
 ### 启动踩坑（已修复）
 
-默认 profile 下 `app.storage.buckets`（YAML 空 map `{}`）被解析成空串，无法绑定 `Map<String,BucketConfig>` → **APPLICATION FAILED TO START**。已在 `/opt/app/env` 用索引式环境变量（`APP_STORAGE_BUCKETS_UGC_BUCKETNAME=…` 等）+ `STORAGE_TYPE=s3` 修复，重启后 `UP`。详见上文「必坑：`app.storage.buckets`」。
+默认 profile 下 `app.storage.buckets`（YAML 空 map `{}`）被解析成空串，无法绑定 `Map<String,BucketConfig>` → **APPLICATION FAILED TO START**。已在 `/data/app/core-api/common/.env.prod` 用索引式环境变量（`APP_STORAGE_BUCKETS_UGC_BUCKETNAME=…` 等）+ `STORAGE_TYPE=s3` 修复，重启后 `UP`。详见上文「必坑：`app.storage.buckets`」。
 
 ### 当前运行状态
 
 - `app-core-api.service`：**运行中**（`enabled`/`active`），健康 `UP`。
 - `nginx`：**运行中**（`enabled`/`active`），`api.ifmix.com` → `127.0.0.1:3001`，80/tcp 已放行。
-- `core-job`：jar 已就位 `/opt/app/core-job.jar`，cron 未挂（按需 `echo "…run-job.sh anonymousCleanup" | sudo tee /etc/cron.d/app-core-job`）。
+- `core-job`：jar 已就位 `/data/app/core-api/core-job.jar`，cron 未挂（按需 `echo "…run-job.sh anonymousCleanup" | sudo tee /etc/cron.d/app-core-job`）。
 - `/data`：已用 2.1 G / 26 G 可用。
 
 ### ⚠️ 上线前必办（待处理）
 
-1. **保管凭据**：PG `0tTvtqzcSly3X4nzKFJHnDJ4`、Redis `xx0epuZ2XOZcP1WfEt2d7J45`（在 `/opt/app/env`）。
-2. **换生产存储**：`/opt/app/env` 中 storage 现为 **dev R2 占位桶（ugcdev/staticdev）**，须换成生产桶 + 生产密钥。
+1. **保管凭据**：PG `0tTvtqzcSly3X4nzKFJHnDJ4`、Redis `xx0epuZ2XOZcP1WfEt2d7J45`（在 `/data/app/core-api/common/.env.prod`）。
+2. **换生产存储**：`/data/app/core-api/common/.env.prod` 中 storage 现为 **dev R2 占位桶（ugcdev/staticdev）**，须换成生产桶 + 生产密钥。
 3. **补齐业务变量**：`SPRING_AI_OPENAI_*`（Agnes AI）、`AUTH_*`（Google/Apple JWKS、JWT 私钥）等按实际填。
 4. **对外暴露**：Nginx 反代已就位（`api.ifmix.com`→80→3001），主机 `ufw` 已放行 80。**仍需**：① AWS 安全组放行入站 80/443；② `api.ifmix.com` A 记录指向本机弹性 IP；③ 配 HTTPS（certbot，见「Nginx 反向代理」节）。
 5. **core-job 定时任务**：确认需要的 job 名与调度，挂 `/etc/cron.d/app-core-job`。
@@ -437,7 +478,7 @@ scripts/deploy/rollback-core-api.sh --status # 只看当前 active / 回滚目�
 | 系统用户/组 | `usermod -l app -d /opt/app ifmix` + `groupmod -n app ifmix`（保留 uid 999/gid 987） |
 | 目录 | `/opt/ifmix` → `/opt/app`；应用日志 `/var/log/ifmix` → `/data/app/log` |
 | systemd | 删 `ifmix-core-api.service`，建 `app-core-api.service`（`User=app`、日志 append 到 `/data/app/log/core-api/core-api.log`） |
-| env | `/opt/app/env`，DB 用户名 `ifmix`→`app`（密码不变） |
+| env | `/data/app/core-api/common/.env.prod`，DB 用户名 `ifmix`→`app`（密码不变） |
 | PostgreSQL | `ALTER ROLE ifmix RENAME TO app`（密码不变，三库 owner 自动跟随）；`ifmix_ops` 库无数据 → drop 重建为 `app_ops` |
 | Redis 日志 | → `/data/redis/redis.log` |
 | PG 日志 | `logging_collector=on` → `/data/postgresql/log/` |

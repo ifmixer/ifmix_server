@@ -1,6 +1,6 @@
 # /etc/systemd/system/app-core-api.service
 #
-# 增量部署版：跑 /opt/app/core-api-current（软链 → core-api-a|-b）里的瘦 jar。
+# 增量部署版：跑 /data/app/core-api/current（软链 → a|b）里的瘦 jar。
 # 瘦 jar 的 manifest Class-Path 指向同目录 lib/，无需 fat jar。
 # 首次切换：见 scripts/deploy/README（或 DEPLOY.md「增量发布」）。
 #
@@ -21,12 +21,13 @@ Wants=network-online.target
 Type=simple
 User=app
 Group=app
-EnvironmentFile=/opt/app/env
-WorkingDirectory=/opt/app/core-api-current
+EnvironmentFile=/data/app/core-api/common/.env.prod
+WorkingDirectory=/data/app/core-api/current
 ExecStart=/bin/sh -c '/usr/lib/jvm/temurin-25-jdk-arm64/bin/java \
   --enable-native-access=ALL-UNNAMED \
-  -Xms256m -Xmx2g -XX:+UseG1GC \
-  -jar /opt/app/core-api-current/core-api-*.jar'
+  -Dfile.encoding=UTF-8 \
+  -Xms256m -Xmx2g -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError \
+  -jar /data/app/core-api/current/core-api-*.jar'
 Restart=on-failure
 RestartSec=3
 StandardOutput=append:/data/app/log/core-api/core-api.log
