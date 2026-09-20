@@ -14,7 +14,7 @@ class RootController(private val environment: Environment) {
     fun root(): Map<String, Any> = mapOf(
         "service" to "core-api",
         "status" to "ok",
-        "version" to "1.0.1",
+        "version" to "1.0.2",
         // 当前激活 profile（SPRING_PROFILES_ACTIVE）；未设时为 "default"
         "env" to environment.activeProfiles.joinToString(",").ifEmpty { "default" },
     )
