@@ -1,0 +1,24 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/GReqRouterConfig.kt
+  h_734c7d988c19fa 12,14-15,18,21,24,27,29,31,38
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/ReqNamePathInterceptor.kt
+  h_734c7d988c19fa 11,13-14,16,19,23,26-27,29,36-37,39-40,42,44,49-51
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GraphQlHttpStatusFilter.kt
+  h_734c7d988c19fa 1-75
+core-api/src/main/resources/db/migration/V2__rename_tables_core_prefix.sql
+  h_734c7d988c19fa 1-37
+core-api/src/test/kotlin/com/ifmix/api/core/common/http/GraphQlHttpStatusFilterTest.kt
+  h_734c7d988c19fa 1-53
+core-api/src/test/kotlin/com/ifmix/api/core/graphql/trusted/ReqNamePathInterceptorTest.kt
+  h_734c7d988c19fa 7-8,10,12,14-15,17,21-22,27,31-32,36,41-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c310ce99b26153687d8afb2b839816ba83aefe32",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
