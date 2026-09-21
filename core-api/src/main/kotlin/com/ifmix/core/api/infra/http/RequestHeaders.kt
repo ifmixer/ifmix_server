@@ -8,7 +8,6 @@ object RequestHeaders {
     const val CURRENCY = "x-currency"
     const val COUNTRY = "x-country"
     const val APP_VERSION = "x-app-version"
-    const val BUILD_VERSION = "x-build-version"
-    const val UPDATE_VERSION = "x-update-version"
+    const val OTA_VERSION = "x-ota-version"
     const val CLIENT_PLATFORM = "x-client-platform"
 }

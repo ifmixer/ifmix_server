@@ -294,8 +294,7 @@ DB (via Jimmer KSqlClient)
 | `x-currency` | ISO 4217, 大写 | 用户货币偏好，如 `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD` |
 | `x-client-platform` | `ios` \| `android` | 客户端平台 |
 | `x-app-version` | 字符串 | App 版本号，如 `1.2.3`；原样透传，不校验格式 |
-| `x-build-version` | 字符串 | 构建号，如 `23`；原样透传，不校验格式 |
-| `x-update-version` | 字符串 | 热更新版本号，如 `1.5`；原样透传，不校验格式 |
+| `x-ota-version` | 字符串 | 热更新版本号，形如 `${runtimeVersion}-${buildNumber}-${otaSeq}`，如 `1-23-3`；原样透传，不校验格式 |
 | `x-js-version` | 字符串 | JS Bundle 版本号 |
 
 #### 格式软校验（严格 / 宽松）

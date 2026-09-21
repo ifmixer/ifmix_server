@@ -35,6 +35,8 @@
 
 > `install_id`（`InstallIdProps`，entity/common）：客户端安装标识，由 `x-install-id` header 上报，服务端仅记录（可伪造，不用于鉴权），用于行为分析。已铺到 `core_ai_scan_record` / `core_ai_scan_collection` / `core_cs_feedback` / `core_cs_support_request`（均可空）。
 
+> `app_version` / `ota_version`（`ClientVersionProps`，entity/common）：客户端版本快照，由 `x-app-version` / `x-ota-version` header 上报，原样透传、可空，仅用于按版本聚合分析/回归定位。`ota_version` 形如 `runtimeVersion-buildNumber-otaSeq`（如 `1-23-3`）。已铺到 `core_cs_feedback` / `core_cs_support_request`。
+
 ## Auth 身份模型映射
 
 跨模块均为逻辑外键 UUID（不用 `@ManyToOne`）：
@@ -183,7 +185,7 @@ input CommonFindOptions {
 
 ## Flyway
 
-- 当前 migration 目录为 V1–V2（历史迁移已压缩进 baseline），不可回退
+- 当前 migration 目录为 V1–V3（历史迁移已压缩进 baseline），不可回退
 - 迁移文件: `core-api/src/main/resources/db/migration/`
 - **手动执行**（不再随应用启动自动 migrate）：`./gradlew :core-api:flywayMigrate`
   - 连接由 `DB_URL`/`DB_USER`/`DB_PASSWORD` 决定（默认本地 `core_api_local`）
@@ -194,3 +196,4 @@ input CommonFindOptions {
     - 本机 `core_api_local` 与线上 `app_us1/core_api` **均已应用**（21 张表全部改名、数据随 RENAME 保留、物理 FK 自动跟随）。
     - 线上是直接执行 V2 SQL + 手插 V2 历史记录（未走 `flywayMigrate`，避免触发早期 V1 checksum 差异校验）。
     - 两库 flyway 历史现已完全一致：V1=`-1432007747`、V2=`-1291542121`（本地 V1 原 checksum 为空，已用 `flywayRepair` 对齐；无需改线上）。
+  - V3 `core_cs_feedback` / `core_cs_support_request` 各加 `app_version` / `ota_version`（varchar(64)，可空；`ClientVersionProps`）。尚未在任何库执行，需 `./gradlew :core-api:flywayMigrate`。

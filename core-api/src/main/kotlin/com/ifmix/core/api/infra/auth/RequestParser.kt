@@ -179,13 +179,9 @@ class RequestParser(
     fun parseAppVersion(request: HttpServletRequest, required: Boolean = false): String? =
         parseHeader(request, RequestHeaders.APP_VERSION, required) { it }
 
-    /** x-build-version：客户端构建号，原样透传（仅记录用途，不校验格式）。 */
-    fun parseBuildVersion(request: HttpServletRequest, required: Boolean = false): String? =
-        parseHeader(request, RequestHeaders.BUILD_VERSION, required) { it }
-
-    /** x-update-version：客户端热更新版本号，原样透传（仅记录用途，不校验格式）。 */
-    fun parseUpdateVersion(request: HttpServletRequest, required: Boolean = false): String? =
-        parseHeader(request, RequestHeaders.UPDATE_VERSION, required) { it }
+    /** x-ota-version：客户端热更新版本号，形如 `${'$'}{runtimeVersion}-${'$'}{buildNumber}-${'$'}{otaSeq}`（如 `1-23-3`），原样透传（仅记录用途，不校验格式）。 */
+    fun parseOtaVersion(request: HttpServletRequest, required: Boolean = false): String? =
+        parseHeader(request, RequestHeaders.OTA_VERSION, required) { it }
 
     fun parseClientIp(request: HttpServletRequest): String = ClientIpResolver.resolve(request)
 

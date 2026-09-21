@@ -1,6 +1,7 @@
 package com.ifmix.core.api.entity.cs
 
 import com.ifmix.core.api.entity.common.ProjectScopedProps
+import com.ifmix.core.api.entity.common.ClientVersionProps
 import com.ifmix.core.api.entity.common.UUIDProps
 import com.ifmix.core.api.entity.common.CreatedAtProps
 import com.ifmix.core.api.entity.common.CustomerIdProps
@@ -41,7 +42,7 @@ object FeedbackTopics {
  */
 @Entity
 @Table(name = "core_cs_feedback")
-interface Feedback : UUIDProps, ProjectScopedProps, CreatedAtProps, CustomerIdProps, InstallIdProps, UserPreferenceProps {
+interface Feedback : UUIDProps, ProjectScopedProps, CreatedAtProps, CustomerIdProps, InstallIdProps, UserPreferenceProps, ClientVersionProps {
 
     val scanRecordId: UUID?
     /** 反馈来源主题。10=Scan, 20=DeepResearch, 30=App。码表见 [FeedbackTopics]。 */

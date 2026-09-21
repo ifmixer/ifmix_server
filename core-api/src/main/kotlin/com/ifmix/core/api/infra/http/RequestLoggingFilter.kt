@@ -124,8 +124,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             RequestHeaders.CURRENCY,
             RequestHeaders.COUNTRY,
             RequestHeaders.APP_VERSION,
-            RequestHeaders.BUILD_VERSION,
-            RequestHeaders.UPDATE_VERSION,
+            RequestHeaders.OTA_VERSION,
         )
     }
 }

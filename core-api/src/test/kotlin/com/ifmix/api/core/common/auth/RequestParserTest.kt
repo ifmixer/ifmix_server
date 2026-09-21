@@ -93,9 +93,8 @@ class RequestParserTest {
     // ── version 原样透传（不校验格式，任何环境都不抛）──
     @Test fun `version headers pass through as-is`() {
         assertThat(parser.parseAppVersion(req(RequestHeaders.APP_VERSION to "0.1.1"))).isEqualTo("0.1.1")
-        assertThat(parser.parseBuildVersion(req(RequestHeaders.BUILD_VERSION to "1"))).isEqualTo("1")
-        // 客户端 update-version 可能是 1.5 这种小数，照样透传
-        assertThat(parser.parseUpdateVersion(req(RequestHeaders.UPDATE_VERSION to "1.5"))).isEqualTo("1.5")
+        // x-ota-version 形如 runtimeVersion-buildNumber-otaSeq，照样透传
+        assertThat(parser.parseOtaVersion(req(RequestHeaders.OTA_VERSION to "1-23-3"))).isEqualTo("1-23-3")
         // 任意格式都不校验
         assertThat(parser.parseAppVersion(req(RequestHeaders.APP_VERSION to "v1.2-beta"))).isEqualTo("v1.2-beta")
         assertThat(parser.parseAppVersion(req())).isNull()

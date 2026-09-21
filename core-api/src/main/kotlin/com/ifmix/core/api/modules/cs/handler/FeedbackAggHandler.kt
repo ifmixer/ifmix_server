@@ -20,6 +20,8 @@ class FeedbackAggHandler(
             this.projectId = mc.action.projectId!!
             this.customerId = mc.action.actorId
             this.installId = mc.action.installId
+            this.appVersion = mc.action.appVersion
+            this.otaVersion = mc.action.otaVersion
             this.topic = req.topic
             this.reasons = req.reasons.toTypedArray()
             this.email = req.email

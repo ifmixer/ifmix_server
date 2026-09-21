@@ -31,10 +31,10 @@ data class ActionContext(
     val clientIp: String? = null,
     /** 安装标识（x-install-id header）。客户端生成，仅记录用于分析，不用于鉴权。 */
     val installId: String? = null,
-    /** 客户端版本（x-app-version / x-build-version / x-update-version）。仅记录用途，格式软校验。 */
+    /** 客户端版本（x-app-version / x-ota-version）。仅记录用途，格式软校验。 */
     val appVersion: String? = null,
-    val buildVersion: String? = null,
-    val updateVersion: String? = null,
+    /** x-ota-version：热更新版本号，形如 `1-23-3`（runtimeVersion-buildNumber-otaSeq）。原样透传。 */
+    val otaVersion: String? = null,
     // ===== 操作元信息 =====
     val actionName: String? = null,
     val isMutation: Boolean = false,

@@ -1,6 +1,7 @@
 package com.ifmix.core.api.entity.cs
 
 import com.ifmix.core.api.entity.common.BaseProjectEntity
+import com.ifmix.core.api.entity.common.ClientVersionProps
 import com.ifmix.core.api.entity.common.CustomerIdProps
 import com.ifmix.core.api.entity.common.InstallIdProps
 import com.ifmix.core.api.entity.common.MediaRef
@@ -46,7 +47,7 @@ object SupportRequestCategories {
  */
 @Entity
 @Table(name = "core_cs_support_request")
-interface SupportRequest : BaseProjectEntity, InstallIdProps, CustomerIdProps, UserPreferenceProps {
+interface SupportRequest : BaseProjectEntity, InstallIdProps, CustomerIdProps, UserPreferenceProps, ClientVersionProps {
 
     val title: String
     val message: String

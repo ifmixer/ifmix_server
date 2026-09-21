@@ -27,6 +27,8 @@ class SupportRequestAggHandler(
             this.id = id
             this.projectId = action.mustGetProjectId()
             this.installId = action.installId
+            this.appVersion = action.appVersion
+            this.otaVersion = action.otaVersion
             this.customerId = action.actorId
             this.locale = action.locale
             this.country = action.country
