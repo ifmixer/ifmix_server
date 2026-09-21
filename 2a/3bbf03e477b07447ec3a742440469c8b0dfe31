@@ -1,0 +1,40 @@
+core-api/src/main/kotlin/com/ifmix/core/api/entity/common/ClientVersionProps.kt
+  h_734c7d988c19fa 1-20
+core-api/src/main/kotlin/com/ifmix/core/api/entity/cs/Feedback.kt
+  h_734c7d988c19fa 4,45
+core-api/src/main/kotlin/com/ifmix/core/api/entity/cs/SupportRequest.kt
+  h_734c7d988c19fa 4,50
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/RequestParser.kt
+  h_734c7d988c19fa 182-184
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/ActionContextProvider.kt
+  h_734c7d988c19fa 63
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionContext.kt
+  h_734c7d988c19fa 34,36-37
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestHeaders.kt
+  h_734c7d988c19fa 11
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilter.kt
+  h_734c7d988c19fa 127
+core-api/src/main/kotlin/com/ifmix/core/api/modules/cs/handler/FeedbackAggHandler.kt
+  h_734c7d988c19fa 23-24
+core-api/src/main/kotlin/com/ifmix/core/api/modules/cs/handler/SupportRequestAggHandler.kt
+  h_734c7d988c19fa 30-31
+core-api/src/main/resources/db/migration/V3__cs_client_version.sql
+  h_734c7d988c19fa 1-13
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/RequestParserTest.kt
+  h_734c7d988c19fa 96-97
+docs/ARCHITECTURE.md
+  h_734c7d988c19fa 297
+docs/DATABASE.md
+  h_734c7d988c19fa 38-39,188,199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a3bbf03e477b07447ec3a742440469c8b0dfe31",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
