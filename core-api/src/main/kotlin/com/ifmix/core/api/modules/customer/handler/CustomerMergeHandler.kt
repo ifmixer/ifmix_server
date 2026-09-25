@@ -56,6 +56,10 @@ class CustomerMergeHandler(
         }
 
         // 4. cur 置 mergedTo=existing（tombstone，清理任务回收）
+        //    终身累计配额：先把 cur 的计数加到 existing，否则登录后额度被重置、限流可绕过。
+        customerRepo.findCounts(mc, projectId, curId)?.let { (curScan, curDeep) ->
+            if (curScan > 0 || curDeep > 0) customerRepo.addCounts(mc, projectId, existingId, curScan, curDeep)
+        }
         customerRepo.markMerged(mc, projectId, curId, existingId)
     }
 }

@@ -24,4 +24,10 @@ interface Customer : BaseProjectEntity {
     /** 逻辑外键 → auth_identity（app 级账号）。匿名 customer 未登录时为 null。 */
     @Column(name = "auth_identity_id")
     val authIdentityId: UUID?
+
+    /** 累计成功扫描次数（saveNewScan 成功时 +1）。 */
+    val scanCount: Int
+
+    /** 累计成功深度研究次数（saveDeepResearch 成功时 +1）。 */
+    val deepResearchCount: Int
 }

@@ -28,9 +28,17 @@ class ScanAggHandler(
     private val scanRepo: ScanRecordRepository,
     private val deepResearchRepo: com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository,
     private val scanPrompt: com.ifmix.core.api.modules.ai.service.ScanPrompt,
+    private val customerFacade: com.ifmix.core.api.modules.customer.CustomerFacade,
+    private val scanQuota: com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig,
 ) {
     /** 外部 AI 调用（无事务）— 解析 images、运行 AI、返回结果 DTO */
     fun runAiScan(actionCtx: ActionContext, input: NewScanInput): AiScanResult {
+        // 前置配额校验（AI 调用前拒绝，省下 AI 成本）；并发兜底见 saveNewScan 的原子自增。
+        val actorId = actionCtx.mustGetActorId()
+        val used = customerFacade.findCounts(actionCtx, actorId)?.first ?: 0
+        if (used >= scanQuota.scan) throw com.ifmix.core.api.infra.http.ApiError(
+            com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "scan quota exhausted"
+        )
         val scanId = UuidV7.generate()
         val now = Instant.now()
 
@@ -93,6 +101,13 @@ class ScanAggHandler(
             this.updatedAt = result.updatedAt
         }
         scanRepo.save(sc, record)
+        // 原子自增并兜底并发：仅当 scan_count < limit 时 +1；达上限则拒绝（整个事务回滚）。
+        val actorId = sc.action.mustGetActorId()
+        if (!customerFacade.tryIncrementScanCount(sc, actorId, scanQuota.scan)) {
+            throw com.ifmix.core.api.infra.http.ApiError(
+                com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "scan quota exhausted"
+            )
+        }
         return record
     }
 
@@ -152,6 +167,12 @@ class ScanAggHandler(
      */
     fun runDeepResearch(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.RunDeepResearchInput): com.ifmix.core.api.dto.ai.DeepResearchResult {
         val projectId = sc.action.mustGetProjectId()
+        // 前置配额校验（AI 调用前拒绝）；并发兜底见 saveDeepResearch 的原子自增。
+        val actorId = sc.action.mustGetActorId()
+        val used = customerFacade.findCounts(sc, actorId)?.second ?: 0
+        if (used >= scanQuota.deepResearch) throw com.ifmix.core.api.infra.http.ApiError(
+            com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "deep research quota exhausted"
+        )
         val existing = scanRepo.findById(sc, projectId, input.scanRecordId)
             ?: throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
 
@@ -206,6 +227,13 @@ class ScanAggHandler(
             this.promptVersion = result.promptVersion
         }
         deepResearchRepo.upsert(sc, entity)
+        // 原子自增并兜底并发：仅当 deep_research_count < limit 时 +1；达上限则拒绝（事务回滚）。
+        val actorId = sc.action.mustGetActorId()
+        if (!customerFacade.tryIncrementDeepResearchCount(sc, actorId, scanQuota.deepResearch)) {
+            throw com.ifmix.core.api.infra.http.ApiError(
+                com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "deep research quota exhausted"
+            )
+        }
         return true
     }
 

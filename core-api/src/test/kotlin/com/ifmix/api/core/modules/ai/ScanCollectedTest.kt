@@ -38,6 +38,8 @@ class ScanCollectedTest {
         scanRepo = ScanRecordRepository(),
         deepResearchRepo = ScanDeepResearchRepository(),
         scanPrompt = ScanPrompt("v10"),
+        customerFacade = org.mockito.kotlin.mock(),
+        scanQuota = com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig(),
     )
 
     private fun actionCtx() = ActionContext(projectId = "test-app", actorId = UUID.randomUUID())
