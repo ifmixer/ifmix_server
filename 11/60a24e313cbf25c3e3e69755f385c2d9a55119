@@ -1,0 +1,34 @@
+core-api/src/main/kotlin/com/ifmix/core/api/entity/customer/Customer.kt
+  h_734c7d988c19fa 27-32
+core-api/src/main/kotlin/com/ifmix/core/api/infra/ratelimit/RateLimitBeans.kt
+  h_734c7d988c19fa 12
+core-api/src/main/kotlin/com/ifmix/core/api/infra/ratelimit/ScanQuotaConfig.kt
+  h_734c7d988c19fa 1-25
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_734c7d988c19fa 31-32,36-41,104-110,170-175,230-236
+core-api/src/main/kotlin/com/ifmix/core/api/modules/customer/CustomerFacade.kt
+  h_734c7d988c19fa 4,24-46
+core-api/src/main/kotlin/com/ifmix/core/api/modules/customer/handler/CustomerMergeHandler.kt
+  h_734c7d988c19fa 59-62
+core-api/src/main/kotlin/com/ifmix/core/api/modules/customer/repo/CustomerRepository.kt
+  h_734c7d988c19fa 9-10,22,65-109
+core-api/src/main/resources/db/migration/V4__customer_scan_counters.sql
+  h_734c7d988c19fa 1-9
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanBatchUpdateTest.kt
+  h_734c7d988c19fa 71-72
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCollectedTest.kt
+  h_734c7d988c19fa 41-42
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCountersTest.kt
+  h_734c7d988c19fa 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1160a24e313cbf25c3e3e69755f385c2d9a55119",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    }
+  }
+}
