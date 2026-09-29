@@ -18,6 +18,8 @@
   "m_demo_deleteTodo": "mutation DeleteTodo($id: UUID!) { result: m_demo_deleteTodo(id: $id) { success } }",
   "m_demo_deleteTodoByIds": "mutation BatchDeleteTodos($ids: [UUID!]!) { result: m_demo_deleteTodoByIds(ids: $ids) { success } }",
   "m_demo_updateTodo": "mutation UpdateTodo($input: UpdateTodoInput!) { result: m_demo_updateTodo(input: $input) { success todo { id title done note meta recommend { sectionId sectionName viewCount recItems { recId title priority createdAt updatedAt } } items { id content done note createdAt updatedAt } itemCount pendingCount finishCount createdAt updatedAt } } }",
+  "m_install_createInstall": "mutation CreateInstall($input: CreateInstallInput) { result: m_install_createInstall(input: $input) { installId installToken } }",
+  "m_install_updateInstall": "mutation UpdateInstall($input: UpdateInstallInput!) { result: m_install_updateInstall(input: $input) { success } }",
   "m_media_presignDownload": "mutation PresignDownload($input: PresignDownloadInput!) { presigned: m_media_presignDownload(input: $input) { url } }",
   "m_media_presignUpload": "mutation PresignUpload($input: PresignUploadInput!) { presigned: m_media_presignUpload(input: $input) { mediaId uploadUrl imageKey downloadUrl } }",
   "m_pay_verifyIapPurchase": "mutation VerifyIapPurchase($input: verifyIapPurchaseInput!) { result: m_pay_verifyIapPurchase(input: $input) { tier expiresAt } }",
