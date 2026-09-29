@@ -189,6 +189,22 @@ class RequestParser(
     fun parseInstallId(request: HttpServletRequest): String? =
         request.getHeader(RequestHeaders.INSTALL_ID)?.trim()?.takeIf { it.isNotEmpty() }
 
+    /**
+     * 从 Authorization token 取可信 installId（iid claim）。无 token / 无 iid / 过期 / 无效 → null（软取，不抛）。
+     * install token（type=5）与 customer token（type=10）都可能携带 iid。用于关系维护/updateInstall。
+     */
+    fun parseTokenInstallId(request: HttpServletRequest): UUID? {
+        (request.getAttribute(ATTR_TOKEN_IID) as? UUID)?.let { return it }
+        val auth = request.getHeader("Authorization")
+        if (auth.isNullOrBlank() || !auth.startsWith("Bearer ")) return null
+        val raw = auth.removePrefix("Bearer ").trim()
+        if (raw.isBlank()) return null
+        val verified = try { jwt.verify(raw) } catch (_: TokenExpiredException) { return null } ?: return null
+        val iid = verified.installId?.let { tryUuid(it) } ?: return null
+        request.setAttribute(ATTR_TOKEN_IID, iid)
+        return iid
+    }
+
     /** 通用 header：required 且缺失→抛；有值则经 normalize 规范化+校验（非法在 normalize 内抛或按软校验返回 null）。 */
     private fun parseHeader(
         request: HttpServletRequest,
@@ -209,6 +225,7 @@ class RequestParser(
     companion object {
         private const val ATTR_APP_ID = "com.ifmix.parsed.projectId"
         private const val ATTR_ACTOR = "com.ifmix.parsed.actor"
+        private const val ATTR_TOKEN_IID = "com.ifmix.parsed.tokenInstallId"
         private val CURRENCY_RE = Regex("^[A-Z]{3}$")   // ISO 4217（大写后校验）
         private val COUNTRY_RE = Regex("^[A-Z]{2}$")    // ISO 3166-1 alpha-2（大写后校验）
         /** project slug 主键：小写字母开头，小写字母/数字/连字符，3-30 字符。创建后不可变。 */

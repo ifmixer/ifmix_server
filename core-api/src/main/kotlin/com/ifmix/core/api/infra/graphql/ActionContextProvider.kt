@@ -59,6 +59,7 @@ class ActionContextProvider(private val parser: RequestParser) {
             clientPlatform = parser.parseClientPlatform(servletRequest),
             clientIp = parser.parseClientIp(servletRequest),
             installId = parser.parseInstallId(servletRequest),
+            tokenInstallId = parser.parseTokenInstallId(servletRequest),
             appVersion = parser.parseAppVersion(servletRequest),
             otaVersion = parser.parseOtaVersion(servletRequest),
             actionName = dfe.field?.name,
