@@ -1,0 +1,33 @@
+# ==================== Install ====================
+
+type CreateInstallResult {
+    "服务端生成的 installId"
+    installId: UUID!
+    "install token（JWT，type=5）。永不过期，无需刷新。"
+    installToken: String!
+}
+
+type UpdateInstallResult {
+    success: Boolean!
+}
+
+input CreateInstallInput {
+    "设备信息（自由结构 JSON：型号/OS 版本/厂商等），可空"
+    deviceInfo: JSON
+}
+
+input UpdateInstallInput {
+    firebaseInstallId: String
+    fcmToken: String
+    deviceInfo: JSON
+}
+
+# platform / appVersion / otaVersion / locale / country / currency 均从 header 取，不入参。
+# installId 一律取自 token 的 iid，不入参、不采信 x-install-id header。
+
+extend type Mutation {
+    "无鉴权；每 IP 60s 限 10 次。生成 installId + 签发 installToken(type=5)。"
+    m_install_createInstall(input: CreateInstallInput): CreateInstallResult!
+    "需 token（installToken 或 customerToken，取 iid）；仅更新非空字段。"
+    m_install_updateInstall(input: UpdateInstallInput!): UpdateInstallResult!
+}
