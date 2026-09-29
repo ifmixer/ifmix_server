@@ -95,6 +95,7 @@ class AuthAggHandler(
     private val refreshTokenRepo: RefreshTokenRepository,
     private val customerRepo: CustomerRepository,
     private val mergeHandler: CustomerMergeHandler,
+    private val installFacade: com.ifmix.core.api.modules.install.InstallFacade,
     private val events: ApplicationEventPublisher,
     @Value("\${app.auth.access-ttl-sec:900}")
     private val accessTtlSec: Long,
@@ -211,11 +212,17 @@ class AuthAggHandler(
             this.updatedAt = now
         })
 
-        // 登录主体已转正/合并到 existing（非匿名）。token: sub=ownerId, act=customer, ano=false, sid=refreshTokenId
+        // 登录主体已转正/合并到 existing（非匿名）。token: sub=ownerId, act=customer, ano=false, sid=refreshTokenId, iid=installId
+        val tokenIid = mc.action.tokenInstallId
         val accessToken = jwt.signAccess(
             ownerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(),
             sessionId = refreshTokenId.toString(), anonymous = false,
+            installId = tokenIid?.toString(),
         )
+        if (tokenIid != null) {
+            // Merge 分支 ownerId 已是合并后的 existing（action.to）→ bind 指向 existing，绝不反向
+            installFacade.bind(mc.action, tokenIid, ownerId)
+        }
 
         // 7. Publish event
         events.publishEvent(AuthLoggedInEvent(
@@ -281,6 +288,12 @@ class AuthAggHandler(
         if (token != null) {
             refreshTokenRepo.revoke(mc, token.id)
         }
+        // 关系解绑：logout 必须有 iid（设计 D9，不兼容老 token）
+        val iid = mc.action.tokenInstallId
+            ?: throw ApiError(ErrorCode.UNAUTHORIZED, "install id (iid) required for logout")
+        val customerId = mc.action.actorId
+            ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
+        installFacade.unbind(mc.action, iid, customerId)
         return LogoutRes(ok = true)
     }
 
@@ -310,10 +323,15 @@ class AuthAggHandler(
             this.updatedAt = now
         })
 
+        val tokenIid = mc.action.tokenInstallId // installToken 的 iid（过渡：可空）
         val accessToken = jwt.signAccess(
             customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(),
             sessionId = refreshTokenId.toString(), anonymous = true,
+            installId = tokenIid?.toString(),
         )
+        if (tokenIid != null) {
+            installFacade.bind(mc.action, tokenIid, customerId)
+        }
         return CreateAnonymousRes(
             customerId = customerId,
             accessToken = accessToken,
@@ -324,7 +342,9 @@ class AuthAggHandler(
     }
 
     fun requestAccountDeletion(mc: ModuleCtx): DeleteAccountRes {
-        mc.action.actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+        val actorId = mc.action.actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+        // 请求删除当下即软删该 customer 全部有效关系（设计 D9b；不依赖 iid）
+        installFacade.unbindAllForCustomer(mc.action, actorId)
         val scheduledAt = Instant.now().plusSeconds(30L * 24 * 3600).toEpochMilli()
         return DeleteAccountRes(accepted = true, scheduledAt = scheduledAt)
     }
