@@ -32,6 +32,9 @@ class AuthJwtService(
     companion object {
         const val TOKEN_TYPE = "Bearer"
         const val ACTOR_CUSTOMER = ActorTypes.CUSTOMER
+        const val TOKEN_TYPE_INSTALL = 5
+        const val TOKEN_TYPE_CUSTOMER = 10
+        const val TOKEN_TYPE_MANAGER = 20
     }
 
     /** access token：sub=actorId, act=actorType, ano=anonymous, sid=sessionId */
@@ -41,9 +44,10 @@ class AuthJwtService(
         projectId: String,
         sessionId: String,
         anonymous: Boolean = false,
+        installId: String? = null,
     ): String {
         val now = Date()
-        val claims = JWTClaimsSet.Builder()
+        val builder = JWTClaimsSet.Builder()
             .issuer(issuer)
             .subject(actorId)
             .audience(listOf(projectId))
@@ -53,6 +57,25 @@ class AuthJwtService(
             .claim("act", actorType)
             .claim("ano", anonymous)
             .claim("sid", sessionId)
+            .claim("type", TOKEN_TYPE_CUSTOMER)
+        if (installId != null) builder.claim("iid", installId)
+        val claims = builder.build()
+        val header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(keys.kid).type(JOSEObjectType.JWT).build()
+        val jwt = SignedJWT(header, claims)
+        jwt.sign(Ed25519Signer(keys.signingKey))
+        return jwt.serialize()
+    }
+
+    /** install token：type=5, iid=installId, aud=projectId, 无 sub, 永不过期。 */
+    fun signInstall(installId: String, projectId: String): String {
+        val now = Date()
+        val claims = JWTClaimsSet.Builder()
+            .issuer(issuer)
+            .audience(listOf(projectId))
+            .jwtID(UuidV7.generate().toString())
+            .issueTime(now)
+            .claim("type", TOKEN_TYPE_INSTALL)
+            .claim("iid", installId)
             .build()
         val header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(keys.kid).type(JOSEObjectType.JWT).build()
         val jwt = SignedJWT(header, claims)
@@ -76,8 +99,10 @@ class AuthJwtService(
         }
         // 验签已通过：以下是可信 claims。过期单独区分（抛出），其余无效返回 null。
         val claims = jwt.jwtClaimsSet
-        val exp = claims.expirationTime ?: return null
-        if (exp.before(Date())) throw TokenExpiredException()
+        // exp 可选：install token（type=5）永不过期、无 exp claim；customer/manager token 有 exp。
+        // 有 exp 才校验过期；无 exp 视为不过期（放行）。
+        val exp = claims.expirationTime
+        if (exp != null && exp.before(Date())) throw TokenExpiredException()
         if (claims.issuer != issuer) return null
         return VerifiedToken(
             actorId = claims.subject,
@@ -85,6 +110,8 @@ class AuthJwtService(
             actorType = claims.getIntegerClaim("act") ?: ACTOR_CUSTOMER,
             anonymous = runCatching { claims.getBooleanClaim("ano") }.getOrNull() ?: false,
             sessionId = runCatching { claims.getStringClaim("sid") }.getOrNull(),
+            tokenType = claims.getIntegerClaim("type") ?: TOKEN_TYPE_CUSTOMER,
+            installId = runCatching { claims.getStringClaim("iid") }.getOrNull(),
         )
     }
 
@@ -101,6 +128,10 @@ data class VerifiedToken(
     val anonymous: Boolean = false,
     /** sessionId（sid claim）= 签发本 token 的 refresh token id；未来 Redis session 用。 */
     val sessionId: String? = null,
+    /** token 类型（type claim）：5=install / 10=customer / 20=manager。缺省 10（老 token 兼容）。 */
+    val tokenType: Int = AuthJwtService.TOKEN_TYPE_CUSTOMER,
+    /** iid claim（可信 installId）：install token 与 customer token 都可能携带。 */
+    val installId: String? = null,
 ) {
     val isCustomer get() = actorType == AuthJwtService.ACTOR_CUSTOMER
 }
