@@ -32,6 +32,8 @@
 | media | `core_media_upload_record` | project | UploadRecord |
 | cs | `core_cs_feedback` | project | Feedback |
 | cs | `core_cs_support_request` | project | SupportRequest |
+| install | `core_install` | project | Install |
+| install | `core_install_customer_relation` | project | InstallCustomerRelation |
 
 > `install_id`（`InstallIdProps`，entity/common）：客户端安装标识，由 `x-install-id` header 上报，服务端仅记录（可伪造，不用于鉴权），用于行为分析。已铺到 `core_ai_scan_record` / `core_ai_scan_collection` / `core_cs_feedback` / `core_cs_support_request`（均可空）。
 
@@ -185,7 +187,7 @@ input CommonFindOptions {
 
 ## Flyway
 
-- 当前 migration 目录为 V1–V3（历史迁移已压缩进 baseline），不可回退
+- 当前 migration 目录为 V1–V5（历史迁移已压缩进 baseline），不可回退
 - 迁移文件: `core-api/src/main/resources/db/migration/`
 - **手动执行**（不再随应用启动自动 migrate）：`./gradlew :core-api:flywayMigrate`
   - 连接由 `DB_URL`/`DB_USER`/`DB_PASSWORD` 决定（默认本地 `core_api_local`）
@@ -197,3 +199,13 @@ input CommonFindOptions {
     - 线上是直接执行 V2 SQL + 手插 V2 历史记录（未走 `flywayMigrate`，避免触发早期 V1 checksum 差异校验）。
     - 两库 flyway 历史现已完全一致：V1=`-1432007747`、V2=`-1291542121`（本地 V1 原 checksum 为空，已用 `flywayRepair` 对齐；无需改线上）。
   - V3 `core_cs_feedback` / `core_cs_support_request` 各加 `app_version` / `ota_version`（varchar(64)，可空；`ClientVersionProps`）。尚未在任何库执行，需 `./gradlew :core-api:flywayMigrate`。
+  - V4 `core_customer` 加 `scan_count` / `deep_research_count`（integer 默认 0，业务侧原子自增）。
+  - V5 install 追踪：新建 `core_install` + `core_install_customer_relation`。已在临时库（PG 18.1）验证迁移干净应用。
+
+## Install 设备追踪（V5）
+
+详见 `docs/design/install-tracking.md`。
+
+- **`core_install`**：服务端生成 `install_id`（UuidV7，`(project_id, install_id)` 唯一）。`platform`(Int 10/20/30) / `device_info`(jsonb) / `app_version` / `ota_version` / `locale` / `country` / `currency` 来自请求 header（create 与 update 都写，仅覆盖非空）。`reg_ip` **write-once**：仅 createInstall 写入（`clientIp`），updateInstall 不改。`firebase_install_id` / `fcm_token` 客户端后补。
+- **`core_install_customer_relation`**：`(install_id, customer_id)` **全局唯一**（一对关系永远一行），`deleted_at` 软删（`@LogicalDeleted`）：null=当前绑定 / not null=已解绑。bind/unbind 复用同一行翻转 `deleted_at`（re-bind 复活软删行，需 `filters { setBehavior(..., LogicalDeletedBehavior.IGNORED) }` 绕过默认过滤）。一个 install 同时只绑一个 customer（绑新的前软删该 install 其它有效关系）。
+- **关系维护挂点**（`AuthAggHandler`）：createAnonymousCustomer / login 绑定（有 token iid 时）；logout 解绑（缺 iid 报错）；requestAccountDeletion 软删该 customer 全部关系。core-job 僵尸清理仍物理删，不涉及本关系表。

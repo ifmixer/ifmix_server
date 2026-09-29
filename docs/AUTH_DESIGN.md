@@ -118,3 +118,35 @@ extend type Query {
     q_auth_me: MeResult!
 }
 ```
+
+
+## Token type / iid claim 与 Install 关系（V5）
+
+详见 `docs/design/install-tracking.md`。
+
+### Token `type` claim（与 `act` 正交）
+
+JWT 新增 `type` claim 标识 token 类型，缺省 `10`（老 token 兼容）：
+
+| type | token | sub | iid |
+|------|-------|-----|-----|
+| 5 | install token（`signInstall`） | 无 | installId |
+| 10 | customer access token（`signAccess`） | customerId | installId（有 install 上下文时写入） |
+| 20 | manager token（预留） | managerId | — |
+
+- **install token 永不过期**（无 exp claim）、不设 `sub`（install 不是 actor）；installId 只在 `iid` claim。
+- `verify` 有 exp 才校验过期，无 exp（install token）放行——EdDSA 签名保证无法伪造。
+- install 不进 `Actor` 模型；`RequestParser.parseTokenInstallId` 从任一 token 的 `iid` 取可信 installId → `ActionContext.tokenInstallId`。`x-install-id` header 不再用于关系维护。
+
+### Install↔Customer 关系维护
+
+在 auth 流程内维护（同全局事务，回滚一致）：
+
+| 流程 | 行为 |
+|------|------|
+| createAnonymousCustomer | 有 token iid（过渡：installToken 可选）→ 写 access token iid + bind 关系；无则退回旧行为 |
+| login（含 Merge） | 有 iid → bind 到最终 ownerId（Merge 后为 existing，方向不反） |
+| logout | **缺 iid 报错**（不兼容老 token）；否则软删该关系 |
+| requestAccountDeletion | 软删该 customer 全部有效关系（不依赖 iid） |
+
+一个 install 同时只绑一个 customer（bind 前软删该 install 其它有效关系）。
