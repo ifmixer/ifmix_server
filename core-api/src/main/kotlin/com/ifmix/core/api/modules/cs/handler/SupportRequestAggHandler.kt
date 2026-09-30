@@ -26,7 +26,7 @@ class SupportRequestAggHandler(
         val entity = SupportRequest {
             this.id = id
             this.projectId = action.mustGetProjectId()
-            this.installId = action.installId
+            this.installId = action.mustGetTokenInstallId()
             this.appVersion = action.appVersion
             this.otaVersion = action.otaVersion
             this.customerId = action.actorId

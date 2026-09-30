@@ -200,12 +200,13 @@ input CommonFindOptions {
     - 两库 flyway 历史现已完全一致：V1=`-1432007747`、V2=`-1291542121`（本地 V1 原 checksum 为空，已用 `flywayRepair` 对齐；无需改线上）。
   - V3 `core_cs_feedback` / `core_cs_support_request` 各加 `app_version` / `ota_version`（varchar(64)，可空；`ClientVersionProps`）。尚未在任何库执行，需 `./gradlew :core-api:flywayMigrate`。
   - V4 `core_customer` 加 `scan_count` / `deep_research_count`（integer 默认 0，业务侧原子自增）。
-  - V5 install 追踪：新建 `core_install` + `core_install_customer_relation`。已在临时库（PG 18.1）验证迁移干净应用。
+  - V5 install 追踪：新建 `core_install` + `core_install_customer_relation`。
+  - V6 Install ID 收敛：`core_install.id = API installId = JWT iid`，删除冗余 `core_install.install_id`；四张 Customer 业务表 `install_id` 安全转为 nullable UUID，新写入由应用层强制 token iid。已在本地 PG 18.1 从 V5→V6 验证，未删除任何 resource。
 
 ## Install 设备追踪（V5）
 
 详见 `docs/design/install-tracking.md`。
 
-- **`core_install`**：服务端生成 `install_id`（UuidV7，`(project_id, install_id)` 唯一）。`platform`(Int 10/20/30) / `device_info`(jsonb) / `app_version` / `ota_version` / `locale` / `country` / `currency` 来自请求 header（create 与 update 都写，仅覆盖非空）。`reg_ip` **write-once**：仅 createInstall 写入（`clientIp`），updateInstall 不改。`firebase_install_id` / `fcm_token` 客户端后补。
+- **`core_install`**：V6 起主键 `id` 即 API `installId` 和 JWT `iid`（服务端 UuidV7），不再有独立 `install_id` 列。`platform`(Int 10/20/30) / `device_info`(jsonb) / `app_version` / `ota_version` / `locale` / `country` / `currency` 来自请求 header（create 与 update 都写，仅覆盖非空）。`reg_ip` **write-once**：仅 createInstall 写入（`clientIp`），updateInstall 不改。`firebase_install_id` / `fcm_token` 客户端后补。
 - **`core_install_customer_relation`**：`(install_id, customer_id)` **全局唯一**（一对关系永远一行），`deleted_at` 软删（`@LogicalDeleted`）：null=当前绑定 / not null=已解绑。bind/unbind 复用同一行翻转 `deleted_at`（re-bind 复活软删行，需 `filters { setBehavior(..., LogicalDeletedBehavior.IGNORED) }` 绕过默认过滤）。一个 install 同时只绑一个 customer（绑新的前软删该 install 其它有效关系）。
-- **关系维护挂点**（`AuthAggHandler`）：createAnonymousCustomer / login 绑定（有 token iid 时）；logout 解绑（缺 iid 报错）；requestAccountDeletion 软删该 customer 全部关系。core-job 僵尸清理仍物理删，不涉及本关系表。
+- **关系维护挂点**（`AuthAggHandler`）：createAnonymousCustomer 要求有效 iid（token 类型不限）并绑定；login 用 customer/install token 的 iid 绑定最终 owner；refresh 续期并对 customer refresh token 补绑 actor↔install（bind 幂等），install refresh token 不绑；logout 有 iid 时解绑，legacy token 缺 iid 时只撤销会话；requestAccountDeletion 软删该 customer 全部关系。core-job cleanup 本期完全不改，后续另案设计。

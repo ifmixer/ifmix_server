@@ -87,7 +87,7 @@ class ScanAggHandler(
             this.status = com.ifmix.core.api.entity.ai.ScanStatuses.READY
             this.clientIp = result.clientIp
             this.customerId = sc.action.actorId
-            this.installId = sc.action.installId
+            this.installId = sc.action.mustGetTokenInstallId()
             this.locale = result.locale
             this.country = result.country
             this.currency = result.currency
@@ -113,10 +113,12 @@ class ScanAggHandler(
 
     fun updateScan(sc: ModuleCtx, input: UpdateScanInput): Boolean {
         val projectId = sc.action.mustGetProjectId()
-        if (!scanRepo.exists(sc, projectId, input.id)) throw com.ifmix.core.api.infra.http.ApiError(
-            com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND
-        )
-        scanRepo.partialUpdate(sc, projectId, input.id, input)
+        val customerId = sc.action.mustGetActorId()
+        // owner-scoped：非本人拥有（或不存在）统一 NOT_FOUND；存在则执行更新（no-op set 也算成功）。
+        if (!scanRepo.existsOwned(sc, projectId, customerId, input.id)) {
+            throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
+        }
+        scanRepo.partialUpdate(sc, projectId, customerId, input.id, input)
         return true
     }
 
@@ -139,12 +141,16 @@ class ScanAggHandler(
 
     fun deleteScan(sc: ModuleCtx, id: UUID): Boolean {
         val projectId = sc.action.mustGetProjectId()
-        scanRepo.deleteById(sc, projectId, id)
+        val customerId = sc.action.mustGetActorId()
+        // owner-scoped：非本人拥有（或不存在）统一 NOT_FOUND。
+        if (!scanRepo.deleteByIdOwned(sc, projectId, customerId, id)) {
+            throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
+        }
         return true
     }
 
     fun findById(sc: ModuleCtx, id: UUID): ScanRecord? =
-        scanRepo.findById(sc, sc.action.mustGetProjectId(), id)
+        scanRepo.findByIdOwned(sc, sc.action.mustGetProjectId(), sc.action.mustGetActorId(), id)
 
     /** 批量按 scanRecordId 查询 DeepResearch（DataLoader 用）。 */
     fun findDeepResearchByScanRecordIds(sc: ModuleCtx, scanRecordIds: Collection<UUID>): List<com.ifmix.core.api.entity.ai.ScanDeepResearch> =
@@ -156,8 +162,9 @@ class ScanAggHandler(
      */
     fun updateDeepResearchImages(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.RunDeepResearchInput) {
         val projectId = sc.action.mustGetProjectId()
+        val customerId = sc.action.mustGetActorId()
         val imageRefs = input.images.map { ImageRef(key = it.imageKey, category = it.category ?: ImageCategories.MAIN) }
-        val updated = scanRepo.updateImages(sc, projectId, input.scanRecordId, imageRefs)
+        val updated = scanRepo.updateImages(sc, projectId, customerId, input.scanRecordId, imageRefs)
         if (updated == 0) throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
     }
 
@@ -173,7 +180,7 @@ class ScanAggHandler(
         if (used >= scanQuota.deepResearch) throw com.ifmix.core.api.infra.http.ApiError(
             com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "deep research quota exhausted"
         )
-        val existing = scanRepo.findById(sc, projectId, input.scanRecordId)
+        val existing = scanRepo.findByIdOwned(sc, projectId, actorId, input.scanRecordId)
             ?: throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
 
         val resolved = input.images.map { img ->
@@ -213,8 +220,9 @@ class ScanAggHandler(
      * 2) 按 scanRecordId upsert ai_scan_deep_research 的 premiumResult
      */
     fun saveDeepResearch(sc: ModuleCtx, result: com.ifmix.core.api.dto.ai.DeepResearchResult): Boolean {
+        val customerId = sc.action.mustGetActorId()
         val updated = scanRepo.updateResultAfterDeepResearch(
-            sc, result.projectId, result.scanRecordId, result.basicResult, result.promptVersion,
+            sc, result.projectId, customerId, result.scanRecordId, result.basicResult, result.promptVersion,
         )
         if (updated == 0) throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
 

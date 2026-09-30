@@ -23,15 +23,14 @@ class InstallAggHandler(
 
     data class CreateInstallRes(val installId: UUID, val installToken: String)
 
-    /** 生成 installId + 写 core_install + 签发 installToken(type=5)。header 字段从 mc.action 取；reg_ip=clientIp。 */
+    /** 生成 installId(=PK) + 写 core_install + 签发 installToken(type=5, iid=PK)。header 字段从 mc.action 取；reg_ip=clientIp。 */
     fun createInstall(mc: ModuleCtx, deviceInfo: Map<String, Any?>?): CreateInstallRes {
         val projectId = mc.projectId!!
         val installId = UuidV7.generate()
         val now = Instant.now()
         installRepo.save(mc, Install {
-            this.id = UuidV7.generate()
+            this.id = installId
             this.projectId = projectId
-            this.installId = installId
             this.platform = platformInt(mc.action.clientPlatform)
             this.deviceInfo = deviceInfo
             this.appVersion = mc.action.appVersion
@@ -50,7 +49,7 @@ class InstallAggHandler(
     }
 
     /**
-     * 按 (projectId, installId) 更新，仅覆盖非空字段。installId 来自 token iid（调用方传入）。
+     * 按 (projectId, id) 更新，仅覆盖非空字段。id 即 installId，来自 token iid（调用方传入）。
      * reg_ip write-once：不更新，保留注册时值。
      */
     fun updateInstall(
@@ -58,12 +57,11 @@ class InstallAggHandler(
         firebaseInstallId: String?, fcmToken: String?, deviceInfo: Map<String, Any?>?,
     ): Boolean {
         val projectId = mc.projectId!!
-        val existing = installRepo.findByInstallId(mc, projectId, installId)
+        val existing = installRepo.findById(mc, projectId, installId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "install not found")
         installRepo.save(mc, Install {
             this.id = existing.id
             this.projectId = projectId
-            this.installId = installId
             this.platform = platformInt(mc.action.clientPlatform) ?: existing.platform
             this.deviceInfo = deviceInfo ?: existing.deviceInfo
             this.appVersion = mc.action.appVersion ?: existing.appVersion

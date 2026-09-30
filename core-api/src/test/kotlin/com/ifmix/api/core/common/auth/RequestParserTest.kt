@@ -144,6 +144,40 @@ class RequestParserTest {
         val ex = assertThrows<ApiError> { parser.parseActor(req("Authorization" to "Bearer tok"), requireActorType = null) }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
+
+    @Test fun `install token without subject is allowed when actor is optional`() {
+        bearer(VerifiedToken(
+            actorId = null,
+            projectId = projectId,
+            actorType = ActorTypes.CUSTOMER,
+            tokenType = AuthJwtService.TOKEN_TYPE_INSTALL,
+            installId = "00000000-0000-0000-0000-000000000002",
+        ))
+
+        assertThat(parser.parseActor(
+            req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"),
+            requireActorType = null,
+        )).isNull()
+    }
+
+    @Test fun `install token without subject is rejected when customer actor is required`() {
+        bearer(VerifiedToken(
+            actorId = null,
+            projectId = projectId,
+            actorType = ActorTypes.CUSTOMER,
+            tokenType = AuthJwtService.TOKEN_TYPE_INSTALL,
+            installId = "00000000-0000-0000-0000-000000000002",
+        ))
+
+        val ex = assertThrows<ApiError> {
+            parser.parseActor(
+                req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"),
+                requireActorType = ActorTypes.CUSTOMER,
+            )
+        }
+        assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
+    }
+
     @Test fun `token aud mismatch (cross-app) throws UNAUTHORIZED`() {
         // token.aud != header x-project-id → INVALID → 401000（防跨 app 重放）
         bearer(VerifiedToken(actorId = actorId, projectId = "other-app", actorType = ActorTypes.CUSTOMER))

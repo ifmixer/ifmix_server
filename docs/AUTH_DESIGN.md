@@ -144,9 +144,10 @@ JWT 新增 `type` claim 标识 token 类型，缺省 `10`（老 token 兼容）�
 
 | 流程 | 行为 |
 |------|------|
-| createAnonymousCustomer | 有 token iid（过渡：installToken 可选）→ 写 access token iid + bind 关系；无则退回旧行为 |
-| login（含 Merge） | 有 iid → bind 到最终 ownerId（Merge 后为 existing，方向不反） |
-| logout | **缺 iid 报错**（不兼容老 token）；否则软删该关系 |
+| createAnonymousCustomer | 必须 type=5 installToken+iid → 写 access token iid + bind 关系；无 token/customer/manager token均拒绝 |
+| login（含 Merge） | customer token或installToken均必须有iid → bind 到最终 ownerId（Merge 后为 existing，方向不反） |
+| refresh | 必须 type=5 installToken+iid；只轮换 token并保留iid/anonymous，不调用bind、不修改关系 |
+| logout | 有 iid 则软删对应关系；legacy token 缺 iid 时只撤销会话、跳过关系解绑 |
 | requestAccountDeletion | 软删该 customer 全部有效关系（不依赖 iid） |
 
 一个 install 同时只绑一个 customer（bind 前软删该 install 其它有效关系）。

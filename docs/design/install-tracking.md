@@ -1,8 +1,9 @@
 # 设计文档：Install 设备追踪 + Install↔Customer 关系 + Install Token
 
-> 状态：待 review（**未开始编码**）
+> 状态：强关系与客户端容错已实现并完成本地迁移/前后端联调；V7 最终 NOT NULL 锁定延期到 legacy 可信回填完成后
 > 目标模块：`ifmix_server / core-api`
-> 关联客户端任务：`antique/docs/push-server-install-tracking.md`（本设计对其做了实质性修订，见文末「与原任务书的差异」）
+> 目标态收敛与跨端修改清单：`docs/design/install-customer-hardening.md`
+> 现行前端契约：`antique/docs/install-tracking-frontend-api.md`；早期任务书差异见文末。
 
 ---
 
@@ -46,52 +47,56 @@ install 是请求的**横切上下文**（「从哪个设备来」），不是�
 | `act`  | —（不设 / 忽略） | 10 |
 | `ano`  | —  | 现有语义（是否匿名） |
 | `sid`  | —  | 现有语义（sessionId） |
-| `iid`  | installId | installId（**有 install 上下文时写入**） |
+| `iid`  | installId | installId（新签 customer token 必填） |
 
-> install token **不设 `sub`**（install 不是 actor，无操作主体）。installId 唯一来源是 `iid` claim，两种 token 一律读 `iid` 取 installId。
-> 连带约束：install token 因缺 `sub` **不可**走 `RequestParser.parseActor`（会抛 `invalid token: missing or invalid subject`），只能走「取 iid」路径——这与其用途（createInstall 无 actor、updateInstall 只取 iid）天然一致。
+> install token **不设 `sub`**（install 不是 actor，无操作主体）。`RequestParser.parseActor(requireActorType=null)` 对已验签 type=5 token 返回 null actor，并缓存可信 iid/type；需要 Customer actor 的端点仍明确拒绝 install token。
 
 ### 2.4 传输方式
 
-统一走 `Authorization: Bearer <token>`。**installToken 与 customerToken 不会同时存在**——customerToken 是对 installToken 的「增强」，包含前者的全部信息（含 installId）。无需独立 `x-install-token` header。
+统一走 `Authorization: Bearer <token>`。客户端同时持久化 InstallCredentials 与 CustomerSession，但每个请求只发送一个 token：普通 Customer 业务发 customer token；createAnonymous/无 session login/refresh/updateInstall 发 installToken。无需独立 `x-install-token` header。
 
 ### 2.5 token 生命周期
 
-- **installToken：永不过期，不刷新**。只保护低敏感的 `updateInstall`，且 installId 泄露风险低。
+- **installToken：永不过期，不刷新**。用于 createAnonymous、无 session login、refresh、updateInstall 等设备上下文操作，属于长期凭证，客户端必须用 SecureStore 保存。
 - customer access/refresh token：**保持现状**（access 900s + refresh 机制不变）。
 
 ---
 
 ## 3. 数据表
 
-迁移续号：**V5**（现有最大为 V4）。表名 `core_` 前缀，风格对齐 V1 baseline。
+V5 建立 Install/关系表；V6 已完成 Install 单主键和业务 install_id UUID 化。表名使用 `core_` 前缀。
 
 ### 3.1 `core_install` — 设备表
 
+V5 初始包含内部 `id` 与业务 `install_id` 两列；V6 已收敛为单一主键：
+
+```text
+core_install.id = API installId = JWT iid
+```
+
 | 列 | 类型 | 说明 |
 |----|------|------|
-| id | uuid PK | UuidV7 |
+| id | uuid PK | 服务端 UuidV7，同时是 API installId/JWT iid |
 | project_id | text | project 隔离，逻辑外键 → project_info.id |
-| install_id | uuid | **服务端生成**（UuidV7）；`(project_id, install_id)` 唯一 |
-| platform | integer null | 客户端平台（Int 码）：10=ANDROID / 20=IOS / 30=WEB（对齐 `ClientPlatform`） |
-| device_info | jsonb null | 设备信息（型号/OS 版本/厂商等），自由结构，服务端不校验内部 schema |
-| app_version | text null | 客户端 App 版本（来自 `x-app-version`，原样透传） |
-| ota_version | text null | 热更新版本（来自 `x-ota-version`，原样透传） |
-| locale | text null | 归一化 locale（来自 `x-locale`，经 `parseLocale` 归一到支持集） |
-| country | text null | ISO 3166-1 alpha-2（来自 `x-country`，大写） |
-| currency | text null | ISO 4217（来自 `x-currency`，大写） |
-| reg_ip | text null | **注册时** IP（来自 `ClientIpResolver` / `mc.action.clientIp`）。**createInstall 时写入，updateInstall 不更新**（记录首次注册来源） |
+| platform | integer null | 10=ANDROID / 20=IOS / 30=WEB |
+| device_info | jsonb null | 设备信息自由结构 |
+| app_version | text null | 来自 `x-app-version` |
+| ota_version | text null | 来自 `x-ota-version` |
+| locale | text null | 归一化 locale |
+| country | text null | ISO 3166-1 alpha-2 |
+| currency | text null | ISO 4217 |
+| reg_ip | text null | createInstall 时写入，updateInstall 不更新 |
 | firebase_install_id | text null | Firebase FID，客户端后补 |
 | fcm_token | text null | FCM registration token，客户端后补/轮换更新 |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
-- 唯一约束：`UNIQUE(project_id, install_id)`。
-- install 记录**独立于 customer**，可先于任何身份存在。
-- **字段来源与更新时机**：`platform / app_version / ota_version / locale / country / currency` 均**复用现有请求 header**（`RequestParser` 已有对应 `parseXxx`），`createInstall` 与 `updateInstall` **都从 header 取并写入**；`device_info / firebase_install_id / fcm_token` 走 GraphQL 入参。**create 与 update 均可修改上述所有可变字段**，一律**仅更新非空值**（不用 null/缺失覆盖已有值）。
-- **`reg_ip` 是唯一的 write-once 字段**：仅 `createInstall` 写入（取 `mc.action.clientIp`），`updateInstall` **不更新**，用于记录首次注册来源。
-- `platform` Int 码：`10=ANDROID / 20=IOS / 30=WEB`。现有 `ClientPlatform` 为字符串枚举，本表按 AGENTS.md「枚举全链路 Int 透传」存 Int，实体侧做 enum↔Int 映射。
-- `device_info` 为自由结构 JSONB：客户端上报什么存什么（分析用途）。
+- 不再有独立 `core_install.install_id` 列或 `(project_id, install_id)` 唯一索引。
+- install 记录独立于 customer，可先于任何身份存在。
+- createInstall 返回 `id` 并按同一值签 installToken。
+- updateInstall 按 `(project_id, id)` 查询，iid 一律来自已验签 token。
+- `platform/app_version/ota_version/locale/country/currency` 从 header 获取；`device_info/firebase_install_id/fcm_token` 从 GraphQL input 获取，仅覆盖非空值。
+- `reg_ip` write-once，只记录首次注册来源。
 
 ### 3.2 `core_install_customer_relation` — 关系表
 
@@ -99,7 +104,7 @@ install 是请求的**横切上下文**（「从哪个设备来」），不是�
 |----|------|------|
 | id | uuid PK | UuidV7 |
 | project_id | text | |
-| install_id | uuid | 逻辑外键 → core_install.install_id |
+| install_id | uuid | 逻辑外键 → core_install.id（即 JWT iid） |
 | customer_id | uuid | 逻辑外键 → core_customer.id |
 | created_at | timestamptz | 首次绑定时间，不变 |
 | updated_at | timestamptz | 最后写入时间（任意 save 都刷，无业务含义） |
@@ -157,8 +162,7 @@ install 是请求的**横切上下文**（「从哪个设备来」），不是�
 ### 5.2 解绑（unbind）——logout 时
 ```
 从 customer token 取 iid：
-  - iid 缺失 → 报错（ApiError UNAUTHORIZED / INVALID_REQUEST）。
-    （客户端短期不做 logout，不考虑老 token 兼容——见 §6 决策）
+  - iid 缺失（legacy customer token）→ 只撤销会话，跳过关系解绑（legacy token 从未建立 install 关系）。
   - 有 iid → 软删该关系 (install_id, customer_id, deleted_at IS NULL) → deleted_at = now。
 ```
 
@@ -166,17 +170,17 @@ install 是请求的**横切上下文**（「从哪个设备来」），不是�
 
 | 流程 | installToken/iid | 行为 |
 |------|------------------|------|
-| createAnonymousCustomer | **可选（过渡）** | 有 iid → customer token 写 iid + 建绑定关系；无 iid → **退回旧行为**（不写 iid、不建关系、照常建号） |
-| login（转正 PromoteOrCreate） | 从当前 customer token 的 iid | 有 iid → 绑定到最终 customer；无 → 跳过关系 |
+| createAnonymousCustomer | **必须是 type=5 installToken** | iid 写入 customer token，并在同一事务创建绑定；无 token/customer/manager token均 UNAUTHORIZED |
+| login（转正 PromoteOrCreate） | customer token 或 installToken 的 iid（必需） | 绑定最终 customer；无 token/manager/无 iid 拒绝 |
 | login（合并 Merge，cur→existing） | 同上 | install 有效绑定指向合并后的 **existing**（与 customer 合并方向一致，**绝不反向**） |
-| logout | 从 customer token 的 iid | **缺 iid 报错**（不兼容老 token） |
+| logout | 从 customer token 的 iid | 有 iid 则解绑；legacy token 缺 iid 时只撤销会话 |
 | deleteAccount（requestAccountDeletion） | 不需要 iid | 用户**请求删除的当下**，按 `customer_id` 软删该 customer 的**全部**有效关系（`customer_id = actorId, deleted_at IS NULL → deleted_at = now`）。一个 customer 可能被多个 install 绑过（换设备），全部解绑。不依赖 iid，不受 iid 缺失影响 |
 
-> **过渡策略说明**：createAnonymousCustomer 走「过渡」（installToken 可选）以兼容尚未接入 createInstall 的客户端；logout 走「硬」（缺 iid 报错）因为客户端短期不实现 logout。两者不冲突，各自独立。
+> **兼容说明**：本轮选择强制方案，不实现按 appVersion/project 的 legacy 无 iid 灰度。logout 仍保留旧 token 缺 iid 时只撤销会话的兼容；新 createAnonymous/login/refresh 均执行强 token/iid 校验。refresh 只续期并保留 iid/anonymous，不调用 bind。
 
 > **两条删除链路别混淆**：
 > - **用户主动删除账号**（`requestAccountDeletion`，API 侧）：本设计在此**软删**关系（保留行作审计），customer 尚在。
-> - **匿名僵尸清理**（`core-job / AnonymousCleanupCleaner`，**物理删** customer）：本设计**不改其软删语义**。若后续要让关系随僵尸 customer 一并清理，应在该 job 里**物理删** `core_install_customer_relation`（customer 已物理删，留软删关系是孤儿行）——但这属于 core-job 的另一处改动，本 feature 暂不涉及。
+> - **Cleanup（core-job）**：本 feature 不修改 `AnonymousCleanupCleaner`，不新增 `RESOURCE_GUARD_TABLES`，也不恢复任何删除循环。Customer/Install 候选条件与 resource 处理规则后续另起设计评审。
 
 ---
 
@@ -187,13 +191,13 @@ install 是请求的**横切上下文**（「从哪个设备来」），不是�
 | D1 | install-id 服务端生成 + installToken | 原「客户端生成可伪造」不安全；服务端签发后可信 |
 | D2 | token 加正交 `type` claim（5/10/20），缺省 10 | 区分 token 用途；缺省兼容老 token |
 | D3 | install **不是 actor**，只作 `iid` claim | customer token 需同时携带 customerId(actorId) + installId(iid)，actorId 存不下两个值 |
-| D4 | installToken 永不过期 | 只保护低敏感 updateInstall；install-id 泄露风险低 |
+| D4 | installToken 永不过期 | 用于设备上下文 bootstrap/refresh/update，必须 SecureStore 保存；未来设备认证另行增强 |
 | D5 | 关系表 `(install_id, customer_id)` 全局唯一 + 复用行翻 deleted_at | 反复 bind/unbind 不产生噪音行 |
 | D6 | 不要 bound_at/unbound_at | createdAt=首绑时间；deleted_at=解绑时间（且 @LogicalDeleted 自动过滤）；updatedAt=最后写入（无业务义） |
 | D7 | 一 install 只绑一 customer | 绑新的前先软删该 install 其它有效关系 |
-| D8 | createAnonymousCustomer 过渡（installToken 可选） | 兼容未接入 createInstall 的客户端 |
-| D9 | logout 缺 iid 报错（不兼容老 token） | 客户端短期不实现 logout |
-| D9b | deleteAccount：`requestAccountDeletion` 当下按 customer_id 软删全部关系；**core-job 僵尸清理不改** | 用户主动删除是 API 侧软删；匿名僵尸清理是物理删「垃圾回收」，两条链路分开 |
+| D8 | createAnonymousCustomer 必须有 type=5 installToken+iid | 保证所有新 Customer 创建时原子绑定 Install，所有新 token 含 iid |
+| D9 | logout 缺 iid 时跳过关系解绑 | legacy token 从未建立 install 关系，只需撤销会话 |
+| D9b | deleteAccount 当下按 customer_id 软删关系；core-job cleanup 延期 | 用户主动删除关系语义已定；后台 Customer/Install 清理和 resource 处理不在本 feature 范围 |
 | D10 | 历史关系查询**放弃** | 需求低频，后续交数据分析做 |
 
 ---
@@ -291,7 +295,7 @@ extend type Mutation {
 | install 信任 | `x-install-id` header | **token 的 iid**（header 不再采信） |
 | 关系表软删字段 | `bound_at` + `unbound_at` | **createdAt + deletedAt(@LogicalDeleted)**，去掉两个业务时间字段 |
 | 关系表唯一性 | 部分唯一索引 + 插新行 | **全局唯一 + 复用行翻 deleted_at** |
-| createAnonymousCustomer | 未要求 installToken | **过渡：installToken 可选** |
+| createAnonymousCustomer | 未要求 installToken | **必须 type=5 installToken+iid**，创建时原子绑定 |
 | 历史关系查询 | 要求支持 | **放弃**（交数据分析） |
 
 ### 客户端连带影响（antique 侧，另起任务）

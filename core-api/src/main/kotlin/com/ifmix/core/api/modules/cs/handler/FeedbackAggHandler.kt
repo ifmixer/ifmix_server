@@ -19,7 +19,7 @@ class FeedbackAggHandler(
             this.id = id
             this.projectId = mc.action.projectId!!
             this.customerId = mc.action.actorId
-            this.installId = mc.action.installId
+            this.installId = mc.action.mustGetTokenInstallId()
             this.appVersion = mc.action.appVersion
             this.otaVersion = mc.action.otaVersion
             this.topic = req.topic

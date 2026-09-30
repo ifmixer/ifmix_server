@@ -101,6 +101,16 @@ class RequestParser(
         if (headerAppId != null && tokenAppId != headerAppId)
             throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: app mismatch")
 
+        // install token 只提供可信 iid，不是 actor，也没有 sub。actor 可选的端点（createAnonymous/updateInstall）
+        // 允许继续组装 ActionContext；需要 actor 的业务端点仍明确拒绝。
+        if (verified.tokenType == AuthJwtService.TOKEN_TYPE_INSTALL) {
+            if (requireActorType != null)
+                throw ApiError(ErrorCode.UNAUTHORIZED, "customer authentication required")
+            request.setAttribute(ATTR_TOKEN_TYPE, verified.tokenType)
+            verified.installId?.let { tryUuid(it) }?.let { request.setAttribute(ATTR_TOKEN_IID, it) }
+            return null
+        }
+
         val actorId = verified.actorId?.let { tryUuid(it) }
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: missing or invalid subject")
 
@@ -200,9 +210,25 @@ class RequestParser(
         val raw = auth.removePrefix("Bearer ").trim()
         if (raw.isBlank()) return null
         val verified = try { jwt.verify(raw) } catch (_: TokenExpiredException) { return null } ?: return null
+        request.setAttribute(ATTR_TOKEN_TYPE, verified.tokenType)
         val iid = verified.installId?.let { tryUuid(it) } ?: return null
         request.setAttribute(ATTR_TOKEN_IID, iid)
         return iid
+    }
+
+    /**
+     * 从 Authorization token 取 type claim（5=install / 10=customer / 20=manager）。
+     * 无 token / 过期 / 无效 → null（软取，不抛）。用于区分 bootstrap 凭证类型。
+     */
+    fun parseTokenType(request: HttpServletRequest): Int? {
+        (request.getAttribute(ATTR_TOKEN_TYPE) as? Int)?.let { return it }
+        val auth = request.getHeader("Authorization")
+        if (auth.isNullOrBlank() || !auth.startsWith("Bearer ")) return null
+        val raw = auth.removePrefix("Bearer ").trim()
+        if (raw.isBlank()) return null
+        val verified = try { jwt.verify(raw) } catch (_: TokenExpiredException) { return null } ?: return null
+        request.setAttribute(ATTR_TOKEN_TYPE, verified.tokenType)
+        return verified.tokenType
     }
 
     /** 通用 header：required 且缺失→抛；有值则经 normalize 规范化+校验（非法在 normalize 内抛或按软校验返回 null）。 */
@@ -226,6 +252,7 @@ class RequestParser(
         private const val ATTR_APP_ID = "com.ifmix.parsed.projectId"
         private const val ATTR_ACTOR = "com.ifmix.parsed.actor"
         private const val ATTR_TOKEN_IID = "com.ifmix.parsed.tokenInstallId"
+        private const val ATTR_TOKEN_TYPE = "com.ifmix.parsed.tokenType"
         private val CURRENCY_RE = Regex("^[A-Z]{3}$")   // ISO 4217（大写后校验）
         private val COUNTRY_RE = Regex("^[A-Z]{2}$")    // ISO 3166-1 alpha-2（大写后校验）
         /** project slug 主键：小写字母开头，小写字母/数字/连字符，3-30 字符。创建后不可变。 */

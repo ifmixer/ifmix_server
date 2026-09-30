@@ -28,6 +28,9 @@ class CustomerFetcher(
     fun createAnonymousCustomer(dfe: DgsDataFetchingEnvironment): CreateAnonymousResult {
         // 建匿名号是获取首个凭证的入口，无需登录：requireActorType=null。
         val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
+        // 只要求携带有效可信 iid（token 类型不限）：install token 是首装主路径，
+        // 但含 iid 的 customer token 等也可 bootstrap；不再强制 type=5。iid 无效/缺失 → UNAUTHORIZED（进入事务前）。
+        ctx.mustGetTokenInstallId()
         // 每 IP 60s 10 次
         val clientIp = ctx.clientIp ?: "unknown"
         if (!rateLimiter.checkFixedWindow(clientIp, RATE_LIMIT, RATE_WINDOW_SEC)) {

@@ -51,10 +51,11 @@ class ScanRecordRepository {
             where(table.customerId eq customerId)
         }
 
-    fun partialUpdate(mc: ModuleCtx, projectId: String, id: UUID, req: UpdateScanInput): Int {
+    fun partialUpdate(mc: ModuleCtx, projectId: String, customerId: UUID, id: UUID, req: UpdateScanInput): Int {
         val unset = req.unset?.toSet() ?: emptySet()
         return mc.sql.createUpdate(ScanRecord::class) {
             where(table.projectId eq projectId)
+            where(table.customerId eq customerId)
             where(table.id eq id)
             // unset 优先：如果字段同时出现在 set 和 unset，以 unset 为准
             if (ScanUnsetField.USER_DISPLAY_NAME in unset) {
@@ -76,6 +77,24 @@ class ScanRecordRepository {
 
     fun save(mc: ModuleCtx, entity: ScanRecord) = tpl.save(mc, entity)
     fun findById(mc: ModuleCtx, projectId: String, id: UUID) = tpl.findById(mc, projectId, id)
+
+    /** owner-scoped 单条查询：仅当 projectId + customerId + id 匹配时返回。跨 customer 返回 null。 */
+    fun findByIdOwned(mc: ModuleCtx, projectId: String, customerId: UUID, id: UUID): ScanRecord? =
+        mc.sql.createQuery(ScanRecord::class) {
+            where(table.projectId eq projectId)
+            where(table.customerId eq customerId)
+            where(table.id eq id)
+            select(table)
+        }.limit(1).execute().firstOrNull()
+
+    /** owner-scoped 存在性判断（不加载大字段）。 */
+    fun existsOwned(mc: ModuleCtx, projectId: String, customerId: UUID, id: UUID): Boolean =
+        mc.sql.createQuery(ScanRecord::class) {
+            where(table.projectId eq projectId)
+            where(table.customerId eq customerId)
+            where(table.id eq id)
+            select(table.id)
+        }.limit(1).execute().isNotEmpty()
 
     /**
      * 批量部分更新（owner-scoped）：仅更新 projectId + customerId 名下、且 id 在列表内的记录。
@@ -109,27 +128,31 @@ class ScanRecordRepository {
             set(table.customerId, toCustomerId)
         }.execute()
 
-    /** DeepResearch 前置：整体替换 images（AI 失败也已提交）。 */
+    /** DeepResearch 前置：整体替换 images（AI 失败也已提交）。owner-scoped。 */
     fun updateImages(
         mc: ModuleCtx,
         projectId: String,
+        customerId: UUID,
         id: UUID,
         images: List<ImageRef>,
     ): Int = mc.sql.createUpdate(ScanRecord::class) {
         where(table.projectId eq projectId)
+        where(table.customerId eq customerId)
         where(table.id eq id)
         set(table.images, images)
     }.execute()
 
-    /** DeepResearch 后置：回写 basicResult + hasDeepSearch + promptVersion。 */
+    /** DeepResearch 后置：回写 basicResult + hasDeepSearch + promptVersion。owner-scoped。 */
     fun updateResultAfterDeepResearch(
         mc: ModuleCtx,
         projectId: String,
+        customerId: UUID,
         id: UUID,
         basicResult: Map<String, Any?>?,
         promptVersion: String,
     ): Int = mc.sql.createUpdate(ScanRecord::class) {
         where(table.projectId eq projectId)
+        where(table.customerId eq customerId)
         where(table.id eq id)
         set(table.basicResult, basicResult)
         set(table.hasDeepSearch, true)
@@ -152,6 +175,16 @@ class ScanRecordRepository {
 
     fun deleteById(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.deleteById(mc, projectId, id)
     fun exists(mc: ModuleCtx, projectId: String, id: UUID): Boolean = tpl.exists(mc, projectId, id)
+
+    /** owner-scoped 删除：仅当 projectId + customerId + id 匹配才删。跨 customer 返回 false。 */
+    fun deleteByIdOwned(mc: ModuleCtx, projectId: String, customerId: UUID, id: UUID): Boolean {
+        val count = mc.sql.createDelete(ScanRecord::class) {
+            where(table.projectId eq projectId)
+            where(table.customerId eq customerId)
+            where(table.id eq id)
+        }.execute()
+        return count > 0
+    }
 
     /** 阶段 6：物理删除某批 customer 名下扫描记录（含软删列，显式 PHYSICAL 硬删避免孤儿行）。 */
     fun physicalDeleteByCustomers(mc: ModuleCtx, projectId: String, customerIds: Collection<UUID>): Int {

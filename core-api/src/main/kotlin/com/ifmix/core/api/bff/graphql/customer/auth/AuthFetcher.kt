@@ -37,8 +37,10 @@ class AuthFetcher(
 
     @DgsMutation(field = "m_auth_login")
     fun login(dfe: DgsDataFetchingEnvironment, @InputArgument input: IdpLoginInput): LoginResult {
-        // login 无需登录：requireActorType=null（不 require；带了过期 token 仍会被校验，故前端不带 token）。
+        // login 不要求 customer actor；允许两类上下文：当前 customer token（保留 promote/merge）或 installToken（无现有 session）。
+        // 两者都必须携带可信 iid；manager/无 token/无 iid 拒绝（在进入事务前）。
         val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
+        ctx.mustGetLoginInstallId()
         val res = globalTx.withTx(ctx) { txCtx ->
             authService.login(txCtx, LoginReq(idpId = input.idpId, credential = input.credential))
         }
@@ -47,8 +49,11 @@ class AuthFetcher(
 
     @DgsMutation(field = "m_auth_refreshToken")
     fun refresh(dfe: DgsDataFetchingEnvironment, @InputArgument input: RefreshInput): RefreshResult {
-        // refresh 凭证是 body 的 refresh token；不解析 header access token（可能已过期）。
+        // refresh 凭证是 body 的 refreshToken；Authorization 携带 accessToken 提供可信 iid，
+        // 可能是 customerToken（type=10，含 actor）或 installToken（type=5，无 actor），两者都支持。
+        // 只要求 iid 有效；缺失/无效 → UNAUTHORIZED（在进入事务前）。
         val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
+        ctx.mustGetTokenInstallId()
         val res = globalTx.withTx(ctx) { txCtx ->
             authService.refresh(txCtx, RefreshReq(refreshToken = input.refreshToken))
         }

@@ -213,16 +213,15 @@ class AuthAggHandler(
         })
 
         // 登录主体已转正/合并到 existing（非匿名）。token: sub=ownerId, act=customer, ano=false, sid=refreshTokenId, iid=installId
-        val tokenIid = mc.action.tokenInstallId
+        // login 必须有可信 iid（两类上下文之一）；签发含 iid 的 customer token 并 bind 最终 owner。
+        val tokenIid = mc.action.mustGetLoginInstallId()
         val accessToken = jwt.signAccess(
             ownerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(),
             sessionId = refreshTokenId.toString(), anonymous = false,
-            installId = tokenIid?.toString(),
+            installId = tokenIid.toString(),
         )
-        if (tokenIid != null) {
-            // Merge 分支 ownerId 已是合并后的 existing（action.to）→ bind 指向 existing，绝不反向
-            installFacade.bind(mc.action, tokenIid, ownerId)
-        }
+        // Merge 分支 ownerId 已是合并后的 existing（action.to）→ bind 指向 existing，绝不反向
+        installFacade.bind(mc.action, tokenIid, ownerId)
 
         // 7. Publish event
         events.publishEvent(AuthLoggedInEvent(
@@ -245,6 +244,8 @@ class AuthAggHandler(
 
     fun refresh(mc: ModuleCtx, req: RefreshReq): RefreshRes {
         val projectId = mc.projectId!!
+        // 携带有效可信 iid 即可（customerToken 或 installToken 都行；fetcher 已校验，handler 作为信任边界再取一次）。
+        val tokenIid = mc.action.mustGetTokenInstallId()
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken)
         val oldToken = refreshTokenRepo.findValidByHash(mc, projectId, tokenHash)
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or expired refresh token")
@@ -269,10 +270,20 @@ class AuthAggHandler(
         })
         refreshTokenRepo.revoke(mc, oldToken.id, replacedBy = newTokenId)
 
+        val anonymous = oldToken.actorType == AuthJwtService.ACTOR_CUSTOMER &&
+            customerRepo.findById(mc, projectId, oldToken.actorId)?.anonymous == true
         val accessToken = jwt.signAccess(
             oldToken.actorId.toString(), oldToken.actorType, projectId.toString(),
             sessionId = newTokenId.toString(),
+            anonymous = anonymous,
+            installId = tokenIid.toString(),
         )
+        // refresh 续期 token 并保留 iid/anonymous。若 refresh token 属于某 customer actor，
+        // 则检查该 actor 与 iid 的关系：未绑定则补绑（bind 幂等——已绑定则 NoOp，软删则复活）。
+        // 这修复了 legacy/漏绑场景，使 refresh 也能收敛到「一 install 一 customer」不变量。
+        if (oldToken.actorType == AuthJwtService.ACTOR_CUSTOMER) {
+            installFacade.bind(mc.action, tokenIid, oldToken.actorId)
+        }
         return RefreshRes(
             accessToken = accessToken,
             refreshToken = rawNewToken,
@@ -288,21 +299,26 @@ class AuthAggHandler(
         if (token != null) {
             refreshTokenRepo.revoke(mc, token.id)
         }
-        // 关系解绑：logout 必须有 iid（设计 D9，不兼容老 token）
+        // 老 customer token 没有 iid，也从未建立 install 关系：兼容退出，只撤销 refresh token。
+        // 新 token 有 iid 时正常解绑当前 install↔customer 关系。
         val iid = mc.action.tokenInstallId
-            ?: throw ApiError(ErrorCode.UNAUTHORIZED, "install id (iid) required for logout")
-        val customerId = mc.action.actorId
-            ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
-        installFacade.unbind(mc.action, iid, customerId)
+        if (iid != null) {
+            val customerId = mc.action.actorId
+                ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
+            installFacade.unbind(mc.action, iid, customerId)
+        }
         return LogoutRes(ok = true)
     }
 
     /**
-     * 创建匿名 Customer 并签发 access + refresh token。无需鉴权。
-     * 既是首装入口，也是登出后惰性重建入口。token: sub=customerId, act="customer", ano=true。
+     * 创建匿名 Customer 并签发 access + refresh token。只要求携带有效可信 iid（token 类型不限）。
+     * 在同一事务内：建 customer → 建 refresh token → bind Install→Customer → 签发含 iid 的 customer access token。
+     * 既是首装入口，也是登出后惰性重建入口。token: sub=customerId, act="customer", ano=true, iid=install.id。
      */
     fun createAnonymousCustomer(mc: ModuleCtx): CreateAnonymousRes {
         val projectId = mc.projectId!!
+        // 只要求 iid 非空（fetcher 已校验，handler 作为信任边界再取一次）。
+        val tokenIid = mc.action.mustGetTokenInstallId()
         val customerId = customerRepo.createCustomer(mc, projectId) // anonymous=true
 
         val now = Instant.now()
@@ -323,15 +339,12 @@ class AuthAggHandler(
             this.updatedAt = now
         })
 
-        val tokenIid = mc.action.tokenInstallId // installToken 的 iid（过渡：可空）
         val accessToken = jwt.signAccess(
             customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(),
             sessionId = refreshTokenId.toString(), anonymous = true,
-            installId = tokenIid?.toString(),
+            installId = tokenIid.toString(),
         )
-        if (tokenIid != null) {
-            installFacade.bind(mc.action, tokenIid, customerId)
-        }
+        installFacade.bind(mc.action, tokenIid, customerId)
         return CreateAnonymousRes(
             customerId = customerId,
             accessToken = accessToken,

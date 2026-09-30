@@ -35,11 +35,11 @@ class SupportRequestHandlerTest {
         override fun save(mc: ModuleCtx, entity: SupportRequest): Boolean { saved = entity; return true }
     }
 
-    private fun ctx(actorId: UUID?, installId: String?) = ModuleCtx(
+    private fun ctx(actorId: UUID?, tokenInstallId: UUID?) = ModuleCtx(
         action = ActionContext(
             projectId = projectId,
             actorId = actorId,
-            installId = installId,
+            tokenInstallId = tokenInstallId,
             locale = "zh-CN",
             country = "CN",
             currency = "CNY",
@@ -51,6 +51,7 @@ class SupportRequestHandlerTest {
     fun `create sets OPEN status, null timestamps, installId and locale snapshot`() {
         val repo = CapturingRepo()
         val handler = SupportRequestAggHandler(repo)
+        val iid = UUID.randomUUID()
         val req = CreateSupportRequestReq(
             title = "无法登录",
             message = "点登录没反应",
@@ -60,7 +61,7 @@ class SupportRequestHandlerTest {
             attachments = listOf(MediaRef(key = "ugc/x.jpg", type = 10, category = 0)),
         )
 
-        handler.create(ctx(customerId, "install-123"), req)
+        handler.create(ctx(customerId, iid), req)
 
         val e = repo.saved!!
         assertThat(e.status).isEqualTo(SupportRequestStatuses.OPEN)
@@ -68,7 +69,7 @@ class SupportRequestHandlerTest {
         assertThat(e.title).isEqualTo("无法登录")
         assertThat(e.message).isEqualTo("点登录没反应")
         assertThat(e.email).isEqualTo("a@b.com")
-        assertThat(e.installId).isEqualTo("install-123")
+        assertThat(e.installId).isEqualTo(iid)
         assertThat(e.customerId).isEqualTo(customerId)
         assertThat(e.locale).isEqualTo("zh-CN")
         assertThat(e.country).isEqualTo("CN")
@@ -81,27 +82,28 @@ class SupportRequestHandlerTest {
     }
 
     @Test
-    fun `create allows anonymous customer (null customerId) and null installId`() {
+    fun `create allows anonymous customer (null customerId) with trusted install id`() {
         val repo = CapturingRepo()
         val handler = SupportRequestAggHandler(repo)
-        handler.create(ctx(actorId = null, installId = null), CreateSupportRequestReq(title = "t", message = "m"))
+        val iid = UUID.randomUUID()
+        handler.create(ctx(actorId = null, tokenInstallId = iid), CreateSupportRequestReq(title = "t", message = "m"))
         val e = repo.saved!!
         assertThat(e.customerId).isNull()
-        assertThat(e.installId).isNull()
+        assertThat(e.installId).isEqualTo(iid)
         assertThat(e.category).isEqualTo(0)
     }
 
     @Test
     fun `findMineById requires login`() {
         val handler = SupportRequestAggHandler(CapturingRepo())
-        val err = assertThrows<ApiError> { handler.findMineById(ctx(actorId = null, installId = null), UUID.randomUUID()) }
+        val err = assertThrows<ApiError> { handler.findMineById(ctx(actorId = null, tokenInstallId = null), UUID.randomUUID()) }
         assertThat(err.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
 
     @Test
     fun `findMine requires login`() {
         val handler = SupportRequestAggHandler(CapturingRepo())
-        val err = assertThrows<ApiError> { handler.findMine(ctx(actorId = null, installId = null), null) }
+        val err = assertThrows<ApiError> { handler.findMine(ctx(actorId = null, tokenInstallId = null), null) }
         assertThat(err.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
 }

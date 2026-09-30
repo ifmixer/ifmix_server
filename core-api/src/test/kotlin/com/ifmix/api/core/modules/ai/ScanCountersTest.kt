@@ -58,7 +58,7 @@ class ScanCountersTest {
     private val actor = UUID.randomUUID()
 
     private fun ctx() = ModuleCtx(
-        action = ActionContext(projectId = projectId, actorId = actor),
+        action = ActionContext(projectId = projectId, actorId = actor, tokenInstallId = UUID.randomUUID()),
         sql = mock<KSqlClient>(),
     )
 

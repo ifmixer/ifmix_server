@@ -15,7 +15,7 @@ import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-class ScanCollectionRepository {
+open class ScanCollectionRepository {
     companion object { private val tpl = ProjectCrudRepoTemplate(ScanCollection::class, UUID::class) }
 
     fun findDefault(mc: ModuleCtx, projectId: String, customerId: UUID?): ScanCollection? {
@@ -28,8 +28,17 @@ class ScanCollectionRepository {
         }.limit(1).execute().firstOrNull()
     }
 
-    fun save(mc: ModuleCtx, entity: ScanCollection) = tpl.save(mc, entity)
+    open fun save(mc: ModuleCtx, entity: ScanCollection) = tpl.save(mc, entity)
     fun findById(mc: ModuleCtx, projectId: String, id: UUID) = tpl.findById(mc, projectId, id)
+
+    /** owner-scoped 存在性判断：collection 是否属于该 customer。跨 customer 返回 false。 */
+    fun existsOwned(mc: ModuleCtx, projectId: String, customerId: UUID, id: UUID): Boolean =
+        mc.sql.createQuery(ScanCollection::class) {
+            where(table.projectId eq projectId)
+            where(table.customerId eq customerId)
+            where(table.id eq id)
+            select(table.id)
+        }.limit(1).execute().isNotEmpty()
 
     /** 合并：把 fromCustomerId 名下收藏夹归属改到 toCustomerId。返回改写行数。 */
     fun reassignOwner(mc: ModuleCtx, projectId: String, fromCustomerId: UUID, toCustomerId: UUID): Int =
