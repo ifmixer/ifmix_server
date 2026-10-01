@@ -1,0 +1,19 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/handler/InstallAggHandler.kt
+  h_89b11cfda87c93 1-30
+core-api/src/test/kotlin/com/ifmix/api/core/modules/install/BindActionDecisionTest.kt
+  h_89b11cfda87c93 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f46d09d2ee70dd3ac259a619603095f49f1ac1f5",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    },
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
