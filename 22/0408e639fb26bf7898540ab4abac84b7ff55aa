@@ -1,0 +1,78 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_89b11cfda87c93 82-84,87,196-198
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/AuthFetcher.kt
+  h_89b11cfda87c93 79-82
+core-api/src/main/kotlin/com/ifmix/core/api/bff/webhooks/WebhookController.kt
+  h_89b11cfda87c93 13,18,27-28,40,92-93,110-114,116-131,145-146
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/RefreshToken.kt
+  h_89b11cfda87c93 23
+core-api/src/main/kotlin/com/ifmix/core/api/entity/customer/Customer.kt
+  h_89b11cfda87c93 4,14,34-39
+core-api/src/main/kotlin/com/ifmix/core/api/entity/customer/DeletionReasons.kt
+  h_89b11cfda87c93 1-12
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/AuthJwtKeys.kt
+  h_89b11cfda87c93 10-12,14,16-25
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/Hashing.kt
+  h_89b11cfda87c93 5,16-18,26,29
+core-api/src/main/kotlin/com/ifmix/core/api/infra/jimmer/ClusterRegistry.kt
+  h_89b11cfda87c93 13,15,54-59,63
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_89b11cfda87c93 155-162
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanRecordRepository.kt
+  h_89b11cfda87c93 163-164,168,177-187
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AgnesChatClientFactory.kt
+  h_89b11cfda87c93 7,14-15,18-22,28,31-32,34-39,41-57,60-61,76-81
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AgnesKeyStore.kt
+  h_89b11cfda87c93 4,9,11-13,35-54,58-65
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  h_89b11cfda87c93 45-49,51,68,116-130
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/AuthConfig.kt
+  h_89b11cfda87c93 50
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/handler/AuthAggHandler.kt
+  h_89b11cfda87c93 26,47,56,67,200,250,255,327,334-335,359,362-367
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/repo/RefreshTokenRepository.kt
+  h_89b11cfda87c93 25-26,48-49
+core-api/src/main/kotlin/com/ifmix/core/api/modules/customer/repo/CustomerRepository.kt
+  h_89b11cfda87c93 9-10,121-141
+core-api/src/main/kotlin/com/ifmix/core/api/modules/media/handler/StorageAggHandler.kt
+  h_89b11cfda87c93 33,35,62-67,73-76,78-88,96-98,102-106,109
+core-api/src/main/kotlin/com/ifmix/core/api/modules/pay/NotificationDecoder.kt
+  h_89b11cfda87c93 26-31,57-58,60,63-67,69-70,78
+core-api/src/main/kotlin/com/ifmix/core/api/modules/pay/handler/PaymentWebhookHandler.kt
+  h_89b11cfda87c93 36-41,49,63,87,99-100
+core-api/src/main/resources/application.yml
+  h_89b11cfda87c93 75-78,86-87
+core-api/src/main/resources/db/migration/V7__customer_deletion.sql
+  h_89b11cfda87c93 1-10
+core-api/src/main/resources/schema/customer/customer.graphqls
+  h_89b11cfda87c93 16-17
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/AuthJwtServiceTest.kt
+  h_89b11cfda87c93 3,10,46
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/InstallTokenTest.kt
+  h_89b11cfda87c93 13,17
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/TestJwtKeys.kt
+  h_89b11cfda87c93 1-12
+core-api/src/test/kotlin/com/ifmix/api/core/e2e/SecurityE2eTest.kt
+  h_89b11cfda87c93 5-6,13,24-30,36-51,89-92,95,100-103,111-125,132-135
+core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/AuthRefreshInstallTest.kt
+  h_89b11cfda87c93 22,73-75,170-172
+core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/RefreshTokenRepositoryTest.kt
+  h_89b11cfda87c93 1-122
+core-api/src/test/kotlin/com/ifmix/api/core/modules/install/CreateInstallPkTest.kt
+  h_89b11cfda87c93 5,20,39
+core-api/src/test/resources/application-test.yml
+  h_89b11cfda87c93 23-24
+core-job/src/main/kotlin/com/ifmix/core/job/customer/AnonymousCleanupCleaner.kt
+  h_89b11cfda87c93 63-64,77,85,133,159-170,179,186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "220408e639fb26bf7898540ab4abac84b7ff55aa",
+  "prompts": {},
+  "humans": {
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
