@@ -7,10 +7,10 @@ spring:
       url: redis://localhost:6379
   ai:
     openai:
-      base-url: https://apihub.agnes-ai.cn/v1
+      base-url: https://apihub.agnes-ai.com/v1
       chat:
         options:
-          model: agnes-2.5-flash
+          model: agnes-3.0-flash
 
 # 本地：trusted-documents 机制同样开启（GReq path 带 reqName 走 allowlist），
 # allow-raw-query=true 时允许无 reqName 的 raw query 兜底，方便 GraphiQL/API 探索。

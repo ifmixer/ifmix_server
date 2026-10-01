@@ -1,6 +1,7 @@
 package com.ifmix.core.api.modules.customer.handler
 
 import com.ifmix.core.api.infra.db.ModuleCtx
+import com.ifmix.core.api.modules.ai.repo.CustomerScanMetricsRepository
 import com.ifmix.core.api.modules.ai.repo.ScanCollectionRepository
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
 import com.ifmix.core.api.modules.customer.repo.CustomerRepository
@@ -25,6 +26,7 @@ class CustomerMergeHandler(
     private val todoRepo: TodoRepository,
     private val subscriptionRepo: SubscriptionRepository,
     private val customerRepo: CustomerRepository,
+    private val customerScanMetricsRepo: CustomerScanMetricsRepository,
 ) {
     /**
      * 合并匿名 cur → existing。调用方须已确认 cur 匿名且 existing != cur（判定表第三分支）。
@@ -57,8 +59,8 @@ class CustomerMergeHandler(
 
         // 4. cur 置 mergedTo=existing（tombstone，清理任务回收）
         //    终身累计配额：先把 cur 的计数加到 existing，否则登录后额度被重置、限流可绕过。
-        customerRepo.findCounts(mc, projectId, curId)?.let { (curScan, curDeep) ->
-            if (curScan > 0 || curDeep > 0) customerRepo.addCounts(mc, projectId, existingId, curScan, curDeep)
+        customerScanMetricsRepo.findCounts(mc, projectId, curId)?.let { (curScan, curDeep) ->
+            if (curScan > 0 || curDeep > 0) customerScanMetricsRepo.addCounts(mc, projectId, existingId, curScan, curDeep)
         }
         customerRepo.markMerged(mc, projectId, curId, existingId)
     }

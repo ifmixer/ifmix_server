@@ -38,11 +38,14 @@ class ScanCollectedTest {
         scanRepo = ScanRecordRepository(),
         deepResearchRepo = ScanDeepResearchRepository(),
         scanPrompt = ScanPrompt("v10"),
-        customerFacade = org.mockito.kotlin.mock(),
+        scanMetricsRepo = org.mockito.kotlin.mock(),
         scanQuota = com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig(),
     )
 
-    private fun actionCtx() = ActionContext(projectId = "test-app", actorId = UUID.randomUUID())
+    private fun actionCtx() = com.ifmix.core.api.infra.db.ModuleCtx(
+        action = ActionContext(projectId = "test-app", actorId = UUID.randomUUID()),
+        sql = org.mockito.kotlin.mock<org.babyfish.jimmer.sql.kt.KSqlClient>(),
+    )
 
     private fun input(collected: Boolean?) = NewScanInput(
         images = listOf(NewScanImageInput(imageKey = "k.jpg", category = 0, mediaType = "image/jpeg")),

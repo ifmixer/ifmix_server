@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 /**
  * 终身累计配额上限（与 [RateLimitConfig] 的时间窗口限流不同：本配额只增不减、永不重置）。
  *
- * 持久计数存于 core_customer.scan_count / deep_research_count；这里只给固定上限。
+ * 持久计数存于 core_ai_customer_scan_metrics.scan_count / deep_research_count；这里只给固定上限。
  * 达到上限后对应操作被 QUOTA_EXCEEDED 拒绝。
  *
  * 示例（application.yml）：

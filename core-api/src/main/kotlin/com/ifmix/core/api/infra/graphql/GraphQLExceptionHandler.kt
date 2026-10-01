@@ -2,10 +2,13 @@ package com.ifmix.core.api.infra.graphql
 
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
+import com.ifmix.core.api.infra.http.GENERIC_SERVER_ERROR_MESSAGE
+import com.ifmix.core.api.infra.http.clientMessage
 import graphql.GraphQLError
 import graphql.GraphqlErrorBuilder
 import graphql.schema.DataFetchingEnvironment
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.annotation.Order
 import org.springframework.graphql.execution.DataFetcherExceptionResolverAdapter
 import org.springframework.graphql.execution.ErrorType
@@ -15,13 +18,16 @@ import org.springframework.stereotype.Component
  * GraphQL 异常解析器。
  *
  * ApiError → 带 code 的 GraphQL error（extensions.code = "401000" 等）。
- * 其他异常 → 返回 null，走 Spring GraphQL 默认处理。
+ * 其他异常 → INTERNAL_ERROR（code=500000）。
+ * 线上（app.expose-errors=false）5xx 与未预期异常只返回通用文案，不透出异常细节。
  *
  * @Order(1) 确保优先于 DGS 内置的默认 exception resolver。
  */
 @Component
 @Order(1)
-class GraphQLExceptionHandler : DataFetcherExceptionResolverAdapter() {
+class GraphQLExceptionHandler(
+    @param:Value("\${app.expose-errors:false}") private val exposeErrors: Boolean,
+) : DataFetcherExceptionResolverAdapter() {
 
     private val log = LoggerFactory.getLogger(GraphQLExceptionHandler::class.java)
 
@@ -42,7 +48,7 @@ class GraphQLExceptionHandler : DataFetcherExceptionResolverAdapter() {
                     log.debug("GraphQL ApiError [{}] {} at {}", code.externalCode, apiError.message, path)
             }
             return GraphqlErrorBuilder.newError(env)
-                .message(apiError.message ?: code.name)
+                .message(code.clientMessage(apiError.message, exposeErrors))
                 .errorType(code.toGraphQLErrorType())
                 .extensions(mapOf(
                     "code" to code.externalCode,
@@ -50,10 +56,17 @@ class GraphQLExceptionHandler : DataFetcherExceptionResolverAdapter() {
                 ))
                 .build()
         }
-        // 非 ApiError：未预期的程序异常（NPE/DB/Redis 等）。记 error 带 stack 便于排查，
-        // 再返回 null 走 Spring GraphQL 默认处理（对客户端仍是 INTERNAL_ERROR）。
+        // 非 ApiError：未预期的程序异常（NPE/DB/Redis 等）。记 error 带 stack 便于排查；
+        // 自己构造错误而不是返回 null——交给下游默认 resolver 会把异常信息带给客户端。
         log.error("GraphQL unhandled exception at {}", path, ex)
-        return null
+        return GraphqlErrorBuilder.newError(env)
+            .message(if (exposeErrors) (ex.message ?: ex.javaClass.simpleName) else GENERIC_SERVER_ERROR_MESSAGE)
+            .errorType(ErrorType.INTERNAL_ERROR)
+            .extensions(mapOf(
+                "code" to ErrorCode.INTERNAL.externalCode,
+                "errorName" to ErrorCode.INTERNAL.name,
+            ))
+            .build()
     }
 }
 

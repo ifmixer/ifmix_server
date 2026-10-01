@@ -13,7 +13,7 @@ import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
 import com.ifmix.core.api.modules.ai.service.ScanPrompt
-import com.ifmix.core.api.modules.customer.CustomerFacade
+import com.ifmix.core.api.modules.ai.repo.CustomerScanMetricsRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -33,7 +33,7 @@ class ScanCountersTest {
 
     private val projectId = "test-app"
     private val scanRepo = mock<ScanRecordRepository>()
-    private val customerFacade = mock<CustomerFacade>()
+    private val scanMetricsRepo = mock<CustomerScanMetricsRepository>()
     private val quota = ScanQuotaConfig(scan = 5, deepResearch = 3)
 
     private val noopStorage = object : ObjectStorage {
@@ -51,7 +51,7 @@ class ScanCountersTest {
         scanRepo = scanRepo,
         deepResearchRepo = ScanDeepResearchRepository(),
         scanPrompt = ScanPrompt("v10"),
-        customerFacade = customerFacade,
+        scanMetricsRepo = scanMetricsRepo,
         scanQuota = quota,
     )
 
@@ -75,14 +75,14 @@ class ScanCountersTest {
 
     @Test
     fun `saveNewScan succeeds when under quota`() {
-        whenever(customerFacade.tryIncrementScanCount(any(), eq(actor), eq(5))).thenReturn(true)
+        whenever(scanMetricsRepo.tryIncrementScanCount(any(), eq(projectId), eq(actor), eq(5))).thenReturn(1)
         val rec = handler.saveNewScan(ctx(), result())
         assertThat(rec.projectId).isEqualTo(projectId)
     }
 
     @Test
     fun `saveNewScan throws QUOTA_EXCEEDED when limit reached`() {
-        whenever(customerFacade.tryIncrementScanCount(any(), eq(actor), eq(5))).thenReturn(false)
+        whenever(scanMetricsRepo.tryIncrementScanCount(any(), eq(projectId), eq(actor), eq(5))).thenReturn(0)
         val err = assertThrows<ApiError> { handler.saveNewScan(ctx(), result()) }
         assertThat(err.errorCode).isEqualTo(ErrorCode.QUOTA_EXCEEDED)
     }

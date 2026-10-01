@@ -26,6 +26,7 @@
 | ai | `core_ai_scan_deep_research` | project | ScanDeepResearch |
 | ai | `core_ai_scan_collection` | project | ScanCollection |
 | ai | `core_ai_scan_collection_item` | project | ScanCollectionItem |
+| ai | `core_ai_customer_scan_metrics` | project | CustomerScanMetrics |
 | ai | `core_ai_api_key` | 全局 | AiApiKey |
 
 > 2026-10-01 由 `core_ai_agnes_key` 通用化改名（V8），新增 `provider` 列（10=AGNES，码表 `ApiProviders`）。
@@ -204,6 +205,7 @@ input CommonFindOptions {
     - 两库 flyway 历史现已完全一致：V1=`-1432007747`、V2=`-1291542121`（本地 V1 原 checksum 为空，已用 `flywayRepair` 对齐；无需改线上）。
   - V3 `core_cs_feedback` / `core_cs_support_request` 各加 `app_version` / `ota_version`（varchar(64)，可空；`ClientVersionProps`）。尚未在任何库执行，需 `./gradlew :core-api:flywayMigrate`。
   - V4 `core_customer` 加 `scan_count` / `deep_research_count`（integer 默认 0，业务侧原子自增）。
+  - V9 新建 `core_ai_customer_scan_metrics`（每 customer 一行，`customer_id` 唯一，行不存在 = 计数 0，首次写入懒建），回填 V4 两列中非零的计数；`core_customer` 旧列暂留（实体不再映射），发布完成后另起迁移删除。
   - V5 install 追踪：新建 `core_install` + `core_install_customer_relation`。
   - V6 Install ID 收敛：`core_install.id = API installId = JWT iid`，删除冗余 `core_install.install_id`；四张 Customer 业务表 `install_id` 安全转为 nullable UUID，新写入由应用层强制 token iid。已在本地 PG 18.1 从 V5→V6 验证，未删除任何 resource。
 

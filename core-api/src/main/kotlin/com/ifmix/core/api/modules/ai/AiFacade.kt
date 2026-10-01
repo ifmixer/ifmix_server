@@ -30,7 +30,7 @@ class AiFacade(
 
     /** AI 调用在事务外 */
     fun runAiScan(actionCtx: ActionContext, input: NewScanInput): AiScanResult =
-        scanHandler.runAiScan(actionCtx, input)
+        scanHandler.runAiScan(mcFactory.forProject(actionCtx), input)
 
     /** DB 写入在事务内 */
     fun saveScanRecord(actionCtx: ActionContext, result: AiScanResult): ScanRecord =

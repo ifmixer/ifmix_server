@@ -23,3 +23,13 @@ enum class ErrorCode(val externalCode: String, val status: HttpStatus) {
     /** 日配额用尽（与 RATE_LIMITED 区分：前者是短期限流，后者是日配额） */
     QUOTA_EXCEEDED("429001", HttpStatus.TOO_MANY_REQUESTS),
 }
+
+/** 线上隐藏细节时，5xx / 未预期异常对客户端统一返回的通用文案（客户端按 code 做本地化）。 */
+const val GENERIC_SERVER_ERROR_MESSAGE = "Something went wrong. Please try again later or contact us."
+
+/**
+ * 对客户端返回的错误消息。expose=false（线上）时 5xx 一律用通用文案，不透出内部细节
+ * （异常 message、上游 AI/DB 报错等）；4xx 的消息本就是面向客户端写的，原样返回。
+ */
+fun ErrorCode.clientMessage(raw: String?, expose: Boolean): String =
+    if (expose || !status.is5xxServerError) raw ?: name else GENERIC_SERVER_ERROR_MESSAGE

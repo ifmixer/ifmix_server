@@ -32,17 +32,14 @@ class GlobalExceptionHandler(
             else ->
                 log.debug("ApiError [{}] {}", code.externalCode, ex.message)
         }
-        if (code == ErrorCode.AI_UNAVAILABLE && ex.details != null) {
-            return ResponseEntity.status(code.status)
-                .header("Retry-After", "60")
-                .body(Envelope.errorWithDetails(code.externalCode, ex.message ?: code.name, ex.details))
-        }
-        val body = if (ex.details != null) {
-            Envelope.errorWithDetails(code.externalCode, ex.message ?: code.name, ex.details)
-        } else {
-            Envelope.error(code.externalCode, ex.message ?: code.name)
-        }
-        return ResponseEntity.status(code.status).body(body)
+        val msg = code.clientMessage(ex.message, exposeErrors)
+        // 线上 5xx 连 details 一起隐藏（details 同样可能带内部信息）
+        val details = if (exposeErrors || !code.status.is5xxServerError) ex.details else null
+        val body = if (details != null) Envelope.errorWithDetails(code.externalCode, msg, details)
+            else Envelope.error(code.externalCode, msg)
+        val resp = ResponseEntity.status(code.status)
+        if (code == ErrorCode.AI_UNAVAILABLE) resp.header("Retry-After", "60")
+        return resp.body(body)
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
@@ -71,7 +68,7 @@ class GlobalExceptionHandler(
     @ExceptionHandler(Exception::class)
     fun handleGeneric(ex: Exception): ResponseEntity<Envelope<Nothing>> {
         log.error("Unhandled exception", ex)
-        val msg = if (exposeErrors) (ex.message ?: "error") else "internal error"
+        val msg = if (exposeErrors) (ex.message ?: "error") else GENERIC_SERVER_ERROR_MESSAGE
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(Envelope.error(ErrorCode.INTERNAL.externalCode, msg))
     }

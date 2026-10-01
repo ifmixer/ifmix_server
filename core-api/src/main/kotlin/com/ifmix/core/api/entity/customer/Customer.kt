@@ -26,12 +26,6 @@ interface Customer : BaseProjectEntity, SoftDeletableProps {
     @Column(name = "auth_identity_id")
     val authIdentityId: UUID?
 
-    /** 累计成功扫描次数（saveNewScan 成功时 +1）。 */
-    val scanCount: Int
-
-    /** 累计成功深度研究次数（saveDeepResearch 成功时 +1）。 */
-    val deepResearchCount: Int
-
     /** 删除原因分类（[DeletionReasons]；null = 未删除）。 */
     val deleteReasonCategory: Int?
 

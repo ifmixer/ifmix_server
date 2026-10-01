@@ -29,7 +29,7 @@ core_install.id
 1. 新匿名 Customer 必须携带有效 iid（token 类型不限——installToken 是主路径，含 iid 的 customer token 亦可）创建，并在同一事务内绑定 Install。
 2. login 后维护正确 Install↔Customer 关系；refresh 续期并保留 iid/anonymous；若 refresh token 属于某 customer actor 且与 iid 未绑定，则补绑（幂等）。
 3. 已有有效 customer session 不因本地 installStore 读取、createInstall 或 updateInstall 失败而无法调用普通业务。
-4. App 启动不等待网络或凭证创建。
+4. App 启动不阻塞 UI、不等待凭证创建；但 install 作为设备级凭证尽早在后台创建——有网即建(幂等),没网则挂网络监听、恢复联网后再建。匿名 Customer 仍惰性,按需创建。
 5. 临时网络/服务错误不能清除已有登录身份或静默切换 Customer。
 6. 允许 createInstall/createAnonymous 重试产生孤立记录，以可用性换取实现简单；重复由限流、清理和监控处理。
 7. 所有 “My” 业务查询和修改必须按 customer owner 隔离。
@@ -78,7 +78,7 @@ core_install.id
 | refresh 异常 | catch all 后重建匿名身份 | 只有明确 session 失效才重建；网络/429/5xx 保留原身份 |
 | login token | 总是 installToken | 当前有 customer session 时用 customer token；否则用 installToken |
 | 凭证创建重试 | 无统一有限重试 | 仅 createInstall/createAnonymous/refresh 做受控重试 |
-| App 启动 | 已不联网创建凭证 | 保持不变 |
+| App 启动 | 已不联网创建凭证 | install 尽早后台创建:有网即建、没网等网络恢复再建;不阻塞 UI。匿名 Customer 仍惰性 |
 | 业务 mutation 重试 | 无自动重试 | 保持不变；用户显式重试，接受重复 |
 
 ---

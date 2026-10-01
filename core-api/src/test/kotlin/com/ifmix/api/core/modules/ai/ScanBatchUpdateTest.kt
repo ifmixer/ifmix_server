@@ -68,7 +68,7 @@ class ScanBatchUpdateTest {
             scanRepo = repo,
             deepResearchRepo = ScanDeepResearchRepository(),
             scanPrompt = ScanPrompt("v10"),
-            customerFacade = mock(),
+            scanMetricsRepo = mock(),
             scanQuota = com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig(),
         )
         val sql = mock<KSqlClient>()

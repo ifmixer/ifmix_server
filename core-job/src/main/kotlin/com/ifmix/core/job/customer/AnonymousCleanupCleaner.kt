@@ -45,6 +45,7 @@ class AnonymousCleanupCleaner(
         private val RESOURCE_TABLES = listOf(
             "core_ai_scan_collection",
             "core_ai_scan_record",
+            "core_ai_customer_scan_metrics",
             "core_media_upload_record",
             "core_demo_todo",
             "core_cs_feedback",

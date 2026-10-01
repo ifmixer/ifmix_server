@@ -13,7 +13,7 @@ import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.ScanRunner
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
 import com.ifmix.core.api.modules.ai.service.ScanPrompt
-import com.ifmix.core.api.modules.customer.CustomerFacade
+import com.ifmix.core.api.modules.ai.repo.CustomerScanMetricsRepository
 import com.ifmix.core.api.infra.storage.ObjectStorage
 import com.ifmix.core.api.entity.cs.Feedback
 import com.ifmix.core.api.entity.cs.SupportRequest
@@ -129,8 +129,8 @@ class TrustedInstallIdWriteTest {
     )
 
     private fun scanHandler(scanRepo: ScanRecordRepository): ScanAggHandler {
-        val customerFacade = mock<CustomerFacade> {
-            on { tryIncrementScanCount(org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any()) } doReturn true
+        val scanMetricsRepo = mock<CustomerScanMetricsRepository> {
+            on { tryIncrementScanCount(org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any()) } doReturn 1
         }
         return ScanAggHandler(
             scanRunner = mock<ScanRunner>(),
@@ -138,7 +138,7 @@ class TrustedInstallIdWriteTest {
             scanRepo = scanRepo,
             deepResearchRepo = mock<ScanDeepResearchRepository>(),
             scanPrompt = mock<ScanPrompt>(),
-            customerFacade = customerFacade,
+            scanMetricsRepo = scanMetricsRepo,
             scanQuota = ScanQuotaConfig(),
         )
     }

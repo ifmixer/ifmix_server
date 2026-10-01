@@ -17,7 +17,7 @@ import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
 import com.ifmix.core.api.modules.ai.service.ScanPrompt
-import com.ifmix.core.api.modules.customer.CustomerFacade
+import com.ifmix.core.api.modules.ai.repo.CustomerScanMetricsRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -39,7 +39,7 @@ class ScanOwnerScopeTest {
     private val projectId = "test-app"
     private val owner = UUID.randomUUID()
     private val scanRepo = mock<ScanRecordRepository>()
-    private val customerFacade = mock<CustomerFacade>()
+    private val scanMetricsRepo = mock<CustomerScanMetricsRepository>()
     private val quota = ScanQuotaConfig(scan = 5, deepResearch = 3)
 
     private val noopStorage = object : ObjectStorage {
@@ -57,7 +57,7 @@ class ScanOwnerScopeTest {
         scanRepo = scanRepo,
         deepResearchRepo = ScanDeepResearchRepository(),
         scanPrompt = ScanPrompt("v10"),
-        customerFacade = customerFacade,
+        scanMetricsRepo = scanMetricsRepo,
         scanQuota = quota,
     )
 
@@ -117,7 +117,7 @@ class ScanOwnerScopeTest {
     @Test
     fun `runDeepResearch cross-customer throws NOT_FOUND`() {
         val id = UUID.randomUUID()
-        whenever(customerFacade.findCounts(any<ModuleCtx>(), eq(owner))).thenReturn(0 to 0)
+        whenever(scanMetricsRepo.findCounts(any<ModuleCtx>(), any(), eq(owner))).thenReturn(0 to 0)
         whenever(scanRepo.findByIdOwned(any(), eq(projectId), eq(owner), eq(id))).thenReturn(null)
         val input = RunDeepResearchInput(
             scanRecordId = id,
