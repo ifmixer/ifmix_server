@@ -1,0 +1,20 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  h_89b11cfda87c93 63-70
+core-api/src/main/resources/application.yml
+  h_89b11cfda87c93 93-94
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/SpringAiScanRunnerInitTest.kt
+  h_89b11cfda87c93 1-55
+docs/design/ai-api-key-pool.md
+  h_89b11cfda87c93 148,161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a25c260de2cfe94361114f17f9cf2ad12351dc2",
+  "prompts": {},
+  "humans": {
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
