@@ -22,12 +22,9 @@ app:
     access-ttl-sec: 900
     # 仅测试环境使用的静态 Ed25519 私钥（kid=test-only，不用于任何真实环境）
     jwt-private-key: '{"kty":"OKP","crv":"Ed25519","kid":"test-only","use":"sig","d":"mfIWiOicCp1__zaZQ59qAdKnddtNjxuH69eFif-qjNc","x":"9pcCgU_pOXR6cijpwRHSotBL_HC2fFifWTBPWtSh95U"}'
-  agnes:
-    ai:
-      preDeductPerAttempt: 1
-      modelFallbackOrder: "test-model"
-    scanKeyRateLimit:
-      enabled: false
+  ai:
+    model-fallback-order: "test-model"
+    prompt-version: v10
   ratelimit:
     free: 1000
     pro: 10000

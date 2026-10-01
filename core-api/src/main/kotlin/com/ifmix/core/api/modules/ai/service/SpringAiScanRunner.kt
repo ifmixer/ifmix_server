@@ -28,9 +28,9 @@ import java.util.concurrent.TimeoutException
 @Service
 @Primary
 open class SpringAiScanRunner(
-    private val chatClientFactory: AgnesChatClientFactory,
-    private val keyStore: AgnesKeyStore,
-    @Value("\${app.agnes.ai.modelFallbackOrder:}") fallbackOrderStr: String,
+    private val chatClientFactory: AiChatClientFactory,
+    private val keyStore: AiApiKeyStore,
+    @Value("\${app.ai.model-fallback-order:}") fallbackOrderStr: String,
     @Qualifier("snakeCaseMapper") private val snakeCaseMapper: ObjectMapper,
     private val scanPrompt: ScanPrompt,
 ) : ScanRunner {

@@ -118,7 +118,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   └── wellknown/              # JwksController
 ├── entity/                      # Jimmer interface entity (直出 GraphQL)
 │   ├── common/                 # 基类 + 跨模块枚举: BaseEntity, BaseProjectEntity, UUIDProps, MutableProps, SoftDeletableProps, ProjectScopedProps, CustomerOwnedProps, Platforms, Tiers
-│   ├── ai/                     # ScanRecord, ScanCollection, ScanCollectionItem, ScanDeepResearch, AgnesKey, ImageRef
+│   ├── ai/                     # ScanRecord, ScanCollection, ScanCollectionItem, ScanDeepResearch, AiApiKey, ImageRef
 │   ├── auth/                   # Idp, IdpIdentity, AuthIdentity, AuthIdentityIdpRelation, ProjectToIdpRelation, RefreshToken
 │   ├── customer/               # Customer
 │   ├── pay/                    # Subscription, StoreNotification
@@ -142,7 +142,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   │   ├── AiFacade.kt, ScanCollectionFacade.kt
 │   │   ├── handler/ScanAggHandler.kt, ScanCollectionAggHandler.kt
 │   │   ├── repo/
-│   │   └── service/            # AI infra（SpringAiScanRunner, AgnesKeyStore, AgnesChatClientFactory）
+│   │   └── service/            # AI infra（SpringAiScanRunner, AiApiKeyStore, AiChatClientFactory）
 │   ├── pay/
 │   │   ├── PayFacade.kt
 │   │   ├── handler/PayAggHandler.kt, PayWebhookHandler.kt

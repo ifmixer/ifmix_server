@@ -76,20 +76,13 @@ app:
     # Google Play Pub/Sub push 的共享 token：端点按 ?token=xxx 或 X-Webhook-Token 头校验（恒定时间比较）。
     # 未配置时 /webhooks/iap/google 一律 403（IAP 未启用的环境保持关闭，防无鉴权写入）。
     google-webhook-token: ${GOOGLE_WEBHOOK_TOKEN:}
-  agnes:
-    ai:
-      preDeductPerAttempt: 1
-      # 模型回退顺序：主模型 → fallback 列表（逗号分隔）
-      modelFallbackOrder: ""
-      # 提示词版本：加载 prompts/${name}_${promptVersion}.md，并随扫描结果落库
-      promptVersion: ${SCAN_PROMPT_VERSION:v10}
-      # 单次 AI 调用超时（秒）；SDK 内置重试已关闭（maxRetries=0）
-      call-timeout-sec: ${AGNES_CALL_TIMEOUT_SEC:120}
-    # AI 扫描按 key 维度限流（防单 key 耗尽）
-    scanKeyRateLimit:
-      enabled: true
-      perKeyWindowSec: 3600
-      perKeyMaxAttempts: 5
+  ai:
+    # AI 通用配置（provider 无关；key 池设计见 docs/design/ai-api-key-pool.md）
+    model-fallback-order: ""
+    # 提示词版本：加载 prompts/${name}_${promptVersion}.md，并随扫描结果落库
+    prompt-version: ${SCAN_PROMPT_VERSION:v10}
+    # 单次 AI 调用超时（秒）；SDK 内置重试已关闭（maxRetries=0）
+    call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:120}
 
   auth:
     issuer: ${AUTH_ISSUER:ifmix}

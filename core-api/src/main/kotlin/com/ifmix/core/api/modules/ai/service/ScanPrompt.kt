@@ -8,12 +8,12 @@ import org.springframework.stereotype.Component
  * 古物扫描系统提示词加载器。
  *
  * 提示词文件按 `prompts/${promptName}_${promptVersion}.md` 命名加载，
- * promptVersion 由 `app.agnes.ai.promptVersion`（默认 v10）配置，可用 SCAN_PROMPT_VERSION 覆盖。
+ * promptVersion 由 `app.ai.prompt-version`（默认 v10）配置，可用 SCAN_PROMPT_VERSION 覆盖。
  * promptVersion 会随扫描结果落库，用于追溯结果由哪个版本提示词生成。
  */
 @Component
 class ScanPrompt(
-    @Value("\${app.agnes.ai.promptVersion:v10}") val promptVersion: String,
+    @Value("\${app.ai.prompt-version:v10}") val promptVersion: String,
 ) {
 
     private val template: String = loadPrompt("antique-scan-system-basic")

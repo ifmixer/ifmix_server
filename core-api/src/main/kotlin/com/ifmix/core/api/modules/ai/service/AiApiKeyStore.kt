@@ -6,18 +6,19 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Agnes Key 运行时状态管理（quota pre-deduct、冷却标记、pick）。
+ * AI API Key 运行时状态管理（provider 无关的通用 key 池逻辑：冷却标记、pick）。
  *
  * 状态跨请求缓存：key 列表与冷却/计数在实例内复用（TTL 内不重载）。
  * 此前的实现每次 run() 重建状态，per-key 限流与冷却随请求结束即弃，等于没有。
- * Redis 字段预留（当前为进程内状态；多实例部署时冷却/计数需迁到 Redis）。
+ * Redis 字段预留（当前为进程内状态；多实例部署时冷却/计数需迁到 Redis，
+ * 完整设计见 docs/design/ai-api-key-pool.md）。
  */
-class AgnesKeyStore(
+class AiApiKeyStore(
     private val redis: StringRedisTemplate,
-    private val loadKeys: () -> List<AgnesKeyDoc>,
+    private val loadKeys: () -> List<AiApiKeyDoc>,
 ) {
 
-    data class AgnesKeyDoc(
+    data class AiApiKeyDoc(
         val id: String,
         val key: String,
         val type: String?,
@@ -27,7 +28,7 @@ class AgnesKeyStore(
     )
 
     data class KeyState(
-        val doc: AgnesKeyDoc,
+        val doc: AiApiKeyDoc,
         var used: Long = 0,
         var unavailableUntil: Instant? = null,
     )

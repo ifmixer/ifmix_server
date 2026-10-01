@@ -26,7 +26,10 @@
 | ai | `core_ai_scan_deep_research` | project | ScanDeepResearch |
 | ai | `core_ai_scan_collection` | project | ScanCollection |
 | ai | `core_ai_scan_collection_item` | project | ScanCollectionItem |
-| ai | `core_ai_agnes_key` | 全局 | AgnesKey |
+| ai | `core_ai_api_key` | 全局 | AiApiKey |
+
+> 2026-10-01 由 `core_ai_agnes_key` 通用化改名（V8），新增 `provider` 列（10=AGNES，码表 `ApiProviders`）。
+> 设计与触点见 [design/api-key-table](design/api-key-table.md)。
 | pay | `core_pay_subscription` | project | Subscription |
 | pay | `core_pay_store_notification` | project | StoreNotification |
 | media | `core_media_upload_record` | project | UploadRecord |
@@ -131,7 +134,8 @@
 | `MediaType`（媒体大类，`MediaRef.type`）(entity/common) | `MediaTypes` | 0=UNKNOWN, 10=IMAGE, 20=VIDEO, 30=AUDIO, 40=DOCUMENT |
 | `SupportRequestStatus` (entity/cs) | `SupportRequestStatuses` | 10=OPEN, 20=IN_PROGRESS, 30=PENDING_CUSTOMER, 40=RESOLVED, 50=CLOSED |
 | `SupportRequestCategory` (entity/cs) | `SupportRequestCategories` | 0=UNSPECIFIED, 10=BUG, 20=FEATURE_REQUEST, 30=ACCOUNT, 40=PAYMENT, 50=CONTENT_ERROR, 1000=OTHER（允许客户端传未登记值） |
-| `AgnesKeyType` (entity/ai) | `AgnesKeyTypes` | 10=PERSONAL（`sk-` 前缀）, 20=ENTERPRISE（`wk-` 前缀） |
+| `AiApiKeyType` (entity/ai) | `AiApiKeyTypes` | 10=PERSONAL（`sk-` 前缀）, 20=ENTERPRISE（`wk-` 前缀） |
+| `AiApiKeyProvider` (entity/ai) | `ApiProviders` | 10=AGNES |
 
 #### `Feedback.reasons`（反馈原因，多选，存于 `core_cs_feedback.reasons` PG `smallint[]`）
 

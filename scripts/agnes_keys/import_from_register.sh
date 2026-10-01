@@ -30,12 +30,12 @@ psql -h "$PGHOST" -U "$PGUSER" -d "$SRC_DB" -v ON_ERROR_STOP=1 -q -c "\copy (
 
 echo "2/3 源行数: $(wc -l < "$TMP_CSV" | tr -d ' ')"
 
-echo "3/3 导入 -> $DST_DB.ai_agnes_key"
+echo "3/3 导入 -> $DST_DB.core_ai_api_key"
 psql -h "$PGHOST" -U "$PGUSER" -d "$DST_DB" -v ON_ERROR_STOP=1 -q --single-transaction <<SQL
 CREATE TEMP TABLE _agnes_import (key text, email text, type smallint) ON COMMIT DROP;
 \copy _agnes_import (key, email, type) FROM '$TMP_CSV' WITH (FORMAT csv)
-INSERT INTO ai_agnes_key (id, key, email, type)
-SELECT gen_random_uuid(), key, email, type
+INSERT INTO core_ai_api_key (id, key, email, type, provider)
+SELECT gen_random_uuid(), key, email, type, 10
 FROM (
   -- 源内同一 key 可能重复(如 ent key 挂两个账号)，去重取任意一行
   SELECT DISTINCT ON (key) key, email, type FROM _agnes_import ORDER BY key
@@ -44,4 +44,4 @@ ON CONFLICT (key) DO NOTHING;
 SQL
 
 echo "完成。核对："
-psql -h "$PGHOST" -U "$PGUSER" -d "$DST_DB" -q -c "SELECT type, count(*) FROM ai_agnes_key GROUP BY type ORDER BY type;"
+psql -h "$PGHOST" -U "$PGUSER" -d "$DST_DB" -q -c "SELECT provider, type, count(*) FROM core_ai_api_key GROUP BY provider, type ORDER BY provider, type;"

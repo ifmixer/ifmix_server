@@ -1,19 +1,22 @@
 # Agnes AI Key 导入
 
-把 Agnes AI 的 API key 导入 `core_api_local.ai_agnes_key` 表。脚本位于 `scripts/agnes_keys/`。
+把 Agnes AI 的 API key 导入 `core_api_local.core_ai_agnes_key` 表。脚本位于 `scripts/agnes_keys/`。
 
-## 目标表 `ai_agnes_key`（infra 级全局资源，不按 project 隔离）
+## 目标表 `core_ai_api_key`（infra 级全局资源，不按 project 隔离）
+
+> 2026-10-01 由 `core_ai_agnes_key` 通用化改名（V8 迁移），脚本已同步切换。设计见 [design/api-key-table](../design/api-key-table.md)。
 
 | 列 | 说明 |
 |----|------|
 | `id` | UUID，导入时用 `gen_random_uuid()`（v4）生成 |
-| `key` | API key，**唯一索引** `agnes_key_uq`，去重靠它 |
+| `key` | API key，**唯一索引** `api_key_uq`，去重靠它 |
 | `email` | 关联邮箱（见配对规则） |
-| `type` | **NOT NULL 无默认值**。`10`=PERSONAL（`sk-` 前缀）/ `20`=ENTERPRISE（`wk-` 前缀）。码表见 `entity/ai/AgnesKey.kt` 的 `AgnesKeyTypes` |
+| `type` | **NOT NULL 无默认值**。`10`=PERSONAL（`sk-` 前缀）/ `20`=ENTERPRISE（`wk-` 前缀）。码表见 `entity/ai/AiApiKey.kt` 的 `AiApiKeyTypes` |
+| `provider` | key 来源，**DB 默认 10**。`10`=AGNES。码表见 `entity/ai/ApiProviders.kt` 的 `ApiProviders`。导入脚本显式写 10 |
 | `enabled` | 是否启用，**默认 `true`**。`false` 的 key 不参与加载/挑选（查询时过滤）。导入不传 → 走默认 true |
 | `rate_limit` / `window_sec` | 走表默认（-1 / 86400） |
 
-`type` 码表登记于 `entity/ai/AgnesKey.kt`（`AgnesKeyTypes`）和 `docs/DATABASE.md` 枚举表。
+`type` 码表登记于 `entity/ai/AiApiKey.kt`（`AiApiKeyTypes`）和 `docs/DATABASE.md` 枚举表。
 
 ---
 
@@ -63,7 +66,7 @@ SRC_DB=agnes_register DST_DB=core_api PGHOST=some-host PGUSER=admin PGPASSWORD=s
 
 ## 注意事项
 
-- **type NOT NULL 无默认**：导入必须显式给 `type`。应用侧插入用 `AgnesKeyTypes.PERSONAL/ENTERPRISE`，漏传会被 NOT NULL 拦下。
+- **type NOT NULL 无默认**：导入必须显式给 `type`。应用侧插入用 `AiApiKeyTypes.PERSONAL/ENTERPRISE`，漏传会被 NOT NULL 拦下。
 - **按列定 type，不看前缀**：type 由数据所在列决定（`personal_api_key`→10 / `ent_api_key`→20）。源数据里若 `ent_api_key` 列混入 `sk-` 前缀的 key，仍会被归为 enterprise(20)——这是源数据情况，非脚本 bug。
 - **id 用 UUIDv4**：应用侧正常用 UuidV7（时间有序），这里是一次性 seed，key 不按 id 分页，v4 可接受。
 - **email 可能为空的历史行**：表里可能有早期遗留、email 为空且 `type=100` 的行（未登记 type）。脚本导入的行 email 一定非空（来自 reg_email）。
@@ -72,9 +75,9 @@ SRC_DB=agnes_register DST_DB=core_api PGHOST=some-host PGUSER=admin PGPASSWORD=s
 ## 验证 SQL
 
 ```sql
--- 按 type 分组
-SELECT type, count(*) FROM ai_agnes_key GROUP BY type ORDER BY type;
+-- 按 provider / type 分组
+SELECT provider, type, count(*) FROM core_ai_api_key GROUP BY provider, type ORDER BY provider, type;
 -- 重复 key（应为 0）
-SELECT count(*) FROM (SELECT key FROM ai_agnes_key GROUP BY key HAVING count(*)>1) d;
+SELECT count(*) FROM (SELECT key FROM core_ai_api_key GROUP BY key HAVING count(*)>1) d;
 -- 源 key 是否全部落库（在源库导出 key 列表后跨库比对，missing 应为 0）
 ```
