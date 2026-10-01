@@ -1,0 +1,17 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/handler/AuthAggHandler.kt
+  h_89b11cfda87c93 98,215-216,220,222-225,291-296,326,330,332-334,345-347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7fae68bf21d8a05438a2027956903e6863084c4e",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    },
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
