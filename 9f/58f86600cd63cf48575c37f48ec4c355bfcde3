@@ -1,0 +1,19 @@
+docs/AUTH_DESIGN.md
+  h_89b11cfda87c93 121-152
+docs/DATABASE.md
+  h_89b11cfda87c93 35-36,190,202-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f58f86600cd63cf48575c37f48ec4c355bfcde3",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    },
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
