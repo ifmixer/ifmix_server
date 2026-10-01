@@ -58,9 +58,6 @@ app:
       static:
         bucket-name: staticdev
         public-url: https://s1dev.ifmix.com
-  agnes:
-    ai:
-      modelFallbackOrder: ""
 
   datasource:
     writer:

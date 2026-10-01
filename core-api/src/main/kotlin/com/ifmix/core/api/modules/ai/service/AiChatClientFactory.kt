@@ -25,7 +25,8 @@ import java.util.concurrent.ConcurrentHashMap
 open class AiChatClientFactory(
     @Value("\${spring.ai.openai.base-url:https://api.openai.com}") val baseUrl: String,
     @Value("\${spring.ai.openai.chat.options.model:gpt-4o}") val defaultModel: String,
-    @Value("\${app.ai.call-timeout-sec:120}") callTimeoutSec: Long,
+    /** 单次调用超时（秒）。公开供 runner 的总预算检查使用（剩余时间不足一次调用时不发起新 attempt）。 */
+    @Value("\${app.ai.call-timeout-sec:360}") val callTimeoutSec: Long,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val callTimeout: Duration = Duration.ofSeconds(callTimeoutSec)

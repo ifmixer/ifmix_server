@@ -8,6 +8,11 @@ spring:
   threads:
     virtual:
       enabled: true
+  data:
+    redis:
+      # 命令级超时：Lettuce 默认 60s——Redis 卡住时 key 池每次 MGET 都要等满 60s 才进降级 catch，
+      # 500ms 快速失败（key 池降级放行、限流抛错，均为可接受行为）
+      timeout: 500ms
   graphql:
     path: /customer/core/gql
     schema:
@@ -81,8 +86,21 @@ app:
     model-fallback-order: ""
     # 提示词版本：加载 prompts/${name}_${promptVersion}.md，并随扫描结果落库
     prompt-version: ${SCAN_PROMPT_VERSION:v10}
-    # 单次 AI 调用超时（秒）；SDK 内置重试已关闭（maxRetries=0）
-    call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:120}
+    # 单次 AI 调用超时（秒）。线上最长调用 ~5min、常 2-3min，默认 6min 覆盖长尾；SDK 内置重试已关闭（maxRetries=0）
+    call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:360}
+    # 单次扫描总预算（秒，跨模型/attempt 的墙钟上限）：扫描在 GraphQL 请求内同步执行。
+    # 剩余时间不足一次 call-timeout 时不发起新 attempt → 在途调用都能在预算内结束；
+    # 注意网关/客户端超时通常更短，客户端应据此设置自身超时
+    scan-deadline-sec: ${AI_SCAN_DEADLINE_SEC:600}
+    # 通用 key 池：轮询选取 + Redis 分布式冷却
+    apikey-pool:
+      # 单次 pick 的探测窗口（一次 MGET 的候选数）；存储侧 clamp 下限 1
+      probe-window: 5
+      cooldown:
+        rate-limited-sec: 300
+        invalid-key-sec: 3600    # 401/403 key 失效，长冷却移出轮换
+        timeout-sec: 300         # 与典型调用时长（2-3min）对齐，避免超时 key 很快回池
+        other-sec: 30
 
   auth:
     issuer: ${AUTH_ISSUER:ifmix}

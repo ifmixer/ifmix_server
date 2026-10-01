@@ -1,6 +1,6 @@
 # AI API Key 池：负载均衡与分布式冷却
 
-状态：**设计定稿，待实现**（2026-10-01 按评审意见修订 + 去 agnes 化，见文末修订记录）。当前实现（`modules/ai/service/AiApiKeyStore.kt`）是本方案要替换的基线。
+状态：**已实现（2026-10-01）**——`AiApiKeyStore`（轮询 + 打乱 + 随机游标 + Redis 冷却 lambda）、`SpringAiScanRunner`（null=attempt、类型化异常分类、401/403 长冷却、解析失败不冷却）、`AiConfig`（Redis lambda 组装 + 降级放行）、`app.ai.key-pool` 配置、单测（`AiApiKeyStoreTest`，7 个分支）。
 
 Provider 无关的通用 key 池逻辑；Agnes 只是当前唯一 provider（`provider=10`，表通用化见 [api-key-table](api-key-table.md)）。
 
@@ -22,7 +22,7 @@ AI 扫描（`m_ai_createScan` / `m_ai_runDeepResearch`）通过 `SpringAiScanRun
 
 1. **负载均衡**：流量在 key 池上均匀轮转，故障 key 被冷却后自然滑过；
 2. **真实冷却**：跨实例共享、进程重启不丢、TTL 重载不清零、自动过期解冻；
-3. 复用既有护栏：`MAX_ATTEMPTS_PER_MODEL=4` 重试上界、SDK `maxRetries=0`、client 缓存、120s 超时——均不变。
+3. 复用既有护栏：`MAX_ATTEMPTS_PER_MODEL=4` 重试上界、SDK `maxRetries=0`、client 缓存——均不变。调用超时按线上实况（最长 ~5min、常 2-3min）设 360s 覆盖长尾。
 
 ## 总体设计
 
@@ -47,18 +47,22 @@ aikey:{cd}:{keyId}  → "429" | "timeout" | "5xx" | "401" | "403"   # SETEX = �
 ## 选取与重试循环
 
 ```
-pick():                                            # 每请求 1 次 MGET
+pick():                                            # 每次 attempt 1 次 MGET（最坏 = 模型数 × 4）
   n      = keys.size                               # ~3000
-  probe  = min(8, n)                               # 单次探测窗口
+  probe  = min(5, n)，clamp ≥ 1                    # 单次探测窗口（误配 0/负数时 clamp，否则 pick 恒空）
   start  = cursor.getAndIncrement() mod n          # 游标推进，负载在 key 池上滑动
   cands  = keys[start, start+probe)                # 环形取；列表加载时已打乱
   cooled = redis.MGET(cands 的 aikey:{cd}:*)       # Redis 异常 → 视为全部未冷却（见降级）
   return cands 中第一个未冷却者，或 null            # 窗口内全冷却
 
 run(ctx, input):                                   # SpringAiScanRunner
+  deadline = now + scan-deadline-sec(600)          # 总预算：扫描在 GraphQL 请求内同步执行
   for model in allModels:                          # defaultModel + fallbackOrder
     attempts = 0
     while attempts < MAX_ATTEMPTS_PER_MODEL:       # = 4，与 key 池大小解耦
+      if now + call-timeout >= deadline: throw AI_UNAVAILABLE
+                                                   # 剩余时间不够一次完整调用就不发起新 attempt
+                                                   # → 在途调用都能在预算内结束（最坏总耗时 = deadline）
       key = pick()
       if key == null:
           attempts++                                # null 也算一次 attempt，continue——
@@ -68,8 +72,8 @@ run(ctx, input):                                   # SpringAiScanRunner
           调用 + JSON 解析
           return 结果
       catch e:
-          按 e 分类冷却（下表）；解析失败不冷却（见冷却策略备注）
-  # 所有模型耗尽 → AI_UNAVAILABLE
+          (sec, reason) = classify(e)               # 按 e 分类冷却（下表）；解析失败不冷却（见冷却策略备注）
+  # 所有模型耗尽或超预算 → AI_UNAVAILABLE
 ```
 
 负载效果：游标每请求 +1 且初值随机、列表已打乱，流量在 3000 个 key 上均匀滑动；某 key 冷却后游标自然越过。导入脚本按账号配对入库、同账号 key 相邻且可能一起 429——**加载时 `shuffled()`** 切断相邻性，避免"一段连续冷却后的可用 key 接住整段流量"。
@@ -78,18 +82,20 @@ run(ctx, input):                                   # SpringAiScanRunner
 
 | 失败类型 | 判定 | 冷却 | Redis value |
 |---|---|---|---|
-| 429 / rate limit | `RateLimitException`（类型判定优先，message 兜底） | 300s | `"429"` |
-| 401 / 403（key 失效） | `UnauthorizedException` / `PermissionDeniedException` | **1h** | `"401"` / `"403"` |
-| 超时 | `OpenAIIoException` + cause 为 Socket/Timeout（沿用 `isTimeoutException`） | 60s | `"timeout"` |
-| 5xx 及其他调用失败 | `InternalServerException` 等 | 30s | `"5xx"` |
+| 429 / rate limit | cause 链含 `RateLimitException`（message 兜底） | 300s | `"429"` |
+| 401 / 403（key 失效） | cause 链含 `UnauthorizedException` / `PermissionDeniedException` | **1h** | `"401"` / `"403"` |
+| 超时 | cause 链含 `SocketTimeoutException`/`TimeoutException`（message 兜底） | 300s | `"timeout"` |
+| 5xx 及其他调用失败 | 其余异常（含 400、网络错误等） | 30s | `"error"` |
 | **JSON 解析失败** | `parseJsonToMap` 抛出 | **不冷却** | — |
 
-- 401/403 是 key 失效，30s 冷却会让失效 key 周期性占掉重试名额——拉长到 1h 并打 **ERROR**（带 keyId），提示运营从 key 表 `enabled=false` 清理。判定用 openai-java 4.39 的类型化异常（`com.openai.errors.*`），message 匹配仅作兜底。
+- **所有判定沿 cause 链下探**（`generateSequence(e) { it.cause }`，深度上限 16）：调用走 Spring AI 的 ChatClient，openai-java 的类型化异常可能被包装后再抛出，只看最外层会漏判。类型优先，message 兜底。
+- 401/403 是 key 失效，30s 冷却会让失效 key 周期性占掉重试名额——拉长到 1h 并打 **ERROR**（带 keyId），提示运营从 key 表 `enabled=false` 清理。
 - **解析失败不冷却是已知取舍**：坏 JSON 是模型输出问题，不是 key 的问题。轮询游标每次 attempt 都推进，下一轮自然换 key，不会在坏输出上重复烧同一个 key。
 
 ## 降级（Redis 故障）
 
 - Redis 操作整体 `try/catch (RedisConnectionFailureException | DataAccessException)`：异常时**视为全部未冷却**放行 + WARN（按实例限频告警，避免刷屏）。
+- **Redis 命令超时** `spring.data.redis.timeout: 500ms`（全局配置）：Lettuce 默认 60s——Redis「卡住但不断开」时每次 MGET 都要等满 60s 才进 catch，500ms 快速失败。全局影响面：key 池（降级放行）、`RateLimiter`（限流抛错，与现状一致但更快）、`CacheAside`（缓存快速失败）——均为可接受行为。
 - **不设内存兜底层**：坏 key 在降级窗口内最多被重试 `MAX_ATTEMPTS_PER_MODEL=4` 次，上界已存在，内存态收益为零。
 - 注意：**不要**复制现有 `RateLimiter` 的写法——它是"判 `INCR` 返回 null 则放行"（`RateLimiter.kt:33`），但连接断开时 Spring 抛的是 `RedisConnectionFailureException`，不会返回 null，判空兜不住。
 
@@ -100,13 +106,18 @@ app:
   ai:
     model-fallback-order: ""
     prompt-version: ${SCAN_PROMPT_VERSION:v10}
-    call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:120}
-    key-pool:                      # 本方案新增（通用 key 池逻辑）
-      probe-window: 8              # 单次 pick 的探测窗口
+    # 调用超时：线上最长 ~5min、常 2-3min，6min 覆盖长尾
+    call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:360}
+    # 单次扫描总预算（秒，跨模型/attempt 的墙钟上限）：扫描在 GraphQL 请求内同步执行。
+    # 剩余时间不足一次 call-timeout 时不发起新 attempt → 在途调用都能在预算内结束；
+    # 注意网关/客户端超时通常更短，客户端应据此设置自身超时
+    scan-deadline-sec: ${AI_SCAN_DEADLINE_SEC:600}
+    apikey-pool:                   # 通用 key 池逻辑（provider 无关）
+      probe-window: 5              # 单次 pick 的探测窗口（存储侧 clamp 下限 1）
       cooldown:
         rate-limited-sec: 300
         invalid-key-sec: 3600      # 401/403
-        timeout-sec: 60
+        timeout-sec: 300           # 与典型调用时长（2-3min）对齐，避免超时 key 很快回池
         other-sec: 30
 # 旧 app.agnes.scanKeyRateLimit / app.agnes.ai.preDeductPerAttempt 已删除（从未接线；决策见「明确不做」）
 ```
@@ -133,6 +144,7 @@ app:
 ## 已知取舍
 
 - JSON 解析失败不冷却（见冷却策略备注）。
+- **403 冷却按 key 不分模型**：若 provider 用 403 表示「无权使用该模型」或地区限制（而非 key 失效），该 key 会在所有模型上停用 1h——Agnes 单 provider 阶段可接受；将来多 provider / 多模型计费时，冷却维度应细化为 (provider, key, model)。
 - 降级窗口内冷却完全失效，坏 key 最多浪费 4 次尝试/模型——上界可控。
 - hash tag 使全部冷却 key 落在 Cluster 单一 slot——量级（≤3000 个短串）下无压力。
 
@@ -140,6 +152,11 @@ app:
 
 - 2026-10-01 按评审意见修订：降级语义改为 catch 异常放行（原"沿用 RateLimiter 模式"描述失实，且判空兜不住连接异常）；`pick()` null 改为计 attempt + continue（原 break 换模型无意义——冷却不分模型）；新增 401/403 识别与 1h 冷却 + ERROR；key 列表加载打乱；游标初值随机；Redis key 加 hash tag 兼容 Cluster；删除 `scanKeyRateLimit`/`preDeduct`/`release`/内存兜底层/`KeyStateStore` 抽象。
 - 2026-10-01 去 agnes 化：Kotlin 侧 `AgnesKey`→`AiApiKey`、`AgnesKeyStore`→`AiApiKeyStore`、`AgnesChatClientFactory`→`AiChatClientFactory`（已完成）；配置统一至 `app.ai.*`（`app.agnes.*` 已删除）；本文档改名 `ai-api-key-pool.md`，Redis 前缀改 `aikey:{cd}:`。
+- 2026-10-01 实现：本方案落地，状态改为「已实现」。配套单测 `AiApiKeyStoreTest`（轮询覆盖、打乱不丢 key、冷却跳过与 reason、全冷却返回 null、探测窗口边界、空池、TTL 缓存）。
+- 2026-10-01 二次评审修订：异常判定改为 **cause 链遍历**（Spring AI 可能包装 SDK 异常，只看最外层会漏判；深度上限 16）；文档超时判定行与实现对齐（cause 链含 Socket/Timeout 类型）；`cursorSeed` 构造参数可注入（单测确定性，覆盖环形回绕）；403 跨模型冷却写入已知取舍；删除 `application-local.yml` 残留的 `app.agnes.ai.modelFallbackOrder`；降级告警限频改用 `AtomicLong` CAS；文档 MGET 次数措辞修正（每次 attempt 一次，最坏 = 模型数 × 4）。
+- 2026-10-01 阈值与命名调整：配置段 `app.ai.key-pool` → **`app.ai.apikey-pool`**；`probe-window` 默认 8 → **5**，存储侧 clamp 下限 1（误配 0/负数不再导致 pick 恒空，配套单测）；`call-timeout-sec` 120 → **360**（线上最长 ~5min、常 2-3min，6min 覆盖长尾）；超时冷却 60 → **300**（与典型调用时长对齐，避免超时 key 很快回池）。
+- 2026-10-01 三次评审修订：新增 **`app.ai.scan-deadline-sec`（默认 600s）总预算**——扫描在 GraphQL 请求内同步执行，连续超时最坏 4×6min×模型数，超预算抛 AI_UNAVAILABLE（`classify` 抽为 companion 纯函数并补单测）；`spring.data.redis.timeout: 500ms`（Lettuce 默认 60s 会让卡住的 Redis 每次 MGET 等满 60s；全局影响面 = key 池降级 / RateLimiter 快速抛错 / CacheAside 快速失败）；401/403 的 message 兜底**去掉纯数字匹配**（request id "40312" 会误判成 key 失效被冷却 1h，只留类型化异常 + 短语）；冷却原因 `"5xx"` → **`"error"`**（else 分支也接住 400/网络错误，标 5xx 误导排查）；`probeWindow` 去掉 store 默认值（由 AiConfig 显式注入，默认值只在 yml/@Value 一处）；测试文件挪到与包名一致的目录。
+- 2026-10-01 四次评审修订：`"429" in m` 纯数字匹配删除（与 401/403 同类问题，request id "42917" 会误判限流，配套单测）；deadline 检查改为「剩余时间不足一次 call-timeout 时不发起新 attempt」（`now + callTimeout >= deadline` 即放弃——否则实际最坏耗时是 deadline + 一次调用超时 ≈ 960s，且网关/客户端超时通常更短）；KDoc 过期的「超时→60s」改为引用配置；deadline 日志字段 `modelsTried` → `model`。
 
 ## 关联
 

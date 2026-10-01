@@ -5,6 +5,9 @@ import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.dto.ai.ScanInput
 import com.ifmix.core.api.modules.ai.ScanRunner
+import com.openai.errors.RateLimitException
+import com.openai.errors.PermissionDeniedException
+import com.openai.errors.UnauthorizedException
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
@@ -21,7 +24,13 @@ import java.net.URI
 import java.util.concurrent.TimeoutException
 
 /**
- * ScanRunner 基于 Spring AI OpenAI-compatible model.
+ * ScanRunner 基于 Spring AI OpenAI-compatible model。
+ *
+ * key 池交互（provider 无关，设计见 docs/design/ai-api-key-pool.md）：
+ * - 每次尝试从 [AiApiKeyStore.pick] 轮询取 key（候选全冷却返回 null，计为一次 attempt）；
+ * - 失败按类型冷却（时长见 app.ai.apikey-pool.cooldown.*）：429→300s、401/403（key 失效）→1h+ERROR、
+ *   超时→300s、其他→30s；JSON 解析失败不冷却（模型输出问题，非 key 问题），attempt 已消耗、游标已推进；
+ * - 单模型重试上界 [MAX_ATTEMPTS_PER_MODEL]，与 key 池大小解耦；总预算 [scanDeadlineSec] 兜底最坏等待。
  *
  * 成功返回 AI 解析的 JSON Map；失败抛 ApiError。
  */
@@ -31,6 +40,15 @@ open class SpringAiScanRunner(
     private val chatClientFactory: AiChatClientFactory,
     private val keyStore: AiApiKeyStore,
     @Value("\${app.ai.model-fallback-order:}") fallbackOrderStr: String,
+    @Value("\${app.ai.apikey-pool.cooldown.rate-limited-sec:300}") private val cooldownRateLimitedSec: Long,
+    @Value("\${app.ai.apikey-pool.cooldown.invalid-key-sec:3600}") private val cooldownInvalidKeySec: Long,
+    @Value("\${app.ai.apikey-pool.cooldown.timeout-sec:300}") private val cooldownTimeoutSec: Long,
+    @Value("\${app.ai.apikey-pool.cooldown.other-sec:30}") private val cooldownOtherSec: Long,
+    /**
+     * 单次扫描总预算（秒，跨模型/attempt 的墙钟上限），超限抛 AI_UNAVAILABLE。
+     * 扫描在 GraphQL 请求内同步执行——没有它，连续超时最坏拖 4×6min×模型数，客户端早已断开而后端还在烧 key。
+     */
+    @Value("\${app.ai.scan-deadline-sec:600}") private val scanDeadlineSec: Long,
     @Qualifier("snakeCaseMapper") private val snakeCaseMapper: ObjectMapper,
     private val scanPrompt: ScanPrompt,
 ) : ScanRunner {
@@ -45,18 +63,71 @@ open class SpringAiScanRunner(
     companion object {
         /** 单模型最大尝试次数（换 key 重试的上界）。与 key 数解耦——否则 key 池一大，坏 key 会被原样重试上千次。 */
         private const val MAX_ATTEMPTS_PER_MODEL = 4
+
+        /** cause 链遍历深度上限（防理论上的环）。Spring AI 可能包装 SDK 异常，类型判定必须沿链下探。 */
+        private const val MAX_CAUSE_DEPTH = 16
+
+        /**
+         * 异常 → (冷却秒数, 冷却原因)。类型优先、message 兜底——message 兜底**不含纯数字匹配**
+         * （"429" in m 会把 request id "42917" 误判成限流、"40312" 误判成 key 失效），沿 cause 链下探。
+         * 纯函数（冷却时长入参），供单测锁定分类行为。
+         */
+        internal fun classify(
+            e: Exception,
+            rateLimitedSec: Long,
+            invalidKeySec: Long,
+            timeoutSec: Long,
+            otherSec: Long,
+        ): Pair<Long, String> = when {
+            isRateLimitException(e) -> rateLimitedSec to "429"
+            isInvalidKeyException(e) ->
+                invalidKeySec to if (chainOf(e).any { it is PermissionDeniedException }) "403" else "401"
+            isTimeoutException(e) -> timeoutSec to "timeout"
+            else -> otherSec to "error"
+        }
+
+        /**
+         * 异常 cause 链遍历：调用走 Spring AI 的 ChatClient，openai-java 的类型化异常
+         * 可能被包装后再抛出——类型与 message 判定都必须沿链下探，不能只看最外层。
+         */
+        private fun chainOf(e: Exception): Sequence<Throwable> =
+            generateSequence(e as Throwable) { it.cause }.take(MAX_CAUSE_DEPTH)
+
+        private fun isRateLimitException(e: Exception): Boolean =
+            chainOf(e).any {
+                it is RateLimitException ||
+                    it.message.orEmpty().lowercase().let { m ->
+                        "rate limit" in m || "too many requests" in m
+                    }
+            }
+
+        /** 401/403（key 失效）：类型化异常优先，短语兜底（不用纯数字匹配）。 */
+        private fun isInvalidKeyException(e: Exception): Boolean =
+            chainOf(e).any {
+                it is UnauthorizedException || it is PermissionDeniedException ||
+                    it.message.orEmpty().lowercase().let { m ->
+                        "unauthorized" in m || "invalid api key" in m ||
+                            "forbidden" in m || "permission denied" in m
+                    }
+            }
+
+        private fun isTimeoutException(e: Exception): Boolean =
+            chainOf(e).any {
+                it is SocketTimeoutException || it is TimeoutException ||
+                    it.message.orEmpty().lowercase().let { m ->
+                        "timeout" in m || "timed out" in m
+                    }
+            }
     }
 
     override fun run(ctx: ActionContext, input: ScanInput): Map<String, Any?> {
-        val states = keyStore.current()
-
-        if (states.isEmpty()) {
-            log.error("No Agnes API keys found in database — cannot run AI scan")
+        if (keyStore.isEmpty()) {
+            log.error("No AI API keys found in database — cannot run AI scan")
             throw ApiError(ErrorCode.AI_UNAVAILABLE, "No AI API keys configured")
         }
-        log.debug("Loaded {} Agnes key(s) for scan", states.size)
 
         val allModels = listOf(chatClientFactory.defaultModel) + fallbackModels
+        val deadlineAtMs = System.currentTimeMillis() + scanDeadlineSec * 1000
 
         val mediaItems = input.items.map { item ->
             val mimeType = MimeTypeUtils.parseMimeType(item.mediaType)
@@ -65,20 +136,27 @@ open class SpringAiScanRunner(
 
         for (model in allModels) {
             var attemptCount = 0
-            val maxAttempts = MAX_ATTEMPTS_PER_MODEL
+            while (attemptCount < MAX_ATTEMPTS_PER_MODEL) {
+                // 总预算检查：剩余时间不足以完成一次完整调用（call-timeout）时不发起新 attempt——
+                // 保证所有在途调用都能在预算内结束（最坏总耗时 = deadline，而非 deadline + 一次调用超时）。
+                // 网关/客户端超时通常更短，客户端应据此设置自身超时。
+                if (System.currentTimeMillis() + chatClientFactory.callTimeoutSec * 1000 >= deadlineAtMs) {
+                    log.error("Scan deadline {}s reached (insufficient budget for another {}s call) — giving up. scanId={}, model={}",
+                        scanDeadlineSec, chatClientFactory.callTimeoutSec, input.scanId, model)
+                    throw ApiError(ErrorCode.AI_UNAVAILABLE, "AI scan deadline exceeded")
+                }
 
-            while (attemptCount < maxAttempts) {
-                val pickedKeyId = keyStore.weightedPick(states) ?: break
+                // 候选全冷却 → null：计为一次 attempt 并 continue（冷却按 key 不分模型，
+                // 换模型用的还是同一批 key；游标已推进，下一轮自然换窗口）。
+                val doc = keyStore.pick()
+                if (doc == null) {
+                    attemptCount++
+                    continue
+                }
                 attemptCount++
 
                 try {
-                    if (!keyStore.preDeduct(states, pickedKeyId)) {
-                        continue
-                    }
-
-                    val doc = states[pickedKeyId]?.doc
-                    val apiKey = doc?.key ?: continue
-                    val client = chatClientFactory.forKey(apiKey, model)
+                    val client = chatClientFactory.forKey(doc.key, model)
 
                     val systemMsg = SystemMessage(
                         when (input.type) {
@@ -95,8 +173,8 @@ open class SpringAiScanRunner(
                     val prompt = Prompt(listOf(systemMsg, userMsg))
                     log.debug("Scan run start. scanId={}, type={}, model={}, keyId={}, " +
                             "locale={}, currency={}, country={}",
-                        input.scanId, input.type, model, pickedKeyId,
-                        input.locale,input.currency,input.country)
+                        input.scanId, input.type, model, doc.id,
+                        input.locale, input.currency, input.country)
 
                     val startMs = System.currentTimeMillis()
                     val response = client.prompt(prompt).call()
@@ -104,31 +182,35 @@ open class SpringAiScanRunner(
                     val elapsedMs = System.currentTimeMillis() - startMs
                     log.debug("Scan run completed. scanId={}, type={}, model={}, keyId={}," +
                             " elapsed={}ms, locale={}, currency={}, country={}, content={},",
-                        input.scanId, input.type, model, pickedKeyId, elapsedMs,
-                        input.locale,input.currency,input.country,content)
+                        input.scanId, input.type, model, doc.id, elapsedMs,
+                        input.locale, input.currency, input.country, content)
 
-                    val data = parseJsonToMap(content)
+                    val data = try {
+                        parseJsonToMap(content)
+                    } catch (e: Exception) {
+                        // 解析失败是模型输出问题，不是 key 的问题：不冷却；
+                        // attempt 已消耗、游标已推进，下一轮自然换 key。
+                        log.warn("AI returned unparseable JSON — skip without cooldown. " +
+                                "keyId={}, model={}, rawLength={}", doc.id, model, content.length)
+                        continue
+                    }
 
-                    keyStore.release(states, pickedKeyId)
                     return data
 
                 } catch (e: Exception) {
-                    // 各类失败都给该 key 短冷却并换下一个 key：否则 weightedPick 恒选第一个可用 key，
-                    // 同一 key 会被原样重试至上限（配合 SDK 内置重试会放大 AI 成本）。
-                    when {
-                        isRateLimitException(e) -> {
-                            log.warn("Rate limited on key {} for model {}: {}", pickedKeyId, model, e.message)
-                            keyStore.markUnavailable(states, pickedKeyId, 300L)
-                        }
-                        isTimeoutException(e) -> {
-                            log.warn("Timeout on key {} for model {}: {}", pickedKeyId, model, e.message)
-                            keyStore.markUnavailable(states, pickedKeyId, 60L)
-                        }
-                        else -> {
-                            log.error("Error scanning with key {} for model {}", pickedKeyId, model, e)
-                            keyStore.markUnavailable(states, pickedKeyId, 30L)
-                        }
+                    // 分类 → 冷却（冷却在 Redis，跨实例共享）。分类纯函数见 [classify]。
+                    val (cooldownSec, reason) = classify(
+                        e, cooldownRateLimitedSec, cooldownInvalidKeySec, cooldownTimeoutSec, cooldownOtherSec,
+                    )
+                    if (reason == "401" || reason == "403") {
+                        // key 失效：长冷却移出轮换 + ERROR，提示运营在 key 表 enabled=false 清理
+                        log.error("AI API key invalid ({}) — cooldown {}s. keyId={}, msg={}",
+                            reason, cooldownSec, doc.id, e.message)
+                    } else {
+                        log.warn("Scan attempt failed on key {} for model {} — cooldown {}s reason={}",
+                            doc.id, model, cooldownSec, reason, e)
                     }
+                    keyStore.markCooldown(doc.id, cooldownSec, reason)
                 }
             }
             log.warn("All keys exhausted for model $model, trying next model")
@@ -165,22 +247,5 @@ open class SpringAiScanRunner(
                 jsonText.length, cleaned.length, jsonOnly.length, jsonOnly.take(200))
             throw e
         }
-    }
-
-    private fun isRateLimitException(e: Exception): Boolean {
-        val msg = e.message?.lowercase() ?: ""
-        if (msg.contains("429") || msg.contains("rate limit") || msg.contains("too many requests")) return true
-        val causeMsg = e.cause?.message?.lowercase() ?: ""
-        if (causeMsg.contains("429") || causeMsg.contains("rate limit")) return true
-        return false
-    }
-
-    private fun isTimeoutException(e: Exception): Boolean {
-        val msg = e.message?.lowercase() ?: ""
-        if (msg.contains("timeout") || msg.contains("timed out")) return true
-        if (e is SocketTimeoutException || e is TimeoutException) return true
-        val cause = e.cause
-        if (cause is SocketTimeoutException || cause is TimeoutException) return true
-        return false
     }
 }
