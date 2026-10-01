@@ -1,0 +1,21 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/install/InstallFetcher.kt
+  h_89b11cfda87c93 1-60
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/InstallFacade.kt
+  h_89b11cfda87c93 1-30
+core-api/src/main/resources/schema/customer/install.graphqls
+  h_89b11cfda87c93 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "200bc5f0f9ac710d1434225b226620e1b95216b8",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    },
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
