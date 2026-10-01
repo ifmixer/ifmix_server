@@ -1,0 +1,19 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/AuthJwtService.kt
+  h_89b11cfda87c93 35-37,47,50,60-78,102-105,113-114,131-134
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/InstallTokenTest.kt
+  h_89b11cfda87c93 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ee7d200c080cf176ac0d909a3a7a4add4f87b5b",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    },
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
