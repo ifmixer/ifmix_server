@@ -1,0 +1,19 @@
+docs/design/install-tracking.md
+  h_89b11cfda87c93 1-301
+docs/superpowers/plans/2026-09-29-install-tracking.md
+  h_89b11cfda87c93 1-1129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3ceeb7b0e9911bf198ea19e042e9319b9648dc2",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    },
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
