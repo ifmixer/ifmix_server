@@ -1,0 +1,46 @@
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/AiApiKey.kt
+  h_89b11cfda87c93 7-8,10-14,16,18,22-23,26-27,32-35
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ApiProviders.kt
+  h_89b11cfda87c93 1-12
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/AiApiKeyRepository.kt
+  h_89b11cfda87c93 3,12-13,15-16,21
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiApiKeyStore.kt
+  h_89b11cfda87c93 9,13-14,16,18,21,31
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiChatClientFactory.kt
+  h_89b11cfda87c93 18,25,28
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiConfig.kt
+  h_89b11cfda87c93 3-5,7,17,24,27-30,32,36
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/ScanPrompt.kt
+  h_89b11cfda87c93 11,16
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  h_89b11cfda87c93 31-33
+core-api/src/main/resources/application.yml
+  h_89b11cfda87c93 79-85
+core-api/src/main/resources/db/migration/V8__rename_agnes_key.sql
+  h_89b11cfda87c93 1-13
+core-api/src/test/resources/application-test.yml
+  h_89b11cfda87c93 25-27
+docs/ARCHITECTURE.md
+  h_89b11cfda87c93 121,145
+docs/DATABASE.md
+  h_89b11cfda87c93 29-32,137-138
+docs/design/ai-api-key-pool.md
+  h_89b11cfda87c93 1-148
+docs/design/api-key-table.md
+  h_89b11cfda87c93 1-67
+docs/scripts/agnes-key-import.md
+  h_89b11cfda87c93 3,5-7,12,14-15,19,69,78-79,81
+scripts/agnes_keys/import_from_register.sh
+  h_89b11cfda87c93 33,37-38,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec12cf6b184ade95718ee25c6beb2fb2318981a8",
+  "prompts": {},
+  "humans": {
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
