@@ -1,0 +1,21 @@
+core-api/src/main/kotlin/com/ifmix/core/api/entity/install/Install.kt
+  h_89b11cfda87c93 1-47
+core-api/src/main/kotlin/com/ifmix/core/api/entity/install/InstallCustomerRelation.kt
+  h_89b11cfda87c93 1-22
+core-api/src/main/resources/db/migration/V5__install_tracking.sql
+  h_89b11cfda87c93 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "acdc87f943f4e6df2c1b328cca324a4bc4442e90",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    },
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
