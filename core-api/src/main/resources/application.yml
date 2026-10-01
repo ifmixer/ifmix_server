@@ -90,7 +90,8 @@ app:
     call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:360}
     # 单次扫描总预算（秒，跨模型/attempt 的墙钟上限）：扫描在 GraphQL 请求内同步执行。
     # 剩余时间不足一次 call-timeout 时不发起新 attempt → 在途调用都能在预算内结束；
-    # 注意网关/客户端超时通常更短，客户端应据此设置自身超时
+    # 默认 600 < 2×360：超时一次即结束（换 key 重试只对快速失败生效），见 key-pool 设计「已知取舍」；
+    # 必须大于 call-timeout-sec（否则启动失败）；注意网关/客户端超时通常更短，客户端应据此设置自身超时
     scan-deadline-sec: ${AI_SCAN_DEADLINE_SEC:600}
     # 通用 key 池：轮询选取 + Redis 分布式冷却
     apikey-pool:

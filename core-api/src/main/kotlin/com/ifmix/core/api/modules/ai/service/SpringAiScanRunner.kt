@@ -60,6 +60,14 @@ open class SpringAiScanRunner(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
+    init {
+        // deadline ≤ call-timeout 时每次扫描都会在首次尝试前被预算检查拦下，静默全量 AI_UNAVAILABLE——启动即失败
+        require(scanDeadlineSec > chatClientFactory.callTimeoutSec) {
+            "app.ai.scan-deadline-sec ($scanDeadlineSec) must exceed app.ai.call-timeout-sec " +
+                "(${chatClientFactory.callTimeoutSec})"
+        }
+    }
+
     companion object {
         /** 单模型最大尝试次数（换 key 重试的上界）。与 key 数解耦——否则 key 池一大，坏 key 会被原样重试上千次。 */
         private const val MAX_ATTEMPTS_PER_MODEL = 4

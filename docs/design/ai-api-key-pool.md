@@ -145,6 +145,7 @@ app:
 
 - JSON 解析失败不冷却（见冷却策略备注）。
 - **403 冷却按 key 不分模型**：若 provider 用 403 表示「无权使用该模型」或地区限制（而非 key 失效），该 key 会在所有模型上停用 1h——Agnes 单 provider 阶段可接受；将来多 provider / 多模型计费时，冷却维度应细化为 (provider, key, model)。
+- **超时一次即结束（默认 600/360 下）**：deadline 检查要求剩余时间 ≥ 一次 call-timeout，首次超时后（360s）剩余预算已不足以再发起一次完整调用——换 key 重试只对快速失败（429/401/5xx，240s 内）生效。要让超时也能换 key 重试，需把 `scan-deadline-sec` 提到 `call-timeout-sec` 的 2 倍以上（≥720s），代价是同步请求最长 12min、客户端早已断开。当前同步设计下选择前者；扫描改异步后可重估。
 - 降级窗口内冷却完全失效，坏 key 最多浪费 4 次尝试/模型——上界可控。
 - hash tag 使全部冷却 key 落在 Cluster 单一 slot——量级（≤3000 个短串）下无压力。
 
@@ -157,6 +158,7 @@ app:
 - 2026-10-01 阈值与命名调整：配置段 `app.ai.key-pool` → **`app.ai.apikey-pool`**；`probe-window` 默认 8 → **5**，存储侧 clamp 下限 1（误配 0/负数不再导致 pick 恒空，配套单测）；`call-timeout-sec` 120 → **360**（线上最长 ~5min、常 2-3min，6min 覆盖长尾）；超时冷却 60 → **300**（与典型调用时长对齐，避免超时 key 很快回池）。
 - 2026-10-01 三次评审修订：新增 **`app.ai.scan-deadline-sec`（默认 600s）总预算**——扫描在 GraphQL 请求内同步执行，连续超时最坏 4×6min×模型数，超预算抛 AI_UNAVAILABLE（`classify` 抽为 companion 纯函数并补单测）；`spring.data.redis.timeout: 500ms`（Lettuce 默认 60s 会让卡住的 Redis 每次 MGET 等满 60s；全局影响面 = key 池降级 / RateLimiter 快速抛错 / CacheAside 快速失败）；401/403 的 message 兜底**去掉纯数字匹配**（request id "40312" 会误判成 key 失效被冷却 1h，只留类型化异常 + 短语）；冷却原因 `"5xx"` → **`"error"`**（else 分支也接住 400/网络错误，标 5xx 误导排查）；`probeWindow` 去掉 store 默认值（由 AiConfig 显式注入，默认值只在 yml/@Value 一处）；测试文件挪到与包名一致的目录。
 - 2026-10-01 四次评审修订：`"429" in m` 纯数字匹配删除（与 401/403 同类问题，request id "42917" 会误判限流，配套单测）；deadline 检查改为「剩余时间不足一次 call-timeout 时不发起新 attempt」（`now + callTimeout >= deadline` 即放弃——否则实际最坏耗时是 deadline + 一次调用超时 ≈ 960s，且网关/客户端超时通常更短）；KDoc 过期的「超时→60s」改为引用配置；deadline 日志字段 `modelsTried` → `model`。
+- 2026-10-01 五次评审修订：runner `init` 增加 **`scanDeadlineSec > callTimeoutSec` 启动校验**（deadline ≤ call-timeout 时每次扫描都会在首试前被拦下、静默全量 AI_UNAVAILABLE，现在启动即失败）+ 配套单测；确定取舍：默认 600/360 下**超时一次即结束**，换 key 重试仅对快速失败生效，写入「已知取舍」（扫描改异步后可重估，届时把 deadline 提到 call-timeout 的 2 倍以上）。
 
 ## 关联
 
