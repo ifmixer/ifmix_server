@@ -1,0 +1,14 @@
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_89b11cfda87c93 21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "019b08d87ea6cac5d043247b7bfcf3497787aba8",
+  "prompts": {},
+  "humans": {
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
