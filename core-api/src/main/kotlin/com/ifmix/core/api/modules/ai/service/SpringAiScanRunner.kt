@@ -42,8 +42,13 @@ open class SpringAiScanRunner(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
+    companion object {
+        /** 单模型最大尝试次数（换 key 重试的上界）。与 key 数解耦——否则 key 池一大，坏 key 会被原样重试上千次。 */
+        private const val MAX_ATTEMPTS_PER_MODEL = 4
+    }
+
     override fun run(ctx: ActionContext, input: ScanInput): Map<String, Any?> {
-        val states = keyStore.init()
+        val states = keyStore.current()
 
         if (states.isEmpty()) {
             log.error("No Agnes API keys found in database — cannot run AI scan")
@@ -60,7 +65,7 @@ open class SpringAiScanRunner(
 
         for (model in allModels) {
             var attemptCount = 0
-            val maxAttempts = states.size.coerceAtLeast(1)
+            val maxAttempts = MAX_ATTEMPTS_PER_MODEL
 
             while (attemptCount < maxAttempts) {
                 val pickedKeyId = keyStore.weightedPick(states) ?: break
@@ -108,13 +113,21 @@ open class SpringAiScanRunner(
                     return data
 
                 } catch (e: Exception) {
-                    if (isRateLimitException(e)) {
-                        log.warn("Rate limited on key {} for model {}: {}", pickedKeyId, model, e.message)
-                        keyStore.markUnavailable(states, pickedKeyId, 300L)
-                    } else if (isTimeoutException(e)) {
-                        log.warn("Timeout on key {} for model {}: {}", pickedKeyId, model, e.message)
-                    } else {
-                        log.error("Error scanning with key {} for model {}", pickedKeyId, model, e)
+                    // 各类失败都给该 key 短冷却并换下一个 key：否则 weightedPick 恒选第一个可用 key，
+                    // 同一 key 会被原样重试至上限（配合 SDK 内置重试会放大 AI 成本）。
+                    when {
+                        isRateLimitException(e) -> {
+                            log.warn("Rate limited on key {} for model {}: {}", pickedKeyId, model, e.message)
+                            keyStore.markUnavailable(states, pickedKeyId, 300L)
+                        }
+                        isTimeoutException(e) -> {
+                            log.warn("Timeout on key {} for model {}: {}", pickedKeyId, model, e.message)
+                            keyStore.markUnavailable(states, pickedKeyId, 60L)
+                        }
+                        else -> {
+                            log.error("Error scanning with key {} for model {}", pickedKeyId, model, e)
+                            keyStore.markUnavailable(states, pickedKeyId, 30L)
+                        }
                     }
                 }
             }

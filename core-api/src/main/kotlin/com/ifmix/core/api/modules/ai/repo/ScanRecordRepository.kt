@@ -160,16 +160,28 @@ class ScanRecordRepository {
     }.execute()
     fun findByIds(mc: ModuleCtx, projectId: String, ids: Collection<UUID>): List<ScanRecord> = tpl.findByIds(mc, projectId, ids)
 
-    /** 列表视图批量查询：不加载 basicResult */
-    fun findByIdsListView(mc: ModuleCtx, projectId: String, ids: Collection<UUID>): List<ScanRecord> {
+    /** 列表视图批量查询（owner-scoped）：不加载 basicResult，仅返回该 customer 名下的记录。 */
+    fun findByIdsListView(mc: ModuleCtx, projectId: String, customerId: UUID, ids: Collection<UUID>): List<ScanRecord> {
         if (ids.isEmpty()) return emptyList()
         return mc.sql.createQuery(ScanRecord::class) {
             where(table.projectId eq projectId)
+            where(table.customerId eq customerId)
             where(table.id valueIn ids)
             select(table.fetchBy {
                 allScalarFields()
                 basicResult(false)
             })
+        }.execute()
+    }
+
+    /** owner-scoped 批量 id 过滤：仅返回属于该 customer 的 id（批量读兜底，如 DeepResearch loader）。 */
+    fun findOwnedIdsByIds(mc: ModuleCtx, projectId: String, customerId: UUID, ids: Collection<UUID>): List<UUID> {
+        if (ids.isEmpty()) return emptyList()
+        return mc.sql.createQuery(ScanRecord::class) {
+            where(table.projectId eq projectId)
+            where(table.customerId eq customerId)
+            where(table.id valueIn ids)
+            select(table.id)
         }.execute()
     }
 

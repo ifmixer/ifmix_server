@@ -23,6 +23,7 @@ import com.ifmix.core.api.dto.payment.SubscriptionState
 import com.ifmix.core.api.entity.common.Tiers
 import com.ifmix.core.api.entity.common.IdpType
 import com.ifmix.core.api.entity.common.IdpTypes
+import com.ifmix.core.api.entity.customer.DeletionReasons
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
@@ -43,7 +44,7 @@ data class LoginReq(
 data class LoginRes(
     val accessToken: String,
     val refreshToken: String,
-    val refreshExpiresAt: Instant,
+    val refreshExpiresAt: Instant?,
     val expiresIn: Long,
     val user: UserDto,
 )
@@ -52,7 +53,7 @@ data class RefreshReq(val refreshToken: String)
 data class RefreshRes(
     val accessToken: String,
     val refreshToken: String,
-    val refreshExpiresAt: Instant,
+    val refreshExpiresAt: Instant?,
     val expiresIn: Long,
 )
 
@@ -63,7 +64,7 @@ data class CreateAnonymousRes(
     val customerId: UUID,
     val accessToken: String,
     val refreshToken: String,
-    val refreshExpiresAt: Instant,
+    val refreshExpiresAt: Instant?,
     val expiresIn: Long,
 )
 
@@ -101,8 +102,6 @@ class AuthAggHandler(
     private val accessTtlSec: Long,
 ) {
     companion object {
-        private const val REFRESH_TTL_DAYS = 90L
-
         /** 登录判定动作（R1：合并方向由此单一入口决定，绝不反向）。 */
         sealed interface LoginAction {
             /** ①relation 不存在：cur 转正或（cur==null 时）新建。 */
@@ -198,7 +197,7 @@ class AuthAggHandler(
         val refreshTokenId = UuidV7.generate()
         val rawRefreshToken = Hashing.randomTokenBase64Url()
         val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
-        val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
+        val refreshExpiresAt: Instant? = null
         refreshTokenRepo.save(mc, RefreshToken {
             this.id = refreshTokenId
             this.projectId = projectId
@@ -248,12 +247,12 @@ class AuthAggHandler(
         val tokenIid = mc.action.mustGetTokenInstallId()
         val tokenHash = Hashing.sha256Base64Url(req.refreshToken)
         val oldToken = refreshTokenRepo.findValidByHash(mc, projectId, tokenHash)
-            ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or expired refresh token")
+            ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid or revoked refresh token")
 
         val now = Instant.now()
         val rawNewToken = Hashing.randomTokenBase64Url()
         val newTokenHash = Hashing.sha256Base64Url(rawNewToken)
-        val newExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
+        val newExpiresAt: Instant? = null
         val newTokenId = UuidV7.generate()
 
         refreshTokenRepo.save(mc, RefreshToken {
@@ -325,14 +324,15 @@ class AuthAggHandler(
         val refreshTokenId = UuidV7.generate()
         val rawRefreshToken = Hashing.randomTokenBase64Url()
         val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
-        val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
+        val refreshExpiresAt: Instant? = null
         refreshTokenRepo.save(mc, RefreshToken {
             this.id = refreshTokenId
             this.projectId = projectId
             this.actorId = customerId
             this.actorType = AuthJwtService.ACTOR_CUSTOMER
             this.tokenHash = refreshTokenHash
-            this.expiresAt = refreshExpiresAt
+            // expires_at 不承载失效语义（有效性只看 revoked_at，见 RefreshTokenRepositoryTest），匿名 token 存 null
+            this.expiresAt = null
             this.revokedAt = null
             this.replacedBy = null
             this.createdAt = now
@@ -356,8 +356,15 @@ class AuthAggHandler(
 
     fun requestAccountDeletion(mc: ModuleCtx): DeleteAccountRes {
         val actorId = mc.action.actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED)
+        val projectId = mc.projectId!!
         // 请求删除当下即软删该 customer 全部有效关系（设计 D9b；不依赖 iid）
         installFacade.unbindAllForCustomer(mc.action, actorId)
+        // 逻辑删除 + 记录原因分类/说明（幂等：已删除时 no-op，仍返回 accepted）
+        // reason 说明文本来自客户端提交的原始输入；当前 mutation 无入参，暂存 null，
+        // 将来 m_auth_deleteAccount 增加 reason 入参时在此透传。
+        customerRepo.requestDeletion(mc, projectId, actorId, DeletionReasons.USER_REQUESTED, reason = null)
+        // 吊销全部 refresh token：注销后 refresh 链即刻失效（已签发 access token 至多存活至其过期）
+        refreshTokenRepo.revokeAllByActor(mc, projectId, actorId, AuthJwtService.ACTOR_CUSTOMER)
         val scheduledAt = Instant.now().plusSeconds(30L * 24 * 3600).toEpochMilli()
         return DeleteAccountRes(accepted = true, scheduledAt = scheduledAt)
     }

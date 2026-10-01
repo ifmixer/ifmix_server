@@ -79,11 +79,12 @@ class AiFetcher(
 
     @DgsData(parentType = "ScanCollectionItem", field = "scanRecord")
     fun scanRecord(dfe: DgsDataFetchingEnvironment): CompletableFuture<ScanRecord> {
-        val itemId = dfe.getSource<ScanCollectionItem>()?.id
-            ?: throw ApiError(ErrorCode.NOT_FOUND, "ScanCollectionItem has no id")
+        // loader 的 key 是 ScanRecord.id —— 必须用 item.scanRecordId（item 自身 id 是独立 UUID，用它永远查不到）。
+        val scanRecordId = dfe.getSource<ScanCollectionItem>()?.scanRecordId
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "ScanCollectionItem has no scanRecordId")
         val loader = dfe.getDataLoader<UUID, ScanRecord>(ScanRecordsDataLoader.NAME)
             ?: throw ApiError(ErrorCode.INTERNAL, "ScanRecordsDataLoader not registered")
-        return loader.load(itemId)
+        return loader.load(scanRecordId)
     }
 
     @DgsData(parentType = "ScanRecord", field = "deepResearch")
@@ -192,7 +193,9 @@ class ScanRecordsDataLoader(
         val actionCtx = ActionContextHolder.current()
         val mc = mcFactory.forProject(actionCtx)
         val projectId = actionCtx.mustGetProjectId()
-        val records = scanRecordRepo.findByIdsListView(mc, projectId, ids)
+        // owner-scoped：只返回当前 customer 名下的记录，非本人的 id 一律 null。
+        val customerId = actionCtx.mustGetActorId()
+        val records = scanRecordRepo.findByIdsListView(mc, projectId, customerId, ids)
         val map = records.associateBy { it.id }
         return CompletableFuture.completedFuture(ids.associateWith { map[it] })
     }

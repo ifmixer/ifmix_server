@@ -30,9 +30,9 @@ class StorageAggHandler(
         // images typeGroup 固定为 image（本接口只处理图片上传）
         val typeGroup = "image"
         val ext = ContentTypes.extension(input.contentType)
-            ?: throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
+            ?: throw invalidRequest("unsupported contentType: ${input.contentType}")
         val mimeType = ContentTypes.mimeType(input.contentType)
-            ?: throw IllegalArgumentException("unsupported contentType: ${input.contentType}")
+            ?: throw invalidRequest("unsupported contentType: ${input.contentType}")
 
         val objectKey = "$typeGroup/p/${projectId}/$prefix/${actorType}/${actorId.toBase58()}/${mediaId.toBase58()}.$ext"
         val uploadUrl = objectStorage.presignUpload("ugc", objectKey, mimeType, Duration.ofSeconds(300))
@@ -59,21 +59,33 @@ class StorageAggHandler(
     }
 
     fun presignDownload(mc: ModuleCtx, input: PresignDownloadInput): PresignDownloadResult {
-        validateObjectKey(input.imageKey)
-        val duration = Duration.ofSeconds((input.durationSeconds ?: 3600).toLong())
+        val projectId = mc.action.mustGetProjectId()
+        val actorId = mc.action.mustGetActorId()
+        // owner-scoped：key 必须是调用者本人在本 project 上传的对象（key 内嵌 projectId + actorId）
+        validateObjectKey(input.imageKey, projectId, actorId)
+        // 封顶 24h，防止铸造长期有效的签名 URL
+        val duration = Duration.ofSeconds((input.durationSeconds ?: 3600).coerceIn(60, 24 * 3600).toLong())
         val url = objectStorage.presignDownload("ugc", input.imageKey, duration)
         return PresignDownloadResult(url = url)
     }
 
     /**
-     * objectKey 格式校验：必须含 "/project/" 段，不得包含 ".." 或绝对路径。
-     * 新格式 ${typeGroup}/project/${projectId}/${prefix}/${mediaId}.ext
-     * 防止客户端传入任意 S3 key 实现路径遍历。
+     * objectKey 格式与归属校验。上传生成的格式为：
+     *   ${typeGroup}/p/${projectId}/${prefix}/${actorType}/${actorIdBase58}/${mediaId}.ext
+     * （历史校验要求 "/project/" 段，与实际生成的 "/p/" 格式自相矛盾，已修正。）
+     * 要求 projectId 与 actorId 段等于调用者，防跨租户/跨用户签发下载 URL；并拒绝路径遍历。
      */
-    private fun validateObjectKey(key: String) {
-        require(!key.startsWith("/")) { "invalid objectKey: absolute path not allowed" }
-        require(!key.contains("..")) { "invalid objectKey: path traversal detected" }
-        require(key.contains("/project/")) { "invalid objectKey: must contain /project/ segment" }
+    private fun validateObjectKey(key: String, projectId: String, actorId: java.util.UUID) {
+        val api = com.ifmix.core.api.infra.http.ApiError(
+            com.ifmix.core.api.infra.http.ErrorCode.INVALID_REQUEST, "invalid objectKey",
+        )
+        if (key.startsWith("/") || key.contains("..")) throw api
+        val parts = key.split("/")
+        // typeGroup/p/projectId/prefix/actorType/actorIdBase58/mediaId.ext → 至少 7 段
+        if (parts.size < 7) throw api
+        if (parts[1] != "p") throw api
+        if (parts[2] != projectId) throw api
+        if (parts[5] != actorId.toBase58()) throw api
     }
 
     /**
@@ -81,13 +93,19 @@ class StorageAggHandler(
      * 只允许 [a-zA-Z0-9_-]，防路径遍历/注入。
      */
     private fun sanitizePrefix(raw: String): String {
-        require(raw.isNotBlank()) { "prefix must not be blank" }
-        require(raw.length <= 64) { "prefix too long (max 64)" }
-        require(raw.matches(PREFIX_REGEX)) { "invalid prefix: only [a-zA-Z0-9_-] allowed" }
+        if (raw.isBlank()) throw invalidRequest("prefix must not be blank")
+        if (raw.length > 64) throw invalidRequest("prefix too long (max 64)")
+        if (!raw.matches(PREFIX_REGEX)) throw invalidRequest("invalid prefix: only [a-zA-Z0-9_-] allowed")
         return raw
     }
 
+    /** 客户端错误统一 400 语义（IllegalArgumentException 会逃逸成 500，污染错误码与告警）。 */
+    private fun invalidRequest(msg: String) = com.ifmix.core.api.infra.http.ApiError(
+        com.ifmix.core.api.infra.http.ErrorCode.INVALID_REQUEST, msg,
+    )
+
     companion object {
         private val PREFIX_REGEX = Regex("^[a-zA-Z0-9_-]+$")
+        private const val MAX_PRESIGN_SECONDS = 24L * 3600
     }
 }

@@ -6,6 +6,8 @@ import com.ifmix.core.api.entity.customer.projectId
 import com.ifmix.core.api.entity.customer.authIdentityId
 import com.ifmix.core.api.entity.customer.id
 import com.ifmix.core.api.entity.customer.mergedTo
+import com.ifmix.core.api.entity.customer.deleteReasonCategory
+import com.ifmix.core.api.entity.customer.deleteReason
 import com.ifmix.core.api.entity.customer.scanCount
 import com.ifmix.core.api.entity.customer.deepResearchCount
 import com.ifmix.core.api.entity.customer.updatedAt
@@ -115,6 +117,27 @@ class CustomerRepository {
             set(table.mergedTo, existingId)
             set(table.updatedAt, Instant.now())
         }.execute()
+
+    /**
+     * 申请注销（逻辑删除）：记录 deleteReasonCategory + deleteReason，再走 Jimmer 逻辑删除置 deleted_at。
+     * 两步须在同一事务内调用（GlobalTxRunner）保证原子；已删除（deleted_at 非空）返回 false。
+     */
+    fun requestDeletion(mc: ModuleCtx, projectId: String, id: UUID, reasonCategory: Int, reason: String?): Boolean {
+        val updated = mc.sql.createUpdate(Customer::class) {
+            where(table.projectId eq projectId)
+            where(table.id eq id)
+            set(table.deleteReasonCategory, reasonCategory)
+            set(table.deleteReason, reason)
+            set(table.updatedAt, Instant.now())
+        }.execute()
+        if (updated == 0) return false
+        // Customer 带 @LogicalDeleted：createDelete 默认 LOGICAL 模式，自动置 deleted_at = now()
+        val deleted = mc.sql.createDelete(Customer::class) {
+            where(table.projectId eq projectId)
+            where(table.id eq id)
+        }.execute()
+        return deleted > 0
+    }
 
     fun save(mc: ModuleCtx, entity: Customer) = tpl.save(mc, entity)
     fun findById(mc: ModuleCtx, projectId: String, id: UUID) = tpl.findById(mc, projectId, id)

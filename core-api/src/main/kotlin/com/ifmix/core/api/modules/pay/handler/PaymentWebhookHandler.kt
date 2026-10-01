@@ -33,7 +33,12 @@ class PaymentWebhookHandler(
 
         if (decoderResult.subscriptionPxid.isNullOrEmpty()) return
 
-        if (storeNotificationRepo.existsByPlatformAndToken(mc, platform, decoderResult.subscriptionPxid)) return
+        // 幂等键必须是「通知」唯一 id（Apple notificationUUID / Google messageId）：
+        // 同一订阅的 RENEWED/EXPIRED/REFUND 是不同通知，用订阅 id 去重会把后续通知全部吞掉。
+        // 通知 id 缺失时退化为订阅 id（保守去重，防重放）。
+        val dedupKey = decoderResult.notificationId?.takeIf { it.isNotBlank() }
+            ?: decoderResult.subscriptionPxid
+        if (storeNotificationRepo.existsByPlatformAndToken(mc, platform, dedupKey)) return
 
         var subscription = subscriptionRepo.findActiveByPxid(mc, projectId, decoderResult.subscriptionPxid)
         if (subscription == null) {
@@ -41,7 +46,7 @@ class PaymentWebhookHandler(
         }
 
         if (subscription == null) {
-            createStoreNotification(mc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, projectId, processed = true)
+            createStoreNotification(mc, platform, decoderResult.subscriptionPxid, dedupKey, rawPayload, decoderResult.type, projectId, processed = true)
             return
         }
 
@@ -55,7 +60,7 @@ class PaymentWebhookHandler(
             else -> {}
         }
 
-        createStoreNotification(mc, platform, decoderResult.subscriptionPxid, rawPayload, decoderResult.type, projectId, processed = true)
+        createStoreNotification(mc, platform, decoderResult.subscriptionPxid, dedupKey, rawPayload, decoderResult.type, projectId, processed = true)
     }
 
     private fun updateSubscription(
@@ -79,6 +84,7 @@ class PaymentWebhookHandler(
         mc: ModuleCtx,
         platform: String,
         subscriptionPxid: String,
+        dedupKey: String,
         rawPayload: String,
         notificationType: NotificationType,
         projectId: String,
@@ -90,7 +96,8 @@ class PaymentWebhookHandler(
             this.projectId = projectId
             this.platform = platform
             this.subscriptionPxid = subscriptionPxid
-            this.purchaseToken = subscriptionPxid
+            // purchaseToken 存幂等键（通知唯一 id），与 existsByPlatformAndToken 的查询键一致
+            this.purchaseToken = dedupKey
             this.notificationType = notificationType.name
             this.rawPayload = mapOf("payload" to rawPayload)
             this.processed = processed

@@ -152,9 +152,14 @@ class ScanAggHandler(
     fun findById(sc: ModuleCtx, id: UUID): ScanRecord? =
         scanRepo.findByIdOwned(sc, sc.action.mustGetProjectId(), sc.action.mustGetActorId(), id)
 
-    /** 批量按 scanRecordId 查询 DeepResearch（DataLoader 用）。 */
-    fun findDeepResearchByScanRecordIds(sc: ModuleCtx, scanRecordIds: Collection<UUID>): List<com.ifmix.core.api.entity.ai.ScanDeepResearch> =
-        deepResearchRepo.findByScanRecordIds(sc, sc.action.mustGetProjectId(), scanRecordIds)
+    /** 批量按 scanRecordId 查询 DeepResearch（DataLoader 用，owner-scoped：先过滤出本人名下的 scanRecordId）。 */
+    fun findDeepResearchByScanRecordIds(sc: ModuleCtx, scanRecordIds: Collection<UUID>): List<com.ifmix.core.api.entity.ai.ScanDeepResearch> {
+        val projectId = sc.action.mustGetProjectId()
+        val customerId = sc.action.mustGetActorId()
+        val ownedIds = scanRepo.findOwnedIdsByIds(sc, projectId, customerId, scanRecordIds)
+        if (ownedIds.isEmpty()) return emptyList()
+        return deepResearchRepo.findByScanRecordIds(sc, projectId, ownedIds)
+    }
 
     /**
      * DeepResearch 第一步（事务内）：校验归属并整体替换 images。

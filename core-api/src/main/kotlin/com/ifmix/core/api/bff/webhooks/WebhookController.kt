@@ -10,10 +10,12 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWKSet
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.net.URI
+import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
 
@@ -22,7 +24,8 @@ import java.util.UUID
  *
  * 安全措施：
  * - Apple: 验证 JWS 签名（Apple Server Notifications v2 用 ES256 签名）
- * - Google: 验证请求中的 token（后续可扩展 OAuth bearer token 验证）
+ * - Google: 校验共享 token（Pub/Sub push 端点 URL 配置 ?token=xxx 或 X-Webhook-Token 头）；
+ *   token 未配置时端点整体关闭（403），防止无鉴权写入
  *
  * 从 payload 中解析 projectId（通过 bundleId/packageName 反查 ProjectConfig），不再硬编码。
  */
@@ -34,6 +37,7 @@ class WebhookController(
     @Qualifier("appleDecoder") private val appleDecoder: NotificationDecoder,
     @Qualifier("googleDecoder") private val googleDecoder: NotificationDecoder,
     private val projectConfigFacade: ProjectConfigFacade,
+    @Value("\${app.pay.google-webhook-token:}") private val googleWebhookToken: String,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -85,8 +89,8 @@ class WebhookController(
                 return ResponseEntity.badRequest().body("unknown app")
             }
 
-            // 5. 构建 ActionContext 并处理通知
-            val ctx = ActionContext(projectId = projectId, actorId = SYSTEM_USER_ID)
+            // 5. 构建 ActionContext 并处理通知（isMutation=true：webhook 的 DB 写必须落 writer，而非 reader）
+            val ctx = ActionContext(projectId = projectId, actorId = SYSTEM_USER_ID, isMutation = true)
             iapService.handleAppleNotification(ctx, rawPayload, appleDecoder)
             return ResponseEntity.ok("ok")
 
@@ -103,8 +107,28 @@ class WebhookController(
      * message.data 中包含 packageName 和 subscriptionNotification/oneTimeProductNotification.
      */
     @PostMapping("/google")
-    fun handleGoogle(@RequestBody rawPayload: String): ResponseEntity<String> {
+    fun handleGoogle(
+        @RequestBody rawPayload: String,
+        @RequestParam(required = false) token: String?,
+        @RequestHeader(value = "X-Webhook-Token", required = false) headerToken: String?,
+    ): ResponseEntity<String> {
         try {
+            // 0. 共享 token 校验（恒定时间比较）：Pub/Sub push 端点 URL 上配置 ?token=xxx。
+            //    未配置 token = webhook 关闭——此前该端点完全无鉴权，公网可任意写入通知表。
+            if (googleWebhookToken.isBlank()) {
+                log.warn("Google webhook rejected: app.pay.google-webhook-token not configured")
+                return ResponseEntity.status(403).body("webhook disabled")
+            }
+            val provided = token ?: headerToken
+            val ok = provided != null && MessageDigest.isEqual(
+                googleWebhookToken.toByteArray(Charsets.UTF_8),
+                provided.toByteArray(Charsets.UTF_8),
+            )
+            if (!ok) {
+                log.warn("Google webhook rejected: invalid or missing token")
+                return ResponseEntity.status(403).body("invalid token")
+            }
+
             // 1. 提取 packageName 从 Pub/Sub message
             val packageName = extractGooglePackageName(rawPayload)
 
@@ -118,8 +142,8 @@ class WebhookController(
                 return ResponseEntity.badRequest().body("unknown app")
             }
 
-            // 3. 处理通知
-            val ctx = ActionContext(projectId = projectId, actorId = SYSTEM_USER_ID)
+            // 3. 处理通知（isMutation=true：DB 写落 writer）
+            val ctx = ActionContext(projectId = projectId, actorId = SYSTEM_USER_ID, isMutation = true)
             iapService.handleGoogleNotification(ctx, rawPayload, googleDecoder)
             return ResponseEntity.ok("ok")
 

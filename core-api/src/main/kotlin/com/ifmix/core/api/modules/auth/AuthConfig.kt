@@ -47,5 +47,5 @@ class AuthConfig {
     @Bean
     fun authJwtService(
         @Value("\${app.auth.jwt-private-key:}") privateJwk: String,
-    ): AuthJwtService = AuthJwtService(AuthJwtKeys(privateJwk.ifBlank { null }), issuer, accessTtlSec)
+    ): AuthJwtService = AuthJwtService(AuthJwtKeys(privateJwk), issuer, accessTtlSec)
 }

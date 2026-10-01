@@ -60,8 +60,8 @@ class AnonymousCleanupCleaner(
         val cutoff = Instant.now().minus(config.tombstoneWindowDays, ChronoUnit.DAYS)
 
         // 单库全库扫（ifmix_core_test 单 app）。SQL 仍带 project_id 字段回读，删除按 id 精确。
-        val zombieDeleted = drain { afterId -> fetchZombies(afterId) }
-        val tombstoneDeleted = drain { afterId -> fetchTombstones(cutoff, afterId) }
+        val zombieDeleted = drain({ afterId -> fetchZombies(afterId) }) { batch -> deleteBatch(batch, zombie = true) }
+        val tombstoneDeleted = drain({ afterId -> fetchTombstones(cutoff, afterId) }) { batch -> deleteBatch(batch, zombie = false) }
 
         log.info(
             "[anon-cleanup] 完成：zombieDeleted={} tombstoneDeleted={} elapsedMs={}",
@@ -74,7 +74,7 @@ class AnonymousCleanupCleaner(
      * 用 id 游标推进（而非 offset），因为删除改变行集；被跳过的候选（有效 token / active 订阅）
      * 也算已检视，游标越过它们，不因整批被跳过而提前终止。空批终止。
      */
-    private fun drain(fetch: (UUID?) -> List<Candidate>): Int {
+    private fun drain(fetch: (UUID?) -> List<Candidate>, delete: (List<Candidate>) -> Int): Int {
         var deleted = 0
         var afterId: UUID? = null
         var batches = 0
@@ -82,7 +82,7 @@ class AnonymousCleanupCleaner(
             val batch = fetch(afterId)
             if (batch.isEmpty()) break
             afterId = batch.last().id
-            deleted += tx.execute { deleteBatch(batch) } ?: 0
+            deleted += tx.execute { delete(batch) } ?: 0
         }
         return deleted
     }
@@ -130,7 +130,7 @@ class AnonymousCleanupCleaner(
             }.list()
 
     /** 逐候选二次校验 + 批量物理删（同事务先资源后主体）。返回本批删除的 customer 数。 */
-    private fun deleteBatch(batch: List<Candidate>): Int {
+    private fun deleteBatch(batch: List<Candidate>, zombie: Boolean): Int {
         val toDelete = mutableListOf<UUID>()
         for (c in batch) {
             if (hasActiveSubscription(c.id)) {
@@ -156,7 +156,18 @@ class AnonymousCleanupCleaner(
 //        for (table in RESOURCE_TABLES) {
 //            jdbc.sql("DELETE FROM $table WHERE customer_id IN (:ids)").param("ids", toDelete).update()
 //        }
-        val n = jdbc.sql("DELETE FROM core_customer WHERE id IN (:ids)").param("ids", toDelete).update()
+        // DELETE 自带状态守卫：candidate 的 anonymous/merged 来自事务外快照，
+        // 快照之后用户可能已登录转正（READ COMMITTED 读不到未提交事务）——
+        // WHERE 复查状态 + 影响行数比对，杜绝误删刚注册用户。
+        val guard = if (zombie) "anonymous = true AND merged_to IS NULL" else "merged_to IS NOT NULL"
+        val n = jdbc.sql("DELETE FROM core_customer WHERE id IN (:ids) AND $guard")
+            .param("ids", toDelete).update()
+        if (n != toDelete.size) {
+            log.warn(
+                "[anon-cleanup] 状态守卫拦截：预期删除 {} 个 customer，实际删除 {}（快照后有状态变化，已跳过）",
+                toDelete.size, n,
+            )
+        }
         log.info("[anon-cleanup] 删除 customer {} 个", n)
         return n
     }
@@ -165,13 +176,14 @@ class AnonymousCleanupCleaner(
         jdbc.sql("SELECT EXISTS(SELECT 1 FROM core_pay_subscription WHERE customer_id = :id AND active = true)")
             .param("id", id).query(Boolean::class.java).single()
 
+    /** 与 core-api RefreshTokenRepository.hasValidToken 同语义：有效 = revoked_at IS NULL（expires_at 不参与判定）。 */
     private fun hasValidToken(id: UUID): Boolean =
         jdbc.sql(
             """
             SELECT EXISTS(
               SELECT 1 FROM core_auth_refreshtoken
               WHERE actor_id = :id AND actor_type = :actorType
-                AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())
+                AND revoked_at IS NULL
             )
             """.trimIndent(),
         ).param("id", id).param("actorType", ACTOR_TYPE).query(Boolean::class.java).single()

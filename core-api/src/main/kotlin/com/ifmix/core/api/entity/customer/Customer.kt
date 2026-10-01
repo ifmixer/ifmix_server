@@ -1,6 +1,7 @@
 package com.ifmix.core.api.entity.customer
 
 import com.ifmix.core.api.entity.common.BaseProjectEntity
+import com.ifmix.core.api.entity.common.SoftDeletableProps
 import org.babyfish.jimmer.sql.*
 import java.util.UUID
 
@@ -10,7 +11,7 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "core_customer")
-interface Customer : BaseProjectEntity {
+interface Customer : BaseProjectEntity, SoftDeletableProps {
 
     /** 是否匿名（未转正）。app 启动即建匿名 customer，登录后转 false。 */
     val anonymous: Boolean
@@ -30,4 +31,10 @@ interface Customer : BaseProjectEntity {
 
     /** 累计成功深度研究次数（saveDeepResearch 成功时 +1）。 */
     val deepResearchCount: Int
+
+    /** 删除原因分类（[DeletionReasons]；null = 未删除）。 */
+    val deleteReasonCategory: Int?
+
+    /** 删除原因说明（客户端提交的原始文本，可空）。 */
+    val deleteReason: String?
 }

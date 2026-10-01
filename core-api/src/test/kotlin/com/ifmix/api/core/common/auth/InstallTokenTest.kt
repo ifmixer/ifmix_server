@@ -10,11 +10,11 @@ import java.util.UUID
 
 /**
  * install token（type=5）与 customer token（type=10）的 type/iid claim 校验。
- * 纯逻辑，无 DB/Spring：AuthJwtKeys(null) 生成临时 Ed25519 密钥。
+ * 纯逻辑，无 DB/Spring：testAuthJwtKeys() 进程内生成 Ed25519 密钥。
  */
 class InstallTokenTest {
 
-    private val svc = AuthJwtService(AuthJwtKeys(null), issuer = "test-issuer")
+    private val svc = AuthJwtService(testAuthJwtKeys(), issuer = "test-issuer")
 
     @Test
     fun `install token has type=5, iid, and no subject`() {

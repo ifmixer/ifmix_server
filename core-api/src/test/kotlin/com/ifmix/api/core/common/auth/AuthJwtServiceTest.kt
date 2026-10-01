@@ -1,12 +1,13 @@
 package com.ifmix.core.api.infra.auth
 
+import com.ifmix.api.core.common.auth.testAuthJwtKeys
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.util.UUID
 
 class AuthJwtServiceTest {
-    private val svc = AuthJwtService(AuthJwtKeys(null), "test-issuer", 900)
+    private val svc = AuthJwtService(testAuthJwtKeys(), "test-issuer", 900)
 
     private val customerId = UUID.fromString("00000000-0000-0000-0000-000000000001")
     private val projectId = "00000000-0000-0000-0000-000000000099"
@@ -42,7 +43,7 @@ class AuthJwtServiceTest {
     }
 
     @Test fun `verify throws TokenExpiredException when expired`() {
-        val shortSvc = AuthJwtService(AuthJwtKeys(null), "test-issuer", -1)
+        val shortSvc = AuthJwtService(testAuthJwtKeys("test-key-short"), "test-issuer", -1)
         val token = shortSvc.signAccess(customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId, sessionId)
         assertThrows<TokenExpiredException> { shortSvc.verify(token) }
     }

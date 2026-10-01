@@ -20,6 +20,8 @@ app:
   auth:
     issuer: ifmix-test
     access-ttl-sec: 900
+    # 仅测试环境使用的静态 Ed25519 私钥（kid=test-only，不用于任何真实环境）
+    jwt-private-key: '{"kty":"OKP","crv":"Ed25519","kid":"test-only","use":"sig","d":"mfIWiOicCp1__zaZQ59qAdKnddtNjxuH69eFif-qjNc","x":"9pcCgU_pOXR6cijpwRHSotBL_HC2fFifWTBPWtSh95U"}'
   agnes:
     ai:
       preDeductPerAttempt: 1

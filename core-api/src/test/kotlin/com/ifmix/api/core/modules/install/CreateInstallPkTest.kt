@@ -2,8 +2,8 @@ package com.ifmix.api.core.modules.install
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import com.ifmix.api.core.common.auth.testAuthJwtKeys
 import com.ifmix.core.api.entity.install.Install
-import com.ifmix.core.api.infra.auth.AuthJwtKeys
 import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.http.ActionContext
@@ -17,7 +17,7 @@ import org.mockito.kotlin.mock
 /**
  * Install PK 收敛不变量：createInstall 写入的 core_install.id、返回的 installId、
  * 与签发的 installToken 的 iid claim 必须三者一致（同一个 UUID）。
- * 纯逻辑：捕获式 InstallRepository + 真 AuthJwtService（临时 Ed25519 密钥）。
+ * 纯逻辑：捕获式 InstallRepository + 真 AuthJwtService（testAuthJwtKeys 进程内生成 Ed25519 密钥）。
  */
 class CreateInstallPkTest {
 
@@ -36,7 +36,7 @@ class CreateInstallPkTest {
     @Test
     fun `createInstall writes one UUID as PK, returns it, and signs it as JWT iid`() {
         val repo = CapturingInstallRepo()
-        val jwt = AuthJwtService(AuthJwtKeys(null), issuer = "test-issuer")
+        val jwt = AuthJwtService(testAuthJwtKeys(), issuer = "test-issuer")
         val handler = InstallAggHandler(repo, InstallCustomerRelationRepository(), jwt)
 
         val res = handler.createInstall(ctx(), deviceInfo = null)

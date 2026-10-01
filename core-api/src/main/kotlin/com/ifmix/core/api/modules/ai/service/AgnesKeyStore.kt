@@ -1,13 +1,16 @@
 package com.ifmix.core.api.modules.ai.service
 
 import org.springframework.data.redis.core.StringRedisTemplate
+import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Agnes Key 运行时状态管理（quota pre-deduct、冷却标记、weighted pick）。
+ * Agnes Key 运行时状态管理（quota pre-deduct、冷却标记、pick）。
  *
- * 从数据源加载 keys → 维护内存状态 → 通过 Redis 做分布式冷却/计数。
+ * 状态跨请求缓存：key 列表与冷却/计数在实例内复用（TTL 内不重载）。
+ * 此前的实现每次 run() 重建状态，per-key 限流与冷却随请求结束即弃，等于没有。
+ * Redis 字段预留（当前为进程内状态；多实例部署时冷却/计数需迁到 Redis）。
  */
 class AgnesKeyStore(
     private val redis: StringRedisTemplate,
@@ -29,17 +32,37 @@ class AgnesKeyStore(
         var unavailableUntil: Instant? = null,
     )
 
-    /** 初始化/刷新状态 map。 */
-    fun init(): ConcurrentHashMap<String, KeyState> {
-        val keys = loadKeys()
-        val states = ConcurrentHashMap<String, KeyState>()
-        for (doc in keys) {
-            states[doc.id] = KeyState(doc = doc)
-        }
-        return states
+    companion object {
+        /** key 列表刷新间隔：冷却状态在此期间跨请求保留。 */
+        private const val REFRESH_TTL_SEC = 300L
     }
 
-    /** 权重随机选一个可用 key。简化实现：选第一个可用的。 */
+    @Volatile private var states: ConcurrentHashMap<String, KeyState>? = null
+    @Volatile private var loadedAt: Instant = Instant.EPOCH
+
+    /** 获取当前状态（跨请求缓存，TTL 过期或为空时从 DB 重载）。 */
+    fun current(): ConcurrentHashMap<String, KeyState> {
+        cached()?.let { return it }
+        synchronized(this) {
+            cached()?.let { return it }
+            val fresh = ConcurrentHashMap<String, KeyState>()
+            for (doc in loadKeys()) {
+                fresh[doc.id] = KeyState(doc = doc)
+            }
+            states = fresh
+            loadedAt = Instant.now()
+            return fresh
+        }
+    }
+
+    private fun cached(): ConcurrentHashMap<String, KeyState>? {
+        val cached = states ?: return null
+        val fresh = !cached.isEmpty() &&
+            Duration.between(loadedAt, Instant.now()).seconds < REFRESH_TTL_SEC
+        return if (fresh) cached else null
+    }
+
+    /** 选一个可用 key。简化实现：选第一个可用的（冷却中的 key 被跳过）。 */
     fun weightedPick(states: ConcurrentHashMap<String, KeyState>): String? {
         val now = Instant.now()
         return states.entries.firstOrNull { (_, state) ->

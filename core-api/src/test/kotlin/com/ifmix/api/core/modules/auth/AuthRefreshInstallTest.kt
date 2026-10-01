@@ -19,6 +19,7 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
@@ -69,6 +70,9 @@ class AuthRefreshInstallTest {
 
         handler.refresh(mc, RefreshReq("legacy-refresh"))
 
+        val tokenCaptor = argumentCaptor<RefreshToken>()
+        verify(refreshTokenRepo).save(eq(mc), tokenCaptor.capture())
+        org.assertj.core.api.Assertions.assertThat(tokenCaptor.firstValue.expiresAt).isNull()
         verify(jwt).signAccess(
             eq(actorId.toString()),
             eq(ActorTypes.CUSTOMER),
@@ -163,7 +167,9 @@ class AuthRefreshInstallTest {
         org.assertj.core.api.Assertions.assertThat(res.customerId).isEqualTo(customerId)
         // customer + refresh token + bind + 含 iid 的 access token
         verify(customerRepo).createCustomer(mc, projectId)
-        verify(refreshTokenRepo).save(eq(mc), any())
+        val tokenCaptor = argumentCaptor<RefreshToken>()
+        verify(refreshTokenRepo).save(eq(mc), tokenCaptor.capture())
+        org.assertj.core.api.Assertions.assertThat(tokenCaptor.firstValue.expiresAt).isNull()
         verify(installFacade).bind(eq(action), eq(installId), eq(customerId))
         verify(jwt).signAccess(
             eq(customerId.toString()),

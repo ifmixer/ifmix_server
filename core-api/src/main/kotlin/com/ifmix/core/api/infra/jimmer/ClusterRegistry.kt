@@ -10,7 +10,9 @@ import org.babyfish.jimmer.sql.kt.newKSqlClient
 import org.babyfish.jimmer.sql.runtime.Executor
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.jdbc.datasource.DataSourceUtils
 import org.springframework.stereotype.Component
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import javax.sql.DataSource
 
 /**
@@ -49,11 +51,16 @@ class ClusterRegistry(
 
     private fun createSqlClient(dataSource: DataSource): KSqlClient = newKSqlClient {
         setConnectionManager {
-            val conn = dataSource.connection
+            // 存在 Spring 事务（GlobalTxRunner/TxRunner 的 TransactionTemplate）时，必须复用
+            // 事务绑定的连接（routingDataSource → writer，autocommit=false），否则 Jimmer 会
+            // 在各自的 autocommit 连接上逐条提交，rollback 无法回滚——多步写将失去原子性。
+            // 无事务时保持原行为：直连目标池（writer/reader），autocommit 逐条提交。
+            val inSpringTx = TransactionSynchronizationManager.isActualTransactionActive()
+            val conn = if (inSpringTx) DataSourceUtils.getConnection(routingDataSource) else dataSource.connection
             try {
                 proceed(conn)
             } finally {
-                conn.close()
+                if (inSpringTx) DataSourceUtils.releaseConnection(conn, routingDataSource) else conn.close()
             }
         }
         setDialect(PostgresDialect())

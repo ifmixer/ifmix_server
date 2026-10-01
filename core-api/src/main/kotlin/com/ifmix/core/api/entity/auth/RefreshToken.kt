@@ -20,6 +20,7 @@ interface RefreshToken : BaseProjectEntity {
     val actorType: ActorType
 
     val tokenHash: String
+    /** 兼容历史数据的可空字段；当前有效性只由 revokedAt 决定，新 token 写 null。 */
     val expiresAt: Instant?
     val revokedAt: Instant?
     val replacedBy: UUID?
