@@ -1,0 +1,17 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/handler/InstallAggHandler.kt
+  h_89b11cfda87c93 3-12,14,18-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca250f1f4f9e8877532cfcb70c8baa06bf9fbf16",
+  "prompts": {},
+  "humans": {
+    "h_734c7d988c19fa": {
+      "author": "MyLab <mylab@qq.com>"
+    },
+    "h_89b11cfda87c93": {
+      "author": "JasonHuang <ciyinhuang@gmail.com>"
+    }
+  }
+}
