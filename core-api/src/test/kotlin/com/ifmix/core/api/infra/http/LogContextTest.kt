@@ -13,9 +13,12 @@ class LogContextTest {
     fun `bind writes ordered fields with dash for null, clear removes`() {
         val iid = UUID.randomUUID()
         LogContext.bind(ActionContext(tokenInstallId = iid, clientIp = "1.2.3.4", botScore = 12))
-        assertThat(MDC.get(LogContext.KEY)).isEqualTo("rid=- pid=- iid=$iid cid=- ip=1.2.3.4 bot=12 plat=- av=- ov=- loc=- cur=- cty=-")
+        assertThat(MDC.get("iid")).isEqualTo(iid.toString())
+        assertThat(MDC.get("ip")).isEqualTo("1.2.3.4")
+        assertThat(MDC.get("bot")).isEqualTo("12")
+        assertThat(MDC.get("cid")).isNull() // null 不写
         LogContext.clear()
-        assertThat(MDC.get(LogContext.KEY)).isNull()
+        assertThat(MDC.getCopyOfContextMap().orEmpty().keys.intersect(ActionContext().logFields().keys)).isEqualTo(emptySet())
     }
 
     @Test
@@ -23,9 +26,10 @@ class LogContextTest {
         val request = org.springframework.mock.web.MockHttpServletRequest()
         val cid = UUID.randomUUID()
         Thread.ofVirtual().start { LogContext.bind(ActionContext(actorId = cid, clientIp = "5.6.7.8"), request) }.join()
-        assertThat(MDC.get(LogContext.KEY)).isNull() // 当前线程没绑
+        assertThat(MDC.get("cid")).isNull() // 当前线程没绑
         assertThat(LogContext.bindFrom(request)).isEqualTo(true)
-        assertThat(MDC.get(LogContext.KEY)).isEqualTo("rid=- pid=- iid=- cid=$cid ip=5.6.7.8 bot=- plat=- av=- ov=- loc=- cur=- cty=-")
+        assertThat(MDC.get("cid")).isEqualTo(cid.toString())
+        assertThat(MDC.get("ip")).isEqualTo("5.6.7.8")
         LogContext.clear()
     }
 
@@ -33,7 +37,7 @@ class LogContextTest {
     fun `start generates request id, binds rid early, and stores it on request`() {
         val request = org.springframework.mock.web.MockHttpServletRequest()
         val rid = LogContext.start(request)
-        assertThat(MDC.get(LogContext.KEY)).isEqualTo("rid=$rid")
+        assertThat(MDC.get("rid")).isEqualTo(rid)
         assertThat(LogContext.requestId(request)).isEqualTo(rid)
         LogContext.clear()
     }

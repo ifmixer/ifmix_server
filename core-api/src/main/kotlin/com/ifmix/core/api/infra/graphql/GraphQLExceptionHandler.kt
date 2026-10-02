@@ -3,6 +3,7 @@ package com.ifmix.core.api.infra.graphql
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.http.GENERIC_SERVER_ERROR_MESSAGE
+import com.ifmix.core.api.infra.http.HeaderDump
 import com.ifmix.core.api.infra.http.clientMessage
 import graphql.GraphQLError
 import graphql.GraphqlErrorBuilder
@@ -40,7 +41,8 @@ class GraphQLExceptionHandler(
             val code = apiError.errorCode
             when {
                 code.status.is5xxServerError ->
-                    log.error("GraphQL ApiError code={} errorName={} path={} msg={}", code.externalCode, code.name, path, apiError.message, apiError)
+                    log.atError().setCause(apiError).addKeyValue("headers", HeaderDump.of(servletRequest(env)))
+                        .log("GraphQL ApiError code={} errorName={} path={} msg={}", code.externalCode, code.name, path, apiError.message)
                 code == ErrorCode.RATE_LIMITED || code == ErrorCode.QUOTA_EXCEEDED ||
                     code == ErrorCode.AUTH_PROVIDER_FAILED ->
                     log.warn("GraphQL ApiError code={} errorName={} path={} msg={}", code.externalCode, code.name, path, apiError.message)
@@ -58,7 +60,8 @@ class GraphQLExceptionHandler(
         }
         // 非 ApiError：未预期的程序异常（NPE/DB/Redis 等）。记 error 带 stack 便于排查；
         // 自己构造错误而不是返回 null——交给下游默认 resolver 会把异常信息带给客户端。
-        log.error("GraphQL unhandled exception. path={}", path, ex)
+        log.atError().setCause(ex).addKeyValue("headers", HeaderDump.of(servletRequest(env)))
+            .log("GraphQL unhandled exception. path={}", path)
         return GraphqlErrorBuilder.newError(env)
             .message(if (exposeErrors) (ex.message ?: ex.javaClass.simpleName) else GENERIC_SERVER_ERROR_MESSAGE)
             .errorType(ErrorType.INTERNAL_ERROR)
@@ -69,6 +72,12 @@ class GraphQLExceptionHandler(
             .build()
     }
 }
+
+/** data fetcher 线程上取不到 RequestContextHolder，从 DGS 上下文拿原始请求；取不到（非 HTTP/测试）返回 null。 */
+private fun servletRequest(env: DataFetchingEnvironment): jakarta.servlet.http.HttpServletRequest? = runCatching {
+    val data = com.netflix.graphql.dgs.context.DgsContext.getRequestData(env) as? com.netflix.graphql.dgs.internal.DgsWebMvcRequestData
+    (data?.webRequest as? org.springframework.web.context.request.ServletRequestAttributes)?.request
+}.getOrNull()
 
 /** 将 ErrorCode 的 HTTP 语义映射到 Spring GraphQL ErrorType。 */
 private fun com.ifmix.core.api.infra.http.ErrorCode.toGraphQLErrorType(): ErrorType = when {

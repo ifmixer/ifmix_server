@@ -66,8 +66,8 @@ data class ActionContext(
     val readCache get() = !isMutation
 
     /**
-     * 每条日志附带的请求上下文字段（经 [LogContext] 写入 MDC，pattern 里的 %X{ctx} 输出）。
-     * 以后要加打印字段只在这里加一项；顺序即输出顺序，null 打印为 "-"。
+     * 每条日志附带的请求上下文字段（经 [LogContext] 逐项写入 MDC，JSON 日志里各成一个顶层字段）。
+     * 以后要加打印字段只在这里加一项；null 不输出。key 用短名，避免与 logstash 内置字段（message/level…）冲突。
      */
     fun logFields(): Map<String, Any?> = linkedMapOf(
         "rid" to requestId,

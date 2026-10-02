@@ -56,8 +56,10 @@ app:
       username: ${PG_USERNAME}
       password: ${PG_PASSWORD}
       maximum-pool-size: ${PG_WRITER_POOL_SIZE:50}
+      minimum-idle: ${PG_WRITER_MIN_IDLE:5}
     reader:
       jdbc-url: ${PG_READER_URL}
       username: ${PG_USERNAME}
       password: ${PG_PASSWORD}
       maximum-pool-size: ${PG_READER_POOL_SIZE:50}
+      minimum-idle: ${PG_READER_MIN_IDLE:5}

@@ -19,13 +19,14 @@ class GlobalExceptionHandler(
     private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(ApiError::class)
-    fun handleApiError(ex: ApiError): ResponseEntity<*> {
+    fun handleApiError(ex: ApiError, request: jakarta.servlet.http.HttpServletRequest? = null): ResponseEntity<*> {
         val code = ex.errorCode
         // 集中分级记日志：5xx 服务端故障记 error(带 stack)；限流/第三方验证失败记 warn；
         // 其余纯客户端错误(400/401/404/403)记 debug，避免正常拒绝刷 warn。
         when {
             code.status.is5xxServerError ->
-                log.error("ApiError code={} errorName={} msg={}", code.externalCode, code.name, ex.message, ex)
+                log.atError().setCause(ex).addKeyValue("headers", HeaderDump.of(request))
+                    .log("ApiError code={} errorName={} msg={}", code.externalCode, code.name, ex.message)
             code == ErrorCode.RATE_LIMITED || code == ErrorCode.QUOTA_EXCEEDED ||
                 code == ErrorCode.AUTH_PROVIDER_FAILED ->
                 log.warn("ApiError code={} errorName={} msg={}", code.externalCode, code.name, ex.message)
@@ -66,8 +67,8 @@ class GlobalExceptionHandler(
     }
 
     @ExceptionHandler(Exception::class)
-    fun handleGeneric(ex: Exception): ResponseEntity<Envelope<Nothing>> {
-        log.error("Unhandled exception", ex)
+    fun handleGeneric(ex: Exception, request: jakarta.servlet.http.HttpServletRequest? = null): ResponseEntity<Envelope<Nothing>> {
+        log.atError().setCause(ex).addKeyValue("headers", HeaderDump.of(request)).log("Unhandled exception")
         val msg = if (exposeErrors) (ex.message ?: "error") else GENERIC_SERVER_ERROR_MESSAGE
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(Envelope.error(ErrorCode.INTERNAL.externalCode, msg))

@@ -16,5 +16,7 @@ data class ClusterProperties(
         val username: String = "",
         val password: String = "",
         val maximumPoolSize: Int = 10,
+        /** 常驻空闲连接数（Hikari minimumIdle）。默认 5：低流量时只保留少量连接，按需扩到 maximumPoolSize。 */
+        val minimumIdle: Int = 5,
     )
 }

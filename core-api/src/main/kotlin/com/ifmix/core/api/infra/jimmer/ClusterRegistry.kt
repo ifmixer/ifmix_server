@@ -79,6 +79,8 @@ class ClusterRegistry(
             username = props.username
             password = props.password
             maximumPoolSize = props.maximumPoolSize
+            // 不设时 Hikari 默认 minimumIdle = maximumPoolSize（常驻满池）；不超过上限
+            minimumIdle = props.minimumIdle.coerceAtMost(props.maximumPoolSize)
             this.poolName = poolName
         }
         return HikariDataSource(config)

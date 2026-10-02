@@ -67,27 +67,28 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
                 return
             }
 
-            // ctx 在 data fetcher 线程构造，filter 线程的 MDC 为空——从 request 取回再绑，汇总行的 [%X{ctx}] 才有值。
-            // 取到 ctx 时 header 信息已在 MDC 里，不再重复打印；没构造过 ctx（请求在进入 GraphQL 前就失败、非 GraphQL 路由）才回退打 header。
-            val headers = if (LogContext.bindFrom(wrappedRequest)) "" else " | " + importantHeaders(wrappedRequest)
-            val responseBody = getBody(wrappedResponse.contentAsByteArray, wrappedResponse.characterEncoding)
+            // ctx 在 data fetcher 线程构造，filter 线程的 MDC 为空——从 request 取回再绑，汇总行才带上下文字段。
+            // 取到 ctx 时 header 信息已在 MDC 里，不再重复打印；没构造过 ctx（进入 GraphQL 前就失败、非 GraphQL 路由）才回退打 headers。
+            val hasCtx = LogContext.bindFrom(wrappedRequest)
 
-            if (status >= 400) {
-                // 错误响应：WARN 级别，打印完整请求体和响应体
-                log.warn(
-                    "▶ method={} path={}{} httpStatus={} duration={}ms{}\n  ├─ req={}\n  └─ res={}",
-                    method, uri, query, status, duration, headers,
-                    requestBody.truncate(2000),
-                    responseBody.truncate(2000),
-                )
-            } else if (log.isDebugEnabled) {
-                // 正常响应：DEBUG 级别
-                log.debug(
-                    "▶ method={} path={}{} httpStatus={} duration={}ms{} | req={} | res={}",
-                    method, uri, query, status, duration, headers,
-                    requestBody.truncate(500),
-                    responseBody.truncate(500),
-                )
+            // 错误响应 WARN（body 截 2000），正常 DEBUG（截 500）。字段走 SLF4J key-value，JSON 日志里各成顶层字段（duration 为数值 ms）。
+            val error = status >= 400
+            val builder = when {
+                error -> log.atWarn()
+                log.isDebugEnabled -> log.atDebug()
+                else -> null
+            }
+            if (builder != null) {
+                val max = if (error) 2000 else 500
+                builder
+                    .addKeyValue("method", method)
+                    .addKeyValue("path", uri + query)
+                    .addKeyValue("httpStatus", status)
+                    .addKeyValue("duration", duration)
+                    .apply { if (!hasCtx) addKeyValue("headers", importantHeaders(wrappedRequest)) }
+                    .addKeyValue("req", requestBody.truncate(max))
+                    .addKeyValue("res", getBody(wrappedResponse.contentAsByteArray, wrappedResponse.characterEncoding).truncate(max))
+                    .log("http.request.end")
             }
 
             // 必须 copyBodyToResponse，否则客户端收不到响应体
