@@ -1,0 +1,14 @@
+core-api/src/main/resources/db/migration/V10__deep_research_async.sql
+  h_b17efd5c751f9f 1,9-17,26-43,51,54-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d01658881f11d200f63f5f3517b9cdb8189cf2f9",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
