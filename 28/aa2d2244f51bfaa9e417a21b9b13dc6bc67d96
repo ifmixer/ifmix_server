@@ -1,0 +1,14 @@
+docs/superpowers/specs/2026-10-02-deep-research-async-r2-versioning-design.md
+  h_b17efd5c751f9f 23,93-99,233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "28aa2d2244f51bfaa9e417a21b9b13dc6bc67d96",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
