@@ -1,0 +1,22 @@
+AGENTS.md
+  h_b17efd5c751f9f 31
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GraphQlHttpStatusFilter.kt
+  h_b17efd5c751f9f 24-25
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilter.kt
+  h_b17efd5c751f9f 9-10,22-24,31-33,78,86
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilterTest.kt
+  h_b17efd5c751f9f 1-50
+docs/release.md
+  h_b17efd5c751f9f 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a043fe653d82398d065e171036715a438d170095",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
