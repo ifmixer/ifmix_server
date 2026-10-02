@@ -37,4 +37,17 @@ class LogContextTest {
         assertThat(LogContext.requestId(request)).isEqualTo(rid)
         LogContext.clear()
     }
+
+    @Test
+    fun `client x-req-id used as-is (control chars stripped), generated when absent or blank`() {
+        fun startWith(v: String?) = LogContext.start(org.springframework.mock.web.MockHttpServletRequest().apply { v?.let { addHeader("x-req-id", it) } })
+        assertThat(startWith("app-AbC_123")).isEqualTo("app-AbC_123")
+        assertThat(startWith("a b\nINFO fake")).isEqualTo("a bINFO fake")
+        assertThat(startWith("x".repeat(500)).length).isEqualTo(128)
+        for (v in listOf(null, "", "   ", "\n")) {
+            val rid = startWith(v)
+            assertThat(UUID.fromString(rid).toString()).isEqualTo(rid)
+        }
+        LogContext.clear()
+    }
 }

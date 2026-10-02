@@ -41,7 +41,7 @@ data class ActionContext(
      * 不可信（客户端可伪造），只用于写入/关系维护，绝不签进 token 的 iid。等老 app 升级完关掉开关即恒为 null。
      */
     val legacyInstallId: UUID? = null,
-    /** 请求 id（RequestLoggingFilter 生成，响应头 x-request-id 返回）。 */
+    /** 请求 id（客户端 x-req-id 原值，或服务端生成的 UUID；客户端 x-req-id 或服务端生成，响应头 x-req-id 返回）。 */
     val requestId: String? = null,
     /** Cloudflare bot score（cf-bot-score header，1-99，越低越像 bot）。仅记录用途。 */
     val botScore: Int? = null,

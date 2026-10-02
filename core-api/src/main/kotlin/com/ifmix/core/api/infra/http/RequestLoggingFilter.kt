@@ -40,7 +40,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
 
         val start = System.currentTimeMillis()
         // 先写响应头（body 提交前），日志里的 rid 与之相同
-        response.setHeader(RequestHeaders.REQUEST_ID, LogContext.start(wrappedRequest))
+        response.setHeader(RequestHeaders.REQ_ID, LogContext.start(wrappedRequest))
 
         try {
             filterChain.doFilter(wrappedRequest, wrappedResponse)
