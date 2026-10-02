@@ -95,7 +95,7 @@ class WebhookController(
             return ResponseEntity.ok("ok")
 
         } catch (e: Exception) {
-            log.error("Apple webhook processing failed: ${e.message}", e)
+            log.error("Apple webhook processing failed. error=${e.message}", e)
             return ResponseEntity.status(500).body("error")
         }
     }
@@ -148,7 +148,7 @@ class WebhookController(
             return ResponseEntity.ok("ok")
 
         } catch (e: Exception) {
-            log.error("Google webhook processing failed: ${e.message}", e)
+            log.error("Google webhook processing failed. error=${e.message}", e)
             return ResponseEntity.status(500).body("error")
         }
     }
@@ -160,7 +160,7 @@ class WebhookController(
             val tree = mapper.readTree(rawPayload)
             tree.get("signedPayload")?.asText()
         } catch (e: Exception) {
-            log.warn("failed to extract signedPayload from Apple webhook: {}", e.message)
+            log.warn("failed to extract signedPayload from Apple webhook. error={}", e.message)
             null
         }
     }
@@ -210,7 +210,7 @@ class WebhookController(
             val tree = mapper.readTree(payloadJson)
             tree.get("data")?.get("bundleId")?.asText()
         } catch (e: Exception) {
-            log.warn("failed to extract bundleId from Apple payload: {}", e.message)
+            log.warn("failed to extract bundleId from Apple payload. error={}", e.message)
             null
         }
     }
@@ -224,7 +224,7 @@ class WebhookController(
             val dataTree = mapper.readTree(decoded)
             dataTree.get("packageName")?.asText()
         } catch (e: Exception) {
-            log.warn("failed to extract packageName from Google webhook: {}", e.message)
+            log.warn("failed to extract packageName from Google webhook. error={}", e.message)
             null
         }
     }

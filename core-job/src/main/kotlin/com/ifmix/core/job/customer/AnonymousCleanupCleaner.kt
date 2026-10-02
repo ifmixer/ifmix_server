@@ -65,7 +65,7 @@ class AnonymousCleanupCleaner(
         val tombstoneDeleted = drain({ afterId -> fetchTombstones(cutoff, afterId) }) { batch -> deleteBatch(batch, zombie = false) }
 
         log.info(
-            "[anon-cleanup] 完成：zombieDeleted={} tombstoneDeleted={} elapsedMs={}",
+            "[anon-cleanup] 完成. zombieDeleted={} tombstoneDeleted={} duration={}ms",
             zombieDeleted, tombstoneDeleted, ChronoUnit.MILLIS.between(started, Instant.now()),
         )
     }
@@ -135,7 +135,7 @@ class AnonymousCleanupCleaner(
         val toDelete = mutableListOf<UUID>()
         for (c in batch) {
             if (hasActiveSubscription(c.id)) {
-                log.warn("[anon-cleanup] customer={} 命中 active 订阅，跳过删除（匿名却付费边界数据）", c.id)
+                log.warn("[anon-cleanup] 命中 active 订阅，跳过删除（匿名却付费边界数据）. customer={}", c.id)
                 continue
             }
             val state = AnonymousCleanupDecision.CustomerState(
@@ -165,11 +165,11 @@ class AnonymousCleanupCleaner(
             .param("ids", toDelete).update()
         if (n != toDelete.size) {
             log.warn(
-                "[anon-cleanup] 状态守卫拦截：预期删除 {} 个 customer，实际删除 {}（快照后有状态变化，已跳过）",
+                "[anon-cleanup] 状态守卫拦截（快照后有状态变化，已跳过）. expected={} deleted={}",
                 toDelete.size, n,
             )
         }
-        log.info("[anon-cleanup] 删除 customer {} 个", n)
+        log.info("[anon-cleanup] 删除 customer. deleted={}", n)
         return n
     }
 

@@ -36,6 +36,15 @@ data class ActionContext(
     val tokenInstallId: UUID? = null,
     /** token 的 type claim：5=install / 10=customer / 20=manager。无 token 时 null。 */
     val tokenType: Int? = null,
+    /**
+     * 老版本 app 兼容（app.auth.legacy-install-id-fallback=true 时才有值）：token 无 iid 时退回 x-install-id header。
+     * 不可信（客户端可伪造），只用于写入/关系维护，绝不签进 token 的 iid。等老 app 升级完关掉开关即恒为 null。
+     */
+    val legacyInstallId: UUID? = null,
+    /** 请求 id（RequestLoggingFilter 生成，响应头 x-request-id 返回）。 */
+    val requestId: String? = null,
+    /** Cloudflare bot score（cf-bot-score header，1-99，越低越像 bot）。仅记录用途。 */
+    val botScore: Int? = null,
     /** 客户端版本（x-app-version / x-ota-version）。仅记录用途，格式软校验。 */
     val appVersion: String? = null,
     /** x-ota-version：热更新版本号，形如 `1-23-3`（runtimeVersion-buildNumber-otaSeq）。原样透传。 */
@@ -56,6 +65,25 @@ data class ActionContext(
     /** true = 允许读缓存。mutation 时为 false，避免脏读。 */
     val readCache get() = !isMutation
 
+    /**
+     * 每条日志附带的请求上下文字段（经 [LogContext] 写入 MDC，pattern 里的 %X{ctx} 输出）。
+     * 以后要加打印字段只在这里加一项；顺序即输出顺序，null 打印为 "-"。
+     */
+    fun logFields(): Map<String, Any?> = linkedMapOf(
+        "rid" to requestId,
+        "pid" to projectId,
+        "iid" to installIdOrNull(),
+        "cid" to actorId,
+        "ip" to clientIp,
+        "bot" to botScore,
+        "plat" to clientPlatform,
+        "av" to appVersion,
+        "ov" to otaVersion,
+        "loc" to locale,
+        "cur" to currency,
+        "cty" to country,
+    )
+
     fun mustGetProjectId() = projectId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-project-id is required")
     fun mustGetActorId() = actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
 
@@ -65,7 +93,10 @@ data class ActionContext(
      * 含 iid 的 customer token 皆可），无有效 iid → UNAUTHORIZED。
      * 无有效 token iid → UNAUTHORIZED（缺少可信 install 上下文，拒绝写入）。
      */
-    fun mustGetTokenInstallId() = tokenInstallId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "trusted install id required")
+    fun mustGetTokenInstallId() = installIdOrNull() ?: throw ApiError(ErrorCode.UNAUTHORIZED, "trusted install id required")
+
+    /** token iid 优先；无则（仅兼容开关开启时）退回 header 的 [legacyInstallId]。 */
+    fun installIdOrNull(): UUID? = tokenInstallId ?: legacyInstallId
 
     /**
      * login 入口：必须携带 iid，允许两类上下文——
@@ -77,9 +108,11 @@ data class ActionContext(
         val ok = when (tokenType) {
             AuthJwtService.TOKEN_TYPE_CUSTOMER -> actorId != null
             AuthJwtService.TOKEN_TYPE_INSTALL -> actorId == null
+            // 老 app 登录不带 token：仅兼容开关开启（legacyInstallId 有值）时放行
+            null -> actorId == null && legacyInstallId != null
             else -> false
         }
         if (!ok) throw ApiError(ErrorCode.UNAUTHORIZED, "login requires customer or install token")
-        return tokenInstallId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "login requires trusted install id")
+        return installIdOrNull() ?: throw ApiError(ErrorCode.UNAUTHORIZED, "login requires trusted install id")
     }
 }

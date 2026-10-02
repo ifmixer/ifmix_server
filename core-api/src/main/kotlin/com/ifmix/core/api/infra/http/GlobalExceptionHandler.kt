@@ -25,12 +25,12 @@ class GlobalExceptionHandler(
         // 其余纯客户端错误(400/401/404/403)记 debug，避免正常拒绝刷 warn。
         when {
             code.status.is5xxServerError ->
-                log.error("ApiError [{}] {}", code.externalCode, ex.message, ex)
+                log.error("ApiError code={} errorName={} msg={}", code.externalCode, code.name, ex.message, ex)
             code == ErrorCode.RATE_LIMITED || code == ErrorCode.QUOTA_EXCEEDED ||
                 code == ErrorCode.AUTH_PROVIDER_FAILED ->
-                log.warn("ApiError [{}] {}", code.externalCode, ex.message)
+                log.warn("ApiError code={} errorName={} msg={}", code.externalCode, code.name, ex.message)
             else ->
-                log.debug("ApiError [{}] {}", code.externalCode, ex.message)
+                log.debug("ApiError code={} errorName={} msg={}", code.externalCode, code.name, ex.message)
         }
         val msg = code.clientMessage(ex.message, exposeErrors)
         // 线上 5xx 连 details 一起隐藏（details 同样可能带内部信息）
@@ -60,7 +60,7 @@ class GlobalExceptionHandler(
     /** 404：路径无映射 / 静态资源不存在。返回 404，warn 记录（不打 stack）。 */
     @ExceptionHandler(NoResourceFoundException::class, NoHandlerFoundException::class)
     fun handleNotFound(ex: Exception): ResponseEntity<Envelope<Nothing>> {
-        log.warn("No handler for request: {}", ex.message)
+        log.warn("No handler for request. msg={}", ex.message)
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(Envelope.error(ErrorCode.NOT_FOUND.externalCode, "not found"))
     }

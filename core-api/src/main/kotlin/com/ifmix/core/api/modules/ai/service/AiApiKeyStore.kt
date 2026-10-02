@@ -56,7 +56,7 @@ class AiApiKeyStore(
             val fresh = loadKeys().shuffled()
             keys = fresh
             loadedAt = Instant.now()
-            log.info("AI API key pool loaded: {} key(s)", fresh.size)
+            log.info("AI API key pool loaded. count={}", fresh.size)
             return fresh
         }
     }

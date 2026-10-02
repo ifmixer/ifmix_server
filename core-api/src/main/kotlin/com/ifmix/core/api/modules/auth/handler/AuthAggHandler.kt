@@ -64,7 +64,8 @@ data class CreateAnonymousRes(
     val customerId: UUID,
     val accessToken: String,
     val refreshToken: String,
-    val refreshExpiresAt: Instant?,
+    /** 签发时 + [AuthAggHandler.REFRESH_TTL_DAYS]（老 app 依赖非空）；服务端暂不校验过期。 */
+    val refreshExpiresAt: Instant,
     val expiresIn: Long,
 )
 
@@ -102,6 +103,13 @@ class AuthAggHandler(
     private val accessTtlSec: Long,
 ) {
     companion object {
+        /**
+         * refresh token 有效期（天）：签发/轮换时写入 expires_at 并返回给客户端（refresh 轮换即滑动续期）。
+         * 服务端暂不校验过期（有效性只看 revoked_at，见 RefreshTokenRepository.findValidByHash）；
+         * 预先落库是为以后加校验时已有数据可用。
+         */
+        const val REFRESH_TTL_DAYS = 365L
+
         /** 登录判定动作（R1：合并方向由此单一入口决定，绝不反向）。 */
         sealed interface LoginAction {
             /** ①relation 不存在：cur 转正或（cur==null 时）新建。 */
@@ -197,7 +205,7 @@ class AuthAggHandler(
         val refreshTokenId = UuidV7.generate()
         val rawRefreshToken = Hashing.randomTokenBase64Url()
         val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
-        val refreshExpiresAt: Instant? = null
+        val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         refreshTokenRepo.save(mc, RefreshToken {
             this.id = refreshTokenId
             this.projectId = projectId
@@ -217,7 +225,7 @@ class AuthAggHandler(
         val accessToken = jwt.signAccess(
             ownerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(),
             sessionId = refreshTokenId.toString(), anonymous = false,
-            installId = tokenIid.toString(),
+            installId = mc.action.tokenInstallId?.toString(), // 只签可信 iid，header 兜底值不入 token
         )
         // Merge 分支 ownerId 已是合并后的 existing（action.to）→ bind 指向 existing，绝不反向
         installFacade.bind(mc.action, tokenIid, ownerId)
@@ -252,7 +260,7 @@ class AuthAggHandler(
         val now = Instant.now()
         val rawNewToken = Hashing.randomTokenBase64Url()
         val newTokenHash = Hashing.sha256Base64Url(rawNewToken)
-        val newExpiresAt: Instant? = null
+        val newExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         val newTokenId = UuidV7.generate()
 
         refreshTokenRepo.save(mc, RefreshToken {
@@ -275,7 +283,7 @@ class AuthAggHandler(
             oldToken.actorId.toString(), oldToken.actorType, projectId.toString(),
             sessionId = newTokenId.toString(),
             anonymous = anonymous,
-            installId = tokenIid.toString(),
+            installId = mc.action.tokenInstallId?.toString(), // 只签可信 iid，header 兜底值不入 token
         )
         // refresh 续期 token 并保留 iid/anonymous。若 refresh token 属于某 customer actor，
         // 则检查该 actor 与 iid 的关系：未绑定则补绑（bind 幂等——已绑定则 NoOp，软删则复活）。
@@ -300,7 +308,7 @@ class AuthAggHandler(
         }
         // 老 customer token 没有 iid，也从未建立 install 关系：兼容退出，只撤销 refresh token。
         // 新 token 有 iid 时正常解绑当前 install↔customer 关系。
-        val iid = mc.action.tokenInstallId
+        val iid = mc.action.installIdOrNull()
         if (iid != null) {
             val customerId = mc.action.actorId
                 ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
@@ -324,15 +332,15 @@ class AuthAggHandler(
         val refreshTokenId = UuidV7.generate()
         val rawRefreshToken = Hashing.randomTokenBase64Url()
         val refreshTokenHash = Hashing.sha256Base64Url(rawRefreshToken)
-        val refreshExpiresAt: Instant? = null
+        val refreshExpiresAt = now.plusSeconds(REFRESH_TTL_DAYS * 86400)
         refreshTokenRepo.save(mc, RefreshToken {
             this.id = refreshTokenId
             this.projectId = projectId
             this.actorId = customerId
             this.actorType = AuthJwtService.ACTOR_CUSTOMER
             this.tokenHash = refreshTokenHash
-            // expires_at 不承载失效语义（有效性只看 revoked_at，见 RefreshTokenRepositoryTest），匿名 token 存 null
-            this.expiresAt = null
+            // expires_at 暂不承载失效语义（有效性只看 revoked_at），先落库备将来校验
+            this.expiresAt = refreshExpiresAt
             this.revokedAt = null
             this.replacedBy = null
             this.createdAt = now
@@ -342,7 +350,7 @@ class AuthAggHandler(
         val accessToken = jwt.signAccess(
             customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(),
             sessionId = refreshTokenId.toString(), anonymous = true,
-            installId = tokenIid.toString(),
+            installId = mc.action.tokenInstallId?.toString(), // 只签可信 iid，header 兜底值不入 token
         )
         installFacade.bind(mc.action, tokenIid, customerId)
         return CreateAnonymousRes(

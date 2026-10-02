@@ -8,12 +8,13 @@
   - 均按天 + 单文件 50MB 滚动，保留 30 天，总量上限 3GB
   - 控制台仅 local profile 输出，方便本地调试
 -->
+<!-- [%X{ctx}]：请求上下文（iid/cid/ip/bot…），由 LogContext 写入 MDC；字段定义见 ActionContext.logFields() -->
 <configuration>
     <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="core-api"/>
 
     <property name="LOG_PATH" value="${LOG_PATH:-./logs}"/>
     <property name="LOG_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{ctx}] - %msg%n"/>
 
     <!-- 控制台（仅本地开发） -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

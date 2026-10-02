@@ -41,7 +41,7 @@ class JobDispatcher(
 
         val job = jobs.values.firstOrNull { it.name == name }
         if (job == null) {
-            log.error("[dispatch] 未知 job.name='{}'。可用：{}", name, jobs.values.map { it.name })
+            log.error("[dispatch] 未知 job.name。job={} available={}", name, jobs.values.map { it.name })
             exitCode = 2
             return
         }
@@ -50,13 +50,15 @@ class JobDispatcher(
             .addLong("run.id", System.currentTimeMillis())
             .toJobParameters()
 
-        log.info("[dispatch] 启动 Job '{}' params={}", name, params)
+        log.info("[dispatch] 启动 Job. job={} params={}", name, params)
+        val startMs = System.currentTimeMillis()
         val execution = jobOperator.start(job, params)
         val status = execution.status
-        log.info("[dispatch] Job '{}' 结束 status={} exitStatus={}", name, status, execution.exitStatus.exitCode)
+        log.info("[dispatch] Job 结束. job={} status={} exitStatus={} duration={}ms",
+            name, status, execution.exitStatus.exitCode, System.currentTimeMillis() - startMs)
 
         if (status != BatchStatus.COMPLETED) {
-            log.error("[dispatch] Job '{}' 未成功完成 status={}", name, status)
+            log.error("[dispatch] Job 未成功完成. job={} status={}", name, status)
             exitCode = 1
         }
     }

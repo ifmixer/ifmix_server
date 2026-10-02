@@ -72,7 +72,9 @@ class AuthRefreshInstallTest {
 
         val tokenCaptor = argumentCaptor<RefreshToken>()
         verify(refreshTokenRepo).save(eq(mc), tokenCaptor.capture())
-        org.assertj.core.api.Assertions.assertThat(tokenCaptor.firstValue.expiresAt).isNull()
+        // expires_at = 签发时 + 1 年（落库备将来校验；当前服务端不校验）
+        org.assertj.core.api.Assertions.assertThat(tokenCaptor.firstValue.expiresAt)
+            .isBetween(java.time.Instant.now().plus(java.time.Duration.ofDays(364)), java.time.Instant.now().plus(java.time.Duration.ofDays(366)))
         verify(jwt).signAccess(
             eq(actorId.toString()),
             eq(ActorTypes.CUSTOMER),
@@ -169,7 +171,11 @@ class AuthRefreshInstallTest {
         verify(customerRepo).createCustomer(mc, projectId)
         val tokenCaptor = argumentCaptor<RefreshToken>()
         verify(refreshTokenRepo).save(eq(mc), tokenCaptor.capture())
-        org.assertj.core.api.Assertions.assertThat(tokenCaptor.firstValue.expiresAt).isNull()
+        // expires_at = 签发时 + 1 年（落库备将来校验；当前服务端不校验）
+        org.assertj.core.api.Assertions.assertThat(tokenCaptor.firstValue.expiresAt)
+            .isBetween(java.time.Instant.now().plus(java.time.Duration.ofDays(364)), java.time.Instant.now().plus(java.time.Duration.ofDays(366)))
+        // 返回给客户端的 refreshExpiresAt 与落库值一致
+        org.assertj.core.api.Assertions.assertThat(res.refreshExpiresAt).isEqualTo(tokenCaptor.firstValue.expiresAt)
         verify(installFacade).bind(eq(action), eq(installId), eq(customerId))
         verify(jwt).signAccess(
             eq(customerId.toString()),

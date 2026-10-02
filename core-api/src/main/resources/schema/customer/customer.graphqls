@@ -13,8 +13,8 @@ type CreateAnonymousResult {
     customer: Customer
     accessToken: String!
     refreshToken: String!
-    "refresh token 无时间过期；null 表示仅可通过撤销失效"
-    refreshExpiresAt: DateTime
+    "refresh token 过期时间（ISO-8601，签发时 + 1 年）。服务端暂不校验过期，以后可能启用"
+    refreshExpiresAt: DateTime!
     "access token 有效期（秒）"
     expiresIn: Int!
 }

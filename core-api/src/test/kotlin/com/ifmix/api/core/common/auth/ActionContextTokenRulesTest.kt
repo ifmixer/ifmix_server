@@ -23,11 +23,13 @@ class ActionContextTokenRulesTest {
         actorId: UUID? = null,
         tokenType: Int? = null,
         tokenInstallId: UUID? = null,
+        legacyInstallId: UUID? = null,
     ) = ActionContext(
         projectId = "antique",
         actorId = actorId,
         tokenType = tokenType,
         tokenInstallId = tokenInstallId,
+        legacyInstallId = legacyInstallId,
     )
 
     // ── mustGetTokenInstallId：createAnonymous / refresh 用（只要求有效 iid，token 类型不限） ──
@@ -95,5 +97,27 @@ class ActionContextTokenRulesTest {
             ctx(tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, tokenInstallId = null).mustGetLoginInstallId()
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
+    }
+
+    // ── 老 app 兼容（legacyInstallId 仅在开关开启时由 provider 填充） ──
+
+    private val legacy = UUID.randomUUID()
+
+    @Test fun `legacy header id used when token has no iid`() {
+        assertThat(ctx(legacyInstallId = legacy).mustGetTokenInstallId()).isEqualTo(legacy)
+        assertThat(
+            ctx(actorId = actor, tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, legacyInstallId = legacy).mustGetTokenInstallId()
+        ).isEqualTo(legacy)
+    }
+
+    @Test fun `token iid wins over legacy header id`() {
+        assertThat(ctx(tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, tokenInstallId = iid, legacyInstallId = legacy)
+            .mustGetTokenInstallId()).isEqualTo(iid)
+    }
+
+    @Test fun `legacy login without token accepted only with legacy id`() {
+        assertThat(ctx(legacyInstallId = legacy).mustGetLoginInstallId()).isEqualTo(legacy)
+        assertThat(ctx(actorId = actor, tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, legacyInstallId = legacy)
+            .mustGetLoginInstallId()).isEqualTo(legacy)
     }
 }

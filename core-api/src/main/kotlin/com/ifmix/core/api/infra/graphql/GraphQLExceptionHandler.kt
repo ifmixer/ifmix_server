@@ -40,12 +40,12 @@ class GraphQLExceptionHandler(
             val code = apiError.errorCode
             when {
                 code.status.is5xxServerError ->
-                    log.error("GraphQL ApiError [{}] {} at {}", code.externalCode, apiError.message, path, apiError)
+                    log.error("GraphQL ApiError code={} errorName={} path={} msg={}", code.externalCode, code.name, path, apiError.message, apiError)
                 code == ErrorCode.RATE_LIMITED || code == ErrorCode.QUOTA_EXCEEDED ||
                     code == ErrorCode.AUTH_PROVIDER_FAILED ->
-                    log.warn("GraphQL ApiError [{}] {} at {}", code.externalCode, apiError.message, path)
+                    log.warn("GraphQL ApiError code={} errorName={} path={} msg={}", code.externalCode, code.name, path, apiError.message)
                 else ->
-                    log.debug("GraphQL ApiError [{}] {} at {}", code.externalCode, apiError.message, path)
+                    log.debug("GraphQL ApiError code={} errorName={} path={} msg={}", code.externalCode, code.name, path, apiError.message)
             }
             return GraphqlErrorBuilder.newError(env)
                 .message(code.clientMessage(apiError.message, exposeErrors))
@@ -58,7 +58,7 @@ class GraphQLExceptionHandler(
         }
         // 非 ApiError：未预期的程序异常（NPE/DB/Redis 等）。记 error 带 stack 便于排查；
         // 自己构造错误而不是返回 null——交给下游默认 resolver 会把异常信息带给客户端。
-        log.error("GraphQL unhandled exception at {}", path, ex)
+        log.error("GraphQL unhandled exception. path={}", path, ex)
         return GraphqlErrorBuilder.newError(env)
             .message(if (exposeErrors) (ex.message ?: ex.javaClass.simpleName) else GENERIC_SERVER_ERROR_MESSAGE)
             .errorType(ErrorType.INTERNAL_ERROR)

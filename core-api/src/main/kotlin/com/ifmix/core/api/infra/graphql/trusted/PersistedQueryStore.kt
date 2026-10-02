@@ -61,7 +61,7 @@ class ClasspathPersistedQueryStore(
             val resource = resolver.getResource("$allowlistPath$bff.json")
             if (!resource.exists()) {
                 storesByBff[bff] = emptyMap()
-                log.info("trusted-documents: no allowlist for bff={} (path={}{})", bff, allowlistPath, "$bff.json")
+                log.info("trusted-documents: no allowlist. bff={} path={}{}", bff, allowlistPath, "$bff.json")
                 continue
             }
             val entries = mutableMapOf<String, PersistedQueryEntry>()
@@ -72,14 +72,14 @@ class ClasspathPersistedQueryStore(
                     val doc = try {
                         parser.parseDocument(query)
                     } catch (e: Exception) {
-                        log.warn("trusted-documents: skip unparsable query reqName={} bff={}: {}", reqName, bff, e.message)
+                        log.warn("trusted-documents: skip unparsable query. reqName={} bff={} error={}", reqName, bff, e.message)
                         return@forEach
                     }
                     entries[reqName] = PersistedQueryEntry(reqName = reqName, query = query, document = doc)
                 }
             }
             storesByBff[bff] = entries
-            log.info("trusted-documents: loaded {} persisted queries for bff={}", entries.size, bff)
+            log.info("trusted-documents: loaded persisted queries. count={} bff={}", entries.size, bff)
         }
     }
 

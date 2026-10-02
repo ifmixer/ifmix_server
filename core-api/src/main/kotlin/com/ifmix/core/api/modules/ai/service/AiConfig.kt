@@ -90,7 +90,7 @@ class AiConfig(
         if (now - last >= TimeUnit.SECONDS.toMillis(DEGRADED_WARN_INTERVAL_SEC) &&
             lastDegradedWarnAtMs.compareAndSet(last, now)
         ) {
-            log.warn("AI key-pool degraded: redis {} failed (fail-open, cooldown disabled until redis recovers): {}",
+            log.warn("AI key-pool degraded: redis failed (fail-open, cooldown disabled until redis recovers). op={} error={}",
                 op, e.toString())
         }
     }

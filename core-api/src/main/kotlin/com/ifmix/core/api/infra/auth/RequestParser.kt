@@ -48,7 +48,7 @@ class RequestParser(
      */
     private fun onBadFormat(header: String, raw: String, reason: String): Nothing? {
         if (strict) throw ApiError(ErrorCode.INVALID_REQUEST, "invalid $header: $reason")
-        log.warn("bad header format ignored: {}={} ({})", header, raw, reason)
+        log.warn("bad header format ignored. header={} value={} reason={}", header, raw, reason)
         return null
     }
 
@@ -195,9 +195,20 @@ class RequestParser(
 
     fun parseClientIp(request: HttpServletRequest): String = ClientIpResolver.resolve(request)
 
+    /** cf-bot-score：Cloudflare bot score（1-99），仅记录用途；缺失/非法 → null。 */
+    fun parseBotScore(request: HttpServletRequest): Int? =
+        request.getHeader(RequestHeaders.CF_BOT_SCORE)?.trim()?.toIntOrNull()?.takeIf { it in 1..99 }
+
     /** x-install-id：客户端安装标识，原样透传（trim，仅记录用途，不校验格式）。缺失返回 null。 */
     fun parseInstallId(request: HttpServletRequest): String? =
         request.getHeader(RequestHeaders.INSTALL_ID)?.trim()?.takeIf { it.isNotEmpty() }
+
+    /**
+     * 老 app 兼容：x-install-id header → UUID。合法 UUID 原样用；其他非空字符串按名字派生稳定 UUID（v3），
+     * 同一设备的旧 id 始终映射到同一个 UUID。缺失 → null。
+     */
+    fun parseLegacyInstallId(request: HttpServletRequest): UUID? =
+        parseInstallId(request)?.let { tryUuid(it) ?: UUID.nameUUIDFromBytes(it.toByteArray()) }
 
     /**
      * 从 Authorization token 取可信 installId（iid claim）。无 token / 无 iid / 过期 / 无效 → null（软取，不抛）。

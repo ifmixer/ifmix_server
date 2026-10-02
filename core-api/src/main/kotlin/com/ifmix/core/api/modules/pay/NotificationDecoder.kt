@@ -66,7 +66,7 @@ class StubNotificationDecoder : NotificationDecoder {
                 ?: "stub-notif-${UuidV7.generate()}"
             subPxid to notifId
         } catch (e: Exception) {
-            log.warn("StubNotificationDecoder: failed to parse payload, using UUID fallback: {}", e.message)
+            log.warn("StubNotificationDecoder: failed to parse payload, using UUID fallback. error={}", e.message)
             "stub-sub-${UuidV7.generate()}" to "stub-notif-${UuidV7.generate()}"
         }
         return DecodedNotification(

@@ -39,6 +39,8 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
         val wrappedResponse = ContentCachingResponseWrapper(response)
 
         val start = System.currentTimeMillis()
+        // 先写响应头（body 提交前），日志里的 rid 与之相同
+        response.setHeader(RequestHeaders.REQUEST_ID, LogContext.start(wrappedRequest))
 
         try {
             filterChain.doFilter(wrappedRequest, wrappedResponse)
@@ -55,16 +57,19 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             if (requestBody.contains("IntrospectionQuery") || requestBody.contains("__schema")) {
                 wrappedResponse.copyBodyToResponse()
                 ActionContextHolder.clear()
+                LogContext.clear()
                 return
             }
 
+            // ctx 在 data fetcher 线程构造，filter 线程的 MDC 为空——从 request 取回再绑，汇总行的 [%X{ctx}] 才有值。
+            // 取到 ctx 时 header 信息已在 MDC 里，不再重复打印；没构造过 ctx（请求在进入 GraphQL 前就失败、非 GraphQL 路由）才回退打 header。
+            val headers = if (LogContext.bindFrom(wrappedRequest)) "" else " | " + importantHeaders(wrappedRequest)
             val responseBody = getBody(wrappedResponse.contentAsByteArray, wrappedResponse.characterEncoding)
-            val headers = importantHeaders(wrappedRequest)
 
             if (status >= 400) {
                 // 错误响应：WARN 级别，打印完整请求体和响应体
                 log.warn(
-                    "▶ {} {}{} | status={} | {}ms | {}\n  ├─ req: {}\n  └─ res: {}",
+                    "▶ method={} path={}{} status={} duration={}ms{}\n  ├─ req={}\n  └─ res={}",
                     method, uri, query, status, duration, headers,
                     requestBody.truncate(2000),
                     responseBody.truncate(2000),
@@ -72,7 +77,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             } else if (log.isDebugEnabled) {
                 // 正常响应：DEBUG 级别
                 log.debug(
-                    "▶ {} {}{} | status={} | {}ms | {} | req: {} | res: {}",
+                    "▶ method={} path={}{} status={} duration={}ms{} | req={} | res={}",
                     method, uri, query, status, duration, headers,
                     requestBody.truncate(500),
                     responseBody.truncate(500),
@@ -83,6 +88,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             wrappedResponse.copyBodyToResponse()
             // 清理 ThreadLocal，防止虚拟线程池中的上下文泄漏
             ActionContextHolder.clear()
+            LogContext.clear()
         }
     }
 
@@ -120,6 +126,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             RequestHeaders.PROJECT_ID,
             RequestHeaders.INSTALL_ID,
             RequestHeaders.CLIENT_PLATFORM,
+            RequestHeaders.CF_BOT_SCORE,
             RequestHeaders.LOCALE,
             RequestHeaders.CURRENCY,
             RequestHeaders.COUNTRY,

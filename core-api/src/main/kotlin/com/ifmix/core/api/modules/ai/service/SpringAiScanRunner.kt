@@ -149,7 +149,7 @@ open class SpringAiScanRunner(
                 // 保证所有在途调用都能在预算内结束（最坏总耗时 = deadline，而非 deadline + 一次调用超时）。
                 // 网关/客户端超时通常更短，客户端应据此设置自身超时。
                 if (System.currentTimeMillis() + chatClientFactory.callTimeoutSec * 1000 >= deadlineAtMs) {
-                    log.error("Scan deadline {}s reached (insufficient budget for another {}s call) — giving up. scanId={}, model={}",
+                    log.error("Scan deadline reached (insufficient budget for another call) — giving up. deadline={}s callTimeout={}s scanId={} model={}",
                         scanDeadlineSec, chatClientFactory.callTimeoutSec, input.scanId, model)
                     throw ApiError(ErrorCode.AI_UNAVAILABLE, "AI scan deadline exceeded")
                 }
@@ -162,6 +162,7 @@ open class SpringAiScanRunner(
                     continue
                 }
                 attemptCount++
+                val attemptStartMs = System.currentTimeMillis()
 
                 try {
                     val client = chatClientFactory.forKey(doc.key, model)
@@ -179,19 +180,17 @@ open class SpringAiScanRunner(
                         .build()
 
                     val prompt = Prompt(listOf(systemMsg, userMsg))
-                    log.debug("Scan run start. scanId={}, type={}, model={}, keyId={}, " +
-                            "locale={}, currency={}, country={}",
-                        input.scanId, input.type, model, doc.id,
-                        input.locale, input.currency, input.country)
+                    log.debug("Scan run start. scanId={} type={} model={} keyId={}",
+                        input.scanId, input.type, model, doc.id)
 
                     val startMs = System.currentTimeMillis()
                     val response = client.prompt(prompt).call()
                     val content = response.content() ?: ""
                     val elapsedMs = System.currentTimeMillis() - startMs
-                    log.debug("Scan run completed. scanId={}, type={}, model={}, keyId={}," +
-                            " elapsed={}ms, locale={}, currency={}, country={}, content={},",
-                        input.scanId, input.type, model, doc.id, elapsedMs,
-                        input.locale, input.currency, input.country, content)
+                    // INFO 打耗时（便于统计 AI 延迟），content 只在 DEBUG 打
+                    log.info("Scan attempt ok. scanId={} type={} model={} keyId={} duration={}ms contentLength={}",
+                        input.scanId, input.type, model, doc.id, elapsedMs, content.length)
+                    log.debug("Scan attempt content. scanId={} content={}", input.scanId, content)
 
                     val data = try {
                         parseJsonToMap(content)
@@ -212,16 +211,16 @@ open class SpringAiScanRunner(
                     )
                     if (reason == "401" || reason == "403") {
                         // key 失效：长冷却移出轮换 + ERROR，提示运营在 key 表 enabled=false 清理
-                        log.error("AI API key invalid ({}) — cooldown {}s. keyId={}, msg={}",
-                            reason, cooldownSec, doc.id, e.message)
+                        log.error("AI API key invalid — cooling down. reason={} cooldown={}s keyId={} model={} duration={}ms msg={}",
+                            reason, cooldownSec, doc.id, model, System.currentTimeMillis() - attemptStartMs, e.message)
                     } else {
-                        log.warn("Scan attempt failed on key {} for model {} — cooldown {}s reason={}",
-                            doc.id, model, cooldownSec, reason, e)
+                        log.warn("Scan attempt failed — cooling down. reason={} cooldown={}s keyId={} model={} duration={}ms",
+                            reason, cooldownSec, doc.id, model, System.currentTimeMillis() - attemptStartMs, e)
                     }
                     keyStore.markCooldown(doc.id, cooldownSec, reason)
                 }
             }
-            log.warn("All keys exhausted for model $model, trying next model")
+            log.warn("All attempts exhausted for model, trying next. model={}", model)
         }
 
         log.error("All models exhausted — AI_UNAVAILABLE")

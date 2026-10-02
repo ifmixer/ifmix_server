@@ -61,7 +61,7 @@ class GraphQlHttpStatusFilter(private val mapper: ObjectMapper) : OncePerRequest
             root.get("errors")?.takeIf { it.isArray && !it.isEmpty }
                 ?.get(0)?.get("extensions")?.get("code")?.asString()
         } catch (e: Exception) {
-            log.debug("GraphQlHttpStatusFilter: cannot parse response body: {}", e.message)
+            log.debug("GraphQlHttpStatusFilter: cannot parse response body. error={}", e.message)
             return null
         }
         if (code.isNullOrBlank() || code.length < 3) return null
