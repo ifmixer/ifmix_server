@@ -1,0 +1,44 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 15-16,19,48,94-129,146-147,149-150,152-153,225-227,229-230,232-234,238
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/DeepResearchDoc.kt
+  h_b17efd5c751f9f 1-70
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/DeepResearchStatuses.kt
+  h_b17efd5c751f9f 1-27
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanDeepResearch.kt
+  h_b17efd5c751f9f 8-9,11,26-44
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanRecord.kt
+  h_b17efd5c751f9f 9,35-42
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/AiFacade.kt
+  h_b17efd5c751f9f 4,8,13,38-46,48-50,52-54
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/DeepResearchTaskService.kt
+  h_b17efd5c751f9f 1-190
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 4,8-10,14-16,25,164-168,172,175,184-189,191,193-198,201-202,204-250,254-255,260-262,265,269-279,281-284,286-295,297-299,304-335
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanDeepResearchRepository.kt
+  h_b17efd5c751f9f 3,5-8,10-11,17,26,28-29,31-33,36,40-67
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanRecordRepository.kt
+  h_b17efd5c751f9f 4,11,17,19,29,32,150-157,161-163,166-202
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiConfig.kt
+  h_b17efd5c751f9f 17-18,47-50
+core-api/src/main/resources/db/migration/V10__deep_research_async.sql
+  h_b17efd5c751f9f 1-31
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 4,7-8,26-29
+core-api/src/main/resources/schema/customer/ai.graphqls
+  h_b17efd5c751f9f 41-42,45,49-51,155-168,219-220
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanOwnerScopeTest.kt
+  h_b17efd5c751f9f 10,28-30,46,63,120,123,125,132,137,139-141,143,145-208
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/DeepResearchDocTest.kt
+  h_b17efd5c751f9f 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "044498ff96efa96de94eb1dada575c724c61c5c7",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
