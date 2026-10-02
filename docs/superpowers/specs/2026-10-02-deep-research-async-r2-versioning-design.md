@@ -20,7 +20,7 @@
 | 2 | R2 上传失败处理 | **有限次重试（2–3 次固定间隔）后再 FAILED**。AI 成本高，不因 R2 抖动丢结果 |
 | 3 | 配额扣减时机 | **创建时扣 + 失败退还**。防并发刷配额；AI/R2 失败退还额度 |
 | 4 | 前端读取结果方式 | **presigned download URL（私有）**，前端直连 R2 下载 doc，大 JSON 不过 API 服务器 |
-| 5 | 结果 bucket | **独立 bucket `u2`**（与 image 的 `ugc`/u1 分开），私有，仅 presignDownload |
+| 5 | 结果 bucket | **独立私有 bucket `u2`**（与 image 的 `ugc`/u1 分开），仅 presignDownload。dev=`u2dev`（域名 u2dev.ifmix.com）/ prod=`u2p`（域名 u2.ifmix.com）。域名为 R2 自定义域名，**非公开访问**，public-url 留空 |
 | 6 | is_latest 并发安全 | **PostgreSQL partial unique index** 兜底 + 应用层同事务两步 UPDATE |
 | 7 | 旧数据迁移 | **保留 `premium_result` 列，不迁移旧数据**；读取双路径（r2_key 优先，回退列） |
 | 8 | doc 内容结构 | 完整 scanRecord（含 basicResult）+ deepResearch（含 premiumResult 嵌套）+ promptVersion + docVersion |
@@ -89,6 +89,13 @@ data/project=antique/type=deep_research/year=2026/month=10/day=02/{deepResearchI
 - `{deepResearchId}` 为记录主键 UUID，保证唯一。
 - bucket：`u2`（私有）。日期用记录创建时间（UTC）。
 - Content-Type：`application/json`。
+
+**bucket 配置**（私有，仅 presignDownload；自定义域名用于签名 URL 的 host，非公开访问）：
+
+| 环境 | bucket-name | 自定义域名 | public-url |
+|------|-------------|-----------|-----------|
+| dev | `u2dev` | `u2dev.ifmix.com` | 留空（私有） |
+| prod | `u2p` | `u2.ifmix.com` | 留空（私有） |
 
 ## 5. doc JSON 内容结构
 
@@ -223,7 +230,7 @@ extend type Query {
 | Handler | `modules/ai/handler/ScanAggHandler.kt` | 创建 IN_PROGRESS 记录+扣配额；后台任务编排（AI→R2→回写）；惰性超时判定；is_latest 切换 |
 | Repository | `modules/ai/repo/ScanDeepResearchRepository.kt` | 去唯一键相关逻辑；新增 `insert`（非 upsert）、`findLatestByScanRecordId`、`markOthersNotLatest`、`updateStatus`、`findById`（owner-scoped） |
 | Repository | `modules/ai/repo/CustomerScanMetricsRepository.kt` | 新增原子 `decrementDeepResearchCount`（退还，`GREATEST(count-1,0)`） |
-| Infra | `infra/storage/StorageConfig.kt` + `application*.yml` | 新增 bucket `u2` 配置（私有，public-url 留空） |
+| Infra | `infra/storage/StorageConfig.kt` + `application*.yml` | 新增 bucket `u2` 配置（dev=`u2dev` / prod=`u2p`，public-url 留空=私有）。**实现期需确认**：`S3ObjectStorage.presignDownload` 是否能让签名 URL 使用自定义域名（u2dev.ifmix.com / u2.ifmix.com）作为 host，而非 R2 原始 endpoint；若现有 presign 逻辑硬绑 endpoint，需评估改造或接受原始 endpoint 域名 |
 | DTO | `dto/ai/DeepResearchResult.kt` | 保留并可能扩展（doc 组装、docVersion 常量） |
 
 ### 8.1 虚拟线程后台任务的上下文传递
