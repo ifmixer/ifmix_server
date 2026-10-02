@@ -21,8 +21,8 @@ import tools.jackson.databind.ObjectMapper
  * - 无 errors（或无法解析出 code）→ 不改动，保持 handler 原状态（成功即 200）。
  * - 仅作用于 GraphQL/GReq 端点（[GRAPHQL_PATH_MARKERS]），其余请求直接放行不缓冲。
  *
- * @Order 高优先级（外层）：先于 [RequestLoggingFilter] 包裹，确保改后的 status 对客户端生效、
- * 且日志 filter 读到最终 body。
+ * @Order 高优先级：包在业务之外，确保改后的 status 对客户端生效；
+ * [RequestLoggingFilter] 再包在本 filter 外层（HIGHEST_PRECEDENCE + 5），日志读到的是改写后的最终 status。
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)

@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletResponse
 import com.ifmix.core.api.infra.auth.RequestParser
 import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import org.slf4j.LoggerFactory
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import org.springframework.web.util.ContentCachingRequestWrapper
@@ -17,14 +19,18 @@ import org.springframework.web.util.ContentCachingResponseWrapper
  * - 错误响应（4xx/5xx）：WARN 级别额外打印响应体，方便排查问题。
  */
 @Component
+// 最外层：必须包住 GraphQlHttpStatusFilter，日志里的 httpStatus 才是它改写后、客户端实际收到的值；
+// 也让 reqId/MDC 尽早建立，内层 filter 的日志同样带 rid。
+@Order(Ordered.HIGHEST_PRECEDENCE + 5)
 class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFilter() {
 
     private val log = LoggerFactory.getLogger(RequestLoggingFilter::class.java)
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean {
         val path = request.requestURI
-        // 跳过静态资源、actuator、swagger 等
-        return path.startsWith("/actuator") ||
+        // 跳过根路径/健康检查（探活高频、无排查价值）、actuator、swagger 等
+        return path == "/" || path == "/core/health" ||
+                path.startsWith("/actuator") ||
                 path.startsWith("/core/api-docs") ||
                 path.startsWith("/v3/api-docs") ||
                 path.startsWith("/swagger-ui")
@@ -69,7 +75,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             if (status >= 400) {
                 // 错误响应：WARN 级别，打印完整请求体和响应体
                 log.warn(
-                    "▶ method={} path={}{} status={} duration={}ms{}\n  ├─ req={}\n  └─ res={}",
+                    "▶ method={} path={}{} httpStatus={} duration={}ms{}\n  ├─ req={}\n  └─ res={}",
                     method, uri, query, status, duration, headers,
                     requestBody.truncate(2000),
                     responseBody.truncate(2000),
@@ -77,7 +83,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             } else if (log.isDebugEnabled) {
                 // 正常响应：DEBUG 级别
                 log.debug(
-                    "▶ method={} path={}{} status={} duration={}ms{} | req={} | res={}",
+                    "▶ method={} path={}{} httpStatus={} duration={}ms{} | req={} | res={}",
                     method, uri, query, status, duration, headers,
                     requestBody.truncate(500),
                     responseBody.truncate(500),
