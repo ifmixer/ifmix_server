@@ -64,7 +64,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
                i.   回写 scan_record.basicResult + hasDeepSearch + promptVersion
                ii.  同 scanRecordId 的旧记录 is_latest = false
                iii. 当前记录 status=SUCCESS(30), is_latest=true, r2_key=...
-  → 前端轮询 q_ai_getDeepResearchStatus(deepResearchId) 每隔几秒
+  → 前端轮询 q_ai_getDeepResearchMeta(deepResearchId) 每隔几秒
       - IN_PROGRESS：
           · 若 updated_at 超 10 min → 惰性判定：落库 status=FAILED,
             error_reason="timeout: exceeded 10min", 退配额，返回 FAILED
@@ -184,17 +184,19 @@ type RunDeepResearchResult {
 
 ### 7.2 新增轮询 Query
 
+仅返回 DB 元信息（不读取/解析 R2 内容）。`resultUrl` 由 `r2_key` 经 presignDownload 现算生成。
+
 ```graphql
 extend type Query {
-  "按 deepResearchId 轮询任务状态；SUCCESS 时附 presigned download URL"
-  q_ai_getDeepResearchStatus(deepResearchId: UUID!): DeepResearchStatus!
+  "按 deepResearchId 轮询任务 DB 元信息；SUCCESS 时附 presigned download URL"
+  q_ai_getDeepResearchMeta(deepResearchId: UUID!): DeepResearchMeta!
 }
 
-type DeepResearchStatus {
+type DeepResearchMeta {
   deepResearchId: UUID!
   "20=IN_PROGRESS, 30=SUCCESS, 40=FAILED"
   status: Int!
-  "SUCCESS 时返回：R2 doc 的 presigned 下载 URL（私有，短时有效）"
+  "SUCCESS 时返回：R2 doc 的 presigned 下载 URL（私有，短时有效；由 r2_key 现算）"
   resultUrl: String
   "FAILED 时返回：失败原因"
   errorReason: String
@@ -203,30 +205,19 @@ type DeepResearchStatus {
 }
 ```
 
-### 7.3 历史版本查询（分析用，可选纳入本期）
-
-```graphql
-extend type Query {
-  "列出某 scan 的全部 deep research 历史版本（按 createdAt 倒序）"
-  q_ai_listDeepResearchVersions(scanRecordId: UUID!): [DeepResearchStatus!]!
-}
-```
-
-> 若本期暂不需要历史分析查询接口，可仅建表与写入侧（保留历史记录），查询接口留待后续。设计上数据已齐备。
-
-### 7.4 `ScanDeepResearch` type 调整
+### 7.3 `ScanDeepResearch` type 调整
 
 现有 `ScanRecord.deepResearch` DataLoader 字段的 `premiumResult` 来源改为：从 `is_latest=true` 记录的 R2 doc 读取（有 r2_key）或回退 `premium_result` 列。DataLoader 需相应调整为按 `(scanRecordId, is_latest=true)` 取当前版本。
 
-> 注意：若 `deepResearch.premiumResult` 走 R2，DataLoader 批量读取会触发 R2 拉取（N 条 scan → N 次 R2 GET）。考虑是否保留该字段的服务端解析，或改为前端始终走 `resultUrl` 下载。**本期建议**：前端详情页统一走 `q_ai_getDeepResearchStatus` 的 `resultUrl` 下载 doc，`ScanRecord.deepResearch.premiumResult` 字段仅为旧数据/兼容保留（走 premium_result 列）。此点需前端 review 确认。
+> 注意：若 `deepResearch.premiumResult` 走 R2，DataLoader 批量读取会触发 R2 拉取（N 条 scan → N 次 R2 GET）。考虑是否保留该字段的服务端解析，或改为前端始终走 `resultUrl` 下载。**本期建议**：前端详情页统一走 `q_ai_getDeepResearchMeta` 的 `resultUrl` 下载 doc，`ScanRecord.deepResearch.premiumResult` 字段仅为旧数据/兼容保留（走 premium_result 列）。此点需前端 review 确认。
 
 ## 8. 分层落点（遵循 AGENTS.md 架构约定）
 
 | 层 | 文件 | 改动 |
 |----|------|------|
-| Schema | `schema/customer/ai.graphqls` | 改 `RunDeepResearchResult`，加 `DeepResearchStatus` + 两个 Query |
-| DataFetcher | `bff/graphql/customer/ai/AiFetcher.kt` | `runDeepResearch` 改为创建记录+扣配额+启动虚拟线程；新增 `getDeepResearchStatus`（+ 可选 `listDeepResearchVersions`）；DataLoader 调整 |
-| Facade | `modules/ai/AiFacade.kt` | 转发新方法：`createDeepResearchTask`、`getStatus`、`runDeepResearchAsync`（后台入口） |
+| Schema | `schema/customer/ai.graphqls` | 改 `RunDeepResearchResult`，加 `DeepResearchMeta` + `q_ai_getDeepResearchMeta` Query |
+| DataFetcher | `bff/graphql/customer/ai/AiFetcher.kt` | `runDeepResearch` 改为创建记录+扣配额+启动虚拟线程；新增 `getDeepResearchMeta`；DataLoader 调整 |
+| Facade | `modules/ai/AiFacade.kt` | 转发新方法：`createDeepResearchTask`、`getDeepResearchMeta`、`runDeepResearchAsync`（后台入口） |
 | Handler | `modules/ai/handler/ScanAggHandler.kt` | 创建 IN_PROGRESS 记录+扣配额；后台任务编排（AI→R2→回写）；惰性超时判定；is_latest 切换 |
 | Repository | `modules/ai/repo/ScanDeepResearchRepository.kt` | 去唯一键相关逻辑；新增 `insert`（非 upsert）、`findLatestByScanRecordId`、`markOthersNotLatest`、`updateStatus`、`findById`（owner-scoped） |
 | Repository | `modules/ai/repo/CustomerScanMetricsRepository.kt` | 新增原子 `decrementDeepResearchCount`（退还，`GREATEST(count-1,0)`） |
@@ -248,7 +239,7 @@ extend type Query {
 - **AI 返回 scan_status 非 SUCCESS/PARTIAL**（INSUFFICIENT_IMAGE / NON_PHYSICAL_SUBJECT）：status=FAILED，error_reason=该状态，scan_status 存入（供前端提示补拍）。*（沿用现有 `DeepResearchResult.isSuccess` 判定逻辑）*
 - **R2 上传失败**：固定间隔重试 2–3 次；仍失败 → FAILED，error_reason="r2 upload failed"，退配额。
 - **僵死超时**：查询时 IN_PROGRESS 且 updated_at 超 10 min → 落库 FAILED，error_reason="timeout: exceeded 10min"，退配额。
-- **owner-scoped**：创建、查询、历史列表均校验 `projectId + customerId` 归属；非本人统一 NOT_FOUND（沿用现有约定）。
+- **owner-scoped**：创建、查询（getDeepResearchMeta）均校验 `projectId + customerId` 归属；非本人统一 NOT_FOUND（沿用现有约定）。
 - **配额并发**：扣减用原子条件自增（`count < limit` 才 +1），退还用原子自减（下限 0）。
 
 ## 10. 测试计划（非框架、最小可运行校验）
@@ -264,7 +255,7 @@ extend type Query {
 
 ## 11. 前端改造要点（供前端 agent review）
 
-- `runDeepResearchFlow`：`deepResearch(...)` 调用改为「调用 mutation 拿 deepResearchId → 轮询 `q_ai_getDeepResearchStatus` → SUCCESS 后用 `resultUrl` 下载 doc → 覆盖本地整条记录」。原先返回整个 ScanRecord 的语义，改由下载 doc 的 `scanRecord` 字段提供。
+- `runDeepResearchFlow`：`deepResearch(...)` 调用改为「调用 mutation 拿 deepResearchId → 轮询 `q_ai_getDeepResearchMeta` → SUCCESS 后用 `resultUrl` 下载 doc → 覆盖本地整条记录」。原先返回整个 ScanRecord 的语义，改由下载 doc 的 `scanRecord` 字段提供。
 - 轮询间隔建议几秒一次；需处理 IN_PROGRESS / SUCCESS / FAILED 三态 UI。
 - FAILED 分支沿用现有 `deepResearchRejectionReason`：INSUFFICIENT_IMAGE / NON_PHYSICAL_SUBJECT 从 `scanStatus` 读，提示补拍；其它 error_reason 做通用失败提示。
 - doc 的 `deepResearch.premiumResult` 嵌套结构与现有 `premiumOf` 读取路径一致，解析逻辑不变。
@@ -272,6 +263,30 @@ extend type Query {
 
 ## 12. 未决 / 需 review 确认点
 
-1. §7.3 历史版本查询接口是否纳入本期（或仅写入侧保留历史）。
-2. §7.4 `ScanRecord.deepResearch.premiumResult` 是否仍由服务端解析 R2（DataLoader N 次 R2 GET），还是前端统一走 `resultUrl`。倾向后者。
-3. §8.1 后台虚拟线程中 `scanRunner.run` 的 ActionContext 等价调用方式（实现期验证）。
+1. §7.3 `ScanRecord.deepResearch.premiumResult` 是否仍由服务端解析 R2（DataLoader N 次 R2 GET），还是前端统一走 `resultUrl`。**倾向后者**（服务端字段仅为旧数据兼容走 premium_result 列）。
+2. §8.1 后台虚拟线程中 `scanRunner.run` 的 ActionContext 等价调用方式（实现期验证）。
+3. §8 Infra：presignDownload 签名 URL 使用自定义域名作 host 的可行性（实现期验证）。
+
+> 已关闭（本次 review）：历史版本查询接口不纳入本期（删除 `q_ai_listDeepResearchVersions`，写入侧保留历史即可，分析走 DB 直查）。
+
+## 13. GraphQL 交付清单（Trusted Documents，供前端 agent）
+
+新增 Query `q_ai_getDeepResearchMeta` 与改造后的 `m_ai_runDeepResearch` 必须全链路对齐 persisted-query allowlist，否则线上 trusted-document 路径会拒绝请求。交付项：
+
+**服务端（ifmix_server）：**
+- `schema/customer/ai.graphqls`：改 `RunDeepResearchResult`、加 `DeepResearchMeta` + `q_ai_getDeepResearchMeta`。
+- `resources/graphql/persisted-queries/customer/customer.json`：加入新 Query 与改造后的 mutation 的持久化条目（真相源）。
+- DGS codegen 生成类型（`generated.types.*`）随编译更新。
+
+**前端（antique）：**
+- `apps/shared/src/api/graphql.ts` 的 `_API_ENTRIES`：当前（graphql.ts:394-401 一带）只注册了 `m_ai_runDeepResearch`，需**新增** `q_ai_getDeepResearchMeta` 条目，并更新 `m_ai_runDeepResearch` 的 query 文本（返回值结构已改）。
+- 重新生成 schema 类型（`apps/shared/src/api/graphql/generated/graphql.ts`）与前端 persisted-query，保持与服务端 `customer.json` 一致（经 gen-persisted-queries 对齐）。
+- 校验：前端注册表与服务端 allowlist 两侧 1:1，缺任一侧线上即被拒。
+
+## 14. R2 对象生命周期（删除策略）
+
+- **用户删除 scan**：`ScanRecord` 实现 `SoftDeletableProps`，`deleteScan` 为**逻辑删除**（置软删列，不物理删行）。R2 doc 对象**保留**（历史分析仍需），无需删 R2。✓ 符合诉求。
+- **历史版本**：每次 deep research 新建一条记录 + R2 对象，旧版本 `is_latest=false` 但**不删**（保留做分析），R2 对象随之长期保留。这是设计意图，不是泄漏。
+- **匿名客户清理**（core-job `AnonymousCleanupCleaner.physicalDeleteByCustomers`，`DeleteMode.PHYSICAL` 物理硬删）：硬删 DB 行后，对应 R2 doc 对象会成为**孤儿**（无 DB 指针）。
+  - **本期策略（已知限制）**：暂不在清理路径删 R2，孤儿对象留存。`ObjectStorage` 本期**不新增 delete 方法**。
+  - **后续**：如需回收，可在 R2 bucket 配 lifecycle retention 规则，或后续给 core-job 清理路径补 R2 删除（届时再给 `ObjectStorage` 加 `delete`）。此为运维/后续项，不阻塞本期。
