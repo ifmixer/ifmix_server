@@ -6,6 +6,7 @@ import com.ifmix.core.api.entity.common.InstallIdProps
 import com.ifmix.core.api.entity.common.SoftDeletableProps
 import com.ifmix.core.api.entity.common.UserPreferenceProps
 import org.babyfish.jimmer.sql.*
+import java.util.UUID
 
 /** 扫描状态编码。typealias（Int 全链路透传），码表见 [ScanStatuses]。 */
 typealias ScanStatus = Int
@@ -30,6 +31,14 @@ interface ScanRecord : BaseProjectEntity, SoftDeletableProps, CustomerIdProps, I
     @Serialized
     @Column(name = "basic_result")
     val basicResult: Map<String, Any?>?
+
+    /**
+     * 权威指针：指向当前有效（最新且成功）的 deep research 任务。
+     * 逻辑外键（跨聚合，不用 @ManyToOne）；null = 从未成功过。
+     * latest 判定与并发规则见 docs/superpowers/specs/2026-10-02-deep-research-async-r2-versioning-design.md §3.4。
+     */
+    @Column(name = "latest_deep_research_id")
+    val latestDeepResearchId: UUID?
 
     val status: ScanStatus
     val clientIp: String?

@@ -14,6 +14,8 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.dao.DataAccessException
 import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Duration
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
@@ -41,6 +43,10 @@ class AiConfig(
 
     /** 冷却 Redis key（hash tag {cd} 兼容 Redis Cluster 的 MGET 同 slot）。 */
     private fun cooldownKey(keyId: String) = "aikey:{cd}:$keyId"
+
+    /** DeepResearch 后台任务 executor（Spring 管理的虚拟线程池，设计 §8.1：非散落裸线程）。 */
+    @Bean("deepResearchExecutor")
+    fun deepResearchExecutor(): Executor = Executors.newVirtualThreadPerTaskExecutor()
 
     @Bean
     fun aiApiKeyStore(

@@ -12,8 +12,11 @@ import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
+import com.ifmix.core.api.entity.ai.DeepResearchStatuses
+import com.ifmix.core.api.entity.ai.ScanDeepResearch
 import com.ifmix.core.api.entity.ai.ScanRecord
 import com.ifmix.core.api.modules.ai.AiFacade
+import com.ifmix.core.api.modules.ai.DeepResearchTaskService
 import com.ifmix.core.api.modules.ai.ScanCollectionFacade
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
 import com.ifmix.core.api.generated.types.AddScanCollectionItemInput
@@ -42,6 +45,7 @@ import org.dataloader.MappedBatchLoader
 class AiFetcher(
     private val aiService: AiFacade,
     private val collectionService: ScanCollectionFacade,
+    private val deepResearchTaskService: DeepResearchTaskService,
     private val globalTx: GlobalTxRunner,
     private val ctxProvider: ActionContextProvider,
 ) {
@@ -87,13 +91,42 @@ class AiFetcher(
         return loader.load(scanRecordId)
     }
 
-    @DgsData(parentType = "ScanRecord", field = "deepResearch")
-    fun deepResearch(dfe: DgsDataFetchingEnvironment): CompletableFuture<com.ifmix.core.api.entity.ai.ScanDeepResearch> {
-        val scanRecordId = dfe.getSource<ScanRecord>()?.id
-            ?: throw ApiError(ErrorCode.NOT_FOUND, "ScanRecord has no id")
-        val loader = dfe.getDataLoader<UUID, com.ifmix.core.api.entity.ai.ScanDeepResearch>(DeepResearchDataLoader.NAME)
-            ?: throw ApiError(ErrorCode.INTERNAL, "DeepResearchDataLoader not registered")
-        return loader.load(scanRecordId)
+    @DgsQuery(field = "q_ai_getDeepResearchStatus")
+    fun getDeepResearchStatus(
+        dfe: DgsDataFetchingEnvironment,
+        @InputArgument deepResearchId: UUID,
+    ): com.ifmix.core.api.generated.types.DeepResearchStatus {
+        val ctx = ctxProvider.fromDfe(dfe)
+        // 惰性超时判定可能产生 CAS 写（IN_PROGRESS → FAILED(TIMEOUT)），走事务
+        val dr = globalTx.withTx(ctx) { txCtx -> aiService.getDeepResearchStatus(txCtx, deepResearchId) }
+        @Suppress("UNCHECKED_CAST")
+        val scanStatus = dr.errorDetails?.get("scan_status") as? Map<String, Any?>
+        return com.ifmix.core.api.generated.types.DeepResearchStatus(
+            deepResearchId = dr.id,
+            status = dr.status,
+            errorCode = dr.errorCode,
+            scanStatus = scanStatus,
+        )
+    }
+
+    @DgsData(parentType = "ScanRecord", field = "latestDeepResearch")
+    fun latestDeepResearch(dfe: DgsDataFetchingEnvironment): CompletableFuture<ScanDeepResearch?> {
+        // 权威指针：按 scan_record.latest_deep_research_id 加载（不再按 scanRecordId 任意查）
+        val drId = dfe.getSource<ScanRecord>()?.latestDeepResearchId
+            ?: return CompletableFuture.completedFuture(null)
+        val loader = dfe.getDataLoader<UUID, ScanDeepResearch>(LatestDeepResearchDataLoader.NAME)
+            ?: throw ApiError(ErrorCode.INTERNAL, "LatestDeepResearchDataLoader not registered")
+        @Suppress("UNCHECKED_CAST")
+        return loader.load(drId) as CompletableFuture<ScanDeepResearch?>
+    }
+
+    @DgsData(parentType = "ScanDeepResearch", field = "resultUrl")
+    fun deepResearchResultUrl(dfe: DgsDataFetchingEnvironment): String? {
+        // SUCCESS 且 file_key 非空时签发 presigned download URL（R2 原始 S3 endpoint）；旧数据走 premiumResult
+        val dr = dfe.getSource<ScanDeepResearch>() ?: return null
+        val fileKey = dr.fileKey ?: return null
+        val ctx = ctxProvider.fromDfe(dfe)
+        return aiService.deepResearchResultUrl(ctx, fileKey)
     }
 
     // --- Scan mutations ---
@@ -110,30 +143,14 @@ class AiFetcher(
 
     @DgsMutation(field = "m_ai_runDeepResearch")
     fun runDeepResearch(dfe: DgsDataFetchingEnvironment, @InputArgument input: com.ifmix.core.api.generated.types.RunDeepResearchInput): com.ifmix.core.api.generated.types.RunDeepResearchResult {
+        // 异步化（设计 §3.3）：事务内完成 images 更新 + 配额预检 + 创建 IN_PROGRESS 记录，
+        // 事务提交后（withTx 返回即已提交）才提交后台任务——后台才能读到已提交的记录。
         val ctx = ctxProvider.fromDfe(dfe)
-        // Step 1: 先更新图片（独立事务）— 即使后续 AI 失败，图片也已提交
-        globalTx.withTx(ctx) { txCtx -> aiService.updateDeepResearchImages(txCtx, input) }
-        // Step 2: AI 调用在事务外
-        val result = aiService.runDeepResearch(ctx, input)
-        // 仅当 scan_status.status 为 SUCCESS/PARTIAL 才写回；否则返回失败状态要求用户修正
-        if (!result.isSuccess) {
-            return com.ifmix.core.api.generated.types.RunDeepResearchResult(
-                success = false,
-                status = result.status,
-                scanStatus = result.scanStatus,
-                scanRecord = null,
-            )
-        }
-        // Step 3: 结果写入在事务内
-        val success = globalTx.withTx(ctx) { txCtx -> aiService.saveDeepResearch(txCtx, result) }
-        val record = if (success && dfe.selectionSet.fields.any { it.name == "scanRecord" }) {
-            aiService.findById(ctx, input.scanRecordId)
-        } else null
+        val taskCtx = globalTx.withTx(ctx) { txCtx -> aiService.createDeepResearchTask(txCtx, input) }
+        deepResearchTaskService.submit(taskCtx)
         return com.ifmix.core.api.generated.types.RunDeepResearchResult(
-            success = success,
-            status = result.status,
-            scanStatus = result.scanStatus,
-            scanRecord = record,
+            deepResearchId = taskCtx.deepResearchId,
+            status = DeepResearchStatuses.IN_PROGRESS,
         )
     }
 
@@ -205,19 +222,19 @@ class ScanRecordsDataLoader(
     }
 }
 
-/** DataLoader for ScanDeepResearch batch loading by scanRecordId. */
-@DgsDataLoader(name = DeepResearchDataLoader.NAME, caching = false)
-class DeepResearchDataLoader(
+/** DataLoader for the authoritative latest DeepResearch, keyed by scan_record.latest_deep_research_id. */
+@DgsDataLoader(name = LatestDeepResearchDataLoader.NAME, caching = false)
+class LatestDeepResearchDataLoader(
     private val aiService: AiFacade,
-) : MappedBatchLoader<UUID, com.ifmix.core.api.entity.ai.ScanDeepResearch?> {
-    override fun load(scanRecordIds: Set<UUID>): CompletionStage<Map<UUID, com.ifmix.core.api.entity.ai.ScanDeepResearch?>> {
+) : MappedBatchLoader<UUID, ScanDeepResearch?> {
+    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanDeepResearch?>> {
         val actionCtx = ActionContextHolder.current()
-        val rows = aiService.findDeepResearchByScanRecordIds(actionCtx, scanRecordIds)
-        val map = rows.associateBy { it.scanRecordId }
-        return CompletableFuture.completedFuture(scanRecordIds.associateWith { map[it] })
+        val rows = aiService.findDeepResearchByIds(actionCtx, ids)
+        val map = rows.associateBy { it.id }
+        return CompletableFuture.completedFuture(ids.associateWith { map[it] })
     }
 
     companion object {
-        const val NAME = "scanDeepResearch"
+        const val NAME = "latestDeepResearch"
     }
 }

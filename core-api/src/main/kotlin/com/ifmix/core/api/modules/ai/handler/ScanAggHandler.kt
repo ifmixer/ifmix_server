@@ -1,12 +1,19 @@
 package com.ifmix.core.api.modules.ai.handler
 
 import com.ifmix.core.api.generated.types.NewScanInput
+import com.ifmix.core.api.generated.types.RunDeepResearchInput
 import com.ifmix.core.api.generated.types.UpdateScanInput
 import com.ifmix.core.api.generated.types.CommonFindOptions
 import com.ifmix.core.api.dto.ai.AiScanResult
+import com.ifmix.core.api.dto.ai.DeepResearchDocs
+import com.ifmix.core.api.dto.ai.DeepResearchResult
+import com.ifmix.core.api.dto.ai.DeepResearchTaskContext
 import com.ifmix.core.api.dto.ai.ScanInput
 import com.ifmix.core.api.dto.ai.ScanMediaItem
 import com.ifmix.core.api.dto.common.Page
+import com.ifmix.core.api.entity.ai.DeepResearchErrorCodes
+import com.ifmix.core.api.entity.ai.DeepResearchStatuses
+import com.ifmix.core.api.entity.ai.ScanDeepResearch
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.db.UuidV7
 import com.ifmix.core.api.infra.http.ActionContext
@@ -15,6 +22,7 @@ import com.ifmix.core.api.entity.ai.ImageRef
 import com.ifmix.core.api.entity.ai.ImageCategories
 import com.ifmix.core.api.entity.ai.ScanRecord
 import com.ifmix.core.api.modules.ai.ScanRunner
+import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
 import org.springframework.stereotype.Component
 import java.time.Duration
@@ -153,20 +161,18 @@ class ScanAggHandler(
     fun findById(sc: ModuleCtx, id: UUID): ScanRecord? =
         scanRepo.findByIdOwned(sc, sc.action.mustGetProjectId(), sc.action.mustGetActorId(), id)
 
-    /** 批量按 scanRecordId 查询 DeepResearch（DataLoader 用，owner-scoped：先过滤出本人名下的 scanRecordId）。 */
-    fun findDeepResearchByScanRecordIds(sc: ModuleCtx, scanRecordIds: Collection<UUID>): List<com.ifmix.core.api.entity.ai.ScanDeepResearch> {
-        val projectId = sc.action.mustGetProjectId()
-        val customerId = sc.action.mustGetActorId()
-        val ownedIds = scanRepo.findOwnedIdsByIds(sc, projectId, customerId, scanRecordIds)
-        if (ownedIds.isEmpty()) return emptyList()
-        return deepResearchRepo.findByScanRecordIds(sc, projectId, ownedIds)
+    // ==================== DeepResearch 异步任务（设计 docs/superpowers/specs/2026-10-02） ====================
+
+    companion object {
+        /** 惰性超时：IN_PROGRESS 且 updatedAt 早于该秒数 → 查询侧 CAS 置 FAILED(TIMEOUT)（设计决策 12）。 */
+        private const val STALE_IN_PROGRESS_SEC = 600L
     }
 
     /**
-     * DeepResearch 第一步（事务内）：校验归属并整体替换 images。
+     * DeepResearch 前置（事务内）：owner-scoped 校验归属并整体替换 images。
      * 即使随后的 AI 调用失败，图片也已提交。images 顺序即数组顺序；category 为图片分类。
      */
-    fun updateDeepResearchImages(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.RunDeepResearchInput) {
+    fun updateDeepResearchImages(sc: ModuleCtx, input: RunDeepResearchInput) {
         val projectId = sc.action.mustGetProjectId()
         val customerId = sc.action.mustGetActorId()
         val imageRefs = input.images.map { ImageRef(key = it.imageKey, category = it.category ?: ImageCategories.MAIN) }
@@ -175,81 +181,157 @@ class ScanAggHandler(
     }
 
     /**
-     * DeepResearch 第二步（无事务，mc 由 Facade 构建）：用 deep-research 提示词跑 AI。
-     * 图片已在 updateDeepResearchImages 提交，这里只读取归属信息并调用 AI。
+     * DeepResearch 第一步（mutation 事务内，设计 §3.3 步骤 1-3）：
+     * 1) owner-scoped 校验归属并整体替换 images；
+     * 2) 配额预检（used >= limit → QUOTA_EXCEEDED 回滚，不创建任务）；
+     * 3) 创建 IN_PROGRESS 记录（status=20, file_key=null, doc_version=当前号）。
+     * 成功才扣配额（创建时不扣，无退款）；返回不可变上下文，事务提交后由 Fetcher 交
+     * [com.ifmix.core.api.modules.ai.DeepResearchTaskService] 执行。
      */
-    fun runDeepResearch(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.RunDeepResearchInput): com.ifmix.core.api.dto.ai.DeepResearchResult {
+    fun createDeepResearchTask(sc: ModuleCtx, input: RunDeepResearchInput): DeepResearchTaskContext {
         val projectId = sc.action.mustGetProjectId()
-        // 前置配额校验（AI 调用前拒绝）；并发兜底见 saveDeepResearch 的原子自增。
-        val actorId = sc.action.mustGetActorId()
-        val used = scanMetricsRepo.findCounts(sc, projectId, actorId)?.second ?: 0
-        if (used >= scanQuota.deepResearch) throw com.ifmix.core.api.infra.http.ApiError(
-            com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "deep research quota exhausted"
-        )
-        val existing = scanRepo.findByIdOwned(sc, projectId, actorId, input.scanRecordId)
-            ?: throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
-
-        val resolved = input.images.map { img ->
-            ScanMediaItem(
-                imageUrl = objectStorage.getPublicUrl("ugc", img.imageKey),
-                mediaType = guessMediaType(img.imageKey, img.mediaType),
-            )
-        }
-
-        val scanInput = ScanInput(
-            scanId = input.scanRecordId,
-            items = resolved,
-            locale = existing.locale,
-            country = existing.country,
-            currency = existing.currency,
-            type = com.ifmix.core.api.dto.ai.ScanType.DEEP_RESEARCH,
-        )
-        val aiResponse = scanRunner.run(sc.action, scanInput)
-
-        @Suppress("UNCHECKED_CAST")
-        val basicResult = aiResponse["basic_result"] as? Map<String, Any?> ?: aiResponse
-        @Suppress("UNCHECKED_CAST")
-        val premiumResult = aiResponse["premium_result"] as? Map<String, Any?>
-
-        return com.ifmix.core.api.dto.ai.DeepResearchResult(
-            scanRecordId = input.scanRecordId,
-            projectId = projectId,
-            basicResult = basicResult,
-            premiumResult = premiumResult,
-            promptVersion = scanPrompt.promptVersion,
-        )
-    }
-
-    /**
-     * DeepResearch 第三步（事务内）：
-     * 1) 回写 scan_record 的 basicResult + hasDeepSearch + promptVersion
-     * 2) 按 scanRecordId upsert ai_scan_deep_research 的 premiumResult
-     */
-    fun saveDeepResearch(sc: ModuleCtx, result: com.ifmix.core.api.dto.ai.DeepResearchResult): Boolean {
         val customerId = sc.action.mustGetActorId()
-        val updated = scanRepo.updateResultAfterDeepResearch(
-            sc, result.projectId, customerId, result.scanRecordId, result.basicResult, result.promptVersion,
-        )
-        if (updated == 0) throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
-
-        val existing = deepResearchRepo.findByScanRecordId(sc, result.projectId, result.scanRecordId)
-        val entity = com.ifmix.core.api.entity.ai.ScanDeepResearch {
-            id = existing?.id ?: UuidV7.generate()
-            this.projectId = result.projectId
-            this.scanRecordId = result.scanRecordId
-            this.premiumResult = result.premiumResult
-            this.promptVersion = result.promptVersion
-        }
-        deepResearchRepo.upsert(sc, entity)
-        // 原子自增并兜底并发：仅当 deep_research_count < limit 时 +1；达上限则拒绝（事务回滚）。
-        val actorId = sc.action.mustGetActorId()
-        if (scanMetricsRepo.tryIncrementDeepResearchCount(sc, sc.action.mustGetProjectId(), actorId, scanQuota.deepResearch) == 0) {
+        updateDeepResearchImages(sc, input)
+        val used = scanMetricsRepo.findCounts(sc, projectId, customerId)?.second ?: 0
+        if (used >= scanQuota.deepResearch) {
             throw com.ifmix.core.api.infra.http.ApiError(
                 com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "deep research quota exhausted"
             )
         }
+        val scan = scanRepo.findByIdOwned(sc, projectId, customerId, input.scanRecordId)
+            ?: throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
+
+        val id = UuidV7.generate()
+        val now = Instant.now()
+        deepResearchRepo.insert(
+            sc,
+            ScanDeepResearch {
+                this.id = id
+                this.projectId = projectId
+                this.scanRecordId = input.scanRecordId
+                this.premiumResult = null
+                this.promptVersion = scanPrompt.promptVersion
+                this.status = DeepResearchStatuses.IN_PROGRESS
+                this.docVersion = DeepResearchDocs.CURRENT_DOC_VERSION
+                this.fileKey = null
+                this.errorCode = null
+                this.errorDetails = null
+                this.createdAt = now
+                this.updatedAt = now
+            },
+        )
+        return DeepResearchTaskContext(
+            projectId = projectId,
+            customerId = customerId,
+            deepResearchId = id,
+            scanRecordId = input.scanRecordId,
+            images = scan.images.map { DeepResearchTaskContext.ImageRefItem(it.key, it.category) },
+            locale = scan.locale,
+            country = scan.country,
+            currency = scan.currency,
+            promptVersion = scanPrompt.promptVersion,
+            docVersion = DeepResearchDocs.CURRENT_DOC_VERSION,
+            createdAt = now,
+        )
+    }
+
+    /** DeepResearch 第二步（后台、事务外）：组装 deep-research 的 ScanInput（脱离请求上下文）。 */
+    fun buildDeepResearchScanInput(ctx: DeepResearchTaskContext): ScanInput =
+        ScanInput(
+            scanId = ctx.scanRecordId,
+            items = ctx.images.map {
+                ScanMediaItem(
+                    imageUrl = objectStorage.getPublicUrl("ugc", it.key),
+                    mediaType = guessMediaType(it.key, null),
+                )
+            },
+            locale = ctx.locale,
+            country = ctx.country,
+            currency = ctx.currency,
+            type = com.ifmix.core.api.dto.ai.ScanType.DEEP_RESEARCH,
+        )
+
+    /** AI 响应 Map → DeepResearchResult（沿用 basic_result/premium_result 提取规则）。 */
+    fun toDeepResearchResult(ctx: DeepResearchTaskContext, aiResponse: Map<String, Any?>): DeepResearchResult {
+        @Suppress("UNCHECKED_CAST")
+        val basicResult = aiResponse["basic_result"] as? Map<String, Any?> ?: aiResponse
+        @Suppress("UNCHECKED_CAST")
+        val premiumResult = aiResponse["premium_result"] as? Map<String, Any?>
+        return DeepResearchResult(
+            scanRecordId = ctx.scanRecordId,
+            projectId = ctx.projectId,
+            basicResult = basicResult,
+            premiumResult = premiumResult,
+            promptVersion = ctx.promptVersion,
+        )
+    }
+
+    /** 终态 CAS 包装（事务内调用）：false = 已被其它路径终结（查询惰性超时抢先等），调用方放弃。 */
+    fun casDeepResearchSuccess(sc: ModuleCtx, deepResearchId: UUID, fileKey: String): Boolean =
+        deepResearchRepo.casSuccess(sc, deepResearchId, fileKey) == 1
+
+    fun casDeepResearchFailed(
+        sc: ModuleCtx,
+        deepResearchId: UUID,
+        errorCode: String,
+        errorDetails: Map<String, Any?>?,
+    ): Boolean = deepResearchRepo.casFailed(sc, deepResearchId, errorCode, errorDetails) == 1
+
+    /**
+     * 成功回写（事务内调用，设计 §3.4 单条件事务）：
+     * 1) CAS 20→30 + 写 file_key；affected=0 → 已被其它路径终结，返回 false（不扣配额）；
+     * 2) (created_at,id) 比当前 latest 新 → 同语句回写 scan_record AI 字段 + latest_deep_research_id，
+     *    并原子自增配额（封顶）；旧任务晚完成 → 仅存历史，不动 scan_record、不扣配额。
+     */
+    fun finalizeDeepResearchSuccess(
+        sc: ModuleCtx,
+        ctx: DeepResearchTaskContext,
+        result: DeepResearchResult,
+        fileKey: String,
+    ): Boolean {
+        if (deepResearchRepo.casSuccess(sc, ctx.deepResearchId, fileKey) != 1) return false
+        val pointerMoved = scanRepo.updateAiFieldsAndPointerIfNewer(
+            sc, ctx.projectId, ctx.customerId, ctx.scanRecordId,
+            ctx.deepResearchId, ctx.createdAt, result.basicResult, result.promptVersion,
+        )
+        if (pointerMoved) {
+            // 配额跟随「成为 latest 的那次成功」：封顶自增，超额不卡已完成结果（设计决策 4）
+            scanMetricsRepo.tryIncrementDeepResearchCount(sc, ctx.projectId, ctx.customerId, scanQuota.deepResearch)
+        }
         return true
     }
+
+    /**
+     * 轮询状态查询（owner-scoped），含惰性超时判定（设计决策 12）：
+     * IN_PROGRESS 且 updatedAt 超 10 min → CAS 置 FAILED(TIMEOUT)；CAS 未命中说明后台刚终结 → 重读最新状态。
+     */
+    fun getDeepResearchStatus(sc: ModuleCtx, deepResearchId: UUID): ScanDeepResearch {
+        val projectId = sc.action.mustGetProjectId()
+        val customerId = sc.action.mustGetActorId()
+        val dr = deepResearchRepo.findById(sc, projectId, deepResearchId)
+            ?: throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
+        // owner-scope：父 scan 必须属于当前 customer
+        if (!scanRepo.existsOwned(sc, projectId, customerId, dr.scanRecordId)) {
+            throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
+        }
+        if (dr.status != DeepResearchStatuses.IN_PROGRESS) return dr
+        val staleCutoff = Instant.now().minusSeconds(STALE_IN_PROGRESS_SEC)
+        if (!dr.updatedAt.isBefore(staleCutoff)) return dr
+        casDeepResearchFailed(sc, deepResearchId, DeepResearchErrorCodes.TIMEOUT, null)
+        return deepResearchRepo.findById(sc, projectId, deepResearchId) ?: dr
+    }
+
+    /** 批量按 deepResearchId 查询（latestDeepResearch DataLoader 用；owner 由父 ScanRecord 保证）。 */
+    fun findDeepResearchByIds(sc: ModuleCtx, ids: Collection<UUID>): List<ScanDeepResearch> =
+        deepResearchRepo.findByIds(sc, sc.action.mustGetProjectId(), ids)
+
+    /** DeepResearch 结果 doc 的 presigned download URL（R2 bucket u2，原始 S3 endpoint 签名）。 */
+    fun deepResearchResultUrl(sc: ModuleCtx, fileKey: String): String =
+        objectStorage.presignDownload(DeepResearchDocs.BUCKET_ID, fileKey, Duration.ofHours(1))
+
+    /** doc 的 scanRecordSnapshot 用：owner-scoped 单条查询。 */
+    fun findScanForSnapshot(sc: ModuleCtx, scanRecordId: UUID): ScanRecord? =
+        scanRepo.findByIdOwned(sc, sc.action.mustGetProjectId(), sc.action.mustGetActorId(), scanRecordId)
 
     fun presignedUploadUrl(sc: ModuleCtx, objectKey: String, contentType: String, duration: Duration): String =
         objectStorage.presignUpload("ugc", objectKey, contentType, duration)

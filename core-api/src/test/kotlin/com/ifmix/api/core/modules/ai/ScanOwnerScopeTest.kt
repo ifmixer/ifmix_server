@@ -7,6 +7,7 @@ import com.ifmix.core.api.generated.types.DeepResearchImageInput
 import com.ifmix.core.api.generated.types.UpdateScanInput
 import com.ifmix.core.api.generated.types.UpdateScanSetInput
 import com.ifmix.core.api.dto.ai.DeepResearchResult
+import com.ifmix.core.api.dto.ai.DeepResearchTaskContext
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.http.ApiError
@@ -24,6 +25,9 @@ import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.Duration
 import java.util.UUID
@@ -39,6 +43,7 @@ class ScanOwnerScopeTest {
     private val projectId = "test-app"
     private val owner = UUID.randomUUID()
     private val scanRepo = mock<ScanRecordRepository>()
+    private val deepResearchRepo = mock<ScanDeepResearchRepository>()
     private val scanMetricsRepo = mock<CustomerScanMetricsRepository>()
     private val quota = ScanQuotaConfig(scan = 5, deepResearch = 3)
 
@@ -55,7 +60,7 @@ class ScanOwnerScopeTest {
         },
         objectStorage = noopStorage,
         scanRepo = scanRepo,
-        deepResearchRepo = ScanDeepResearchRepository(),
+        deepResearchRepo = deepResearchRepo,
         scanPrompt = ScanPrompt("v10"),
         scanMetricsRepo = scanMetricsRepo,
         scanQuota = quota,
@@ -112,36 +117,94 @@ class ScanOwnerScopeTest {
         assertThat(err.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
     }
 
-    // ---- deep research run (reads existing record) ----
+    // ---- createDeepResearchTask（异步化，设计 §3.3） ----
 
     @Test
-    fun `runDeepResearch cross-customer throws NOT_FOUND`() {
+    fun `createDeepResearchTask cross-customer throws NOT_FOUND`() {
         val id = UUID.randomUUID()
+        whenever(scanRepo.updateImages(any(), eq(projectId), eq(owner), eq(id), any())).thenReturn(1)
         whenever(scanMetricsRepo.findCounts(any<ModuleCtx>(), any(), eq(owner))).thenReturn(0 to 0)
         whenever(scanRepo.findByIdOwned(any(), eq(projectId), eq(owner), eq(id))).thenReturn(null)
         val input = RunDeepResearchInput(
             scanRecordId = id,
             images = listOf(DeepResearchImageInput(imageKey = "k.jpg", category = 0, mediaType = "image/jpeg")),
         )
-        val err = assertThrows<ApiError> { handler.runDeepResearch(ctx(), input) }
+        val err = assertThrows<ApiError> { handler.createDeepResearchTask(ctx(), input) }
         assertThat(err.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
     }
 
-    // ---- saveDeepResearch scan write is owner-scoped ----
+    @Test
+    fun `createDeepResearchTask over quota throws QUOTA_EXCEEDED`() {
+        val id = UUID.randomUUID()
+        whenever(scanRepo.updateImages(any(), eq(projectId), eq(owner), eq(id), any())).thenReturn(1)
+        whenever(scanMetricsRepo.findCounts(any<ModuleCtx>(), any(), eq(owner))).thenReturn(0 to 3)
+        val input = RunDeepResearchInput(
+            scanRecordId = id,
+            images = listOf(DeepResearchImageInput(imageKey = "k.jpg", category = 0, mediaType = "image/jpeg")),
+        )
+        val err = assertThrows<ApiError> { handler.createDeepResearchTask(ctx(), input) }
+        assertThat(err.errorCode).isEqualTo(ErrorCode.QUOTA_EXCEEDED)
+    }
+
+    // ---- finalizeDeepResearchSuccess：终态 CAS 幂等 + 配额跟随 latest（设计 §3.4） ----
+
+    private fun taskCtx(scanRecordId: UUID) = DeepResearchTaskContext(
+        projectId = projectId,
+        customerId = owner,
+        deepResearchId = UUID.randomUUID(),
+        scanRecordId = scanRecordId,
+        images = emptyList(),
+        locale = null,
+        country = null,
+        currency = null,
+        promptVersion = "v10",
+        docVersion = 1,
+        createdAt = java.time.Instant.now(),
+    )
+
+    private fun drResult(scanRecordId: UUID) = DeepResearchResult(
+        scanRecordId = scanRecordId,
+        projectId = projectId,
+        basicResult = emptyMap(),
+        premiumResult = null,
+        promptVersion = "v10",
+    )
 
     @Test
-    fun `saveDeepResearch cross-customer scan write throws NOT_FOUND`() {
+    fun `finalize loses CAS when already finalized - no quota increment`() {
         val id = UUID.randomUUID()
-        whenever(scanRepo.updateResultAfterDeepResearch(any(), eq(projectId), eq(owner), eq(id), any(), any()))
-            .thenReturn(0)
-        val result = DeepResearchResult(
-            scanRecordId = id,
-            projectId = projectId,
-            basicResult = emptyMap(),
-            premiumResult = null,
-            promptVersion = "v10",
-        )
-        val err = assertThrows<ApiError> { handler.saveDeepResearch(ctx(), result) }
-        assertThat(err.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+        val ctx = taskCtx(id)
+        whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), any())).thenReturn(0)
+        // 已被终结：不触碰 scan_record，不扣配额（CAS 幂等，设计决策 9）
+        val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id), "fk")
+        assertThat(finalized).isEqualTo(false)
+        verify(scanMetricsRepo, never()).tryIncrementDeepResearchCount(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `finalize wins CAS but old-task write loses - stored as history without quota`() {
+        val id = UUID.randomUUID()
+        val ctx = taskCtx(id)
+        whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), any())).thenReturn(1)
+        whenever(
+            scanRepo.updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), any(), any()),
+        ).thenReturn(false)
+        // 旧任务晚完成：仅存历史，不动 scan_record、不扣配额（设计决策 8）
+        val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id), "fk")
+        assertThat(finalized).isEqualTo(true)
+        verify(scanMetricsRepo, never()).tryIncrementDeepResearchCount(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `finalize wins and moves pointer - quota incremented once`() {
+        val id = UUID.randomUUID()
+        val ctx = taskCtx(id)
+        whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), any())).thenReturn(1)
+        whenever(
+            scanRepo.updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), any(), any()),
+        ).thenReturn(true)
+        val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id), "fk")
+        assertThat(finalized).isEqualTo(true)
+        verify(scanMetricsRepo, times(1)).tryIncrementDeepResearchCount(any(), any(), any(), any())
     }
 }

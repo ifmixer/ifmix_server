@@ -1,21 +1,24 @@
 package com.ifmix.core.api.modules.ai.repo
 
 import com.ifmix.core.api.dto.common.Page
+import com.ifmix.core.api.entity.ai.ScanDeepResearch
 import com.ifmix.core.api.entity.ai.ScanRecord
 import com.ifmix.core.api.entity.ai.ImageRef
 import com.ifmix.core.api.entity.ai.ScanRecordProps
 import com.ifmix.core.api.entity.ai.projectId
 import com.ifmix.core.api.entity.ai.basicResult
 import com.ifmix.core.api.entity.ai.collected
+import com.ifmix.core.api.entity.ai.customerId
 import com.ifmix.core.api.entity.ai.fetchBy
 import com.ifmix.core.api.entity.ai.hasDeepSearch
 import com.ifmix.core.api.entity.ai.id
 import com.ifmix.core.api.entity.ai.images
 import com.ifmix.core.api.entity.ai.isPublic
+import com.ifmix.core.api.entity.ai.latestDeepResearchId
 import com.ifmix.core.api.entity.ai.promptVersion
+import com.ifmix.core.api.entity.ai.updatedAt
 import com.ifmix.core.api.entity.ai.userDisplayName
 import com.ifmix.core.api.entity.ai.userNotes
-import com.ifmix.core.api.entity.ai.customerId
 import com.ifmix.core.api.generated.types.CommonFindOptions
 import com.ifmix.core.api.generated.types.ScanUnsetField
 import com.ifmix.core.api.generated.types.UpdateScanInput
@@ -23,8 +26,10 @@ import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
 import org.babyfish.jimmer.sql.ast.mutation.DeleteMode
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
+import org.babyfish.jimmer.sql.kt.ast.expression.isNull
 import org.babyfish.jimmer.sql.kt.ast.expression.valueIn
 import org.springframework.stereotype.Repository
+import java.time.Instant
 import java.util.UUID
 
 @Repository
@@ -142,22 +147,59 @@ class ScanRecordRepository {
         set(table.images, images)
     }.execute()
 
-    /** DeepResearch 后置：回写 basicResult + hasDeepSearch + promptVersion。owner-scoped。 */
-    fun updateResultAfterDeepResearch(
+    /**
+     * DeepResearch 成功回写（事务内调用，设计 §3.4）：basicResult/hasDeepSearch/promptVersion 与
+     * latestDeepResearchId 必须**同语句**更新——保证 basic_result 与 pointer 指向同一次成功（不会一个新一个旧）。
+     * 「旧任务晚完成不覆盖」用 (created_at, id) 比较 + 条件 UPDATE 复核（乐观锁）：
+     * 先读当前指针指向任务的 (created_at,id)，新任务不比它新直接返回 false；
+     * 更新语句再以「latestDeepResearchId 仍等于读取值」为条件——并发赢家先行改指针时 affected=0 → false（不扣配额）。
+     */
+    fun updateAiFieldsAndPointerIfNewer(
         mc: ModuleCtx,
         projectId: String,
         customerId: UUID,
-        id: UUID,
+        scanRecordId: UUID,
+        deepResearchId: UUID,
+        deepResearchCreatedAt: Instant,
         basicResult: Map<String, Any?>?,
         promptVersion: String,
-    ): Int = mc.sql.createUpdate(ScanRecord::class) {
-        where(table.projectId eq projectId)
-        where(table.customerId eq customerId)
-        where(table.id eq id)
-        set(table.basicResult, basicResult)
-        set(table.hasDeepSearch, true)
-        set(table.promptVersion, promptVersion)
-    }.execute()
+    ): Boolean {
+        val currentPointer = mc.sql.createQuery(ScanRecord::class) {
+            where(table.projectId eq projectId)
+            where(table.id eq scanRecordId)
+            select(table.latestDeepResearchId)
+        }.limit(1).execute().firstOrNull()
+
+        if (currentPointer != null) {
+            val current = mc.sql.createQuery(ScanDeepResearch::class) {
+                where(table.projectId eq projectId)
+                where(table.id eq currentPointer)
+                select(table)
+            }.limit(1).execute().firstOrNull()
+            // 当前指针指向的记录不存在（理论不会发生）时视作可覆盖
+            if (current != null && !isNewer(deepResearchCreatedAt, deepResearchId, current.createdAt, current.id)) {
+                return false
+            }
+        }
+
+        val affected = mc.sql.createUpdate(ScanRecord::class) {
+            where(table.projectId eq projectId)
+            where(table.customerId eq customerId)
+            where(table.id eq scanRecordId)
+            if (currentPointer == null) where(table.latestDeepResearchId.isNull())
+            else where(table.latestDeepResearchId eq currentPointer)
+            set(table.basicResult, basicResult)
+            set(table.hasDeepSearch, true)
+            set(table.promptVersion, promptVersion)
+            set(table.latestDeepResearchId, deepResearchId)
+            set(table.updatedAt, Instant.now())
+        }.execute()
+        return affected > 0
+    }
+
+    /** (created_at, id) 二元组比较：a 是否严格晚于 b（同时间用 id 兜底，设计 §3.4）。 */
+    internal fun isNewer(aCreatedAt: Instant, aId: UUID, bCreatedAt: Instant, bId: UUID): Boolean =
+        aCreatedAt > bCreatedAt || (aCreatedAt == bCreatedAt && aId > bId)
     fun findByIds(mc: ModuleCtx, projectId: String, ids: Collection<UUID>): List<ScanRecord> = tpl.findByIds(mc, projectId, ids)
 
     /** 列表视图批量查询（owner-scoped）：不加载 basicResult，仅返回该 customer 名下的记录。 */

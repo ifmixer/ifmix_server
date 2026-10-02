@@ -1,13 +1,16 @@
 package com.ifmix.core.api.modules.ai
 
 import com.ifmix.core.api.dto.ai.AiScanResult
+import com.ifmix.core.api.dto.ai.DeepResearchTaskContext
 import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.generated.types.CommonFindOptions
 import com.ifmix.core.api.generated.types.NewScanInput
+import com.ifmix.core.api.generated.types.RunDeepResearchInput
 import com.ifmix.core.api.generated.types.UpdateScanInput
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
+import com.ifmix.core.api.entity.ai.ScanDeepResearch
 import com.ifmix.core.api.entity.ai.ScanRecord
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -21,10 +24,6 @@ class AiFacade(
     fun findById(actionCtx: ActionContext, id: UUID): ScanRecord? =
         scanHandler.findById(mcFactory.forProject(actionCtx), id)
 
-    /** 批量按 scanRecordId 查询 DeepResearch（DataLoader 用）。 */
-    fun findDeepResearchByScanRecordIds(actionCtx: ActionContext, scanRecordIds: Collection<UUID>): List<com.ifmix.core.api.entity.ai.ScanDeepResearch> =
-        scanHandler.findDeepResearchByScanRecordIds(mcFactory.forProject(actionCtx), scanRecordIds)
-
     fun findMyScans(actionCtx: ActionContext, findOptions: CommonFindOptions?): Page<ScanRecord> =
         scanHandler.findMyScans(mcFactory.forProject(actionCtx), findOptions)
 
@@ -36,17 +35,23 @@ class AiFacade(
     fun saveScanRecord(actionCtx: ActionContext, result: AiScanResult): ScanRecord =
         scanHandler.saveNewScan(mcFactory.forProject(actionCtx), result)
 
-    /** DeepResearch 第一步：先更新图片（事务内，AI 失败也已提交） */
-    fun updateDeepResearchImages(actionCtx: ActionContext, input: com.ifmix.core.api.generated.types.RunDeepResearchInput) =
-        scanHandler.updateDeepResearchImages(mcFactory.forProject(actionCtx), input)
+    // ==================== DeepResearch 异步任务（设计 §3.3/§8） ====================
 
-    /** DeepResearch AI 调用在事务外（mc 在此构建） */
-    fun runDeepResearch(actionCtx: ActionContext, input: com.ifmix.core.api.generated.types.RunDeepResearchInput): com.ifmix.core.api.dto.ai.DeepResearchResult =
-        scanHandler.runDeepResearch(mcFactory.forProject(actionCtx), input)
+    /** mutation 事务内：更新 images + 配额预检 + 创建 IN_PROGRESS 记录；返回任务上下文。 */
+    fun createDeepResearchTask(actionCtx: ActionContext, input: RunDeepResearchInput): DeepResearchTaskContext =
+        scanHandler.createDeepResearchTask(mcFactory.forProject(actionCtx), input)
 
-    /** DeepResearch DB 写入在事务内 */
-    fun saveDeepResearch(actionCtx: ActionContext, result: com.ifmix.core.api.dto.ai.DeepResearchResult): Boolean =
-        scanHandler.saveDeepResearch(mcFactory.forProject(actionCtx), result)
+    /** 轮询状态（含惰性超时判定）。 */
+    fun getDeepResearchStatus(actionCtx: ActionContext, deepResearchId: UUID): ScanDeepResearch =
+        scanHandler.getDeepResearchStatus(mcFactory.forProject(actionCtx), deepResearchId)
+
+    /** 批量按 deepResearchId 查询（latestDeepResearch DataLoader 用）。 */
+    fun findDeepResearchByIds(actionCtx: ActionContext, ids: Collection<UUID>): List<ScanDeepResearch> =
+        scanHandler.findDeepResearchByIds(mcFactory.forProject(actionCtx), ids)
+
+    /** 结果 doc 的 presigned download URL（R2 bucket u2）。 */
+    fun deepResearchResultUrl(actionCtx: ActionContext, fileKey: String): String =
+        scanHandler.deepResearchResultUrl(mcFactory.forProject(actionCtx), fileKey)
 
     fun updateScan(actionCtx: ActionContext, input: UpdateScanInput): Boolean =
         scanHandler.updateScan(mcFactory.forProject(actionCtx), input)
