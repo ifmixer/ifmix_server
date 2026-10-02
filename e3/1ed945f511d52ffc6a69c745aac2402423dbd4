@@ -1,0 +1,56 @@
+core-api/src/main/resources/application-local.yml
+  h_b17efd5c751f9f 10,13
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/CustomerScanMetrics.kt
+  h_b17efd5c751f9f 1-25
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/GraphQLExceptionHandler.kt
+  h_b17efd5c751f9f 5-6,11,21-22,28-30,51,59-60,62-69
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ErrorCode.kt
+  h_b17efd5c751f9f 26-35
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GlobalExceptionHandler.kt
+  h_b17efd5c751f9f 35-42,71
+core-api/src/main/kotlin/com/ifmix/core/api/infra/ratelimit/ScanQuotaConfig.kt
+  h_b17efd5c751f9f 8
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/AiFacade.kt
+  h_b17efd5c751f9f 33
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 31,35-36,39,107,185,246
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/CustomerScanMetricsRepository.kt
+  h_b17efd5c751f9f 1-95
+core-api/src/main/kotlin/com/ifmix/core/api/modules/customer/handler/CustomerMergeHandler.kt
+  h_b17efd5c751f9f 4,29,62-63
+core-api/src/main/resources/db/migration/V9__ai_customer_scan_metrics.sql
+  h_b17efd5c751f9f 1-28
+core-api/src/test/kotlin/com/ifmix/api/core/modules/TrustedInstallIdWriteTest.kt
+  h_b17efd5c751f9f 16,132-133,141
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanBatchUpdateTest.kt
+  h_b17efd5c751f9f 71
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCollectedTest.kt
+  h_b17efd5c751f9f 41,45-48
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCountersTest.kt
+  h_b17efd5c751f9f 16,36,54,78,85
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanOwnerScopeTest.kt
+  h_b17efd5c751f9f 20,42,60,120
+core-api/src/test/kotlin/com/ifmix/core/api/infra/graphql/GraphQLErrorExposureTest.kt
+  h_b17efd5c751f9f 1-40
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/ErrorExposureTest.kt
+  h_b17efd5c751f9f 1-40
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/CustomerScanMetricsRepositoryDbTest.kt
+  h_b17efd5c751f9f 1-72
+core-job/src/main/kotlin/com/ifmix/core/job/customer/AnonymousCleanupCleaner.kt
+  h_b17efd5c751f9f 48
+docs/DATABASE.md
+  h_b17efd5c751f9f 29,208
+docs/design/install-customer-hardening.md
+  h_b17efd5c751f9f 32,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e31ed945f511d52ffc6a69c745aac2402423dbd4",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
