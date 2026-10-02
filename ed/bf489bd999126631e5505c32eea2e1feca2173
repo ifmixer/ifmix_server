@@ -1,0 +1,38 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/GraphQLExceptionHandler.kt
+  h_b17efd5c751f9f 6,44-45,63-64,76-81
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionContext.kt
+  h_b17efd5c751f9f 69-70
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GlobalExceptionHandler.kt
+  h_b17efd5c751f9f 22,28-29,70-71
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/HeaderDump.kt
+  h_b17efd5c751f9f 1-24
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/LogContext.kt
+  h_b17efd5c751f9f 7-9,16-17,29,42,52
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilter.kt
+  h_b17efd5c751f9f 70-72,74-91
+core-api/src/main/kotlin/com/ifmix/core/api/infra/jimmer/ClusterProperties.kt
+  h_b17efd5c751f9f 19-20
+core-api/src/main/kotlin/com/ifmix/core/api/infra/jimmer/ClusterRegistry.kt
+  h_b17efd5c751f9f 82-83
+core-api/src/main/resources/application-prod.yml
+  h_b17efd5c751f9f 59,65
+core-api/src/main/resources/logback-spring.xml
+  h_b17efd5c751f9f 3,11-14,20,50-51,70-71,90-91
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/JsonLogFormatTest.kt
+  h_b17efd5c751f9f 1-54
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/LogContextTest.kt
+  h_b17efd5c751f9f 16-19,21,29,31-32,40
+docs/release.md
+  h_b17efd5c751f9f 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "edbf489bd999126631e5505c32eea2e1feca2173",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
