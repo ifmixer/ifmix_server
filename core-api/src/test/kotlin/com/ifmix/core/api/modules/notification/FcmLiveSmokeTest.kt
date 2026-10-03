@@ -25,7 +25,7 @@ import java.util.UUID
  * ./gradlew :core-api:test --tests 'com.ifmix.core.api.modules.notification.FcmLiveSmokeTest'
  */
 @EnabledIfEnvironmentVariable(named = "RUN_FCM_LIVE_TEST", matches = "true")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest
 @ActiveProfiles("local")
 class FcmLiveSmokeTest(
     @Autowired private val handler: NotificationHandler,

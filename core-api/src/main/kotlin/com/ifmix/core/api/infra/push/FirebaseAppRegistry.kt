@@ -1,5 +1,6 @@
 package com.ifmix.core.api.infra.push
 
+import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
@@ -9,6 +10,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import tools.jackson.databind.ObjectMapper
 import java.io.ByteArrayInputStream
+import java.net.InetSocketAddress
+import java.net.Proxy
 import java.util.concurrent.ConcurrentHashMap
 
 /**

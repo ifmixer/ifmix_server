@@ -42,7 +42,12 @@ class FcmPushChannel(
         return try {
             log.debug("FCM sending. projectId={}, destinationKind={}", projectId, destination.kind.name.lowercase())
             val messageId = messaging.send(builder.build())
-            log.debug("FCM send returned. projectId={}, messageId={}", projectId, messageId)
+            log.info(
+                "FCM send succeeded. projectId={}, destinationKind={}, messageId={}",
+                projectId,
+                destination.kind.name.lowercase(),
+                messageId,
+            )
             PushSendResult()
         } catch (e: FirebaseMessagingException) {
             log.warn(
