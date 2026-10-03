@@ -1,0 +1,14 @@
+docs/superpowers/specs/2026-10-03-push-feature-flag-remote-config-design.md
+  h_b17efd5c751f9f 1-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8204d92436fee250f625fbe5098435d667bf0025",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
