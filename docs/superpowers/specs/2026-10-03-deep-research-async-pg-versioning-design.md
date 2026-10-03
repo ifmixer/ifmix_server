@@ -108,6 +108,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 > `SELECT ... FOR UPDATE` 在最终写回时**对同一 scan 行序列化**（只锁这一行、毫秒级持有），锁内读到的 pointer 一定是前一个赢家写入的最新值，比较 `(created_at,id)` 才正确。这**不是业务级全局锁**，不限制并发发起 IN_PROGRESS，只串行化同一 scan 的「最终写回」这一刻。
 
 - **不限制并发 IN_PROGRESS**：允许随时重跑；异常任务不阻塞再次发起。并发期间前端可能短暂看到旧版本，最终以 latest pointer 收敛。
+- **加锁顺序不变量（P2-2）**：恒为 **scan 行（FOR UPDATE）→ customer 行（配额自增）**。`saveNewScan` 是 scan 插入→customer，二者无反向路径、无环，无死锁。未来**禁止**在 customer 锁内再回头锁 scan 行。
 - `isLatest` 不落库：按 `deepResearch.id == scanRecord.latestDeepResearchId` 推导。
 
 ## 4. 数据模型变更
@@ -219,6 +220,10 @@ WHERE d.scan_record_id = r.id;
 
 - 相对 R2 版 V10：**删去 `doc_version` / `file_key` 两列**，新增 `ALTER COLUMN status DROP DEFAULT`，其余（error_code/error_details、按列删唯一索引、DISTINCT ON 回填）保留。
 
+**回滚窗口时序约束（P1-2，实现期务必遵守）**：
+1. **DB 回滚 SQL 与 Kotlin 代码回退必须同批落地后才启动 app**。本项目 Flyway 随 Spring Boot 启动自动 migrate；回滚窗口内若启动 app，一旦 R2 版代码仍引用已被 DROP 的 `file_key`/`doc_version` 列，启动即炸。顺序：执行回滚 SQL → 落地代码回退（含重写版 V10）→ 再启动。
+2. `DELETE FROM flyway_schema_history WHERE version='10'` 后若忘了手动 migrate，重启 app 会自动把重写版 V10 跑上去——这是期望的兜底行为，但需知晓。
+
 ## 5. GraphQL Schema 变更（`schema/customer/ai.graphqls`）
 
 ### 5.1 Mutation `m_ai_runDeepResearch` 返回值
@@ -307,6 +312,7 @@ type ScanDeepResearch {
 ## 7. 前端改造要点（方案 B，供前端 agent review）
 
 - `runDeepResearchFlow`：返回语义从 `Promise<ScanRecord>` 改为「拿 deepResearchId → 轮询 → SUCCESS 后重查权威 ScanRecord → SQLite 覆盖」。
+- **mutation 返回即检查终态（P2-1）**：mutation 可能直接返回 `status=40`（executor 提交失败，TASK_SUBMISSION_FAILED）。拿到返回后应**立即** `if (status === 40) { 清 pending; throw DeepResearchTaskError(...) }`，不要无脑进轮询（否则多一次轮询且 pending 刚写入又要清）。`DeepResearchTaskError` 需支持从 mutation 返回值构造（现仅从轮询结果构造，需扩展）。
 - **方案 B 一致性**：
   - SUCCESS 后调 `q_ai_findMyScanById(scanRecordId)` 取权威 ScanRecord + `latestDeepResearch { premiumResult }`。
   - basicResult **与** premiumResult **均以 API ScanRecord 为准**（premiumResult 直接从 `latestDeepResearch.premiumResult` 读，无需下载 R2）。
@@ -366,7 +372,8 @@ type ScanDeepResearch {
 ## 10. 测试计划（非框架、最小可运行校验）
 
 1. **终态 CAS 幂等**：超时置 FAILED 与后台成功竞争 → 只有一个终态；配额只变化一次。
-2. **乱序完成的 latest 规则（真实并发/事务测试，非 mock affected=0，P0#1）**：对**同一 scan**、pointer 初始为 NULL，用两个真实事务并发跑「旧任务 A」「新任务 B」的成功回写（含 `SELECT FOR UPDATE`），断言最终 `latest_deep_research_id` 指向 (created_at,id) **较新的 B**，无论 A/B 完成先后；A 只成历史。覆盖 pointer=NULL 竞态。
+2. **乱序完成的 latest 规则（真实并发/事务测试，非 mock affected=0，P0#1）**：对**同一 scan**、pointer 初始为 NULL，用两个真实事务并发跑「旧任务 A」「新任务 B」的成功回写（含 `SELECT FOR UPDATE`），断言最终 `latest_deep_research_id` 指向 (created_at,id) **较新的 B**，无论 A/B 完成先后；A 只成历史。
+   - ⚠ **必须用 latch 交错，否则测试假绿（P1-3）**：顺序双任务（A 完整跑完再跑 B）复现不了 NULL 竞态——B 后到时读到的指针已是 A，比较后正常覆盖，**旧的无锁实现也会通过**。要确定性复现，需 `CountDownLatch` 在「A 读完 pointer 之后、执行条件 UPDATE 之前」挂住 A，放行 B 到同一点，再同时放行；验证加锁实现下 B 胜出、无锁实现下会失败。H2 PostgreSQL mode 支持 `FOR UPDATE`，两个 KSqlClient 事务可做。
 3. **配额成功才扣**：失败/超时不扣；成功 +1；预检 used>=limit 拒绝。
 4. **basicResult/pointer/premiumResult 原子性**：成功回写事务后，scan_record.basic_result 与 latest_deep_research_id 指向的 premium_result 来自同一次成功。
 5. **owner-scope**：跨 customer 查询/创建 NOT_FOUND。
@@ -378,13 +385,16 @@ type ScanDeepResearch {
 若基于已写的 R2 版本代码改回本方案，需删除：
 
 - `ScanDeepResearch.fileKey` / `docVersion` 字段及 entity 属性、迁移列。
-- `dto/ai/DeepResearchDoc.kt`（DeepResearchDocs doc 组装 + DeepResearchTaskContext 的 docVersion 可留可删）。
-- `DeepResearchTaskService` 中 R2 上传、`uploadWithRetry`、doc 组装、`buildDoc`、`findScanForSnapshot` 调用。
-- `AiConfig` 的 `u2` bucket 配置 / `application*.yml` 的 u2。
+- **`dto/ai/DeepResearchDoc.kt` 整体删除**（`DeepResearchDocs` doc 组装 + `objectKey` + `BUCKET_ID`）。
+  - ⚠ **陷阱（P1-1）**：`DeepResearchTaskContext` 与 `ImageRefItem` **当前就在 `DeepResearchDoc.kt` 这个文件里**，直接删整文件会把后台任务上下文一起删掉。实现步骤：**先把 `DeepResearchTaskContext`（含 `ImageRefItem`）拆到独立文件** `dto/ai/DeepResearchTaskContext.kt`，并去掉其中的 `docVersion` 字段，**再**删除 `DeepResearchDoc.kt`。
+- `DeepResearchTaskService` 中 R2 上传、`uploadWithRetry`、doc 组装、`buildDoc`、`findScanForSnapshot` 调用、`objectStorage`/`snakeCaseMapper` 注入（若仅为 R2 用）。
+- `AiConfig` 的 `u2` bucket 配置 / `application*.yml` 的 u2（`deepResearchExecutor` bean 保留）。
 - `ScanDeepResearch.resultUrl` GraphQL 字段 + `AiFetcher.deepResearchResultUrl` resolver + `ScanAggHandler.deepResearchResultUrl`。
-- R2_UPLOAD_FAILED 错误码（保留 AI_FAILED/AI_STATUS_REJECTED/TIMEOUT）。
+- `DeepResearchErrorCodes.R2_UPLOAD_FAILED`（保留 AI_FAILED/AI_STATUS_REJECTED/TIMEOUT，**新增 TASK_SUBMISSION_FAILED**）。
 - `casSuccess` 签名从 `(id, fileKey)` 改为 `(id, premiumResult)`——改为写 premium_result 列。
 - `finalizeDeepResearchSuccess` 的 fileKey 参数改为 premiumResult。
+- **保留** `DeepResearchStatuses.CREATED(10)`（语义预留，与状态机图一致，勿删）。
+- **运维项**：u2 bucket 若已在 Cloudflare 控制台创建，删除代码引用后 bucket 本身可删（本期从未成功上传过数据）。
 
 ## 12. 实现期验证点
 
