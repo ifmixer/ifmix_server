@@ -58,11 +58,11 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
       [同一事务]
       1. stale cleanup：清理本 customer 超 5min 的 IN_PROGRESS scan（CAS 20→40 TIMEOUT，
          CAS 成功才释放其 pending）——见 §4.6
-      2. 额度判断：scan_count + pending_scan_count < scanQuota？否 → QUOTA_EXCEEDED 回滚
+      2. 条件预留：单条 UPDATE（WHERE scan_count+pending_scan_count<scanQuota）pending+1，
+         affected=1 → 预留成功；affected=0 → QUOTA_EXCEEDED 回滚（见 §4.5，不先查后改）
       3. 创建 ScanRecord status=20(IN_PROGRESS)，带 images，basicResult=null，latestDeepResearchId=null
-      4. 预留额度：pending_scan_count += 1
       → 事务提交后：经 executor 启动虚拟线程后台任务
-      5. 返回 { scanId, status: 20, errorCode: null }
+      4. 返回 { scanId, status: 20, errorCode: null }
   → 后台任务 ScanTaskService.runScanTask（AI 调用，事务外）
       a. AI 调用抛异常 → [单短事务] CAS 20→40, error_code=AI_FAILED, pending -= 1（CAS 赢家才动）
       b. AI 正常返回（任何业务 status）→ [单短事务]:
@@ -118,9 +118,39 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 - 创建记录 + 预留额度（+pending）**同一事务**。
 - 成功回写：CAS 20→30 + 写 basicResult + `pending−1,scan_count+1` **同一短事务**。
 - 失败：CAS 20→40 + `pending−1` **同一短事务**。
-- **只有 CAS 赢得终态的一方调整额度**（CAS affected=1 才动 metrics；=0 放弃，防重复释放）。
-- 额度判断：`scan_count + pending_scan_count < scanQuota`（预留也占额，杜绝并发超发）。
-- `tryIncrementScanCount` **不再**作为 scan 异步完成的"是否允许成功"判定（它是旧同步模型的产物）；新增 repo 方法做"pending−1 + scan_count+1"的原子转移、以及"pending−1"的原子释放（均 `GREATEST(...,0)` 兜底）。
+**硬约束（并发正确性，前端 agent #1/#2——必须是单条条件 UPDATE，不能"先查后改"）**：
+
+1. **预留（创建端，同创建事务内）** —— `ensureRow` 后执行**单条条件 UPDATE**，不先 `findCounts` 再无条件 +1（READ COMMITTED 下先查后改仍有并发窗口）：
+   ```sql
+   UPDATE core_ai_customer_scan_metrics
+   SET pending_scan_count = pending_scan_count + 1, updated_at = now()
+   WHERE project_id = :projectId AND customer_id = :customerId
+     AND scan_count + pending_scan_count < :scanQuota;
+   ```
+   - affected=1 → 预留成功，再 INSERT ScanRecord(IN_PROGRESS)；
+   - affected=0 → `QUOTA_EXCEEDED`（回滚）；
+   - INSERT 失败 → 整事务回滚，预留自动回滚。
+   - 这样"最后 1 额度并发创建两个 scan"真正只成功一个。
+
+2. **成功转移（CAS 20→30 赢家，同短事务）** —— 单条条件 UPDATE，`pending > 0` 显式约束（不用 GREATEST 掩盖）：
+   ```sql
+   UPDATE core_ai_customer_scan_metrics
+   SET pending_scan_count = pending_scan_count - 1, scan_count = scan_count + 1, updated_at = now()
+   WHERE project_id = :projectId AND customer_id = :customerId AND pending_scan_count > 0;
+   ```
+   - **必须影响 1 行**；affected=0（pending 账本异常）→ 抛 INTERNAL 回滚本次终态转换，不静默继续（否则 pending=0 还 scan_count+1 会破坏账本）。
+
+3. **释放（CAS 20→40 赢家：失败/超时/submit 失败，同短事务）**：
+   ```sql
+   UPDATE core_ai_customer_scan_metrics
+   SET pending_scan_count = pending_scan_count - 1, updated_at = now()
+   WHERE project_id = :projectId AND customer_id = :customerId AND pending_scan_count > 0;
+   ```
+   - **必须影响 1 行**；affected=0 → 抛 INTERNAL 回滚本次终态转换。
+
+4. **只有 CAS 赢得终态的一方调整 metrics**：CAS affected=1 才执行 2/3 的 metrics UPDATE；CAS=0（已被其它路径终结）**完全不触碰 metrics**（防重复释放/转移）。
+5. 额度判断只存在于 1 的 WHERE 子句（`scan_count + pending_scan_count < scanQuota`），不额外先 `findCounts`。
+6. `tryIncrementScanCount`（旧同步模型"检查+封顶自增"）**不再用于 scan 异步完成判定**；新增上述三个原子方法（预留/转移/释放）。**不用 `GREATEST(...,0)` 兜底**——用 `pending_scan_count > 0` 条件 + affected 校验显式暴露账本异常。
 
 ### 4.6 僵死 pending 清理（无 sweeper，前端 agent #2/#3）
 
@@ -137,10 +167,13 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 | 层 | 文件 | 职责 |
 |----|------|------|
 | Facade | `modules/notification/NotificationFacade.kt` | 统一入口 `sendToInstall(request: NotificationRequest)`；未来并列 `sendSms`/`sendEmail` |
-| Handler | `modules/notification/handler/NotificationHandler.kt` | 查 install（寻址+开关+token 有效性，经 install 模块公开能力）、选 channel、解析 destination、发送、发送后另开短事务更新 token 有效性 |
-| Channel | `modules/notification/channel/PushChannel.kt`（`@Component`） | FCM 渠道。**只接收已解析的 destination + NotificationContent，不直接查 Install**。未来 `SmsChannel`/`EmailChannel` 并列 |
-| Infra | `infra/push/FcmConfig.kt`（`@Configuration`） | Firebase Admin SDK 初始化（§8） |
-| DTO | `dto/notification/NotificationContent.kt` + `NotificationRequest.kt` | `NotificationContent{title,body,imageUrl?,link}`；`NotificationRequest{projectId, installId, content}`（§7：install 是 project-scoped，离线任务需显式 projectId） |
+| Service | `modules/notification/NotificationDispatchService.kt` | **持有 TxRunner 的后台服务角色**（类比 DeepResearchTaskService）：resolve install target → `PushChannel.send`（**事务外**）→ 若永久 token 失效则 `TxRunner.withTx` 更新 `fcm_token_valid`。承担事务边界 |
+| Handler | `modules/notification/handler/NotificationHandler.kt` | **纯业务处理**：查 install（经 install 模块公开能力）、开关判断、channel 选择、destination 解析。**不开事务、不调外部 FCM** |
+| Channel | `modules/notification/channel/PushChannel.kt`（`@Component`） | **纯发送**：只接收已解析的 destination + NotificationContent，不查 Install、不碰事务。未来 `SmsChannel`/`EmailChannel` 并列 |
+| Infra | `infra/push/FcmConfig.kt`（`@Configuration`） | Firebase Admin SDK 初始化（§9.1） |
+| DTO | `dto/notification/NotificationContent.kt` + `NotificationRequest.kt` | `NotificationContent{title,body,imageUrl?,link}`；`NotificationRequest{projectId, installId, content}`（install 是 project-scoped，离线任务需显式 projectId） |
+
+> **事务与外部调用边界（前端 agent #3）**：外部 FCM 调用**永远在事务外**；token-valid 更新由 **DispatchService** 在发送后另开短事务（`TxRunner.withTx`）。Handler 保持纯业务、Channel 保持纯发送，均不持事务——与现有 DeepResearchTaskService 后台服务模式一致。
 
 ### 5.2 发送语义（push channel）
 
@@ -220,7 +253,7 @@ scan 和未来 DeepResearch 都只调 `notificationFacade.sendToInstall(Notifica
 | **新增模块** | `modules/notification/**` + `infra/push/FcmConfig.kt` + `dto/notification/**` | §5 整个 notification 模块 |
 | Entity | `entity/install/Install.kt` | 加 `scanResultNotiEnabled: Boolean`、`fcmTokenValid: Boolean` |
 | Install 侧 | updateInstall handler/facade/schema | 支持更新 `scan_result_noti_enabled`；成功上报非空 fcmToken 时重置 `fcm_token_valid=true` |
-| Metrics | `entity/ai/CustomerScanMetrics.kt` + repo | 加 `pendingScanCount`；新增原子方法：预留(+pending)、转移(pending−1,scan+1)、释放(pending−1)，均 CAS 赢家才调 + GREATEST 兜底 |
+| Metrics | `entity/ai/CustomerScanMetrics.kt` + repo | 加 `pendingScanCount`；新增原子方法：条件预留(+pending)、条件转移(pending−1, scan_count+1)、条件释放(pending−1)；仅 CAS 赢家调用，均要求 affected=1，异常则回滚；**不用 GREATEST 兜底**（§4.5） |
 | Migration | `db/migration/V12__...sql` | §11 |
 | 依赖 | `core-api/build.gradle.kts` | 加 `com.google.firebase:firebase-admin`（**pin 固定版本**，不接受浮动） |
 
