@@ -48,7 +48,14 @@ if (finalized) {
     }
     val content = buildDeepResearchNotificationContent(ctx, result)  // §3.4
     runCatching {
-        notificationFacade.sendToInstall(NotificationRequest(ctx.projectId, installId, NotiType.DEEP_RESEARCH, content))
+        notificationFacade.sendToInstall(
+            NotificationRequest(
+                projectId = ctx.projectId,
+                installId = installId,
+                notiType = NotiType.DEEP_RESEARCH,
+                content = content,
+            )
+        )
     }.onFailure { log.warn("DeepResearch push failed. deepResearchId={}", ctx.deepResearchId, it) }
 }
 ```
