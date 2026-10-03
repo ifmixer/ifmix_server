@@ -1,0 +1,14 @@
+docs/superpowers/specs/2026-10-03-push-feature-flag-design.md
+  h_b17efd5c751f9f 176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de74c3ad9e2d972c510f367e4b46b68473d64275",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
