@@ -1,0 +1,22 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 131-134
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/AiFacade.kt
+  h_b17efd5c751f9f 34-35
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 89-90,108,121
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 26,28
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCountersTest.kt
+  h_b17efd5c751f9f 79-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5966cfda3946794ae5f813ef3773e5c3ceec7f62",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
