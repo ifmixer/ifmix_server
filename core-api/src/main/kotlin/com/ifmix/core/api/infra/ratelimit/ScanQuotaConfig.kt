@@ -18,8 +18,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties
  */
 @ConfigurationProperties(prefix = "app.scanquota")
 data class ScanQuotaConfig(
-    /** 终身可执行的普通扫描次数上限。 */
-    val scan: Int = 5,
-    /** 终身可执行的深度研究次数上限。 */
-    val deepResearch: Int = 3,
+    /** 终身可执行的普通扫描次数上限。默认无限：暂不做服务端数量限制，防滥用靠 IP 频率限制（见 AiFetcher.rateLimitByIp）。 */
+    val scan: Int = Int.MAX_VALUE,
+    /** 终身可执行的深度研究次数上限。默认无限（同上）。 */
+    val deepResearch: Int = Int.MAX_VALUE,
 )

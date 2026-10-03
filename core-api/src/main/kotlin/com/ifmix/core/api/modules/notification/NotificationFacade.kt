@@ -23,25 +23,44 @@ class NotificationDispatchService(
     /** 外部 push 永远在事务外；仅 token 永久失效时另开短事务更新 install。 */
     fun sendToInstall(request: NotificationRequest) {
         val actionCtx = ActionContext(projectId = request.projectId, isMutation = true, preferReader = false)
-        val destination = handler.resolve(actionCtx, request) ?: return
+        val destination = handler.resolve(actionCtx, request)
+        if (destination == null) {
+            log.debug("Notification not sent (resolve returned null). projectId={}, installId={}", request.projectId, request.installId)
+            return
+        }
         val result = try {
-            channel.send(destination, request.content)
+            channel.send(request.projectId, destination, request.content)
         } catch (t: Throwable) {
             log.warn(
-                "Notification push failed. projectId={}, installId={}, channel=push, destinationKind={}",
-                request.projectId, request.installId, destination.kind.name.lowercase(), t,
+                "Notification push failed. projectId={}, installId={}, channel=push, destinationKind={}, destination={}",
+                request.projectId, request.installId, destination.kind.name.lowercase(), destination.masked(), t,
+            )
+            return
+        }
+        if (result.skipped) {
+            log.debug("Notification push skipped (project not FCM-configured). projectId={}, installId={}", request.projectId, request.installId)
+            return
+        }
+        if (result.errorCode == null) {
+            log.info(
+                "Notification push sent. projectId={}, installId={}, destinationKind={}, destination={}",
+                request.projectId, request.installId, destination.kind.name.lowercase(), destination.masked(),
             )
             return
         }
         if (result.permanentTokenFailure && destination.kind == PushDestinationKind.TOKEN) {
+            log.warn(
+                "FCM token invalid, marking fcm_token_valid=false. projectId={}, installId={}, destination={}, fcmErrorCode={}",
+                request.projectId, request.installId, destination.masked(), result.errorCode,
+            )
             val mutationCtx = actionCtx.copy(isMutation = true, preferReader = false)
             txRunner.withTx(mcFactory.forProject(mutationCtx)) { txCtx ->
                 installFacade.invalidateFcmToken(txCtx.action, request.installId, destination.value)
             }
-        } else if (result.errorCode != null) {
+        } else {
             log.warn(
-                "Notification push rejected. projectId={}, installId={}, channel=push, destinationKind={}, fcmErrorCode={}",
-                request.projectId, request.installId, destination.kind.name.lowercase(), result.errorCode,
+                "Notification push rejected. projectId={}, installId={}, channel=push, destinationKind={}, destination={}, fcmErrorCode={}",
+                request.projectId, request.installId, destination.kind.name.lowercase(), destination.masked(), result.errorCode,
             )
         }
     }

@@ -86,7 +86,9 @@ class DeepResearchTaskService(
             "DeepResearch task finished. deepResearchId={}, scanRecordId={}, isLatest={}",
             ctx.deepResearchId, ctx.scanRecordId, finalized,
         )
-        dispatchSuccessNotification(ctx, result, finalized)
+        if (ctx.deepResearchPushEnabled) {
+            dispatchSuccessNotification(ctx, result, finalized)
+        }
     }
 
     private fun fail(mc: com.ifmix.core.api.infra.db.ModuleCtx, ctx: DeepResearchTaskContext, errorCode: String, details: Map<String, Any?>?) {
@@ -101,7 +103,7 @@ class DeepResearchTaskService(
         result: DeepResearchResult,
         finalized: Boolean,
     ) {
-        if (!finalized) return
+        if (!finalized || !ctx.deepResearchPushEnabled) return
         val installId = ctx.installId ?: run {
             log.debug("Skip DeepResearch notification: no installId. deepResearchId={}", ctx.deepResearchId)
             return

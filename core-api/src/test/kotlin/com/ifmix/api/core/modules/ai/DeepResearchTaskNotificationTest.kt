@@ -47,6 +47,7 @@ class DeepResearchTaskNotificationTest {
         promptVersion = "v10",
         createdAt = Instant.now(),
         installId = installId,
+        deepResearchPushEnabled = true,
     )
     private val result = DeepResearchResult(
         scanRecordId = ctx.scanRecordId,
@@ -79,5 +80,11 @@ class DeepResearchTaskNotificationTest {
         whenever(scanHandler.buildDeepResearchNotificationContent(ctx, result)).thenReturn(content)
         doThrow(IllegalStateException("push failed")).whenever(notificationFacade).sendToInstall(any())
         service.dispatchSuccessNotification(ctx, result, finalized = true)
+    }
+
+    @Test
+    fun `deep research flag off skips notification`() {
+        service.dispatchSuccessNotification(ctx.copy(deepResearchPushEnabled = false), result, finalized = true)
+        verifyNoInteractions(notificationFacade)
     }
 }

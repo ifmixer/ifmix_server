@@ -8,6 +8,8 @@ import com.ifmix.core.api.modules.ai.ScanRunner
 import com.openai.errors.RateLimitException
 import com.openai.errors.PermissionDeniedException
 import com.openai.errors.UnauthorizedException
+import com.openai.errors.BadRequestException
+import com.openai.errors.UnprocessableEntityException
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
@@ -126,6 +128,15 @@ open class SpringAiScanRunner(
                         "timeout" in m || "timed out" in m
                     }
             }
+
+        /**
+         * 不可重试的请求错误（400 BadRequest / 422 UnprocessableEntity）：请求数据本身有问题
+         * （如坏图片、图片加载失败、prompt 非法），换 key 重试毫无意义——同样数据在任何 key 上都失败。
+         * 命中则立即终止：不冷却 key（key 没问题）、不重试、不消耗剩余 attempt。
+         * 仅类型判定，不做 message 纯数字兜底（避免 request id 含 "400" 误判）。
+         */
+        internal fun isNonRetryableRequestError(e: Exception): Boolean =
+            chainOf(e).any { it is BadRequestException || it is UnprocessableEntityException }
     }
 
     override fun run(ctx: ActionContext, input: ScanInput): Map<String, Any?> {
@@ -205,6 +216,12 @@ open class SpringAiScanRunner(
                     return data
 
                 } catch (e: Exception) {
+                    // 400/422：请求数据问题（坏图片等），换 key 重试无意义 → 立即终止，不冷却 key、不重试。
+                    if (isNonRetryableRequestError(e)) {
+                        log.warn("AI rejected request (non-retryable 400/422) — abort without cooldown/retry. " +
+                            "scanId={} model={} keyId={} msg={}", input.scanId, model, doc.id, e.message)
+                        throw ApiError(ErrorCode.INVALID_REQUEST, "AI rejected the request (invalid image or input)")
+                    }
                     // 分类 → 冷却（冷却在 Redis，跨实例共享）。分类纯函数见 [classify]。
                     val (cooldownSec, reason) = classify(
                         e, cooldownRateLimitedSec, cooldownInvalidKeySec, cooldownTimeoutSec, cooldownOtherSec,

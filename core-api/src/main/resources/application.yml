@@ -103,11 +103,6 @@ app:
         timeout-sec: 300         # 与典型调用时长（2-3min）对齐，避免超时 key 很快回池
         other-sec: 30
 
-  noti:
-    fcm:
-      enabled: ${APP_NOTI_FCM_ENABLED:false}
-      credentials-json: ${FIREBASE_CREDENTIALS_JSON:}
-
   auth:
     issuer: ${AUTH_ISSUER:ifmix}
     # 老版本 app 兼容：token 无 iid 时退回 x-install-id header（不可信，不签进 token）。

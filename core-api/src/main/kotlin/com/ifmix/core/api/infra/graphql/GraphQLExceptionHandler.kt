@@ -85,5 +85,9 @@ private fun com.ifmix.core.api.infra.http.ErrorCode.toGraphQLErrorType(): ErrorT
     externalCode.startsWith("401") -> ErrorType.UNAUTHORIZED
     externalCode.startsWith("403") -> ErrorType.FORBIDDEN
     externalCode.startsWith("404") -> ErrorType.NOT_FOUND
+    // 429（RATE_LIMITED/QUOTA_EXCEEDED）、402（IAP）是客户端错误，归 BAD_REQUEST，
+    // 不能落入 else 的 INTERNAL_ERROR（那会误导为服务端内部错误）。
+    externalCode.startsWith("429") -> ErrorType.BAD_REQUEST
+    externalCode.startsWith("402") -> ErrorType.BAD_REQUEST
     else -> ErrorType.INTERNAL_ERROR
 }

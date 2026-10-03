@@ -25,10 +25,6 @@ app:
   ai:
     model-fallback-order: "test-model"
     prompt-version: v10
-  noti:
-    fcm:
-      enabled: false
-
   ratelimit:
     free: 1000
     pro: 10000

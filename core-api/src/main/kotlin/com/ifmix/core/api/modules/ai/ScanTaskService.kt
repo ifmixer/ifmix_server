@@ -58,18 +58,38 @@ class ScanTaskService(
         }
         if (!finalized) return
 
-        // push 失败不能影响已提交的 SUCCESS；通知 facade 自身也会吞掉 channel 异常。
-        runCatching {
-            scanAggHandler.buildScanNotificationRequest(ctx, basicResult)?.let(notificationFacade::sendToInstall)
-        }.onFailure {
-            log.warn("Scan notification dispatch failed. projectId={}, scanId={}", ctx.projectId, ctx.scanId, it)
-        }
+        dispatchSuccessNotification(ctx, basicResult, finalized)
     }
 
     private fun fail(ctx: ScanTaskContext, errorCode: String, details: Map<String, Any?>?) {
         val mc = mcFactory.forProject(offlineCtx(ctx))
         txRunner.withTx(mc) {
             scanAggHandler.casScanFailed(it, ctx, errorCode, details)
+        }
+    }
+
+    internal fun dispatchSuccessNotification(
+        ctx: ScanTaskContext,
+        basicResult: Map<String, Any?>?,
+        finalized: Boolean,
+    ) {
+        if (!finalized || !ctx.scanResultPushEnabled) {
+            log.debug(
+                "Scan push skipped. scanId={}, finalized={}, flagEnabled={}",
+                ctx.scanId, finalized, ctx.scanResultPushEnabled,
+            )
+            return
+        }
+        val request = scanAggHandler.buildScanNotificationRequest(ctx, basicResult)
+        if (request == null) {
+            log.debug("Scan push skipped: no installId. scanId={}", ctx.scanId)
+            return
+        }
+        log.debug("Scan push dispatching. scanId={}, installId={}", ctx.scanId, request.installId)
+        runCatching {
+            notificationFacade.sendToInstall(request)
+        }.onFailure {
+            log.warn("Scan notification dispatch failed. projectId={}, scanId={}", ctx.projectId, ctx.scanId, it)
         }
     }
 

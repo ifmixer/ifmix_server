@@ -16,6 +16,8 @@ data class ScanTaskContext(
     val collected: Boolean,
     val promptVersion: String,
     val createdAt: Instant,
+    /** 创建任务时由前端 mutation 传入的 push enrollment flag。 */
+    val scanResultPushEnabled: Boolean = false,
 ) {
     data class ImageRefItem(
         val imageKey: String,

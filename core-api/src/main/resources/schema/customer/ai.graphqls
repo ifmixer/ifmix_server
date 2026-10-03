@@ -74,6 +74,12 @@ input NewScanInput {
     images: [NewScanImageInput!]!
     "是否创建时即收藏（客户端「自动收藏」开关开启时传 true）；省略默认 false"
     collected: Boolean
+    featureFlags: ScanFeatureFlagsInput
+}
+
+input ScanFeatureFlagsInput {
+    "scan 结果 push 是否启用；省略或 false 时后端不发 push"
+    scanResultPushEnabled: Boolean
 }
 
 input NewScanImageInput {
@@ -149,6 +155,12 @@ type DeleteScanResult {
 input RunDeepResearchInput {
     scanRecordId: UUID!
     images: [DeepResearchImageInput!]!
+    featureFlags: DeepResearchFeatureFlagsInput
+}
+
+input DeepResearchFeatureFlagsInput {
+    "deep research push 是否启用；省略或 false 时后端不发 push"
+    deepResearchPushEnabled: Boolean
 }
 
 input DeepResearchImageInput {

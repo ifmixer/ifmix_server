@@ -36,10 +36,6 @@ server:
 
 app:
   expose-errors: true
-  noti:
-    fcm:
-      enabled: false
-
   # 本地 header 格式严格：非法即整个请求报错，尽早暴露客户端 bug（base 默认 false）。
   header-validation:
     strict: true

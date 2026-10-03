@@ -105,6 +105,7 @@ class ScanAggHandler(
             collected = input.collected ?: false,
             promptVersion = scanPrompt.promptVersion,
             createdAt = now,
+            scanResultPushEnabled = input.featureFlags?.scanResultPushEnabled ?: false,
         )
     }
 
@@ -465,6 +466,7 @@ class ScanAggHandler(
             promptVersion = scanPrompt.promptVersion,
             createdAt = now,
             installId = sc.action.tokenInstallId,
+            deepResearchPushEnabled = input.featureFlags?.deepResearchPushEnabled ?: false,
         )
     }
 

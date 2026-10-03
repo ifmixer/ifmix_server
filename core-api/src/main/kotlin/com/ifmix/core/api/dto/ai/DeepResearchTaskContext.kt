@@ -21,6 +21,8 @@ data class DeepResearchTaskContext(
     val createdAt: Instant,
     /** 发起本次 DeepResearch 请求的 install；不能从 scan 原始 install 推断。 */
     val installId: UUID? = null,
+    /** 创建任务时由前端 mutation 传入的 push enrollment flag。 */
+    val deepResearchPushEnabled: Boolean = false,
 ) {
     data class ImageRefItem(val key: String, val category: Int?)
 }
