@@ -134,9 +134,8 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 ### 4.3 索引变更（**兼容性关键**）
 
-- **删除** `scan_record_id` 唯一索引。
-  - ⚠ **索引实际名核查**：V1 建索引时表名为 `ai_scan_deep_research`，索引名 `ai_scan_deep_research_scan_record_id_uidx`；V2 `ALTER TABLE ... RENAME TO core_ai_scan_deep_research` **不会自动重命名索引**，故线上索引仍为旧名。迁移须用该旧名 DROP。
-  - **合并前必须用 `\d core_ai_scan_deep_research` 核实线上真实唯一索引名**，确保 DROP 命中。否则唯一约束未解除，第二次 insert 同 scanRecordId 会撞唯一约束报错（核心功能「一 scan 多历史版本」直接崩）。
+- **删除** `scan_record_id` 唯一索引。V1 建索引时表名为 `ai_scan_deep_research`、索引名 `ai_scan_deep_research_scan_record_id_uidx`；V2 `RENAME TO core_ai_scan_deep_research` **不改索引名**，故线上索引仍为旧名。
+  - **解法：§4.5 的迁移用 DO 块「按列（scan_record_id）+ 唯一 + 非主键」动态定位删除**，不依赖硬编码索引名、无需人工 `\d` 核实。否则若唯一约束未解除，第二次 insert 同 scanRecordId 会撞唯一约束（核心功能「一 scan 多历史版本」直接崩）。
 - **新增**普通索引 `(scan_record_id, created_at)`：查某 scan 历史、按序比较 latest 用。
 
 ### 4.4 Entity 修改
@@ -148,7 +147,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 **现状**：R2 版 `V10__deep_research_async.sql` **仅本机 dev 执行过**（flyway_schema_history 有记录、checksum 已固定）；生产及其它环境从未执行。R2 版 V10 已写得完善（按列定位删唯一索引、`DISTINCT ON` 回填指针），**与 PG 版唯一的差别是多加了两列** `doc_version`、`file_key`（R2 残留）。
 
-**方案 A（已选）：本机回滚作废 V10 → 重写 V10 为 PG 版 → repair + 重新 migrate。** 迁移历史保持单一 V10，无 R2 残留、无 V11 技术债。
+**方案 A（已选）：本机回滚作废 V10 → 删 V10 history → 重写 V10 为 PG 版 → 重新 migrate。** 迁移历史保持单一 V10，无 R2 残留、无 V11 技术债。
 
 **本机一次性回滚操作（实现期执行，仅 dev；生产无需）：**
 
@@ -168,7 +167,7 @@ ALTER TABLE public.core_ai_scan_deep_research
 DELETE FROM public.flyway_schema_history WHERE version = '10';
 ```
 
-> 执行 1)、2) 后，把 `V10__deep_research_async.sql` 重写为下方 PG 版，再 `./gradlew :core-api:flywayMigrate`。如 checksum 仍报错，`./gradlew :core-api:flywayRepair` 后再 migrate。
+> 执行 1)、2) 后，把 `V10__deep_research_async.sql` 重写为下方 PG 版，再 `./gradlew :core-api:flywayMigrate`。正常流程（结构回滚 → 删 V10 history → 重写 V10 → migrate）**不应触发 checksum error**；若出现，**停下排查 schema/history 不一致，不要用 `flywayRepair` 自动抹平**（那会掩盖真实的状态偏差）。
 
 **重写后的 V10（PG 版）**：
 
@@ -232,10 +231,14 @@ WHERE d.scan_record_id = r.id;
 type RunDeepResearchResult {
   "新建的 deep research 任务 id，前端据此轮询"
   deepResearchId: UUID!
-  "任务状态：20=IN_PROGRESS（创建即此值）"
+  "任务状态：20=IN_PROGRESS（正常）；40=FAILED（executor 同步提交失败）"
   status: Int!
+  "正常（status=20）为 null；executor 提交失败（status=40）时为 TASK_SUBMISSION_FAILED。前端据此免再查一次 status（P1）"
+  errorCode: String
 }
 ```
+
+> executor 提交失败时 mutation 直接返回 `{ deepResearchId, status: 40, errorCode: "TASK_SUBMISSION_FAILED" }`，前端无需再调 `q_ai_getDeepResearchStatus` 即可拿到错误码（§7 的早检查据此构造 `DeepResearchTaskError`）。
 
 ### 5.2 新增轮询 Query（仅返回状态）
 
@@ -312,7 +315,7 @@ type ScanDeepResearch {
 ## 7. 前端改造要点（方案 B，供前端 agent review）
 
 - `runDeepResearchFlow`：返回语义从 `Promise<ScanRecord>` 改为「拿 deepResearchId → 轮询 → SUCCESS 后重查权威 ScanRecord → SQLite 覆盖」。
-- **mutation 返回即检查终态（P2-1）**：mutation 可能直接返回 `status=40`（executor 提交失败，TASK_SUBMISSION_FAILED）。拿到返回后应**立即** `if (status === 40) { 清 pending; throw DeepResearchTaskError(...) }`，不要无脑进轮询（否则多一次轮询且 pending 刚写入又要清）。`DeepResearchTaskError` 需支持从 mutation 返回值构造（现仅从轮询结果构造，需扩展）。
+- **mutation 返回即检查终态（P2-1）**：mutation 可能直接返回 `{ status: 40, errorCode: "TASK_SUBMISSION_FAILED" }`（executor 提交失败）。拿到返回后应**立即** `if (status === 40) { 清 pending; throw DeepResearchTaskError(errorCode) }`，不进轮询（否则多一次轮询且 pending 刚写入又要清）。`errorCode` 直接取自 mutation 回包（§5.1 已加该字段），无需再调 `q_ai_getDeepResearchStatus`。`DeepResearchTaskError` 需支持从 mutation 返回值构造（现仅从轮询结果构造，需扩展）。
 - **方案 B 一致性**：
   - SUCCESS 后调 `q_ai_findMyScanById(scanRecordId)` 取权威 ScanRecord + `latestDeepResearch { premiumResult }`。
   - basicResult **与** premiumResult **均以 API ScanRecord 为准**（premiumResult 直接从 `latestDeepResearch.premiumResult` 读，无需下载 R2）。
@@ -347,7 +350,7 @@ type ScanDeepResearch {
 
 **服务端：**
 - `schema/customer/ai.graphqls`：改 `RunDeepResearchResult`；加 `DeepResearchStatus` + `q_ai_getDeepResearchStatus`；`ScanRecord.deepResearch`→`latestDeepResearch`。
-- `resources/graphql/persisted-queries/customer/customer.json`：加入新 Query 与改造后 mutation、`q_ai_findMyScanById`（含 latestDeepResearch）条目。
+- `resources/graphql/persisted-queries/customer/customer.json`：加入新 Query 与改造后 mutation、`q_ai_findMyScanById`（含 latestDeepResearch）条目。`m_ai_runDeepResearch` 的回包选择须含 `{ deepResearchId status errorCode }`（errorCode 供 §7 早检查用）。
 - DGS codegen 类型随编译更新。
 
 **前端（antique）：**
@@ -372,8 +375,9 @@ type ScanDeepResearch {
 ## 10. 测试计划（非框架、最小可运行校验）
 
 1. **终态 CAS 幂等**：超时置 FAILED 与后台成功竞争 → 只有一个终态；配额只变化一次。
-2. **乱序完成的 latest 规则（真实并发/事务测试，非 mock affected=0，P0#1）**：对**同一 scan**、pointer 初始为 NULL，用两个真实事务并发跑「旧任务 A」「新任务 B」的成功回写（含 `SELECT FOR UPDATE`），断言最终 `latest_deep_research_id` 指向 (created_at,id) **较新的 B**，无论 A/B 完成先后；A 只成历史。
-   - ⚠ **必须用 latch 交错，否则测试假绿（P1-3）**：顺序双任务（A 完整跑完再跑 B）复现不了 NULL 竞态——B 后到时读到的指针已是 A，比较后正常覆盖，**旧的无锁实现也会通过**。要确定性复现，需 `CountDownLatch` 在「A 读完 pointer 之后、执行条件 UPDATE 之前」挂住 A，放行 B 到同一点，再同时放行；验证加锁实现下 B 胜出、无锁实现下会失败。H2 PostgreSQL mode 支持 `FOR UPDATE`，两个 KSqlClient 事务可做。
+2. **乱序完成的 latest 规则（真实并发/事务测试，非 mock affected=0，P0#1）**：对**同一 scan**、pointer 初始为 NULL，用两个真实事务跑「旧任务 A」「新任务 B」的成功回写（含 `SELECT FOR UPDATE`），断言最终 `latest_deep_research_id` 指向 (created_at,id) **较新的 B**，无论谁先拿锁；A 只成历史。
+   - ⚠ **FOR UPDATE 方案下的正确断言（精确化）**：先让 A 拿到 scan 行锁，此时启动 B——**B 会阻塞在获取同一行锁**（不是「A/B 同时读 pointer」，行锁已序列化）。断言 B 处于阻塞；提交/释放 A 后，B 获得锁、读到的 pointer **已是 A**，按 (created_at,id) 比较后覆盖为 B。
+   - **对照无锁旧实现**：无锁实现下 A、B 都读到 pointer=NULL，A 先条件 UPDATE 成功、B 的 `WHERE ... IS NULL` 落空返回 false → B 丢失（指针错停 A）。测试需能让旧实现失败、加锁实现通过。H2 PostgreSQL mode 支持 `FOR UPDATE`，两个 KSqlClient 事务 + latch 可做。
 3. **配额成功才扣**：失败/超时不扣；成功 +1；预检 used>=limit 拒绝。
 4. **basicResult/pointer/premiumResult 原子性**：成功回写事务后，scan_record.basic_result 与 latest_deep_research_id 指向的 premium_result 来自同一次成功。
 5. **owner-scope**：跨 customer 查询/创建 NOT_FOUND。
