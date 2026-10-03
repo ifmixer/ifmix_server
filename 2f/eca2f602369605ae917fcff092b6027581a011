@@ -1,0 +1,50 @@
+core-api/src/main/resources/i18n/messages.properties
+  h_b17efd5c751f9f 1-12
+core-api/src/main/resources/i18n/messages_ar.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_bg.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_da.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_de.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_el.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_es.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_fr.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_hr.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_it.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_ja.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_ko.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_nl.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_pt.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_ro.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_sv.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_zh_CN.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/main/resources/i18n/messages_zh_TW.properties
+  h_b17efd5c751f9f 1-10
+core-api/src/test/kotlin/com/ifmix/api/core/testsupport/TestMessages.kt
+  h_b17efd5c751f9f 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2feca2f602369605ae917fcff092b6027581a011",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
