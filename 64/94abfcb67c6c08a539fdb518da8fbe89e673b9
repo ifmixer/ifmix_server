@@ -1,0 +1,14 @@
+docs/superpowers/specs/2026-10-03-deep-research-push-notification-design.md
+  h_b17efd5c751f9f 51-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6494abfcb67c6c08a539fdb518da8fbe89e673b9",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
