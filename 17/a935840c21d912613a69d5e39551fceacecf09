@@ -1,0 +1,64 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 54,129,159,227-253
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/DeepResearchTaskContext.kt
+  h_b17efd5c751f9f 24-25
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/ScanTaskContext.kt
+  h_b17efd5c751f9f 19-20
+core-api/src/main/kotlin/com/ifmix/core/api/entity/project/ProjectServerConfig.kt
+  h_b17efd5c751f9f 1-21
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/GraphQLExceptionHandler.kt
+  h_b17efd5c751f9f 88-91
+core-api/src/main/kotlin/com/ifmix/core/api/infra/push/FirebaseAppRegistry.kt
+  h_b17efd5c751f9f 7-10,12,14-24,26-56
+core-api/src/main/kotlin/com/ifmix/core/api/infra/ratelimit/ScanQuotaConfig.kt
+  h_b17efd5c751f9f 21-24
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/DeepResearchTaskService.kt
+  h_b17efd5c751f9f 89-91,106
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/ScanTaskService.kt
+  h_b17efd5c751f9f 61,71-95
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 108,469
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  h_b17efd5c751f9f 11-12,131-139,219-224
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/NotificationFacade.kt
+  h_b17efd5c751f9f 26-30,32,35-47,52-55,60,62-63
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/NotificationHandler.kt
+  h_b17efd5c751f9f 15-16,19-22,27-31,36-41
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/channel/FcmPushChannel.kt
+  h_b17efd5c751f9f 8-9,12-15,18,20-29,43-45,48-56
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/channel/PushChannel.kt
+  h_b17efd5c751f9f 10-21,24,30
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/ProjectServerConfigFacade.kt
+  h_b17efd5c751f9f 1-21
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/repo/ProjectServerConfigRepository.kt
+  h_b17efd5c751f9f 1-20
+core-api/src/main/resources/db/migration/V14__project_server_config.sql
+  h_b17efd5c751f9f 1-14
+core-api/src/main/resources/schema/customer/ai.graphqls
+  h_b17efd5c751f9f 77-82,158-163
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/DeepResearchTaskNotificationTest.kt
+  h_b17efd5c751f9f 50,84-89
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/PushFeatureFlagContextTest.kt
+  h_b17efd5c751f9f 1-51
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/PushFeatureFlagPropagationTest.kt
+  h_b17efd5c751f9f 1-114
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/PushFeatureFlagServiceGateTest.kt
+  h_b17efd5c751f9f 1-66
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationDispatchServiceTest.kt
+  h_b17efd5c751f9f 33
+core-api/src/test/kotlin/com/ifmix/core/api/modules/notification/FcmLiveSmokeTest.kt
+  h_b17efd5c751f9f 1-60
+scripts/restart.sh
+  h_b17efd5c751f9f 7-16,25-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17a935840c21d912613a69d5e39551fceacecf09",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
