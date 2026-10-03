@@ -31,8 +31,8 @@ class AiFacade(
     fun runAiScan(actionCtx: ActionContext, input: NewScanInput): AiScanResult =
         scanHandler.runAiScan(mcFactory.forProject(actionCtx), input)
 
-    /** DB 写入在事务内 */
-    fun saveScanRecord(actionCtx: ActionContext, result: AiScanResult): ScanRecord =
+    /** DB 写入在事务内，返回 scanId（调用方事务外重查全字段 ScanRecord） */
+    fun saveScanRecord(actionCtx: ActionContext, result: AiScanResult): UUID =
         scanHandler.saveNewScan(mcFactory.forProject(actionCtx), result)
 
     // ==================== DeepResearch 异步任务（设计 §3.3/§8） ====================

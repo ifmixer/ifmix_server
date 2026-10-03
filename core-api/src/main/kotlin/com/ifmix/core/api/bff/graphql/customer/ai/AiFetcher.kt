@@ -128,8 +128,10 @@ class AiFetcher(
         val ctx = ctxProvider.fromDfe(dfe)
         // Step 1: AI 调用在事务外
         val aiResult = aiService.runAiScan(ctx, input)
-        // Step 2: DB 写入在事务内
-        val record = globalTx.withTx(ctx) { txCtx -> aiService.saveScanRecord(txCtx, aiResult) }
+        // Step 2: DB 写入在事务内，返回 scanId
+        val scanId = globalTx.withTx(ctx) { txCtx -> aiService.saveScanRecord(txCtx, aiResult) }
+        // Step 3: 用 id 重查全字段 ScanRecord（避免返回半构造对象导致 UnloadedException）
+        val record = aiService.findById(ctx, scanId)
         return NewScanResult(scanRecord = record)
     }
 

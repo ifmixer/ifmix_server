@@ -76,8 +76,9 @@ class ScanCountersTest {
     @Test
     fun `saveNewScan succeeds when under quota`() {
         whenever(scanMetricsRepo.tryIncrementScanCount(any(), eq(projectId), eq(actor), eq(5))).thenReturn(1)
-        val rec = handler.saveNewScan(ctx(), result())
-        assertThat(rec.projectId).isEqualTo(projectId)
+        val input = result()
+        val scanId = handler.saveNewScan(ctx(), input)
+        assertThat(scanId).isEqualTo(input.scanId)
     }
 
     @Test

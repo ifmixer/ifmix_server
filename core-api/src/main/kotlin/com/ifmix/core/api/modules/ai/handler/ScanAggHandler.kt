@@ -86,7 +86,8 @@ class ScanAggHandler(
     }
 
     /** 在事务内将 AiScanResult 持久化为 ScanRecord */
-    fun saveNewScan(sc: ModuleCtx, result: AiScanResult): ScanRecord {
+    /** 事务内持久化新 scan，返回 scanId。调用方（事务外）用 id 重查全字段 ScanRecord，避免返回半构造对象。 */
+    fun saveNewScan(sc: ModuleCtx, result: AiScanResult): UUID {
         val record = ScanRecord {
             id = result.scanId
             this.projectId = result.projectId
@@ -104,6 +105,7 @@ class ScanAggHandler(
             this.collected = result.collected
             this.isPublic = true
             this.hasDeepSearch = false
+            this.latestDeepResearchId = null
             this.promptVersion = result.promptVersion
             this.createdAt = result.createdAt
             this.updatedAt = result.updatedAt
@@ -116,7 +118,7 @@ class ScanAggHandler(
                 com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "scan quota exhausted"
             )
         }
-        return record
+        return result.scanId
     }
 
     fun updateScan(sc: ModuleCtx, input: UpdateScanInput): Boolean {
