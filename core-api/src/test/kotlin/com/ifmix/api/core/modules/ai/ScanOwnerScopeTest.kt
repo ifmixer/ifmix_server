@@ -23,6 +23,7 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -158,7 +159,6 @@ class ScanOwnerScopeTest {
         country = null,
         currency = null,
         promptVersion = "v10",
-        docVersion = 1,
         createdAt = java.time.Instant.now(),
     )
 
@@ -174,9 +174,9 @@ class ScanOwnerScopeTest {
     fun `finalize loses CAS when already finalized - no quota increment`() {
         val id = UUID.randomUUID()
         val ctx = taskCtx(id)
-        whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), any())).thenReturn(0)
+        whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), anyOrNull(), anyOrNull())).thenReturn(0)
         // 已被终结：不触碰 scan_record，不扣配额（CAS 幂等，设计决策 9）
-        val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id), "fk")
+        val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id))
         assertThat(finalized).isEqualTo(false)
         verify(scanMetricsRepo, never()).tryIncrementDeepResearchCount(any(), any(), any(), any())
     }
@@ -185,13 +185,13 @@ class ScanOwnerScopeTest {
     fun `finalize wins CAS but old-task write loses - stored as history without quota`() {
         val id = UUID.randomUUID()
         val ctx = taskCtx(id)
-        whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), any())).thenReturn(1)
+        whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), anyOrNull(), anyOrNull())).thenReturn(1)
         whenever(
             scanRepo.updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), any(), any()),
         ).thenReturn(false)
-        // 旧任务晚完成：仅存历史，不动 scan_record、不扣配额（设计决策 8）
-        val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id), "fk")
-        assertThat(finalized).isEqualTo(true)
+        // 旧任务晚完成：仅存历史，不动 scan_record、不扣配额（设计决策 8）；finalize 返回 isLatest=false
+        val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id))
+        assertThat(finalized).isEqualTo(false)
         verify(scanMetricsRepo, never()).tryIncrementDeepResearchCount(any(), any(), any(), any())
     }
 
@@ -199,12 +199,34 @@ class ScanOwnerScopeTest {
     fun `finalize wins and moves pointer - quota incremented once`() {
         val id = UUID.randomUUID()
         val ctx = taskCtx(id)
-        whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), any())).thenReturn(1)
+        whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), anyOrNull(), anyOrNull())).thenReturn(1)
         whenever(
             scanRepo.updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), any(), any()),
         ).thenReturn(true)
-        val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id), "fk")
+        val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id))
+        verify(deepResearchRepo).casSuccess(any(), eq(ctx.deepResearchId), anyOrNull(), anyOrNull())
+        verify(scanRepo).updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), any(), any())
         assertThat(finalized).isEqualTo(true)
         verify(scanMetricsRepo, times(1)).tryIncrementDeepResearchCount(any(), any(), any(), any())
+    }
+
+    // ---- (created_at, id) latest 排序纯函数（设计 §3.4） ----
+
+    @Test
+    fun `latest comparison is (created_at, id) tuple order`() {
+        val repo = ScanRecordRepository(mock<javax.sql.DataSource>())
+        val t1 = java.time.Instant.parse("2026-10-03T10:00:00Z")
+        val t2 = java.time.Instant.parse("2026-10-03T11:00:00Z")
+        val idA = UUID.fromString("00000000-0000-0000-0000-00000000000a")
+        val idB = UUID.fromString("00000000-0000-0000-0000-00000000000b")
+
+        // 晚时间胜
+        assertThat(repo.isNewer(t2, idA, t1, idB)).isEqualTo(true)
+        assertThat(repo.isNewer(t1, idA, t2, idB)).isEqualTo(false)
+        // 同时间 id 兜底
+        assertThat(repo.isNewer(t1, idB, t1, idA)).isEqualTo(true)
+        assertThat(repo.isNewer(t1, idA, t1, idB)).isEqualTo(false)
+        // 相等不算新（严格大于）
+        assertThat(repo.isNewer(t1, idA, t1, idA)).isEqualTo(false)
     }
 }

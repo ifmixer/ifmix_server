@@ -28,7 +28,7 @@ import java.util.UUID
  */
 class ScanBatchUpdateTest {
 
-    private val repo = ScanRecordRepository()
+    private val repo = ScanRecordRepository(org.mockito.kotlin.mock())
     private val projectId = "test-app"
     private val customerId = UUID.randomUUID()
 

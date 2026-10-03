@@ -2,11 +2,12 @@ package com.ifmix.core.api.modules.ai.repo
 
 import com.ifmix.core.api.entity.ai.DeepResearchStatuses
 import com.ifmix.core.api.entity.ai.ScanDeepResearch
+import com.ifmix.core.api.entity.ai.basicResult
 import com.ifmix.core.api.entity.ai.errorCode
 import com.ifmix.core.api.entity.ai.errorDetails
-import com.ifmix.core.api.entity.ai.fileKey
 import com.ifmix.core.api.entity.ai.id
 import com.ifmix.core.api.entity.ai.projectId
+import com.ifmix.core.api.entity.ai.premiumResult
 import com.ifmix.core.api.entity.ai.status
 import com.ifmix.core.api.entity.ai.updatedAt
 import com.ifmix.core.api.infra.db.ModuleCtx
@@ -39,16 +40,18 @@ class ScanDeepResearchRepository {
     }
 
     /**
-     * 终态 CAS（设计 §3.4）：IN_PROGRESS → SUCCESS，同时写 file_key。
+     * 终态 CAS（设计 §3.4）：IN_PROGRESS → SUCCESS，同时写 premium_result + basic_result（JSONB 入 PG）。
+     * basic_result 为本次成功的快照（统计分析用，每条历史记录各存自己那次）。
      * 返回 affected==1 表示当前路径是赢家；0 = 已被其它路径终结（查询惰性超时抢先等），
      * 调用方放弃后续动作（不重复扣配额、不重复回写）。
      */
-    fun casSuccess(mc: ModuleCtx, id: UUID, fileKey: String): Int =
+    fun casSuccess(mc: ModuleCtx, id: UUID, premiumResult: Map<String, Any?>?, basicResult: Map<String, Any?>?): Int =
         mc.sql.createUpdate(ScanDeepResearch::class) {
             where(table.id eq id)
             where(table.status eq DeepResearchStatuses.IN_PROGRESS)
             set(table.status, DeepResearchStatuses.SUCCESS)
-            set(table.fileKey, fileKey)
+            set(table.premiumResult, premiumResult)
+            set(table.basicResult, basicResult)
             set(table.updatedAt, Instant.now())
         }.execute()
 

@@ -59,7 +59,7 @@ class TrustedInstallIdWriteTest {
         var saved: ScanCollection? = null
         override fun save(mc: ModuleCtx, entity: ScanCollection): Boolean { saved = entity; return true }
     }
-    private class CapturingScanRepo : ScanRecordRepository() {
+    private class CapturingScanRepo : ScanRecordRepository(org.mockito.kotlin.mock<javax.sql.DataSource>()) {
         var saved: ScanRecord? = null
         override fun save(mc: ModuleCtx, entity: ScanRecord): Boolean { saved = entity; return true }
     }

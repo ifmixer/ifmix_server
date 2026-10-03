@@ -12,6 +12,7 @@ import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
+import com.ifmix.core.api.entity.ai.DeepResearchErrorCodes
 import com.ifmix.core.api.entity.ai.DeepResearchStatuses
 import com.ifmix.core.api.entity.ai.ScanDeepResearch
 import com.ifmix.core.api.entity.ai.ScanRecord
@@ -120,15 +121,6 @@ class AiFetcher(
         return loader.load(drId) as CompletableFuture<ScanDeepResearch?>
     }
 
-    @DgsData(parentType = "ScanDeepResearch", field = "resultUrl")
-    fun deepResearchResultUrl(dfe: DgsDataFetchingEnvironment): String? {
-        // SUCCESS 且 file_key 非空时签发 presigned download URL（R2 原始 S3 endpoint）；旧数据走 premiumResult
-        val dr = dfe.getSource<ScanDeepResearch>() ?: return null
-        val fileKey = dr.fileKey ?: return null
-        val ctx = ctxProvider.fromDfe(dfe)
-        return aiService.deepResearchResultUrl(ctx, fileKey)
-    }
-
     // --- Scan mutations ---
 
     @DgsMutation(field = "m_ai_createScan")
@@ -147,10 +139,20 @@ class AiFetcher(
         // 事务提交后（withTx 返回即已提交）才提交后台任务——后台才能读到已提交的记录。
         val ctx = ctxProvider.fromDfe(dfe)
         val taskCtx = globalTx.withTx(ctx) { txCtx -> aiService.createDeepResearchTask(txCtx, input) }
-        deepResearchTaskService.submit(taskCtx)
+        // executor 提交失败（进程关闭/资源拒绝，设计 §9）：记录已 IN_PROGRESS → CAS 置 FAILED 并返回终态，
+        // 前端拿到 deepResearchId + status=40 可直接显示失败/重试，不会拿不到 id 无法恢复。
+        val status = try {
+            deepResearchTaskService.submit(taskCtx)
+            DeepResearchStatuses.IN_PROGRESS
+        } catch (e: Exception) {
+            val casWon = globalTx.withTx(ctx) { txCtx ->
+                aiService.casDeepResearchFailed(txCtx, taskCtx.deepResearchId, DeepResearchErrorCodes.TASK_SUBMISSION_FAILED, null)
+            }
+            if (casWon) DeepResearchStatuses.FAILED else DeepResearchStatuses.IN_PROGRESS
+        }
         return com.ifmix.core.api.generated.types.RunDeepResearchResult(
             deepResearchId = taskCtx.deepResearchId,
-            status = DeepResearchStatuses.IN_PROGRESS,
+            status = status,
         )
     }
 

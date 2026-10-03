@@ -42,13 +42,11 @@ type ScanRecord {
     latestDeepResearch: ScanDeepResearch
 }
 
-"DeepResearch 任务（历史版本，结果 doc 存 R2）"
+"DeepResearch 任务（历史版本，premium_result 存 PG）"
 type ScanDeepResearch {
     id: UUID!
     scanRecordId: UUID!
-    "SUCCESS 时返回：结果 doc 的 presigned download URL（前端据此下载 premiumResult）"
-    resultUrl: String
-    "旧数据兼容：仅旧 DB 行走 premium_result 列返回；新 R2 数据为 null，走 resultUrl"
+    "高级扫描结果（JSONB，直接来自 PG premium_result 列）"
     premiumResult: JSON
     createdAt: DateTime!
     updatedAt: DateTime

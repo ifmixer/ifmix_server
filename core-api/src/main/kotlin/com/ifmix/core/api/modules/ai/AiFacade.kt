@@ -49,9 +49,9 @@ class AiFacade(
     fun findDeepResearchByIds(actionCtx: ActionContext, ids: Collection<UUID>): List<ScanDeepResearch> =
         scanHandler.findDeepResearchByIds(mcFactory.forProject(actionCtx), ids)
 
-    /** 结果 doc 的 presigned download URL（R2 bucket u2）。 */
-    fun deepResearchResultUrl(actionCtx: ActionContext, fileKey: String): String =
-        scanHandler.deepResearchResultUrl(mcFactory.forProject(actionCtx), fileKey)
+    /** 终态 CAS 包装（executor 提交失败等场景）。 */
+    fun casDeepResearchFailed(actionCtx: ActionContext, deepResearchId: UUID, errorCode: String, errorDetails: Map<String, Any?>?): Boolean =
+        scanHandler.casDeepResearchFailed(mcFactory.forProject(actionCtx), deepResearchId, errorCode, errorDetails)
 
     fun updateScan(actionCtx: ActionContext, input: UpdateScanInput): Boolean =
         scanHandler.updateScan(mcFactory.forProject(actionCtx), input)

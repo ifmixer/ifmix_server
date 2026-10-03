@@ -28,12 +28,14 @@ import org.babyfish.jimmer.sql.ast.mutation.DeleteMode
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.isNull
 import org.babyfish.jimmer.sql.kt.ast.expression.valueIn
+import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
+import javax.sql.DataSource
 
 @Repository
-class ScanRecordRepository {
+class ScanRecordRepository(dataSource: DataSource) {
     companion object {
         private val tpl = ProjectCrudRepoTemplate(ScanRecord::class, UUID::class)
         val FILTERABLE = listOf(
@@ -46,6 +48,13 @@ class ScanRecordRepository {
             ScanRecordProps.CURRENCY,
         )
     }
+
+    /**
+     * 行锁专用（DeepResearch 成功回写，设计 §3.4 决策 7b）：同一 routing DataSource，
+     * 经 DataSourceUtils 加入当前事务——FOR UPDATE 锁的是事务连接上的同一行。
+     * Jimmer 0.11.5 不暴露 FOR UPDATE，故锁语句用 JdbcClient。
+     */
+    private val jdbc: JdbcClient = JdbcClient.create(dataSource)
 
     /** 列表视图：不加载 basicResult JSONB 大字段 */
     fun findMyScans(mc: ModuleCtx, projectId: String, customerId: UUID, findOptions: CommonFindOptions?): Page<ScanRecord> =
@@ -149,10 +158,15 @@ class ScanRecordRepository {
 
     /**
      * DeepResearch 成功回写（事务内调用，设计 §3.4）：basicResult/hasDeepSearch/promptVersion 与
-     * latestDeepResearchId 必须**同语句**更新——保证 basic_result 与 pointer 指向同一次成功（不会一个新一个旧）。
-     * 「旧任务晚完成不覆盖」用 (created_at, id) 比较 + 条件 UPDATE 复核（乐观锁）：
-     * 先读当前指针指向任务的 (created_at,id)，新任务不比它新直接返回 false；
-     * 更新语句再以「latestDeepResearchId 仍等于读取值」为条件——并发赢家先行改指针时 affected=0 → false（不扣配额）。
+     * latestDeepResearchId 必须**同语句**更新——保证 basic_result 与 pointer 指向同一次成功。
+     *
+     * 并发正确性靠 **`SELECT ... FOR UPDATE` 行锁**（决策 7b）：先锁住 scan 行，锁内读 pointer、
+     * 按 (created_at,id) 比较后再更新——同一 scan 的并发赢家被行锁串行化，锁内读到的 pointer
+     * 一定是前一个赢家写入的最新值（乐观锁在 pointer=NULL 初始态有竞态：较新的 B 可能输给较旧的 A）。
+     * Jimmer 0.11.5 不暴露 FOR UPDATE，锁语句用 JdbcClient（同一 routing DataSource，
+     * 经 DataSourceUtils 加入当前事务，锁的是事务连接上的同一行）。
+     *
+     * 返回 false = 当前任务较旧（仅存历史，调用方不扣配额）。
      */
     fun updateAiFieldsAndPointerIfNewer(
         mc: ModuleCtx,
@@ -164,12 +178,21 @@ class ScanRecordRepository {
         basicResult: Map<String, Any?>?,
         promptVersion: String,
     ): Boolean {
+        // 1) 行锁：串行化同一 scan 的最终写回（毫秒级持有，随事务提交释放）
+        jdbc.sql("SELECT id FROM core_ai_scan_record WHERE project_id = :projectId AND id = :id FOR UPDATE")
+            .param("projectId", projectId)
+            .param("id", scanRecordId)
+            .query { rs, _ -> rs.getString("id") }
+            .list()
+        // 行不存在 → 非本人/已删，放弃
+            .ifEmpty { return false }
+
+        // 2) 锁内读 pointer 指向任务的 (created_at,id)，旧任务晚完成 → 仅存历史
         val currentPointer = mc.sql.createQuery(ScanRecord::class) {
             where(table.projectId eq projectId)
             where(table.id eq scanRecordId)
             select(table.latestDeepResearchId)
         }.limit(1).execute().firstOrNull()
-
         if (currentPointer != null) {
             val current = mc.sql.createQuery(ScanDeepResearch::class) {
                 where(table.projectId eq projectId)
@@ -182,19 +205,18 @@ class ScanRecordRepository {
             }
         }
 
-        val affected = mc.sql.createUpdate(ScanRecord::class) {
+        // 3) 锁内更新（行锁在手，无需指针条件；归属条件保留）
+        mc.sql.createUpdate(ScanRecord::class) {
             where(table.projectId eq projectId)
             where(table.customerId eq customerId)
             where(table.id eq scanRecordId)
-            if (currentPointer == null) where(table.latestDeepResearchId.isNull())
-            else where(table.latestDeepResearchId eq currentPointer)
             set(table.basicResult, basicResult)
             set(table.hasDeepSearch, true)
             set(table.promptVersion, promptVersion)
             set(table.latestDeepResearchId, deepResearchId)
             set(table.updatedAt, Instant.now())
         }.execute()
-        return affected > 0
+        return true
     }
 
     /** (created_at, id) 二元组比较：a 是否严格晚于 b（同时间用 id 兜底，设计 §3.4）。 */

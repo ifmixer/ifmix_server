@@ -35,7 +35,7 @@ class ScanCollectedTest {
     private val handler = ScanAggHandler(
         scanRunner = fakeRunner,
         objectStorage = fakeStorage,
-        scanRepo = ScanRecordRepository(),
+        scanRepo = ScanRecordRepository(org.mockito.kotlin.mock()),
         deepResearchRepo = ScanDeepResearchRepository(),
         scanPrompt = ScanPrompt("v10"),
         scanMetricsRepo = org.mockito.kotlin.mock(),

@@ -5,7 +5,6 @@ import com.ifmix.core.api.generated.types.RunDeepResearchInput
 import com.ifmix.core.api.generated.types.UpdateScanInput
 import com.ifmix.core.api.generated.types.CommonFindOptions
 import com.ifmix.core.api.dto.ai.AiScanResult
-import com.ifmix.core.api.dto.ai.DeepResearchDocs
 import com.ifmix.core.api.dto.ai.DeepResearchResult
 import com.ifmix.core.api.dto.ai.DeepResearchTaskContext
 import com.ifmix.core.api.dto.ai.ScanInput
@@ -164,8 +163,8 @@ class ScanAggHandler(
     // ==================== DeepResearch 异步任务（设计 docs/superpowers/specs/2026-10-02） ====================
 
     companion object {
-        /** 惰性超时：IN_PROGRESS 且 updatedAt 早于该秒数 → 查询侧 CAS 置 FAILED(TIMEOUT)（设计决策 12）。 */
-        private const val STALE_IN_PROGRESS_SEC = 600L
+        /** 惰性超时：IN_PROGRESS 且 updatedAt 早于该秒数 → 查询侧 CAS 置 FAILED(TIMEOUT)（设计决策 8，5 min）。 */
+        private const val STALE_IN_PROGRESS_SEC = 300L
     }
 
     /**
@@ -212,8 +211,6 @@ class ScanAggHandler(
                 this.premiumResult = null
                 this.promptVersion = scanPrompt.promptVersion
                 this.status = DeepResearchStatuses.IN_PROGRESS
-                this.docVersion = DeepResearchDocs.CURRENT_DOC_VERSION
-                this.fileKey = null
                 this.errorCode = null
                 this.errorDetails = null
                 this.createdAt = now
@@ -230,7 +227,6 @@ class ScanAggHandler(
             country = scan.country,
             currency = scan.currency,
             promptVersion = scanPrompt.promptVersion,
-            docVersion = DeepResearchDocs.CURRENT_DOC_VERSION,
             createdAt = now,
         )
     }
@@ -267,9 +263,6 @@ class ScanAggHandler(
     }
 
     /** 终态 CAS 包装（事务内调用）：false = 已被其它路径终结（查询惰性超时抢先等），调用方放弃。 */
-    fun casDeepResearchSuccess(sc: ModuleCtx, deepResearchId: UUID, fileKey: String): Boolean =
-        deepResearchRepo.casSuccess(sc, deepResearchId, fileKey) == 1
-
     fun casDeepResearchFailed(
         sc: ModuleCtx,
         deepResearchId: UUID,
@@ -278,18 +271,18 @@ class ScanAggHandler(
     ): Boolean = deepResearchRepo.casFailed(sc, deepResearchId, errorCode, errorDetails) == 1
 
     /**
-     * 成功回写（事务内调用，设计 §3.4 单条件事务）：
-     * 1) CAS 20→30 + 写 file_key；affected=0 → 已被其它路径终结，返回 false（不扣配额）；
-     * 2) (created_at,id) 比当前 latest 新 → 同语句回写 scan_record AI 字段 + latest_deep_research_id，
-     *    并原子自增配额（封顶）；旧任务晚完成 → 仅存历史，不动 scan_record、不扣配额。
+     * 成功回写（事务内调用，设计 §3.4 单短事务）：
+     * 1) CAS 20→30 + 写 premium_result（JSONB 入 PG）；affected=0 → 已被其它路径终结，返回 false（不扣配额）；
+     * 2) scan 行 FOR UPDATE 锁内按 (created_at,id) 比较，较新 → 同语句回写 scan_record AI 字段 +
+     *    latest_deep_research_id，配额 +1（封顶）；旧任务晚完成 → 仅存历史，不动 scan_record、不扣配额。
      */
     fun finalizeDeepResearchSuccess(
         sc: ModuleCtx,
         ctx: DeepResearchTaskContext,
         result: DeepResearchResult,
-        fileKey: String,
     ): Boolean {
-        if (deepResearchRepo.casSuccess(sc, ctx.deepResearchId, fileKey) != 1) return false
+        if (deepResearchRepo.casSuccess(sc, ctx.deepResearchId, result.premiumResult, result.basicResult) != 1) return false
+        // 返回值语义 = isLatest（本次成功是否成为权威 latest）；旧任务晚完成 → false（仅存历史）
         val pointerMoved = scanRepo.updateAiFieldsAndPointerIfNewer(
             sc, ctx.projectId, ctx.customerId, ctx.scanRecordId,
             ctx.deepResearchId, ctx.createdAt, result.basicResult, result.promptVersion,
@@ -298,7 +291,7 @@ class ScanAggHandler(
             // 配额跟随「成为 latest 的那次成功」：封顶自增，超额不卡已完成结果（设计决策 4）
             scanMetricsRepo.tryIncrementDeepResearchCount(sc, ctx.projectId, ctx.customerId, scanQuota.deepResearch)
         }
-        return true
+        return pointerMoved
     }
 
     /**
@@ -324,14 +317,6 @@ class ScanAggHandler(
     /** 批量按 deepResearchId 查询（latestDeepResearch DataLoader 用；owner 由父 ScanRecord 保证）。 */
     fun findDeepResearchByIds(sc: ModuleCtx, ids: Collection<UUID>): List<ScanDeepResearch> =
         deepResearchRepo.findByIds(sc, sc.action.mustGetProjectId(), ids)
-
-    /** DeepResearch 结果 doc 的 presigned download URL（R2 bucket u2，原始 S3 endpoint 签名）。 */
-    fun deepResearchResultUrl(sc: ModuleCtx, fileKey: String): String =
-        objectStorage.presignDownload(DeepResearchDocs.BUCKET_ID, fileKey, Duration.ofHours(1))
-
-    /** doc 的 scanRecordSnapshot 用：owner-scoped 单条查询。 */
-    fun findScanForSnapshot(sc: ModuleCtx, scanRecordId: UUID): ScanRecord? =
-        scanRepo.findByIdOwned(sc, sc.action.mustGetProjectId(), sc.action.mustGetActorId(), scanRecordId)
 
     fun presignedUploadUrl(sc: ModuleCtx, objectKey: String, contentType: String, duration: Duration): String =
         objectStorage.presignUpload("ugc", objectKey, contentType, duration)

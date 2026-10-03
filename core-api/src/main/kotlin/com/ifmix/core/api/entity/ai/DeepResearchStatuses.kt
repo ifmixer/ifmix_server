@@ -20,8 +20,8 @@ object DeepResearchErrorCodes {
     const val AI_FAILED = "AI_FAILED"
     /** AI 正常返回但 scan_status 非 SUCCESS/PARTIAL（error_details 含 scan_status 供补拍提示）。 */
     const val AI_STATUS_REJECTED = "AI_STATUS_REJECTED"
-    /** 结果 doc 上传 R2 最终失败（重试耗尽）。 */
-    const val R2_UPLOAD_FAILED = "R2_UPLOAD_FAILED"
-    /** 查询惰性判定：IN_PROGRESS 超 10 min 置 FAILED。 */
+    /** 查询惰性判定：IN_PROGRESS 超 5 min 置 FAILED。 */
     const val TIMEOUT = "TIMEOUT"
+    /** executor 提交失败（进程关闭/资源拒绝）：mutation 捕获后 CAS 置 FAILED 并返回终态。 */
+    const val TASK_SUBMISSION_FAILED = "TASK_SUBMISSION_FAILED"
 }

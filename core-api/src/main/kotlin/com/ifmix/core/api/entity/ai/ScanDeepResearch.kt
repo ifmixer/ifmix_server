@@ -6,9 +6,9 @@ import java.util.UUID
 
 /**
  * DeepResearch 任务实体。一 scan 可有多条历史版本（每次发起新建记录），
- * 权威指针在 scan_record.latest_deep_research_id（见 docs/superpowers/specs/2026-10-02 设计 §3.4）。
+ * 权威指针在 scan_record.latest_deep_research_id（见 docs/superpowers/specs/2026-10-03 设计 §3.4）。
  * scanRecordId 为逻辑外键（跨聚合，不用 @ManyToOne）。
- * 结果存 R2（file_key）；premium_result 列仅为旧数据兼容保留，新记录恒为 null。
+ * 结果（premium_result JSONB）直接存 PG；历史版本长期保留，归档策略见设计 §1.1（本期不做）。
  */
 @Entity
 @Table(name = "core_ai_scan_deep_research")
@@ -21,18 +21,16 @@ interface ScanDeepResearch : BaseProjectEntity {
     @Column(name = "premium_result")
     val premiumResult: Map<String, Any?>?
 
+    /** 本次 deep research 成功时的 basicResult 快照（统计分析用；每条历史记录各存自己那次）。 */
+    @Serialized
+    @Column(name = "basic_result")
+    val basicResult: Map<String, Any?>?
+
     @Column(name = "prompt_version")
     val promptVersion: String
 
     /** 任务状态，码表见 [DeepResearchStatuses]（旧数据回填 30=SUCCESS）。 */
     val status: Int
-
-    /** doc JSON 结构版本（与 R2 doc 顶层 docVersion 一致），供将来 doc 迁移筛选。 */
-    val docVersion: Int
-
-    /** 结果 doc 的对象存储 key（R2 bucket u2）。SUCCESS 后写入；旧数据/未成功为 null。 */
-    @Column(name = "file_key")
-    val fileKey: String?
 
     /** 稳定错误码，码表见 [DeepResearchErrorCodes]；仅 FAILED 时非空。 */
     @Column(name = "error_code")
