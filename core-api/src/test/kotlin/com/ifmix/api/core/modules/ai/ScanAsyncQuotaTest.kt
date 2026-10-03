@@ -46,7 +46,7 @@ class ScanAsyncQuotaTest {
         scanPrompt = ScanPrompt("v10"),
         scanMetricsRepo = metricsRepo,
         scanQuota = quota,
-    )
+        messages = com.ifmix.api.core.testsupport.TestMessages.source,    )
 
     private fun mc() = ModuleCtx(
         action = ActionContext(

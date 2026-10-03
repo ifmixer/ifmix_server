@@ -40,7 +40,7 @@ class ScanCollectedTest {
         scanPrompt = ScanPrompt("v10"),
         scanMetricsRepo = org.mockito.kotlin.mock(),
         scanQuota = com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig(),
-    )
+        messages = com.ifmix.api.core.testsupport.TestMessages.source,    )
 
     private fun actionCtx() = com.ifmix.core.api.infra.db.ModuleCtx(
         action = ActionContext(projectId = "test-app", actorId = UUID.randomUUID()),

@@ -50,6 +50,7 @@ class FirebaseAppRegistry(
                 ?: FirebaseApp.initializeApp(
                     FirebaseOptions.builder()
                         .setCredentials(GoogleCredentials.fromStream(ByteArrayInputStream(json)))
+                        .setHttpTransport(firebaseHttpTransport())
                         .build(),
                     appName,
                 )
@@ -58,5 +59,23 @@ class FirebaseAppRegistry(
             log.error("Failed to init FirebaseApp (config read or SDK init). projectId={}", projectId, e)
             null
         }
+    }
+
+    /**
+     * Firebase Admin defaults to Apache HTTP/2, which does not honor JVM SOCKS properties.
+     * Use Google NetHttpTransport with an explicit SOCKS proxy so FCM follows restart.sh.
+     */
+    private fun firebaseHttpTransport(): NetHttpTransport {
+        val host = System.getProperty("socksProxyHost")?.takeIf { it.isNotBlank() }
+            ?: return NetHttpTransport()
+        val port = System.getProperty("socksProxyPort")?.toIntOrNull() ?: DEFAULT_SOCKS_PORT
+        log.debug("Initializing Firebase HTTP transport through SOCKS proxy {}:{}", host, port)
+        return NetHttpTransport.Builder()
+            .setProxy(Proxy(Proxy.Type.SOCKS, InetSocketAddress(host, port)))
+            .build()
+    }
+
+    private companion object {
+        const val DEFAULT_SOCKS_PORT = 1080
     }
 }

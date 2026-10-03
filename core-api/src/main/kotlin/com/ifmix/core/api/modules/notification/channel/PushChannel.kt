@@ -27,5 +27,5 @@ data class PushSendResult(
 )
 
 interface PushChannel {
-    fun send(projectId: String, destination: PushDestination, content: NotificationContent): PushSendResult
+    fun send(projectId: String, installId: java.util.UUID, destination: PushDestination, content: NotificationContent): PushSendResult
 }

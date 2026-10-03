@@ -53,7 +53,7 @@ class ScanCountersTest {
         scanPrompt = ScanPrompt("v10"),
         scanMetricsRepo = scanMetricsRepo,
         scanQuota = quota,
-    )
+        messages = com.ifmix.api.core.testsupport.TestMessages.source,    )
 
     private val actor = UUID.randomUUID()
 

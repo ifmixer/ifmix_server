@@ -35,7 +35,7 @@ class DeepResearchNotificationContentTest {
         scanPrompt = ScanPrompt("v10"),
         scanMetricsRepo = mock<CustomerScanMetricsRepository>(),
         scanQuota = com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig(),
-    )
+        messages = com.ifmix.api.core.testsupport.TestMessages.source,    )
 
     private val ctx = DeepResearchTaskContext(
         projectId = projectId,
@@ -73,11 +73,12 @@ class DeepResearchNotificationContentTest {
     }
 
     @Test
-    fun `insufficient image uses photo guidance text and missing name falls back`() {
+    fun `advice status is treated as normal and missing name falls back to unnamed`() {
+        // advice 分支已移除：INSUFFICIENT_IMAGE 等状态按正常处理；空名 → 无名回退文案。
         val content = handler.buildDeepResearchNotificationContent(ctx, result("INSUFFICIENT_IMAGE", "  "))
 
         assertThat(content.title).isEqualTo("Deep research complete")
-        assertThat(content.body).isEqualTo("Tap to view photo guidance")
+        assertThat(content.body).isEqualTo("Your deep research report is ready")
         assertThat(content.imageUrl).isEqualTo("https://cdn/main.jpg")
     }
 

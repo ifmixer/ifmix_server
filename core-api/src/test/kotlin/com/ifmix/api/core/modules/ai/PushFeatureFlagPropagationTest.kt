@@ -50,7 +50,7 @@ class PushFeatureFlagPropagationTest {
         scanPrompt = ScanPrompt("v10"),
         scanMetricsRepo = metricsRepo,
         scanQuota = ScanQuotaConfig(scan = 5, deepResearch = 3),
-    )
+        messages = com.ifmix.api.core.testsupport.TestMessages.source,    )
 
     private fun mc() = ModuleCtx(
         action = ActionContext(

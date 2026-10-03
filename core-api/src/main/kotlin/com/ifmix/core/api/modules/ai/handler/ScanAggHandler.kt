@@ -44,8 +44,17 @@ class ScanAggHandler(
     private val scanPrompt: com.ifmix.core.api.modules.ai.service.ScanPrompt,
     private val scanMetricsRepo: com.ifmix.core.api.modules.ai.repo.CustomerScanMetricsRepository,
     private val scanQuota: com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig,
+    private val messages: org.springframework.context.MessageSource,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
+
+    /** locale 字符串（如 "zh-CN"/"ja"/null）→ java.util.Locale；空/null 回退英文。 */
+    private fun resolveLocale(locale: String?): java.util.Locale =
+        if (locale.isNullOrBlank()) java.util.Locale.ENGLISH else java.util.Locale.forLanguageTag(locale)
+
+    /** 取 i18n 文案；缺键回退默认(英文) bundle（MessageSource 自带 locale 回退）。 */
+    private fun msg(key: String, locale: java.util.Locale, vararg args: Any): String =
+        messages.getMessage(key, args, locale)
 
     /** 创建事务内：清理 stale 任务、预留额度并写入 IN_PROGRESS scan。 */
     fun createScanTask(sc: ModuleCtx, input: NewScanInput): ScanTaskContext {
@@ -191,6 +200,22 @@ class ScanAggHandler(
         )
     }
 
+    /** AI 调用失败时的通知：link 仍指向 scan-result 详情页（push 内无法重试，仅提示稍后重试）。 */
+    fun buildScanFailureNotificationRequest(ctx: ScanTaskContext): NotificationRequest? {
+        val installId = ctx.installId ?: return null
+        val locale = resolveLocale(ctx.locale)
+        return NotificationRequest(
+            projectId = ctx.projectId,
+            installId = installId,
+            notiType = NotiType.SCAN_RESULT,
+            content = NotificationContent(
+                title = msg("push.scan.fail.title", locale),
+                body = msg("push.scan.fail.body", locale),
+                link = "/p/${ctx.projectId}/scan-result/${ctx.scanId}",
+            ),
+        )
+    }
+
     private fun cleanupStaleScans(sc: ModuleCtx, projectId: String, customerId: UUID, cutoff: Instant) {
         scanRepo.findStaleInProgress(sc, projectId, customerId, cutoff).forEach { staleId ->
             val record = scanRepo.findByIdOwned(sc, projectId, customerId, staleId) ?: return@forEach
@@ -213,20 +238,11 @@ class ScanAggHandler(
 
     @Suppress("UNCHECKED_CAST")
     private fun buildScanNotificationContent(ctx: ScanTaskContext, basicResult: Map<String, Any?>?): NotificationContent {
-        val status = ((basicResult?.get("scan_status") as? Map<String, Any?>)?.get("status") as? String)
-            ?.trim()?.uppercase()
         val name = ((basicResult?.get("object_overview") as? Map<String, Any?>)?.get("name") as? String)
             ?.trim()?.takeIf { it.isNotEmpty() }
-        val advice = status == "INSUFFICIENT_IMAGE" || status == "NON_PHYSICAL_SUBJECT"
-        val locale = ctx.locale.orEmpty().lowercase()
-        val (title, body) = when {
-            locale.startsWith("zh") && advice -> "扫描已完成" to "点击查看拍摄建议"
-            locale.startsWith("zh") -> "扫描已完成" to (name?.let { "“$it”扫描已完成，点击查看结果" } ?: "点击查看扫描结果")
-            locale.startsWith("ja") && advice -> "スキャンが完了しました" to "撮影のアドバイスを確認してください"
-            locale.startsWith("ja") -> "スキャンが完了しました" to (name?.let { "$it の結果を確認できます" } ?: "結果を確認できます")
-            advice -> "Scan complete" to "Tap to view photo guidance"
-            else -> "Scan complete" to (name?.let { "Your scan of $it is ready" } ?: "Your scan result is ready")
-        }
+        val locale = resolveLocale(ctx.locale)
+        val title = msg("push.scan.title", locale)
+        val body = if (name != null) msg("push.scan.body.named", locale, name) else msg("push.scan.body.unnamed", locale)
         val imageUrl = ctx.images.firstOrNull { it.category == ImageCategories.MAIN }?.let {
             runCatching { objectStorage.getPublicUrl("ugc", it.imageKey) }
                 .onFailure { error -> log.warn("Scan notification image URL unavailable. scanId={}", ctx.scanId, error) }
@@ -244,19 +260,11 @@ class ScanAggHandler(
         ctx: DeepResearchTaskContext,
         result: DeepResearchResult,
     ): NotificationContent {
-        val status = result.status
         val name = ((result.basicResult?.get("object_overview") as? Map<String, Any?>)?.get("name") as? String)
             ?.trim()?.takeIf { it.isNotEmpty() }
-        val advice = status == "INSUFFICIENT_IMAGE" || status == "NON_PHYSICAL_SUBJECT"
-        val locale = ctx.locale.orEmpty().lowercase()
-        val (title, body) = when {
-            locale.startsWith("zh") && advice -> "深度研究已完成" to "点击查看拍摄建议"
-            locale.startsWith("zh") -> "深度研究已完成" to (name?.let { "“$it”深度研究已完成，点击查看报告" } ?: "点击查看深度研究报告")
-            locale.startsWith("ja") && advice -> "深度研究が完了しました" to "撮影のアドバイスを確認してください"
-            locale.startsWith("ja") -> "深度研究が完了しました" to (name?.let { "$it のレポートを確認できます" } ?: "レポートを確認できます")
-            advice -> "Deep research complete" to "Tap to view photo guidance"
-            else -> "Deep research complete" to (name?.let { "Your deep research of $it is ready" } ?: "Your deep research report is ready")
-        }
+        val locale = resolveLocale(ctx.locale)
+        val title = msg("push.deepResearch.title", locale)
+        val body = if (name != null) msg("push.deepResearch.body.named", locale, name) else msg("push.deepResearch.body.unnamed", locale)
         val imageUrl = ctx.images.firstOrNull { it.category == ImageCategories.MAIN }?.let {
             runCatching { objectStorage.getPublicUrl("ugc", it.key) }
                 .onFailure { error -> log.warn("DeepResearch notification image URL unavailable. deepResearchId={}", ctx.deepResearchId, error) }
@@ -266,6 +274,16 @@ class ScanAggHandler(
             title = title,
             body = body,
             imageUrl = imageUrl,
+            link = "/p/${ctx.projectId}/scan-result/${ctx.scanRecordId}",
+        )
+    }
+
+    /** DeepResearch AI 调用失败时的通知内容：link 仍指向 scan-result 详情页（push 内无法重试，仅提示稍后重试）。 */
+    fun buildDeepResearchFailureNotificationContent(ctx: DeepResearchTaskContext): NotificationContent {
+        val locale = resolveLocale(ctx.locale)
+        return NotificationContent(
+            title = msg("push.deepResearch.fail.title", locale),
+            body = msg("push.deepResearch.fail.body", locale),
             link = "/p/${ctx.projectId}/scan-result/${ctx.scanRecordId}",
         )
     }

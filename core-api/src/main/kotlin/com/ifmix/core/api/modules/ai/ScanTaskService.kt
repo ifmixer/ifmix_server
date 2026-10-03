@@ -48,7 +48,8 @@ class ScanTaskService(
             scanRunner.run(actionCtx, scanAggHandler.buildScanInput(ctx))
         } catch (e: Exception) {
             log.warn("Scan AI call failed. projectId={}, scanId={}", ctx.projectId, ctx.scanId, e)
-            fail(ctx, AiTaskErrorCodes.AI_FAILED, mapOf("message" to safeSummary(e)))
+            val casHit = fail(ctx, AiTaskErrorCodes.AI_FAILED, mapOf("message" to safeSummary(e)))
+            dispatchFailureNotification(ctx, casHit)
             return
         }
         @Suppress("UNCHECKED_CAST")
@@ -61,10 +62,32 @@ class ScanTaskService(
         dispatchSuccessNotification(ctx, basicResult, finalized)
     }
 
-    private fun fail(ctx: ScanTaskContext, errorCode: String, details: Map<String, Any?>?) {
+    private fun fail(ctx: ScanTaskContext, errorCode: String, details: Map<String, Any?>?): Boolean {
         val mc = mcFactory.forProject(offlineCtx(ctx))
-        txRunner.withTx(mc) {
+        return txRunner.withTx(mc) {
             scanAggHandler.casScanFailed(it, ctx, errorCode, details)
+        }
+    }
+
+    /** 失败通知：仅 CAS 命中（本次确实把任务置为失败）且 push flag 开时发送；push 内无法重试，仅提示稍后重试。 */
+    private fun dispatchFailureNotification(ctx: ScanTaskContext, casHit: Boolean) {
+        if (!casHit || !ctx.scanResultPushEnabled) {
+            log.debug(
+                "Scan failure push skipped. scanId={}, casHit={}, flagEnabled={}",
+                ctx.scanId, casHit, ctx.scanResultPushEnabled,
+            )
+            return
+        }
+        val request = scanAggHandler.buildScanFailureNotificationRequest(ctx)
+        if (request == null) {
+            log.debug("Scan failure push skipped: no installId. scanId={}", ctx.scanId)
+            return
+        }
+        log.debug("Scan failure push dispatching. scanId={}, installId={}", ctx.scanId, request.installId)
+        runCatching {
+            notificationFacade.sendToInstall(request)
+        }.onFailure {
+            log.warn("Scan failure notification dispatch failed. projectId={}, scanId={}", ctx.projectId, ctx.scanId, it)
         }
     }
 

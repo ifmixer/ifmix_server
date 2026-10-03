@@ -29,7 +29,7 @@ class NotificationDispatchService(
             return
         }
         val result = try {
-            channel.send(request.projectId, destination, request.content)
+            channel.send(request.projectId, request.installId, destination, request.content)
         } catch (t: Throwable) {
             log.warn(
                 "Notification push failed. projectId={}, installId={}, channel=push, destinationKind={}, destination={}",

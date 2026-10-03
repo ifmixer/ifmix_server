@@ -36,7 +36,7 @@ class ScanNotificationContentTest {
         scanPrompt = ScanPrompt("v10"),
         scanMetricsRepo = mock<CustomerScanMetricsRepository>(),
         scanQuota = com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig(),
-    )
+        messages = com.ifmix.api.core.testsupport.TestMessages.source,    )
 
     private fun context(images: List<ScanTaskContext.ImageRefItem>) = ScanTaskContext(
         projectId = projectId,
@@ -73,5 +73,30 @@ class ScanNotificationContentTest {
 
         assertThat(content.body).isEqualTo("Your scan result is ready")
         assertThat(content.imageUrl).isNull()
+    }
+
+    @Test
+    fun `failure notification uses locale text and detail link, no image`() {
+        val images = listOf(ScanTaskContext.ImageRefItem("main.jpg", ImageCategories.MAIN, "image/jpeg"))
+
+        val en = handler.buildScanFailureNotificationRequest(context(images))!!.content
+        assertThat(en.title).isEqualTo("Scan failed")
+        assertThat(en.body).isEqualTo("Please try again later")
+        assertThat(en.link).isEqualTo("/p/$projectId/scan-result/$scanId")
+        assertThat(en.imageUrl).isNull()
+
+        val zh = handler.buildScanFailureNotificationRequest(context(images).copy(locale = "zh-CN"))!!.content
+        assertThat(zh.title).isEqualTo("扫描失败")
+        assertThat(zh.body).isEqualTo("请稍后重试")
+
+        val ja = handler.buildScanFailureNotificationRequest(context(images).copy(locale = "ja-JP"))!!.content
+        assertThat(ja.title).isEqualTo("スキャンに失敗しました")
+        assertThat(ja.body).isEqualTo("しばらくしてから再度お試しください")
+    }
+
+    @Test
+    fun `failure notification returns null without installId`() {
+        val noInstall = context(emptyList()).copy(installId = null)
+        assertThat(handler.buildScanFailureNotificationRequest(noInstall)).isNull()
     }
 }

@@ -72,7 +72,8 @@ class DeepResearchTaskService(
             scanRunner.run(actionCtx, scanAggHandler.buildDeepResearchScanInput(ctx))
         } catch (e: Exception) {
             log.warn("DeepResearch AI call failed. deepResearchId={}, scanRecordId={}", ctx.deepResearchId, ctx.scanRecordId, e)
-            fail(mc, ctx, AiTaskErrorCodes.AI_FAILED, mapOf("message" to safeSummary(e)))
+            val casHit = fail(mc, ctx, AiTaskErrorCodes.AI_FAILED, mapOf("message" to safeSummary(e)))
+            dispatchFailureNotification(ctx, casHit)
             return
         }
         val result = scanAggHandler.toDeepResearchResult(ctx, aiResponse)
@@ -91,10 +92,32 @@ class DeepResearchTaskService(
         }
     }
 
-    private fun fail(mc: com.ifmix.core.api.infra.db.ModuleCtx, ctx: DeepResearchTaskContext, errorCode: String, details: Map<String, Any?>?) {
+    private fun fail(mc: com.ifmix.core.api.infra.db.ModuleCtx, ctx: DeepResearchTaskContext, errorCode: String, details: Map<String, Any?>?): Boolean {
         log.warn("DeepResearch task failed. deepResearchId={}, errorCode={}", ctx.deepResearchId, errorCode)
-        txRunner.withTx(mc) {
+        return txRunner.withTx(mc) {
             scanAggHandler.casDeepResearchFailed(it, ctx.deepResearchId, errorCode, details)
+        }
+    }
+
+    /** 失败通知：仅 CAS 命中（本次确实把任务置为失败）且 push flag 开时发送；push 内无法重试，仅提示稍后重试。 */
+    private fun dispatchFailureNotification(ctx: DeepResearchTaskContext, casHit: Boolean) {
+        if (!casHit || !ctx.deepResearchPushEnabled) return
+        val installId = ctx.installId ?: run {
+            log.debug("Skip DeepResearch failure notification: no installId. deepResearchId={}", ctx.deepResearchId)
+            return
+        }
+        val content = scanAggHandler.buildDeepResearchFailureNotificationContent(ctx)
+        runCatching {
+            notificationFacade.sendToInstall(
+                NotificationRequest(
+                    projectId = ctx.projectId,
+                    installId = installId,
+                    content = content,
+                    notiType = NotiType.DEEP_RESEARCH,
+                )
+            )
+        }.onFailure {
+            log.warn("DeepResearch failure push failed. deepResearchId={}", ctx.deepResearchId, it)
         }
     }
 

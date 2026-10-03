@@ -8,6 +8,12 @@ spring:
   threads:
     virtual:
       enabled: true
+  messages:
+    # push 通知等用户可见文案的 i18n 资源（i18n/messages_<locale>.properties，UTF-8）。
+    # 找不到对应 locale 时回退到默认 i18n/messages.properties（英文）。
+    basename: i18n/messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
   data:
     redis:
       # 命令级超时：Lettuce 默认 60s——Redis 卡住时 key 池每次 MGET 都要等满 60s 才进降级 catch，

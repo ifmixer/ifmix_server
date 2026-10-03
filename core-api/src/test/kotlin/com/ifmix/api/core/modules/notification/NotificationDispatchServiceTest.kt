@@ -30,7 +30,7 @@ class NotificationDispatchServiceTest {
             content = NotificationContent("title", "body", link = "/p/test-app/scan-result/${UUID.randomUUID()}"),
         )
         whenever(handler.resolve(any(), any())).thenReturn(PushDestination(PushDestinationKind.TOKEN, "token"))
-        doThrow(IllegalStateException("FCM down")).whenever(channel).send(any(), any(), any())
+        doThrow(IllegalStateException("FCM down")).whenever(channel).send(any(), any(), any(), any())
 
         service.sendToInstall(request)
     }

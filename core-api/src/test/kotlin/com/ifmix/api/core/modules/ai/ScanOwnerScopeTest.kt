@@ -65,7 +65,7 @@ class ScanOwnerScopeTest {
         scanPrompt = ScanPrompt("v10"),
         scanMetricsRepo = scanMetricsRepo,
         scanQuota = quota,
-    )
+        messages = com.ifmix.api.core.testsupport.TestMessages.source,    )
 
     private fun ctx() = ModuleCtx(
         action = ActionContext(projectId = projectId, actorId = owner),

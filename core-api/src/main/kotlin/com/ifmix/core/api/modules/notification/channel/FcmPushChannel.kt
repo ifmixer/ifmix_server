@@ -19,18 +19,19 @@ class FcmPushChannel(
 ) : PushChannel {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun send(projectId: String, destination: PushDestination, content: NotificationContent): PushSendResult {
-        log.debug("FCM resolving messaging. projectId={}", projectId)
+    override fun send(projectId: String, installId: java.util.UUID, destination: PushDestination, content: NotificationContent): PushSendResult {
+        log.debug("FCM resolving messaging. projectId={}, installId={}", projectId, installId)
         val messaging = registry.getMessaging(projectId)
         if (messaging == null) {
             // project 未配置 FCM：等价 noop（是否发由 feature flag 控制；能否发由有无凭据决定）
-            log.info("FCM skipped: no messaging for project (not configured). projectId={}", projectId)
+            log.info("FCM skipped: no messaging for project (not configured). projectId={}, installId={}", projectId, installId)
             return PushSendResult(skipped = true)
         }
         val notification = Notification.builder()
             .setTitle(content.title)
             .setBody(content.body)
-            .apply { content.imageUrl?.let { setImage(it) } }
+            // ponytail: 暂不发图——客户端前台双通知问题期间先关闭 push 大图；以后恢复取消注释即可。
+            // .apply { content.imageUrl?.let { setImage(it) } }
             .build()
         val builder = Message.builder()
             .setNotification(notification)
@@ -40,19 +41,21 @@ class FcmPushChannel(
             PushDestinationKind.TOPIC -> builder.setTopic(destination.value)
         }
         return try {
-            log.debug("FCM sending. projectId={}, destinationKind={}", projectId, destination.kind.name.lowercase())
+            log.debug("FCM sending. projectId={}, installId={}, destinationKind={}", projectId, installId, destination.kind.name.lowercase())
             val messageId = messaging.send(builder.build())
             log.info(
-                "FCM send succeeded. projectId={}, destinationKind={}, messageId={}",
+                "FCM send succeeded. projectId={}, installId={}, destinationKind={}, messageId={}",
                 projectId,
+                installId,
                 destination.kind.name.lowercase(),
                 messageId,
             )
             PushSendResult()
         } catch (e: FirebaseMessagingException) {
             log.warn(
-                "FCM send rejected. projectId={}, destinationKind={}, errorCode={}, messagingErrorCode={}, message={}",
+                "FCM send rejected. projectId={}, installId={}, destinationKind={}, errorCode={}, messagingErrorCode={}, message={}",
                 projectId,
+                installId,
                 destination.kind.name.lowercase(),
                 e.errorCode,
                 e.messagingErrorCode,

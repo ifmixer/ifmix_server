@@ -52,7 +52,7 @@ class FcmLiveSmokeTest(
             "install has no enabled FCM notification destination"
         }
 
-        val result = channel.send(projectId, destination, request.content)
+        val result = channel.send(projectId, request.installId, destination, request.content)
 
         assertThat(result.skipped).isFalse()
         assertThat(result.errorCode).isNull()

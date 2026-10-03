@@ -140,7 +140,7 @@ class TrustedInstallIdWriteTest {
             scanPrompt = mock<ScanPrompt>(),
             scanMetricsRepo = scanMetricsRepo,
             scanQuota = ScanQuotaConfig(),
-        )
+            messages = com.ifmix.api.core.testsupport.TestMessages.source,        )
     }
 
     @Test

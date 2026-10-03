@@ -70,7 +70,7 @@ class ScanBatchUpdateTest {
             scanPrompt = ScanPrompt("v10"),
             scanMetricsRepo = mock(),
             scanQuota = com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig(),
-        )
+            messages = com.ifmix.api.core.testsupport.TestMessages.source,        )
         val sql = mock<KSqlClient>()
         val input = BatchUpdateScanInput(ids = emptyList(), set = BatchUpdateScanSetInput(collected = true, isPublic = null))
         val err = assertThrows<ApiError> { handler.batchUpdateScan(ctx(sql), input) }
