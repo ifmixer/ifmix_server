@@ -1,0 +1,14 @@
+docs/superpowers/specs/2026-10-03-deep-research-async-pg-versioning-design.md
+  h_b17efd5c751f9f 111,223-226,315,375-376,388-391,393,396-397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7cba9164be98a1ec25ea2f98cbc52931b29ca453",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
