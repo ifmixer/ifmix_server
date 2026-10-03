@@ -173,4 +173,4 @@ export const DEEP_RESEARCH_PUSH_ENABLED = false;
 
 1. 现有 createScan/runDeepResearch 的 input 加嵌套对象字段对 DGS codegen 的影响（可空嵌套 input）。
 2. 本设计依赖前两份文档的 ScanTaskContext/DeepResearchTaskContext 已落地；在其基础上加字段。
-3. 前端是否本期即接入 Firebase RC SDK（占位）或纯 hard code——由前端定，不阻塞后端。
+3. 前端本期**纯 hard code，不接入 Firebase RC**（§5.3 已定）。
