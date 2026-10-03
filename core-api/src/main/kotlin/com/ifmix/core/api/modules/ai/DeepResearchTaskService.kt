@@ -43,13 +43,14 @@ class DeepResearchTaskService(
         try {
             doRun(ctx)
         } catch (t: Throwable) {
-            // 兜底：任何未预期异常不允许杀死 executor 线程；尽力把任务置 FAILED（CAS 未命中则放弃）
+            // 兜底：任何未预期异常不允许杀死 executor 线程；尽力把任务置 FAILED（CAS 未命中则放弃）。
+            // 用 INTERNAL_ERROR 而非 AI_FAILED——漏到此处的多是成功回写阶段的 DB/锁错误，AI 其实已成功。
             log.error("DeepResearch task crashed. deepResearchId={}", ctx.deepResearchId, t)
             runCatching {
                 val mc = mcFactory.forProject(offlineCtx(ctx))
                 txRunner.withTx(mc) {
                     scanAggHandler.casDeepResearchFailed(
-                        it, ctx.deepResearchId, DeepResearchErrorCodes.AI_FAILED,
+                        it, ctx.deepResearchId, DeepResearchErrorCodes.INTERNAL_ERROR,
                         mapOf("message" to safeSummary(t)),
                     )
                 }

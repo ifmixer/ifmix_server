@@ -183,7 +183,7 @@ class ScanAggHandler(
      * DeepResearch 第一步（mutation 事务内，设计 §3.3 步骤 1-3）：
      * 1) owner-scoped 校验归属并整体替换 images；
      * 2) 配额预检（used >= limit → QUOTA_EXCEEDED 回滚，不创建任务）；
-     * 3) 创建 IN_PROGRESS 记录（status=20, file_key=null, doc_version=当前号）。
+     * 3) 创建 IN_PROGRESS 记录（status=20, premium_result/basic_result=null，成功回写时填）。
      * 成功才扣配额（创建时不扣，无退款）；返回不可变上下文，事务提交后由 Fetcher 交
      * [com.ifmix.core.api.modules.ai.DeepResearchTaskService] 执行。
      */

@@ -140,19 +140,24 @@ class AiFetcher(
         val ctx = ctxProvider.fromDfe(dfe)
         val taskCtx = globalTx.withTx(ctx) { txCtx -> aiService.createDeepResearchTask(txCtx, input) }
         // executor 提交失败（进程关闭/资源拒绝，设计 §9）：记录已 IN_PROGRESS → CAS 置 FAILED 并返回终态，
-        // 前端拿到 deepResearchId + status=40 可直接显示失败/重试，不会拿不到 id 无法恢复。
-        val status = try {
+        // 前端拿到 deepResearchId + status=40 + errorCode 可直接显示失败/重试，不会拿不到 id 无法恢复。
+        var status = DeepResearchStatuses.IN_PROGRESS
+        var errorCode: String? = null
+        try {
             deepResearchTaskService.submit(taskCtx)
-            DeepResearchStatuses.IN_PROGRESS
         } catch (e: Exception) {
             val casWon = globalTx.withTx(ctx) { txCtx ->
                 aiService.casDeepResearchFailed(txCtx, taskCtx.deepResearchId, DeepResearchErrorCodes.TASK_SUBMISSION_FAILED, null)
             }
-            if (casWon) DeepResearchStatuses.FAILED else DeepResearchStatuses.IN_PROGRESS
+            if (casWon) {
+                status = DeepResearchStatuses.FAILED
+                errorCode = DeepResearchErrorCodes.TASK_SUBMISSION_FAILED
+            }
         }
         return com.ifmix.core.api.generated.types.RunDeepResearchResult(
             deepResearchId = taskCtx.deepResearchId,
             status = status,
+            errorCode = errorCode,
         )
     }
 

@@ -35,7 +35,7 @@ interface ScanRecord : BaseProjectEntity, SoftDeletableProps, CustomerIdProps, I
     /**
      * 权威指针：指向当前有效（最新且成功）的 deep research 任务。
      * 逻辑外键（跨聚合，不用 @ManyToOne）；null = 从未成功过。
-     * latest 判定与并发规则见 docs/superpowers/specs/2026-10-02-deep-research-async-r2-versioning-design.md §3.4。
+     * latest 判定与并发规则见 docs/superpowers/specs/2026-10-03-deep-research-async-pg-versioning-design.md §3.4。
      */
     @Column(name = "latest_deep_research_id")
     val latestDeepResearchId: UUID?

@@ -152,8 +152,10 @@ input DeepResearchImageInput {
 type RunDeepResearchResult {
     "新建的 deep research 任务 id，前端据此轮询"
     deepResearchId: UUID!
-    "任务状态：20=IN_PROGRESS（创建即此值）"
+    "任务状态：20=IN_PROGRESS（创建即此值）；executor 提交失败时直接返回 40"
     status: Int!
+    "status=40 时返回：稳定错误码（TASK_SUBMISSION_FAILED）；IN_PROGRESS 时为 null"
+    errorCode: String
 }
 
 "DeepResearch 任务状态（轮询专用，不含结果内容）"
@@ -161,7 +163,7 @@ type DeepResearchStatus {
     deepResearchId: UUID!
     "20=IN_PROGRESS, 30=SUCCESS, 40=FAILED"
     status: Int!
-    "FAILED 时返回：稳定错误码（AI_FAILED/AI_STATUS_REJECTED/R2_UPLOAD_FAILED/TIMEOUT）"
+    "FAILED 时返回：稳定错误码（AI_FAILED/AI_STATUS_REJECTED/TIMEOUT/TASK_SUBMISSION_FAILED/INTERNAL_ERROR）"
     errorCode: String
     "FAILED 且 AI_STATUS_REJECTED 时返回 scan_status（供前端提示补拍）"
     scanStatus: JSON

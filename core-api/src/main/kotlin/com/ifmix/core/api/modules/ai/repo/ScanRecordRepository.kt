@@ -206,7 +206,7 @@ class ScanRecordRepository(dataSource: DataSource) {
         }
 
         // 3) 锁内更新（行锁在手，无需指针条件；归属条件保留）
-        mc.sql.createUpdate(ScanRecord::class) {
+        val affected = mc.sql.createUpdate(ScanRecord::class) {
             where(table.projectId eq projectId)
             where(table.customerId eq customerId)
             where(table.id eq scanRecordId)
@@ -216,6 +216,14 @@ class ScanRecordRepository(dataSource: DataSource) {
             set(table.latestDeepResearchId, deepResearchId)
             set(table.updatedAt, Instant.now())
         }.execute()
+        // 第 1 步 FOR UPDATE 已按 project_id+id 锁到行；此处 customerId 不匹配（归属异常）会 affected=0。
+        // 必须抛错让整个成功回写事务回滚——否则 premium_result 已写、配额已扣，scan_record 却没回写（静默不一致）。
+        if (affected != 1) {
+            throw com.ifmix.core.api.infra.http.ApiError(
+                com.ifmix.core.api.infra.http.ErrorCode.INTERNAL,
+                "deep research pointer write affected $affected rows (expected 1): scanRecordId=$scanRecordId",
+            )
+        }
         return true
     }
 

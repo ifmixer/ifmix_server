@@ -24,4 +24,6 @@ object DeepResearchErrorCodes {
     const val TIMEOUT = "TIMEOUT"
     /** executor 提交失败（进程关闭/资源拒绝）：mutation 捕获后 CAS 置 FAILED 并返回终态。 */
     const val TASK_SUBMISSION_FAILED = "TASK_SUBMISSION_FAILED"
+    /** 后台任务未预期异常（多发于成功回写阶段的 DB/锁错误）：兜底 catch 置 FAILED。 */
+    const val INTERNAL_ERROR = "INTERNAL_ERROR"
 }
