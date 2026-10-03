@@ -19,15 +19,15 @@ DeepResearch 已异步化（创建 IN_PROGRESS → 后台跑 AI → CAS 回写�
 | 2 | 深链目标 | **复用 scan 结果页** `/p/${projectId}/scan-result/${scanRecordId}`（premium 结果展示在该页） |
 | 3 | push 文案 | "深度研究完成"主题模板 + 物品名（按 locale，缺失回退纯模板） |
 | 4 | 发送目标 | 发给发起 DeepResearch 的 install（需给 `DeepResearchTaskContext` 补 `installId`） |
-| 5 | 何时发 | 成功回写（CAS 20→30）事务提交后 && `deep_research_noti_enabled=true`，事务外发送，失败只 WARN |
+| 5 | 何时发 | **仅 `finalizeDeepResearchSuccess` 返回 finalized=true（CAS 成功且成为 latest）**时发；旧任务晚完成（SUCCESS 但非 latest）不发（见 §3.3 理由）。事务提交后、事务外发送，失败只 WARN |
 
 ## 3. 增量改动
 
 ### 3.1 必须补的字段：`DeepResearchTaskContext.installId`
 
 - 当前 `DeepResearchTaskContext` 无 installId；push 需发给发起方 install。
-- `createDeepResearchTask` 构造 ctx 时，从 ActionContext 取 `tokenInstallId`（可信 installId，同 scan 的 installId 来源）填入。
-- 若 installId 为 null（理论上 customer 操作必有 iid）：跳过 push（记 DEBUG），不影响主流程。
+- `createDeepResearchTask` 构造 ctx 时，从**本次请求的** ActionContext.tokenInstallId 快照取（可信 installId）。**不能从 scan 的原始 installId 推断**——通知目标必须是发起本次 DeepResearch 的设备（可能与创建 scan 的设备不同）。
+- 若 installId 为 null（理论上 customer 操作必有 iid）：§3.3 的 guard 跳过 push（DEBUG），不构造伪 UUID、不调 facade，不影响主流程。
 
 ### 3.2 Install 新增开关
 
@@ -38,21 +38,35 @@ DeepResearch 已异步化（创建 IN_PROGRESS → 后台跑 AI → CAS 回写�
 ### 3.3 后台发 push（`DeepResearchTaskService.doRun`）
 
 成功回写 `finalizeDeepResearchSuccess` 返回后（事务已提交、事务外）：
-```
-if (finalized /* 本次成功且成为 latest，或按需：只要任务 SUCCESS */) {
-  组装 NotificationContent（§3.4）
-  notificationFacade.sendToInstall(NotificationRequest(projectId, installId, content))
-  // 异常只 WARN，不影响已落库的 DeepResearch
+```kotlin
+val finalized = txRunner.withTx(mc) { scanAggHandler.finalizeDeepResearchSuccess(it, ctx, result) }
+// 仅成为 latest 才通知（见下方理由）
+if (finalized) {
+    val installId = ctx.installId ?: run {
+        log.debug("Skip DeepResearch notification: no installId. deepResearchId={}", ctx.deepResearchId)
+        return
+    }
+    val content = buildDeepResearchNotificationContent(ctx, result)  // §3.4
+    runCatching {
+        notificationFacade.sendToInstall(NotificationRequest(ctx.projectId, installId, NotiType.DEEP_RESEARCH, content))
+    }.onFailure { log.warn("DeepResearch push failed. deepResearchId={}", ctx.deepResearchId, it) }
 }
 ```
-- **开关查询**：notification 模块按**通知类型**查对应开关——这里要查 `deep_research_noti_enabled`。见 §3.5（notification 模块需支持多开关）。
-- `finalized` 语义：现有返回值 = isLatest（是否成为权威 latest）。push 发送条件用"任务 SUCCESS"即可（CAS 20→30 赢家）；是否仅 latest 才发由实现确认——**建议只要任务 SUCCESS 就发**（用户发起了就该通知），与 scan 一致。
 
-### 3.4 NotificationContent 组装（DeepResearch 侧）
+**为什么仅 finalized=true 发（前端 agent #1，消除原稿矛盾）**：
+- `finalizeDeepResearchSuccess` 的返回值语义是 **isLatest**（本次是否成为 scan 的权威 latest 指针），**不是** "CAS 是否成功"。
+- 深链固定为 `/p/{projectId}/scan-result/{scanRecordId}`，只能展示该 scan **当前 latest** 的 DeepResearch。
+- 若旧任务 A 晚于较新任务 B 完成：A 技术上 SUCCESS 但未成为 latest，链接打开的是 B 的结果。向 A 的发起设备发"深度研究完成"会**误导**用户。
+- 故**旧任务晚完成**：历史记录为 SUCCESS，但**不发 push、不移动权威指针、不再扣配额**（后两者本就是 finalizeDeepResearchSuccess 既有行为）。
+- 若将来产品坚持"每个成功任务都通知"，必须先新增 task-specific DeepResearch 详情路由 + API（当前无此展示入口），不在本期。
 
-- **title/body**：按 locale 选"深度研究完成"模板 + 物品名（从本次 basicResult.object_overview.name，或权威 ScanRecord）。缺失 → 纯模板（如「深度研究已完成，点击查看」）。
-- **imageUrl**：scan 主图 public URL（同 scan，category=MAIN；无则不带图）。
-- **link**：`/p/${projectId}/scan-result/${scanRecordId}`（复用 scan 结果页）。
+### 3.4 NotificationContent 组装（DeepResearch 侧，文案降级同 scan，前端 agent #2）
+
+- **title/body**（按 locale 模板）：
+  - `basicResult.scan_status ∈ {INSUFFICIENT_IMAGE, NON_PHYSICAL_SUBJECT}` → title「深度研究已完成」/ body「点击查看拍摄建议」（不暗示报告已就绪）。
+  - 否则 → 「深度研究已完成」+ 物品名（`basicResult.object_overview.name`）/「查看报告」；物品名缺失/空白/非字符串 → 纯模板。
+- **imageUrl**：scan 主图 public URL（category=MAIN；无 MAIN / URL 构造失败 → 不带图），同 scan。
+- **link**：`/p/${projectId}/scan-result/${scanRecordId}`。
 
 ### 3.5 notification 模块：开关参数化（对 scan 设计的小扩展）
 
@@ -68,7 +82,7 @@ scan 设计里 `sendToInstall` 查死 `scan_result_noti_enabled`。为支持 Dee
 - **发起 DeepResearch 时检查通知授权**：未授权 → 弹窗提示「深度研究进行中，完成后通知你」+ 请求授权；授权成功执行完整注册（取 token→上报→订阅 topic→`updateInstall(deepResearchNotiEnabled=true)`）；拒绝 → `updateInstall(deepResearchNotiEnabled=false)`。
   - 注：系统通知授权是**设备级**，scan 已请求过则无需重复弹系统权限；但 `deep_research_noti_enabled` 开关是独立的，按本功能首次发起时设置。
 - **设置页**加「深度研究结果通知」开关（与「扫描结果通知」并列），改动调 updateInstall；系统授权被拒时保持/回退为关。
-- **深链**：复用 scan 的 `/p/{projectId}/scan-result/{scanId}` 解析（已实现），无需新增路由。
+- **深链**：复用 scan push 前端改造提供的 `data.link` 解析能力（解析 `/p/{projectId}/scan-result/{scanId}` → 校验 projectId → 映射 `/result/{scanId}`）。**此能力由 scan push 前端计划实现，尚未落地**（当前 `features/push/messageHandlers.ts` 仍只读 `data.url`）。在该能力发布前，DeepResearch push 只展示、点击路由不保证。DeepResearch 不新增路由、不复制解析逻辑。
 - updateInstall 的 `_API_ENTRIES` / schema 类型 / persisted-query 增加 `deepResearchNotiEnabled` 字段。
 
 ## 5. 分层落点
@@ -103,14 +117,15 @@ scan 设计里 `sendToInstall` 查死 `scan_result_noti_enabled`。为支持 Dee
 ## 8. 测试计划（增量）
 
 1. **开关路由**：notiType=DEEP_RESEARCH 查 `deep_research_noti_enabled`、SCAN_RESULT 查 `scan_result_noti_enabled`（不串）。
-2. **DeepResearch 完成发 push**：成功回写后调 notificationFacade，content 的 link 指向 scan 结果页、文案为深度研究主题。
-3. **开关关**：deep_research_noti_enabled=false → 不发。
-4. **installId 缺失**：ctx.installId=null → 跳过 push，DeepResearch 仍 SUCCESS。
-5. **push 失败不影响主流程**：PushChannel 抛异常 → DeepResearch 仍 SUCCESS，仅 WARN。
-6. **开关独立性回归**：关 scan 开关不影响 DeepResearch push，反之亦然。
+2. **DeepResearch 完成发 push**：成功且 finalized=true → 调 notificationFacade，content 的 link 指向 scan 结果页、文案为深度研究主题。
+3. **旧任务晚完成不发**：finalized=false（未成为 latest）→ 任务 SUCCESS 但不发 push、不动指针、不扣配额。
+4. **文案降级**：basicResult.scan_status=INSUFFICIENT_IMAGE → 文案「查看拍摄建议」，不暗示报告就绪。
+5. **开关关**：deep_research_noti_enabled=false → 不发。
+6. **installId 缺失**：ctx.installId=null → 跳过 push，DeepResearch 仍 SUCCESS。
+7. **push 失败不影响主流程**：PushChannel 抛异常 → DeepResearch 仍 SUCCESS，仅 WARN。
+8. **开关独立性回归**：关 scan 开关不影响 DeepResearch push，反之亦然。
 
 ## 9. 实现期验证点
 
-1. `DeepResearchTaskContext.installId` 来源确认（createDeepResearchTask 的 ActionContext.tokenInstallId）。
-2. push 发送条件：仅任务 SUCCESS，还是需 isLatest=true（建议仅 SUCCESS，与 scan 一致；若旧任务晚完成不发以免重复通知——实现期按产品确认）。
-3. §3.5 notification 开关参数化：确认 scan push 实现是否已落地（本文档依赖它），若 scan push 尚在实现中，两者协调 notiType 扩展的落地顺序。
+1. `DeepResearchTaskContext.installId` 来源确认（createDeepResearchTask 的本次 ActionContext.tokenInstallId）。
+2. §3.5 notification 开关参数化：本文档依赖 scan push 的 notification 模块落地；若 scan push 尚在实现中，两者协调 `NotificationRequest.notiType` 扩展的落地顺序。
