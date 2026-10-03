@@ -1,0 +1,112 @@
+core-api/build.gradle.kts
+  h_b17efd5c751f9f 57-59
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 6,16,51,128-149,166,170
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/install/InstallFetcher.kt
+  h_b17efd5c751f9f 51-52
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/DeepResearchResult.kt
+  h_b17efd5c751f9f 9
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/DeepResearchTaskContext.kt
+  h_b17efd5c751f9f 22-23
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/ScanStatusSnapshot.kt
+  h_b17efd5c751f9f 1-9
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/ScanTaskContext.kt
+  h_b17efd5c751f9f 1-25
+core-api/src/main/kotlin/com/ifmix/core/api/dto/notification/NotiType.kt
+  h_b17efd5c751f9f 1-6
+core-api/src/main/kotlin/com/ifmix/core/api/dto/notification/NotificationContent.kt
+  h_b17efd5c751f9f 1-8
+core-api/src/main/kotlin/com/ifmix/core/api/dto/notification/NotificationRequest.kt
+  h_b17efd5c751f9f 1-10
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/AiTaskErrorCodes.kt
+  h_b17efd5c751f9f 1-13
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/CustomerScanMetrics.kt
+  h_b17efd5c751f9f 20,23-26
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanDeepResearch.kt
+  h_b17efd5c751f9f 35,39
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanRecord.kt
+  h_b17efd5c751f9f 15-16,20-24,48-57
+core-api/src/main/kotlin/com/ifmix/core/api/entity/install/Install.kt
+  h_b17efd5c751f9f 42-53
+core-api/src/main/kotlin/com/ifmix/core/api/infra/push/FcmConfig.kt
+  h_b17efd5c751f9f 1-34
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/AiFacade.kt
+  h_b17efd5c751f9f 6-7,39-50
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/DeepResearchTaskService.kt
+  h_b17efd5c751f9f 5,11-13,25,35,57,75,80,89,99-123
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/ScanTaskService.kt
+  h_b17efd5c751f9f 1-88
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 11-16,19,21,48-272,328-329,467,550
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/CustomerScanMetricsRepository.kt
+  h_b17efd5c751f9f 7,26-66,130
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanRecordRepository.kt
+  h_b17efd5c751f9f 8-11,28,109-162
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiConfig.kt
+  h_b17efd5c751f9f 51-54
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/InstallFacade.kt
+  h_b17efd5c751f9f 9-16,25-42
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/handler/InstallAggHandler.kt
+  h_b17efd5c751f9f 11,45-47,60-66,71,84-87,94-107
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/repo/InstallRepository.kt
+  h_b17efd5c751f9f 4-5,27-35
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/NotificationFacade.kt
+  h_b17efd5c751f9f 1-55
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/NotificationHandler.kt
+  h_b17efd5c751f9f 1-29
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/channel/FcmPushChannel.kt
+  h_b17efd5c751f9f 1-47
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/channel/PushChannel.kt
+  h_b17efd5c751f9f 1-19
+core-api/src/main/resources/application-local.yml
+  h_b17efd5c751f9f 39-42
+core-api/src/main/resources/application-prod.yml
+  h_b17efd5c751f9f 31-35
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 106-110
+core-api/src/main/resources/db/migration/V12__scan_async_notification.sql
+  h_b17efd5c751f9f 1-26
+core-api/src/main/resources/db/migration/V13__deep_research_notification.sql
+  h_b17efd5c751f9f 1-3
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 4,29,31
+core-api/src/main/resources/schema/customer/ai.graphqls
+  h_b17efd5c751f9f 8,10,29,31,93-105,180,231
+core-api/src/main/resources/schema/customer/install.graphqls
+  h_b17efd5c751f9f 22-23
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/AsyncTaskErrorCodesTest.kt
+  h_b17efd5c751f9f 1-39
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/DeepResearchNotificationContentTest.kt
+  h_b17efd5c751f9f 1-90
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/DeepResearchResultTest.kt
+  h_b17efd5c751f9f 22-26,30-31,35,42,47
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/DeepResearchTaskNotificationTest.kt
+  h_b17efd5c751f9f 1-83
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanAsyncQuotaTest.kt
+  h_b17efd5c751f9f 1-106
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanNotificationContentTest.kt
+  h_b17efd5c751f9f 1-77
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationDispatchServiceTest.kt
+  h_b17efd5c751f9f 1-37
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationHandlerTest.kt
+  h_b17efd5c751f9f 1-69
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationTypeRoutingTest.kt
+  h_b17efd5c751f9f 1-44
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/CustomerScanMetricsRepositoryDbTest.kt
+  h_b17efd5c751f9f 72-84
+core-api/src/test/resources/application-test.yml
+  h_b17efd5c751f9f 28-31
+docs/superpowers/specs/2026-10-03-push-feature-flag-design.md
+  h_b17efd5c751f9f 15-24,82-84,86-89,91,93-95,101-107,109-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ffc2edf3acef85491726175405c0b1ce704a55ee",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
