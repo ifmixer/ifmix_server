@@ -34,7 +34,7 @@
 | 6 | latest 判定顺序 | **发起时间最新且成功**：比较用 `(created_at, id)`。旧任务晚完成只存历史，不覆盖 ScanRecord |
 | 7 | 终态更新 | **CAS**：`WHERE id=? AND status=IN_PROGRESS`，仅 affected=1 的赢家执行回写；终态不互相覆盖 |
 | 7b | pointer 并发 | 成功回写时对 scan 行 **`SELECT ... FOR UPDATE`** 串行化（仅锁该行、毫秒级）；锁内读 pointer 比较 (created_at,id)。非业务级锁，不限制并发发起（见 §3.4） |
-| 8 | 僵死 IN_PROGRESS 兜底 | **仅查询惰性判定**（超 10 min 置 FAILED）。「成功才扣」下僵死记录不占配额，不做清理 job |
+| 8 | 僵死 IN_PROGRESS 兜底 | **仅查询惰性判定**（超 **5 min** 置 FAILED）。「成功才扣」下僵死记录不占配额，不做清理 job |
 | 9 | 前端一致性 | **方案 B**：成功后重查权威 ScanRecord，basicResult + premiumResult 均以 API 为准 |
 | 10 | archive | **本期不做**，未来批量打包归档 R2（见 §1.1） |
 
@@ -82,7 +82,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
   → 前端（方案 B，§7）
       mutation → deepResearchId
       轮询 q_ai_getDeepResearchStatus(deepResearchId) 每隔几秒（仅返回状态）
-        - IN_PROGRESS：updated_at 超 10 min → CAS 置 FAILED(TIMEOUT)，返回 FAILED；否则继续轮询
+        - IN_PROGRESS：updated_at 超 5 min → CAS 置 FAILED(TIMEOUT)，返回 FAILED；否则继续轮询
         - FAILED：返回 status + error_code + scanStatus（供补拍提示）
         - SUCCESS：
             → q_ai_findMyScanById(scanRecordId) 取权威 ScanRecord + latestDeepResearch{ premiumResult }
@@ -317,11 +317,25 @@ type ScanDeepResearch {
   - **采用方案**：保留 SQLite/展示层的**本地兼容形状 `deepResearch`**，在 **repository 边界**把 API 的 `latestDeepResearch` 转换为本地 `deepResearch`（给 `LocalScanRecord` 定义明确类型，含 `deepResearch?.premiumResult`）。即 `mergeDeepResearchResult` 这类转换函数要配套扩展 `LocalScanRecord` 类型，消除当前 typecheck 失败。
   - 展示层 `premiumOf` 等消费者**不变**（仍读本地 `deepResearch.premiumResult`）。snake_case 内层键不变。
   - 老本地记录、新 API 响应、现有展示逻辑三者通过"API→本地形状在 repository 边界转换"衔接，不断裂。
-- **SQLite 任务恢复（本期必做）**：
-  - scan 行加 nullable `pendingDeepResearchId`；mutation 成功写入；SUCCESS/FAILED 清空。
-  - 冷启动/回前台有 pending ID 则恢复轮询。
-  - 查询返回 NOT_FOUND：仅把 `pendingDeepResearchId` 置 null，不清空 ScanRecord / 已有 deepResearch。
-  - 后端 (created_at,id)+latest pointer 规则保证旧任务（恢复的 pending）不覆盖更新任务。
+- **单设备禁止重入（产品规则，本期必做）**：
+  - 同一 scan 存在**未终态** DeepResearch 任务时，**禁用「重新深度研究」按钮并显示「分析中」**。
+  - 本地持久化一个 `pendingDeepResearchId`（SQLite，scan 行 nullable 列）：mutation 成功写入；终态时清空。
+  - **本地到期（5 min）不直接放开按钮**，而是先调 `q_ai_getDeepResearchStatus(pendingDeepResearchId)`，让服务端按 `updated_at` 执行惰性 CAS，按返回分支处理：
+
+    | 返回 | 前端动作 |
+    |------|---------|
+    | IN_PROGRESS | 继续 loading、保持禁用（服务端还没到阈值） |
+    | SUCCESS | 先拉权威 ScanRecord → 落 SQLite → 清 pending → 放开 |
+    | FAILED | 清 pending → 放开，允许重试 |
+    | NOT_FOUND | 仅清 pending → 放开（不清空 ScanRecord / 已有 deepResearch） |
+    | 网络错误 | 保留 pending、继续禁用（避免离线时重复创建） |
+
+  - 正常情况前端一直在轮询（几秒一次），通常到不了 5 min 就已拿到 SUCCESS/FAILED；5 min 本地触发器只是兜底。
+  - **单设备单任务规则下，终态无条件清空 pending 成立**，不需要额外的 `clearIfMatches`。
+  - 冷启动/回前台：有 pending ID 则恢复轮询。
+- **此前端规则不替代服务端 `SELECT FOR UPDATE`（§3.4），也不消除跨设备并发**：两台设备可同时为同一 scan 发起、旧客户端/重放/网络重试也可能并发——服务端行锁 + (created_at,id) 比较是并发正确性的唯一保证。前端重入禁用只**降低**「图片 B 配结果 A」概率。
+  - **已知边界（本期接受）**：跨设备并发下，同一 scan 的「图片与当前展示结果版本」可能**短暂错配**。彻底消除需任务级图片快照（本期不做，未来可选）。
+  - 若产品要求"任何设备上同一 scan 同时只能一个任务"，须由**后端创建入口检查并拒绝已有 IN_PROGRESS**，且创建入口要先对超时任务 CAS 为 TIMEOUT——这与当前"允许随时重跑"冲突，**本期不采用**。
 
 ## 8. GraphQL 交付清单（Trusted Documents）
 
@@ -340,14 +354,14 @@ type ScanDeepResearch {
 |------|------|
 | AI 调用抛异常 | CAS 20→40，error_code=AI_FAILED，error_details 存安全摘要（不含栈） |
 | AI scan_status 非 SUCCESS/PARTIAL | CAS 20→40，error_code=AI_STATUS_REJECTED，error_details 含 scan_status |
-| 查询惰性超时 | IN_PROGRESS 且 updated_at 超 10 min → CAS 20→40，error_code=TIMEOUT |
+| 查询惰性超时 | IN_PROGRESS 且 updated_at 超 5 min → CAS 20→40，error_code=TIMEOUT |
 | 重复终结 | CAS affected=0 → 放弃后续（不重复扣配额/回写） |
 | 旧任务晚完成 | CAS 置 SUCCESS 存历史，(created_at,id) 未命中则不动 scan_record、不扣配额 |
 | owner-scoped | 创建、查询均校验 projectId+customerId；非本人 NOT_FOUND |
 | 对外错误 | 只回 error_code + 安全文案 +（补拍场景）scan_status；内部异常不外泄 |
 | **executor 提交失败**（P1#5） | `executor.execute()` 在关闭/资源拒绝时抛错，此时记录已 IN_PROGRESS。**mutation 捕获该异常 → 短事务 CAS 20→40，error_code=TASK_SUBMISSION_FAILED**，并**仍返回 deepResearchId + 终态 status(40)**（前端能据此显示失败/重试，不会拿不到 id 无法恢复） |
 
-**进程内执行器的限制（本期明确接受）**：进程崩溃时，已拿到 deepResearchId 的客户端由既有**惰性超时**（§3.3，超 10 min 置 FAILED）回收；无客户端轮询的僵死记录因「成功才扣」不占配额，放着无害。**本期不做**服务重启自动续跑（那需要持久队列或扫 IN_PROGRESS 的 job）。错误码新增 `TASK_SUBMISSION_FAILED`（连同 AI_FAILED/AI_STATUS_REJECTED/TIMEOUT）。
+**进程内执行器的限制（本期明确接受）**：进程崩溃时，已拿到 deepResearchId 的客户端由既有**惰性超时**（§3.3，超 5 min 置 FAILED）回收；无客户端轮询的僵死记录因「成功才扣」不占配额，放着无害。**本期不做**服务重启自动续跑（那需要持久队列或扫 IN_PROGRESS 的 job）。错误码新增 `TASK_SUBMISSION_FAILED`（连同 AI_FAILED/AI_STATUS_REJECTED/TIMEOUT）。
 
 ## 10. 测试计划（非框架、最小可运行校验）
 
