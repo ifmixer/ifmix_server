@@ -1,0 +1,22 @@
+scripts/restart.sh
+  h_b17efd5c751f9f 8,12-13,16
+core-api/src/main/resources/application-local.yml
+  h_b17efd5c751f9f 10,13
+core-api/src/main/kotlin/com/ifmix/core/api/infra/push/FirebaseAppRegistry.kt
+  h_b17efd5c751f9f 3,13-14
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/channel/FcmPushChannel.kt
+  h_b17efd5c751f9f 45-50
+core-api/src/test/kotlin/com/ifmix/core/api/modules/notification/FcmLiveSmokeTest.kt
+  h_b17efd5c751f9f 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "254e4026e9aab4271c203ada68fe6150e1be6bf7",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
