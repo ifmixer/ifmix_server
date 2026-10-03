@@ -1,0 +1,52 @@
+core-api/src/main/resources/application-local.yml
+  h_b17efd5c751f9f 10
+core-api/src/main/kotlin/com/ifmix/core/api/infra/push/FirebaseAppRegistry.kt
+  h_b17efd5c751f9f 53,63-80
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/DeepResearchTaskService.kt
+  h_b17efd5c751f9f 75-76,95,97,102-123
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/ScanTaskService.kt
+  h_b17efd5c751f9f 51-52,65,67,72-93
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 47,51-58,203-218,243-245,265-267,281-290
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/NotificationFacade.kt
+  h_b17efd5c751f9f 32
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/channel/FcmPushChannel.kt
+  h_b17efd5c751f9f 22-23,27,33-34,44,47,49,56,58
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/channel/PushChannel.kt
+  h_b17efd5c751f9f 30
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 11-16
+core-api/src/test/kotlin/com/ifmix/api/core/modules/TrustedInstallIdWriteTest.kt
+  h_b17efd5c751f9f 143
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/DeepResearchNotificationContentTest.kt
+  h_b17efd5c751f9f 38,76-77,81
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/PushFeatureFlagPropagationTest.kt
+  h_b17efd5c751f9f 53
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanAsyncQuotaTest.kt
+  h_b17efd5c751f9f 49
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanBatchUpdateTest.kt
+  h_b17efd5c751f9f 73
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCollectedTest.kt
+  h_b17efd5c751f9f 43
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCountersTest.kt
+  h_b17efd5c751f9f 56
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanNotificationContentTest.kt
+  h_b17efd5c751f9f 39,77-101
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanOwnerScopeTest.kt
+  h_b17efd5c751f9f 68
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationDispatchServiceTest.kt
+  h_b17efd5c751f9f 33
+core-api/src/test/kotlin/com/ifmix/core/api/modules/notification/FcmLiveSmokeTest.kt
+  h_b17efd5c751f9f 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50fafb9535dd7b74e2f33e29bd31c72a20bf16d5",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
