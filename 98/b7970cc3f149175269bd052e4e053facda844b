@@ -1,0 +1,14 @@
+docs/superpowers/specs/2026-10-03-scan-async-notification-push-design.md
+  h_b17efd5c751f9f 23-26,28,58-65,67-72,79,82-83,85,87,89,91-131,139-143,147,149-167,171,175,177-179,181,185-186,188,190-197,221-239,246,256-258,264-271,274,279-298,302-303,306-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "98b7970cc3f149175269bd052e4e053facda844b",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
