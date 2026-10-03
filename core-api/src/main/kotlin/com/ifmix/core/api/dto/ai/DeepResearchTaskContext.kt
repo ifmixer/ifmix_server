@@ -19,6 +19,8 @@ data class DeepResearchTaskContext(
     val currency: String?,
     val promptVersion: String,
     val createdAt: Instant,
+    /** 发起本次 DeepResearch 请求的 install；不能从 scan 原始 install 推断。 */
+    val installId: UUID? = null,
 ) {
     data class ImageRefItem(val key: String, val category: Int?)
 }

@@ -32,11 +32,11 @@ interface ScanDeepResearch : BaseProjectEntity {
     /** 任务状态，码表见 [DeepResearchStatuses]（旧数据回填 30=SUCCESS）。 */
     val status: Int
 
-    /** 稳定错误码，码表见 [DeepResearchErrorCodes]；仅 FAILED 时非空。 */
+    /** 稳定错误码，码表见 [AiTaskErrorCodes]；仅 FAILED 时非空。 */
     @Column(name = "error_code")
     val errorCode: String?
 
-    /** 结构化失败详情（AI_STATUS_REJECTED 时含 scan_status 供补拍提示）；不含内部异常栈。 */
+    /** 结构化技术失败详情；不含内部异常栈，AI 业务 status 保存在 basic_result。 */
     @Serialized
     @Column(name = "error_details")
     val errorDetails: Map<String, Any?>?

@@ -54,6 +54,9 @@ dependencies {
 
     // === Jimmer + PostgreSQL ===
     val jimmerVersion = rootProject.extra["jimmerVersion"] as String
+    // Firebase Cloud Messaging（版本固定，local/test 由 no-op channel 装配）
+    implementation("com.google.firebase:firebase-admin:9.7.0")
+
     implementation("org.babyfish.jimmer:jimmer-spring-boot-starter:$jimmerVersion")
     implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
     ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")

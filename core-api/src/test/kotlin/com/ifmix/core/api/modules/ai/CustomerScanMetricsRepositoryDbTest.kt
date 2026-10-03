@@ -69,4 +69,17 @@ class CustomerScanMetricsRepositoryDbTest {
         assertThat(repo.addCounts(mc(), PROJECT, b, 2, 1)).isEqualTo(1)
         assertThat(repo.findCounts(mc(), PROJECT, b)).isEqualTo(2 to 1)
     }
+    @Test
+    fun `pending reservation prevents oversubscription and settles exactly once`() {
+        val customer = UUID.randomUUID()
+
+        assertThat(repo.reserveScan(mc(), PROJECT, customer, 1)).isEqualTo(1)
+        assertThat(repo.reserveScan(mc(), PROJECT, customer, 1)).isEqualTo(0)
+        assertThat(repo.releaseScan(mc(), PROJECT, customer)).isEqualTo(1)
+        assertThat(repo.releaseScan(mc(), PROJECT, customer)).isEqualTo(0)
+        assertThat(repo.reserveScan(mc(), PROJECT, customer, 1)).isEqualTo(1)
+        assertThat(repo.completeScan(mc(), PROJECT, customer)).isEqualTo(1)
+        assertThat(repo.completeScan(mc(), PROJECT, customer)).isEqualTo(0)
+        assertThat(repo.findCounts(mc(), PROJECT, customer)).isEqualTo(1 to 0)
+    }
 }

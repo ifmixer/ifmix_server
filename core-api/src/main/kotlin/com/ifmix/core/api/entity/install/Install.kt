@@ -39,4 +39,16 @@ interface Install : BaseProjectEntity {
 
     @Column(name = "fcm_token")
     val fcmToken: String?
+
+    /** 用户是否允许 scan 完成通知；默认开启。 */
+    @Column(name = "scan_result_noti_enabled")
+    val scanResultNotiEnabled: Boolean
+
+    /** 最近一次 direct FCM token 是否仍有效；失效时保留 token 并回退 topic。 */
+    @Column(name = "fcm_token_valid")
+    val fcmTokenValid: Boolean
+
+    /** 用户是否允许 DeepResearch 完成通知；默认开启。 */
+    @Column(name = "deep_research_noti_enabled")
+    val deepResearchNotiEnabled: Boolean
 }

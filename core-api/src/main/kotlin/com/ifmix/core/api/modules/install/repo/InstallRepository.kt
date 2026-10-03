@@ -1,6 +1,8 @@
 package com.ifmix.core.api.modules.install.repo
 
 import com.ifmix.core.api.entity.install.Install
+import com.ifmix.core.api.entity.install.fcmToken
+import com.ifmix.core.api.entity.install.fcmTokenValid
 import com.ifmix.core.api.entity.install.id
 import com.ifmix.core.api.entity.install.projectId
 import com.ifmix.core.api.infra.db.ModuleCtx
@@ -22,4 +24,13 @@ open class InstallRepository {
             where(table.id eq id)
             select(table)
         }.limit(1).execute().firstOrNull()
+
+    /** 仅当数据库仍持有发送时的旧 token 才标记失效，避免 token 轮换竞态误伤。 */
+    fun invalidateFcmToken(mc: ModuleCtx, projectId: String, installId: UUID, sentToken: String): Int =
+        mc.sql.createUpdate(Install::class) {
+            where(table.projectId eq projectId)
+            where(table.id eq installId)
+            where(table.fcmToken eq sentToken)
+            set(table.fcmTokenValid, false)
+        }.execute()
 }

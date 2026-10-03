@@ -28,6 +28,11 @@ spring:
           model: ${SPRING_AI_OPENAI_MODEL}
 
 app:
+  noti:
+    fcm:
+      enabled: ${APP_NOTI_FCM_ENABLED:true}
+      credentials-json: ${FIREBASE_CREDENTIALS_JSON:}
+
   auth:
     # 生产签发私钥（Ed25519 JWK JSON）——必须环境变量注入，绝不写死进 repo。
     jwt-private-key: ${AUTH_JWT_PRIVATE_KEY}

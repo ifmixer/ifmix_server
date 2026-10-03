@@ -12,6 +12,16 @@
 
 **不引入后端 Firebase Remote Config**（原方案的 Server-side RC + 缓存全部去掉）。Firebase Remote Config 作为**前端**未来的切换点：以后要动态/灰度时，前端 OTA 一版把 hard code 常量换成读 RC，**后端传参链路不变**。
 
+### 1.1 能力边界（必须说清——这不是后端 kill switch）
+
+本期开关是 **"当前前端 JS bundle 对新建任务的 push enrollment 标记"**，**不是**后端权威的运营即时关停开关。具体地，OTA 里把常量改成 `false` **不能**立即/追溯阻断以下情况的 push：
+- **已创建但未完成的任务**：后端已在 TaskContext 快照了创建时的旧 flag 值；
+- **未拉到该 OTA 的离线用户**；
+- **未重启到新 JS bundle 的用户**（旧 runtime）；
+- **被修改的客户端**主动传 `featureFlags.*PushEnabled=true` 的请求。
+
+它只影响"安装了该 OTA 的客户端**新发起**的任务是否请求 push"。这不是安全漏洞——用户最多影响自己发起任务是否收到通知；但它**不能承担运营安全阀/可信灰度/按用户规则控制**的职责。如未来需要这些能力，再增加**后端权威配置源**（如 Server-side Remote Config）。
+
 ## 2. 方案与控制模型
 
 ```
@@ -69,25 +79,56 @@ input RunDeepResearchInput {
 
 ### 4.3 发 push 前判断（业务方）
 
-- `ScanTaskService.doRun` 成功回写后、发 push 前：
+**用 `if` 包裹发送，不要用 `if (!flag) return` 跳出整个成功流程**（前端 agent #5）——否则日后在发 push 后新增的成功日志/指标/清理逻辑会被一起跳过。gate 只应包住"发 push"这一件事。
+
+- `ScanTaskService.doRun` 成功回写（`finalized=true`）后：
   ```kotlin
-  if (!ctx.scanResultPushEnabled) return   // flag off：不发（scan 已 SUCCESS，不受影响）
-  ...notificationFacade.sendToInstall(...)
+  if (ctx.scanResultPushEnabled) {
+      scanAggHandler.buildScanNotificationRequest(ctx, basicResult)?.let(notificationFacade::sendToInstall)
+  }
+  // 此处之后若有其它成功后逻辑，不受 flag 影响
   ```
-- `DeepResearchTaskService.doRun` finalized=true 分支内、发 push 前：
+- `DeepResearchTaskService.doRun` 的 `finalized=true` 分支内：
   ```kotlin
-  if (!ctx.deepResearchPushEnabled) return
-  ...
+  if (ctx.deepResearchPushEnabled) {
+      // 组装 NotificationRequest 并 sendToInstall
+  }
   ```
 - flag 判断在**业务方**（与依赖文档一致，notification 模块保持中立）。
 
 ## 5. 前端设计（供前端 agent review）
 
-- 两个 flag **hard code 为常量**（如 `features/push/flags.ts` 的 `SCAN_RESULT_PUSH_ENABLED` / `DEEP_RESEARCH_PUSH_ENABLED`），Expo OTA 更新该文件即可开关。
+### 5.1 hard code 常量（含首发值，前端 agent #2）
+
+`features/push/flags.ts`，**首发默认 false**，验证完整链路后再 OTA 改 true（这是本方案唯一真正可控的渐进发布方式）：
+```ts
+export const SCAN_RESULT_PUSH_ENABLED = false;
+export const DEEP_RESEARCH_PUSH_ENABLED = false;
+```
 - createScan / runDeepResearch 调用时，把对应常量放进 `featureFlags` input 传后端。
-- flag off 时前端行为（与依赖文档的授权/开关交互叠加）：
-  - 不显示对应"结果通知"开关、不请求通知权限、不引导设置 user 开关（flag off 功能整体不对用户暴露）。
-- **Firebase Remote Config（未来切换点，本期仅接入 SDK 占位，可选）**：以后要动态/灰度时，把 hard code 常量替换为从 RC 读取的值，OTA 发布；mutation 传参结构不变。本期是否现在就装 RC SDK 由前端决定（不装也不阻塞——flag 先纯 hard code）。
+
+### 5.2 全前端入口都受同一 flag gate（前端 agent #3，不可绕过）
+
+当前存在多个 push/权限路径，**每一处都必须受 flag gate**，不能有旁路：
+
+| 入口 | gate 条件 |
+|------|-----------|
+| scan 发起（开关可见/触发授权/弹通知说明） | `SCAN_RESULT_PUSH_ENABLED === true` |
+| DeepResearch 发起（同上） | `DEEP_RESEARCH_PUSH_ENABLED === true` |
+| 设置页 scan 通知开关可见 | `SCAN_RESULT_PUSH_ENABLED === true` |
+| 设置页 DeepResearch 通知开关可见 | `DEEP_RESEARCH_PUSH_ENABLED === true` |
+| `usePushRegistration` 的 Superwall ACTIVE 边沿 | 不得绕过——scan flag=false 时不弹 scan 通知说明/不请求系统授权 |
+| 系统注册（token/FID/install topic 上报） | **至少一个** push flag 开启 **且** 用户实际允许对应功能 |
+
+- **不复制两套 token/FID/topic 注册流程**：两功能**共享**设备级系统授权与 FCM 注册，仅 Install 的 user preference（`scan_result_noti_enabled`/`deep_research_noti_enabled`）分开。
+- flag off → 对应功能整体不对用户暴露（不显示开关、不请求权限、不引导设置 user 开关）。
+
+### 5.3 Firebase Remote Config：本期不接入（前端 agent #4）
+
+`@react-native-firebase/remote-config` 虽已在 package.json，但本期**不 import、不初始化、不 fetch、不缓存**；后端**不**新增任何 Firebase Admin Remote Config 依赖/配置/服务。现在做"SDK 占位"无运行价值、反而混淆当前权威来源（当前权威就是 hard code 常量）。未来切换时 OTA 把常量读取改为 RC store 即可。
+
+### 5.4 交付
+
 - `_API_ENTRIES` / schema 类型 / persisted-query：createScan、runDeepResearch 的 input 增加 `featureFlags`。
 
 ## 6. 分层落点

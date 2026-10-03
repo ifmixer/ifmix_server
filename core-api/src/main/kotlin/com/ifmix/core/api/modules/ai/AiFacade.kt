@@ -3,6 +3,8 @@ package com.ifmix.core.api.modules.ai
 import com.ifmix.core.api.dto.ai.AiScanResult
 import com.ifmix.core.api.dto.ai.DeepResearchTaskContext
 import com.ifmix.core.api.dto.common.Page
+import com.ifmix.core.api.dto.ai.ScanStatusSnapshot
+import com.ifmix.core.api.dto.ai.ScanTaskContext
 import com.ifmix.core.api.generated.types.CommonFindOptions
 import com.ifmix.core.api.generated.types.NewScanInput
 import com.ifmix.core.api.generated.types.RunDeepResearchInput
@@ -34,6 +36,18 @@ class AiFacade(
     /** DB 写入在事务内，返回 scanId（调用方事务外重查全字段 ScanRecord） */
     fun saveScanRecord(actionCtx: ActionContext, result: AiScanResult): UUID =
         scanHandler.saveNewScan(mcFactory.forProject(actionCtx), result)
+    /** mutation 事务内：清理 stale、预留 quota、创建 IN_PROGRESS 记录。 */
+    fun createScanTask(actionCtx: ActionContext, input: NewScanInput): ScanTaskContext =
+        scanHandler.createScanTask(mcFactory.forProject(actionCtx), input)
+
+    /** 轮询状态，包含 owner 校验和惰性超时。 */
+    fun getScanStatus(actionCtx: ActionContext, scanId: UUID): ScanStatusSnapshot =
+        scanHandler.getScanStatus(mcFactory.forProject(actionCtx), scanId)
+
+    /** executor 提交失败或后台异常时终结 scan。 */
+    fun casScanFailed(actionCtx: ActionContext, ctx: ScanTaskContext, errorCode: String, details: Map<String, Any?>?): Boolean =
+        scanHandler.casScanFailed(mcFactory.forProject(actionCtx), ctx, errorCode, details)
+
 
     // ==================== DeepResearch 异步任务（设计 §3.3/§8） ====================
 

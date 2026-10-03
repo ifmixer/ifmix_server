@@ -5,6 +5,10 @@ import com.ifmix.core.api.entity.ai.ScanDeepResearch
 import com.ifmix.core.api.entity.ai.ScanRecord
 import com.ifmix.core.api.entity.ai.ImageRef
 import com.ifmix.core.api.entity.ai.ScanRecordProps
+import com.ifmix.core.api.entity.ai.ScanStatuses
+import com.ifmix.core.api.entity.ai.errorCode
+import com.ifmix.core.api.entity.ai.errorDetails
+import com.ifmix.core.api.entity.ai.status
 import com.ifmix.core.api.entity.ai.projectId
 import com.ifmix.core.api.entity.ai.basicResult
 import com.ifmix.core.api.entity.ai.collected
@@ -21,6 +25,7 @@ import com.ifmix.core.api.entity.ai.userDisplayName
 import com.ifmix.core.api.entity.ai.userNotes
 import com.ifmix.core.api.generated.types.CommonFindOptions
 import com.ifmix.core.api.generated.types.ScanUnsetField
+import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import com.ifmix.core.api.generated.types.UpdateScanInput
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
@@ -100,6 +105,60 @@ class ScanRecordRepository(dataSource: DataSource) {
             where(table.id eq id)
             select(table)
         }.limit(1).execute().firstOrNull()
+
+    fun insert(mc: ModuleCtx, entity: ScanRecord): Boolean = tpl.save(mc, entity)
+
+    /** IN_PROGRESS -> SUCCESS，并写入本次 AI basicResult。 */
+    fun casSuccess(
+        mc: ModuleCtx,
+        projectId: String,
+        customerId: UUID,
+        scanId: UUID,
+        basicResult: Map<String, Any?>?,
+    ): Int = mc.sql.createUpdate(ScanRecord::class) {
+        where(table.projectId eq projectId)
+        where(table.customerId eq customerId)
+        where(table.id eq scanId)
+        where(table.status eq ScanStatuses.IN_PROGRESS)
+        set(table.status, ScanStatuses.SUCCESS)
+        set(table.basicResult, basicResult)
+        set(table.errorCode, null as String?)
+        set(table.errorDetails, null as Map<String, Any?>?)
+        set(table.updatedAt, Instant.now())
+    }.execute()
+
+    /** IN_PROGRESS -> FAILED，并写入稳定技术错误码。 */
+    fun casFailed(
+        mc: ModuleCtx,
+        projectId: String,
+        customerId: UUID,
+        scanId: UUID,
+        errorCode: String,
+        errorDetails: Map<String, Any?>?,
+    ): Int = mc.sql.createUpdate(ScanRecord::class) {
+        where(table.projectId eq projectId)
+        where(table.customerId eq customerId)
+        where(table.id eq scanId)
+        where(table.status eq ScanStatuses.IN_PROGRESS)
+        set(table.status, ScanStatuses.FAILED)
+        set(table.errorCode, errorCode)
+        set(table.errorDetails, errorDetails)
+        set(table.updatedAt, Instant.now())
+    }.execute()
+
+    /** 创建端惰性清理本 customer 已超过观察期限的进行中任务。 */
+    fun findStaleInProgress(
+        mc: ModuleCtx,
+        projectId: String,
+        customerId: UUID,
+        cutoff: Instant,
+    ): List<UUID> = mc.sql.createQuery(ScanRecord::class) {
+        where(table.projectId eq projectId)
+        where(table.customerId eq customerId)
+        where(table.status eq ScanStatuses.IN_PROGRESS)
+        where(table.updatedAt lt cutoff)
+        select(table.id)
+    }.execute()
 
     /** owner-scoped 存在性判断（不加载大字段）。 */
     fun existsOwned(mc: ModuleCtx, projectId: String, customerId: UUID, id: UUID): Boolean =

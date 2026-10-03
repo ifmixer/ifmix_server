@@ -8,10 +8,17 @@ import com.ifmix.core.api.dto.ai.AiScanResult
 import com.ifmix.core.api.dto.ai.DeepResearchResult
 import com.ifmix.core.api.dto.ai.DeepResearchTaskContext
 import com.ifmix.core.api.dto.ai.ScanInput
+import com.ifmix.core.api.dto.ai.ScanStatusSnapshot
+import com.ifmix.core.api.dto.ai.ScanTaskContext
+import com.ifmix.core.api.dto.notification.NotificationContent
+import com.ifmix.core.api.dto.notification.NotificationRequest
+import com.ifmix.core.api.dto.notification.NotiType
+import org.slf4j.LoggerFactory
 import com.ifmix.core.api.dto.ai.ScanMediaItem
 import com.ifmix.core.api.dto.common.Page
-import com.ifmix.core.api.entity.ai.DeepResearchErrorCodes
+import com.ifmix.core.api.entity.ai.AiTaskErrorCodes
 import com.ifmix.core.api.entity.ai.DeepResearchStatuses
+import com.ifmix.core.api.entity.ai.ScanStatuses
 import com.ifmix.core.api.entity.ai.ScanDeepResearch
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.db.UuidV7
@@ -38,6 +45,231 @@ class ScanAggHandler(
     private val scanMetricsRepo: com.ifmix.core.api.modules.ai.repo.CustomerScanMetricsRepository,
     private val scanQuota: com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
+
+    /** 创建事务内：清理 stale 任务、预留额度并写入 IN_PROGRESS scan。 */
+    fun createScanTask(sc: ModuleCtx, input: NewScanInput): ScanTaskContext {
+        val projectId = sc.action.mustGetProjectId()
+        val customerId = sc.action.mustGetActorId()
+        val installId = sc.action.mustGetTokenInstallId()
+        val now = Instant.now()
+        cleanupStaleScans(sc, projectId, customerId, now.minusSeconds(STALE_IN_PROGRESS_SEC))
+        if (scanMetricsRepo.reserveScan(sc, projectId, customerId, scanQuota.scan) != 1) {
+            throw com.ifmix.core.api.infra.http.ApiError(
+                com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "scan quota exhausted",
+            )
+        }
+
+        val scanId = UuidV7.generate()
+        val images = input.images.map {
+            ScanTaskContext.ImageRefItem(it.imageKey, it.category ?: ImageCategories.MAIN, it.mediaType)
+        }
+        val record = ScanRecord {
+            id = scanId
+            this.projectId = projectId
+            this.images = images.map { ImageRef(it.imageKey, it.category ?: ImageCategories.MAIN) }
+            this.basicResult = null
+            this.latestDeepResearchId = null
+            this.status = ScanStatuses.IN_PROGRESS
+            this.errorCode = null
+            this.errorDetails = null
+            this.clientIp = sc.action.clientIp
+            this.customerId = customerId
+            this.installId = installId
+            this.locale = sc.action.locale
+            this.country = sc.action.country
+            this.currency = sc.action.currency
+            this.userDisplayName = null
+            this.userNotes = null
+            this.collected = input.collected ?: false
+            this.isPublic = true
+            this.hasDeepSearch = false
+            this.promptVersion = scanPrompt.promptVersion
+            this.createdAt = now
+            this.updatedAt = now
+        }
+        if (!scanRepo.insert(sc, record)) {
+            throw com.ifmix.core.api.infra.http.ApiError(
+                com.ifmix.core.api.infra.http.ErrorCode.INTERNAL, "failed to create scan record",
+            )
+        }
+        return ScanTaskContext(
+            projectId = projectId,
+            customerId = customerId,
+            installId = installId,
+            scanId = scanId,
+            locale = sc.action.locale,
+            country = sc.action.country,
+            currency = sc.action.currency,
+            images = images,
+            collected = input.collected ?: false,
+            promptVersion = scanPrompt.promptVersion,
+            createdAt = now,
+        )
+    }
+
+    /** 后台任务使用的 AI 输入构造，不依赖请求线程上下文。 */
+    fun buildScanInput(ctx: ScanTaskContext): ScanInput = ScanInput(
+        scanId = ctx.scanId,
+        items = ctx.images.map {
+            ScanMediaItem(
+                imageUrl = objectStorage.getPublicUrl("ugc", it.imageKey),
+                mediaType = guessMediaType(it.imageKey, it.mediaType),
+            )
+        },
+        locale = ctx.locale,
+        country = ctx.country,
+        currency = ctx.currency,
+    )
+
+    /** AI 正常返回即任务成功，AI 业务 status 原样存入 basicResult。 */
+    fun finalizeScanSuccess(sc: ModuleCtx, ctx: ScanTaskContext, basicResult: Map<String, Any?>?): Boolean {
+        if (scanRepo.casSuccess(sc, ctx.projectId, ctx.customerId, ctx.scanId, basicResult) != 1) return false
+        if (scanMetricsRepo.completeScan(sc, ctx.projectId, ctx.customerId) != 1) {
+            throw com.ifmix.core.api.infra.http.ApiError(
+                com.ifmix.core.api.infra.http.ErrorCode.INTERNAL,
+                "scan reservation ledger is inconsistent: scanId=${ctx.scanId}",
+            )
+        }
+        return true
+    }
+
+    /** 技术失败终结任务；CAS 未赢时绝不释放其它路径的 reservation。 */
+    fun casScanFailed(
+        sc: ModuleCtx,
+        ctx: ScanTaskContext,
+        errorCode: String,
+        errorDetails: Map<String, Any?>?,
+    ): Boolean {
+        if (scanRepo.casFailed(sc, ctx.projectId, ctx.customerId, ctx.scanId, errorCode, errorDetails) != 1) return false
+        if (scanMetricsRepo.releaseScan(sc, ctx.projectId, ctx.customerId) != 1) {
+            throw com.ifmix.core.api.infra.http.ApiError(
+                com.ifmix.core.api.infra.http.ErrorCode.INTERNAL,
+                "scan reservation ledger is inconsistent: scanId=${ctx.scanId}",
+            )
+        }
+        return true
+    }
+
+    /** 查询端惰性超时：CAS 赢得终态后才释放 reservation，再读取最新状态。 */
+    fun getScanStatus(sc: ModuleCtx, scanId: UUID): ScanStatusSnapshot {
+        val projectId = sc.action.mustGetProjectId()
+        val customerId = sc.action.mustGetActorId()
+        var record = scanRepo.findByIdOwned(sc, projectId, customerId, scanId)
+            ?: throw com.ifmix.core.api.infra.http.ApiError(com.ifmix.core.api.infra.http.ErrorCode.NOT_FOUND)
+        if (record.status == ScanStatuses.IN_PROGRESS && record.updatedAt.isBefore(Instant.now().minusSeconds(STALE_IN_PROGRESS_SEC))) {
+            val ctx = ScanTaskContext(
+                projectId = projectId,
+                customerId = customerId,
+                installId = record.installId,
+                scanId = scanId,
+                locale = record.locale,
+                country = record.country,
+                currency = record.currency,
+                images = record.images.map { ScanTaskContext.ImageRefItem(it.key, it.category, null) },
+                collected = record.collected,
+                promptVersion = record.promptVersion,
+                createdAt = record.createdAt,
+            )
+            casScanFailed(sc, ctx, AiTaskErrorCodes.TIMEOUT, null)
+            record = scanRepo.findByIdOwned(sc, projectId, customerId, scanId) ?: record
+        }
+        return ScanStatusSnapshot(record.id, record.status, record.errorCode)
+    }
+
+    fun buildScanNotificationRequest(
+        ctx: ScanTaskContext,
+        basicResult: Map<String, Any?>?,
+    ): NotificationRequest? {
+        val installId = ctx.installId ?: return null
+        return NotificationRequest(
+            projectId = ctx.projectId,
+            installId = installId,
+            notiType = NotiType.SCAN_RESULT,
+            content = buildScanNotificationContent(ctx, basicResult),
+        )
+    }
+
+    private fun cleanupStaleScans(sc: ModuleCtx, projectId: String, customerId: UUID, cutoff: Instant) {
+        scanRepo.findStaleInProgress(sc, projectId, customerId, cutoff).forEach { staleId ->
+            val record = scanRepo.findByIdOwned(sc, projectId, customerId, staleId) ?: return@forEach
+            val staleCtx = ScanTaskContext(
+                projectId = projectId,
+                customerId = customerId,
+                installId = record.installId,
+                scanId = staleId,
+                locale = record.locale,
+                country = record.country,
+                currency = record.currency,
+                images = record.images.map { ScanTaskContext.ImageRefItem(it.key, it.category, null) },
+                collected = record.collected,
+                promptVersion = record.promptVersion,
+                createdAt = record.createdAt,
+            )
+            casScanFailed(sc, staleCtx, AiTaskErrorCodes.TIMEOUT, null)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun buildScanNotificationContent(ctx: ScanTaskContext, basicResult: Map<String, Any?>?): NotificationContent {
+        val status = ((basicResult?.get("scan_status") as? Map<String, Any?>)?.get("status") as? String)
+            ?.trim()?.uppercase()
+        val name = ((basicResult?.get("object_overview") as? Map<String, Any?>)?.get("name") as? String)
+            ?.trim()?.takeIf { it.isNotEmpty() }
+        val advice = status == "INSUFFICIENT_IMAGE" || status == "NON_PHYSICAL_SUBJECT"
+        val locale = ctx.locale.orEmpty().lowercase()
+        val (title, body) = when {
+            locale.startsWith("zh") && advice -> "扫描已完成" to "点击查看拍摄建议"
+            locale.startsWith("zh") -> "扫描已完成" to (name?.let { "“$it”扫描已完成，点击查看结果" } ?: "点击查看扫描结果")
+            locale.startsWith("ja") && advice -> "スキャンが完了しました" to "撮影のアドバイスを確認してください"
+            locale.startsWith("ja") -> "スキャンが完了しました" to (name?.let { "$it の結果を確認できます" } ?: "結果を確認できます")
+            advice -> "Scan complete" to "Tap to view photo guidance"
+            else -> "Scan complete" to (name?.let { "Your scan of $it is ready" } ?: "Your scan result is ready")
+        }
+        val imageUrl = ctx.images.firstOrNull { it.category == ImageCategories.MAIN }?.let {
+            runCatching { objectStorage.getPublicUrl("ugc", it.imageKey) }
+                .onFailure { error -> log.warn("Scan notification image URL unavailable. scanId={}", ctx.scanId, error) }
+                .getOrNull()
+        }
+        return NotificationContent(
+            title = title,
+            body = body,
+            imageUrl = imageUrl,
+            link = "/p/${ctx.projectId}/scan-result/${ctx.scanId}",
+        )
+    }
+    @Suppress("UNCHECKED_CAST")
+    fun buildDeepResearchNotificationContent(
+        ctx: DeepResearchTaskContext,
+        result: DeepResearchResult,
+    ): NotificationContent {
+        val status = result.status
+        val name = ((result.basicResult?.get("object_overview") as? Map<String, Any?>)?.get("name") as? String)
+            ?.trim()?.takeIf { it.isNotEmpty() }
+        val advice = status == "INSUFFICIENT_IMAGE" || status == "NON_PHYSICAL_SUBJECT"
+        val locale = ctx.locale.orEmpty().lowercase()
+        val (title, body) = when {
+            locale.startsWith("zh") && advice -> "深度研究已完成" to "点击查看拍摄建议"
+            locale.startsWith("zh") -> "深度研究已完成" to (name?.let { "“$it”深度研究已完成，点击查看报告" } ?: "点击查看深度研究报告")
+            locale.startsWith("ja") && advice -> "深度研究が完了しました" to "撮影のアドバイスを確認してください"
+            locale.startsWith("ja") -> "深度研究が完了しました" to (name?.let { "$it のレポートを確認できます" } ?: "レポートを確認できます")
+            advice -> "Deep research complete" to "Tap to view photo guidance"
+            else -> "Deep research complete" to (name?.let { "Your deep research of $it is ready" } ?: "Your deep research report is ready")
+        }
+        val imageUrl = ctx.images.firstOrNull { it.category == ImageCategories.MAIN }?.let {
+            runCatching { objectStorage.getPublicUrl("ugc", it.key) }
+                .onFailure { error -> log.warn("DeepResearch notification image URL unavailable. deepResearchId={}", ctx.deepResearchId, error) }
+                .getOrNull()
+        }
+        return NotificationContent(
+            title = title,
+            body = body,
+            imageUrl = imageUrl,
+            link = "/p/${ctx.projectId}/scan-result/${ctx.scanRecordId}",
+        )
+    }
+
+
     /** 外部 AI 调用（无事务）— 解析 images、运行 AI、返回结果 DTO */
     fun runAiScan(mc: ModuleCtx, input: NewScanInput): AiScanResult {
         val actionCtx = mc.action
@@ -93,6 +325,8 @@ class ScanAggHandler(
             this.projectId = result.projectId
             this.images = result.images.map { ImageRef(key = it.imageKey, category = it.category ?: ImageCategories.MAIN) }
             this.basicResult = result.basicResult
+            this.errorCode = null
+            this.errorDetails = null
             this.status = com.ifmix.core.api.entity.ai.ScanStatuses.READY
             this.clientIp = result.clientIp
             this.customerId = sc.action.actorId
@@ -230,6 +464,7 @@ class ScanAggHandler(
             currency = scan.currency,
             promptVersion = scanPrompt.promptVersion,
             createdAt = now,
+            installId = sc.action.tokenInstallId,
         )
     }
 
@@ -312,7 +547,7 @@ class ScanAggHandler(
         if (dr.status != DeepResearchStatuses.IN_PROGRESS) return dr
         val staleCutoff = Instant.now().minusSeconds(STALE_IN_PROGRESS_SEC)
         if (!dr.updatedAt.isBefore(staleCutoff)) return dr
-        casDeepResearchFailed(sc, deepResearchId, DeepResearchErrorCodes.TIMEOUT, null)
+        casDeepResearchFailed(sc, deepResearchId, AiTaskErrorCodes.TIMEOUT, null)
         return deepResearchRepo.findById(sc, projectId, deepResearchId) ?: dr
     }
 

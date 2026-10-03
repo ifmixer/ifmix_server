@@ -3,6 +3,7 @@ package com.ifmix.core.api.bff.graphql.customer.ai
 import com.ifmix.core.api.generated.types.DeleteScanResult
 import com.ifmix.core.api.generated.types.NewScanInput
 import com.ifmix.core.api.generated.types.NewScanResult
+import com.ifmix.core.api.generated.types.ScanStatus
 import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.generated.types.UpdateScanInput
 import com.ifmix.core.api.generated.types.UpdateScanResult
@@ -12,7 +13,7 @@ import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
-import com.ifmix.core.api.entity.ai.DeepResearchErrorCodes
+import com.ifmix.core.api.entity.ai.AiTaskErrorCodes
 import com.ifmix.core.api.entity.ai.DeepResearchStatuses
 import com.ifmix.core.api.entity.ai.ScanDeepResearch
 import com.ifmix.core.api.entity.ai.ScanRecord
@@ -47,6 +48,7 @@ class AiFetcher(
     private val aiService: AiFacade,
     private val collectionService: ScanCollectionFacade,
     private val deepResearchTaskService: DeepResearchTaskService,
+    private val scanTaskService: com.ifmix.core.api.modules.ai.ScanTaskService,
     private val globalTx: GlobalTxRunner,
     private val ctxProvider: ActionContextProvider,
 ) {
@@ -100,13 +102,10 @@ class AiFetcher(
         val ctx = ctxProvider.fromDfe(dfe)
         // 惰性超时判定可能产生 CAS 写（IN_PROGRESS → FAILED(TIMEOUT)），走事务
         val dr = globalTx.withTx(ctx) { txCtx -> aiService.getDeepResearchStatus(txCtx, deepResearchId) }
-        @Suppress("UNCHECKED_CAST")
-        val scanStatus = dr.errorDetails?.get("scan_status") as? Map<String, Any?>
         return com.ifmix.core.api.generated.types.DeepResearchStatus(
             deepResearchId = dr.id,
             status = dr.status,
             errorCode = dr.errorCode,
-            scanStatus = scanStatus,
         )
     }
 
@@ -126,13 +125,28 @@ class AiFetcher(
     @DgsMutation(field = "m_ai_createScan")
     fun newScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: NewScanInput): NewScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        // Step 1: AI 调用在事务外
-        val aiResult = aiService.runAiScan(ctx, input)
-        // Step 2: DB 写入在事务内，返回 scanId
-        val scanId = globalTx.withTx(ctx) { txCtx -> aiService.saveScanRecord(txCtx, aiResult) }
-        // Step 3: 用 id 重查全字段 ScanRecord（避免返回半构造对象导致 UnloadedException）
-        val record = aiService.findById(ctx, scanId)
-        return NewScanResult(scanRecord = record)
+        val taskCtx = globalTx.withTx(ctx) { txCtx -> aiService.createScanTask(txCtx, input) }
+        var status = com.ifmix.core.api.entity.ai.ScanStatuses.IN_PROGRESS
+        var errorCode: String? = null
+        try {
+            scanTaskService.submit(taskCtx)
+        } catch (e: Exception) {
+            val casWon = globalTx.withTx(ctx) { txCtx ->
+                aiService.casScanFailed(txCtx, taskCtx, AiTaskErrorCodes.TASK_SUBMISSION_FAILED, null)
+            }
+            if (casWon) {
+                status = com.ifmix.core.api.entity.ai.ScanStatuses.FAILED
+                errorCode = AiTaskErrorCodes.TASK_SUBMISSION_FAILED
+            }
+        }
+        return NewScanResult(scanId = taskCtx.scanId, status = status, errorCode = errorCode)
+    }
+
+    @DgsQuery(field = "q_ai_getScanStatus")
+    fun getScanStatus(dfe: DgsDataFetchingEnvironment, @InputArgument scanId: UUID): ScanStatus {
+        val ctx = ctxProvider.fromDfe(dfe)
+        val snapshot = globalTx.withTx(ctx) { txCtx -> aiService.getScanStatus(txCtx, scanId) }
+        return ScanStatus(scanId = snapshot.scanId, status = snapshot.status, errorCode = snapshot.errorCode)
     }
 
     @DgsMutation(field = "m_ai_runDeepResearch")
@@ -149,11 +163,11 @@ class AiFetcher(
             deepResearchTaskService.submit(taskCtx)
         } catch (e: Exception) {
             val casWon = globalTx.withTx(ctx) { txCtx ->
-                aiService.casDeepResearchFailed(txCtx, taskCtx.deepResearchId, DeepResearchErrorCodes.TASK_SUBMISSION_FAILED, null)
+                aiService.casDeepResearchFailed(txCtx, taskCtx.deepResearchId, AiTaskErrorCodes.TASK_SUBMISSION_FAILED, null)
             }
             if (casWon) {
                 status = DeepResearchStatuses.FAILED
-                errorCode = DeepResearchErrorCodes.TASK_SUBMISSION_FAILED
+                errorCode = AiTaskErrorCodes.TASK_SUBMISSION_FAILED
             }
         }
         return com.ifmix.core.api.generated.types.RunDeepResearchResult(

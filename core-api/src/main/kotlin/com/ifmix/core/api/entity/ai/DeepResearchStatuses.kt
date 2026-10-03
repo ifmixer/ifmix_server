@@ -11,19 +11,3 @@ object DeepResearchStatuses {
     const val SUCCESS = 30
     const val FAILED = 40
 }
-
-/**
- * DeepResearch 稳定错误码（对外暴露，不含内部异常细节）。
- */
-object DeepResearchErrorCodes {
-    /** AI 调用本身抛异常。 */
-    const val AI_FAILED = "AI_FAILED"
-    /** AI 正常返回但 scan_status 非 SUCCESS/PARTIAL（error_details 含 scan_status 供补拍提示）。 */
-    const val AI_STATUS_REJECTED = "AI_STATUS_REJECTED"
-    /** 查询惰性判定：IN_PROGRESS 超 5 min 置 FAILED。 */
-    const val TIMEOUT = "TIMEOUT"
-    /** executor 提交失败（进程关闭/资源拒绝）：mutation 捕获后 CAS 置 FAILED 并返回终态。 */
-    const val TASK_SUBMISSION_FAILED = "TASK_SUBMISSION_FAILED"
-    /** 后台任务未预期异常（多发于成功回写阶段的 DB/锁错误）：兜底 catch 置 FAILED。 */
-    const val INTERNAL_ERROR = "INTERNAL_ERROR"
-}

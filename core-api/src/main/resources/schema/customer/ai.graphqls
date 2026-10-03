@@ -5,8 +5,9 @@
 type ScanRecordListView {
     id: UUID!
     images: [ImageRef!]
-    "扫描状态。10=PENDING, 11=PROCESSING, 20=COMPLETED, 30=FAILED"
+    "扫描任务状态。10=CREATED, 20=IN_PROGRESS, 30=SUCCESS, 40=FAILED；AI 业务结论读取 basicResult.scan_status"
     status: Int!
+    errorCode: String
     basicResult: JSON
     locale: String
     country: String
@@ -25,8 +26,9 @@ type ScanRecord {
     createdAt: DateTime!
     updatedAt: DateTime
     isPublic: Boolean!
-    "扫描状态。10=PENDING, 11=PROCESSING, 20=COMPLETED, 30=FAILED"
+    "扫描任务状态。10=CREATED, 20=IN_PROGRESS, 30=SUCCESS, 40=FAILED；AI 业务结论读取 basicResult.scan_status"
     status: Int!
+    errorCode: String
     locale: String
     country: String
     currency: String
@@ -88,7 +90,19 @@ input NewScanImageInput {
 }
 
 type NewScanResult {
-    scanRecord: ScanRecord
+    scanId: UUID!
+    "20=IN_PROGRESS，executor 提交失败时为 40"
+    status: Int!
+    "FAILED 时返回技术错误码"
+    errorCode: String
+}
+
+"Scan 任务状态（轮询专用，不含结果内容）"
+type ScanStatus {
+    scanId: UUID!
+    "20=IN_PROGRESS, 30=SUCCESS, 40=FAILED"
+    status: Int!
+    errorCode: String
 }
 
 input UpdateScanInput {
@@ -163,10 +177,8 @@ type DeepResearchStatus {
     deepResearchId: UUID!
     "20=IN_PROGRESS, 30=SUCCESS, 40=FAILED"
     status: Int!
-    "FAILED 时返回：稳定错误码（AI_FAILED/AI_STATUS_REJECTED/TIMEOUT/TASK_SUBMISSION_FAILED/INTERNAL_ERROR）"
+    "FAILED 时返回：稳定错误码（AI_FAILED/TIMEOUT/TASK_SUBMISSION_FAILED/INTERNAL_ERROR）"
     errorCode: String
-    "FAILED 且 AI_STATUS_REJECTED 时返回 scan_status（供前端提示补拍）"
-    scanStatus: JSON
 }
 
 # ==================== Collection ====================
@@ -216,6 +228,7 @@ extend type Query {
     q_ai_findMyScanById(id: UUID!): ScanRecord!
     "通用动态过滤查询（支持 AND/OR 嵌套条件）"
     q_ai_findMyScans(findOptions: CommonFindOptions): ScanRecordListViewPage!
+    q_ai_getScanStatus(scanId: UUID!): ScanStatus!
     "按 deepResearchId 轮询任务状态（仅返回状态，不含结果内容；SUCCESS 后前端另调 q_ai_findMyScanById 取权威结果指针）"
     q_ai_getDeepResearchStatus(deepResearchId: UUID!): DeepResearchStatus!
     q_ai_getDefaultCollection: ScanCollection!

@@ -48,6 +48,10 @@ class AiConfig(
     @Bean("deepResearchExecutor")
     fun deepResearchExecutor(): Executor = Executors.newVirtualThreadPerTaskExecutor()
 
+    /** Scan 后台任务 executor：事务提交后运行，避免 AI 阻塞 GraphQL 请求。 */
+    @Bean("scanExecutor")
+    fun scanExecutor(): Executor = Executors.newVirtualThreadPerTaskExecutor()
+
     @Bean
     fun aiApiKeyStore(
         @Value("\${app.ai.apikey-pool.probe-window:5}") probeWindow: Int,

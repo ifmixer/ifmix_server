@@ -17,8 +17,12 @@ interface CustomerScanMetrics : BaseProjectEntity {
     @Column(name = "customer_id")
     val customerId: UUID
 
-    /** 累计成功扫描次数（saveNewScan 成功时 +1）。 */
+    /** 已完成并扣除额度的扫描次数。 */
     val scanCount: Int
+
+    /** 已创建但尚未终结的扫描 reservation，占用 scan quota。 */
+    @Column(name = "pending_scan_count")
+    val pendingScanCount: Int
 
     /** 累计成功深度研究次数（saveDeepResearch 成功时 +1）。 */
     val deepResearchCount: Int

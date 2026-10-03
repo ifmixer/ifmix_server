@@ -19,6 +19,8 @@ input CreateInstallInput {
 input UpdateInstallInput {
     firebaseInstallId: String
     fcmToken: String
+    scanResultNotiEnabled: Boolean
+    deepResearchNotiEnabled: Boolean
     deviceInfo: JSON
 }
 

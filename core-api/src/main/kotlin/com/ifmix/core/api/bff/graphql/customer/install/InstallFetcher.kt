@@ -48,6 +48,8 @@ class InstallFetcher(
                 input["firebaseInstallId"] as? String,
                 input["fcmToken"] as? String,
                 deviceInfo,
+                (input["scanResultNotiEnabled"] as? Boolean),
+                (input["deepResearchNotiEnabled"] as? Boolean),
             )
         }
         return UpdateInstallResult(success = ok)

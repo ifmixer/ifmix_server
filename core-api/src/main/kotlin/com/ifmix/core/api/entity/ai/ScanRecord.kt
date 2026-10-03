@@ -12,12 +12,16 @@ import java.util.UUID
 typealias ScanStatus = Int
 
 /**
- * 扫描状态码表（0 保留，从 10 起步长 10）。
- * CREATED=10（记录创建，DB 列默认值）；READY=20（basicResult 落库完成）。
+ * 扫描任务技术状态码表（0 保留，从 10 起步长 10）。
+ * AI 业务结论保存在 basicResult.scan_status，不得与任务状态混用。
  */
 object ScanStatuses {
     const val CREATED: ScanStatus = 10
-    const val READY: ScanStatus = 20
+    const val IN_PROGRESS: ScanStatus = 20
+    const val SUCCESS: ScanStatus = 30
+    const val FAILED: ScanStatus = 40
+    /** 兼容旧调用方编译；异步 scan 新流程不使用该别名。 */
+    const val READY: ScanStatus = SUCCESS
 }
 
 @Entity
@@ -41,6 +45,16 @@ interface ScanRecord : BaseProjectEntity, SoftDeletableProps, CustomerIdProps, I
     val latestDeepResearchId: UUID?
 
     val status: ScanStatus
+
+    /** 技术失败稳定码；任务 SUCCESS 时为空。 */
+    @Column(name = "error_code")
+    val errorCode: String?
+
+    /** 技术失败结构化详情，不含异常栈。 */
+    @Serialized
+    @Column(name = "error_details")
+    val errorDetails: Map<String, Any?>?
+
     val clientIp: String?
     val userDisplayName: String?
     val userNotes: String?
