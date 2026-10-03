@@ -1,0 +1,28 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 143-146,152-155,160
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/DeepResearchStatuses.kt
+  h_b17efd5c751f9f 27-28
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanRecord.kt
+  h_b17efd5c751f9f 38
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/DeepResearchTaskService.kt
+  h_b17efd5c751f9f 46-47,53
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 186
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanRecordRepository.kt
+  h_b17efd5c751f9f 209,219-226
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 4,7-8,26-27
+core-api/src/main/resources/schema/customer/ai.graphqls
+  h_b17efd5c751f9f 155,157-158,166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "10764ec7e0156b5bfa14c4dc0528da684e824cee",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
