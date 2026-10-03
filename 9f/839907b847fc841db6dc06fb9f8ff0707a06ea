@@ -1,0 +1,44 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 15,142-152,155
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/DeepResearchTaskContext.kt
+  h_b17efd5c751f9f 8,15
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/DeepResearchStatuses.kt
+  h_b17efd5c751f9f 23,25-26
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanDeepResearch.kt
+  h_b17efd5c751f9f 9,11,24-28
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/AiFacade.kt
+  h_b17efd5c751f9f 52-54
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/DeepResearchTaskService.kt
+  h_b17efd5c751f9f 17,21-24,80,82
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 166-167,274-277,284-285,294
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanDeepResearchRepository.kt
+  h_b17efd5c751f9f 5,10,43-44,48,53-54
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanRecordRepository.kt
+  h_b17efd5c751f9f 31,35,38,52-58,161-169,181-190,208-209,219
+core-api/src/main/resources/db/migration/V10__deep_research_async.sql
+  h_b17efd5c751f9f 1-2,5,9-12,24,36
+core-api/src/main/resources/db/migration/V11__deep_research_basic_result.sql
+  h_b17efd5c751f9f 1-6
+core-api/src/main/resources/schema/customer/ai.graphqls
+  h_b17efd5c751f9f 45,49
+core-api/src/test/kotlin/com/ifmix/api/core/modules/TrustedInstallIdWriteTest.kt
+  h_b17efd5c751f9f 62
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanBatchUpdateTest.kt
+  h_b17efd5c751f9f 31
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanCollectedTest.kt
+  h_b17efd5c751f9f 38
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanOwnerScopeTest.kt
+  h_b17efd5c751f9f 26,177,179,188,192-194,202,206-208,212-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f839907b847fc841db6dc06fb9f8ff0707a06ea",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
