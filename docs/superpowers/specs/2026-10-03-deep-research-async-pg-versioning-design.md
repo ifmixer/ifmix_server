@@ -17,6 +17,10 @@
 单条 deep research 结果很小（~6 KB）但数量很多。Cloudflare R2 的 Class A 操作（PutObject）$4.50/百万次——「每条一次 PutObject」的写模式下，**操作费远超存储费**（百万条 6 KB ≈ 6 GB 存储仅 $0.09/月，但百万次写 = $4.5）。因此结果**存回 PostgreSQL** 的 `premium_result` JSONB 列（即原有做法），不走对象存储。
 
 > **archive（未来方向，本期不做）**：PG 中历史结果长期累积会膨胀。未来可写定期任务把老结果**批量打包**（按天/月合并为单个大文件，一次 PutObject）归档到 R2——批量写规避 Class A 费用，又享受 R2 廉价存储。本期不设计不实现，仅记录方向。
+>
+> archive 的**运行约束**（未来实现时必须满足，P2）：归档/删除某条 premium_result 前，必须确认它**不再是任一 scan 的 `latest_deep_research_id` 指向对象**，或读路径具备 archive fallback；否则置空/删除 JSONB 会让详情页结果消失。
+>
+> **PG 成本不是零（P2）**：R2 省掉的是操作费，但写入成本转移到了 PG。需保留监控：`premium_result` JSONB 大小、`core_ai_scan_deep_research` 表/索引膨胀、WAL 与备份增长。这些指标是未来决定何时启动 archive 的依据。
 
 ## 2. 关键设计决策（已确认）
 
@@ -29,6 +33,7 @@
 | 5 | 版本权威关系 | **`scan_record.latest_deep_research_id`**（nullable）为唯一权威指针。isLatest 由 `id == latestDeepResearchId` 推导 |
 | 6 | latest 判定顺序 | **发起时间最新且成功**：比较用 `(created_at, id)`。旧任务晚完成只存历史，不覆盖 ScanRecord |
 | 7 | 终态更新 | **CAS**：`WHERE id=? AND status=IN_PROGRESS`，仅 affected=1 的赢家执行回写；终态不互相覆盖 |
+| 7b | pointer 并发 | 成功回写时对 scan 行 **`SELECT ... FOR UPDATE`** 串行化（仅锁该行、毫秒级）；锁内读 pointer 比较 (created_at,id)。非业务级锁，不限制并发发起（见 §3.4） |
 | 8 | 僵死 IN_PROGRESS 兜底 | **仅查询惰性判定**（超 10 min 置 FAILED）。「成功才扣」下僵死记录不占配额，不做清理 job |
 | 9 | 前端一致性 | **方案 B**：成功后重查权威 ScanRecord，basicResult + premiumResult 均以 API 为准 |
 | 10 | archive | **本期不做**，未来批量打包归档 R2（见 §1.1） |
@@ -91,13 +96,18 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 - **唯一权威指针**：`scan_record.latest_deep_research_id`（nullable UUID）。
 - **latest 定义**：发起时间最新且成功，比较用 `(created_at, id)`（id 兜底同时间）。
-- **成功回写（单条件事务）**：
-  1. CAS：`UPDATE core_ai_scan_deep_research SET status=30, premium_result=? WHERE id=? AND status=20`。affected=0 → 已被终结，放弃。
-  2. affected=1 后，判断当前任务是否比 `latest_deep_research_id` 指向的任务新：
-     - **是**：同一事务更新 `scan_record.basic_result / has_deep_search / prompt_version / latest_deep_research_id = 当前id`，配额 +1（封顶）。
-     - **否**：仅保留为成功历史，不动 scan_record，不扣配额。
-  3. scan_record 的 AI 字段与 pointer 在**同一条件 UPDATE** 中一起改——保证 basic_result 与 latest_deep_research_id（进而其 premium_result）指向同一次成功（不会「一个 5 元、一个 10 元」）。
-- **不加显式锁、不限制并发 IN_PROGRESS**：允许随时重跑；异常任务不阻塞再次发起。并发期间前端可能短暂看到旧版本，最终以 latest pointer 收敛。
+- **成功回写（单短事务，对同一 scan 行加行锁串行化）**：
+  1. CAS：`UPDATE core_ai_scan_deep_research SET status=30, premium_result=? WHERE id=? AND status=20`。affected=0 → 已被终结，放弃（不扣配额）。
+  2. **`SELECT ... FOR UPDATE` 锁住对应 `scan_record` 行**，在锁内读当前 `latest_deep_research_id`、按 `(created_at,id)` 比较：
+     - **当前任务更新**：同一事务更新 `scan_record.basic_result / has_deep_search / prompt_version / latest_deep_research_id = 当前id`，配额 +1（封顶）。
+     - **当前任务较旧**：仅保留为成功历史，不动 scan_record，不扣配额。
+  3. 释放行锁（事务提交）。
+
+> **为什么必须加行锁（P0 修正）**：仅靠「先读 pointer、再带旧 pointer 值做条件 UPDATE」的乐观锁在 **pointer=NULL** 初始态下有竞态——
+> 任务 A（旧）、B（新）都读到 pointer=NULL：A、B 的 CAS 都成功 → A 先 `WHERE latest_deep_research_id IS NULL` 更新 pointer=A → B 的同条件不再命中返回 false → **较新的 B 虽成功却只成历史，pointer 错误停在 A**，违反 latest 定义。
+> `SELECT ... FOR UPDATE` 在最终写回时**对同一 scan 行序列化**（只锁这一行、毫秒级持有），锁内读到的 pointer 一定是前一个赢家写入的最新值，比较 `(created_at,id)` 才正确。这**不是业务级全局锁**，不限制并发发起 IN_PROGRESS，只串行化同一 scan 的「最终写回」这一刻。
+
+- **不限制并发 IN_PROGRESS**：允许随时重跑；异常任务不阻塞再次发起。并发期间前端可能短暂看到旧版本，最终以 latest pointer 收敛。
 - `isLatest` 不落库：按 `deepResearch.id == scanRecord.latestDeepResearchId` 推导。
 
 ## 4. 数据模型变更
@@ -110,7 +120,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 | `premium_result` | **保留并继续写**（JSONB） | 结果存此；每条历史记录各存自己的 premium_result |
 | `prompt_version` | 保留 | AI 提示词版本（String） |
 | `status` | **新增** Int NOT NULL | 10/20/30/40（见 §3.1） |
-| `error_code` | **新增** String?（nullable） | 稳定错误码：AI_FAILED / AI_STATUS_REJECTED / TIMEOUT。对外暴露，不含内部异常 |
+| `error_code` | **新增** String?（nullable） | 稳定错误码：AI_FAILED / AI_STATUS_REJECTED / TIMEOUT / TASK_SUBMISSION_FAILED。对外暴露，不含内部异常 |
 | `error_details` | **新增** JSONB?（nullable） | 结构化失败详情；AI_STATUS_REJECTED 时含 scan_status（供补拍）。不含异常栈 |
 
 > **不新增** `file_key` / `doc_version`（无 R2 doc）。**不新增** `is_latest` 列（权威用指针）。
@@ -133,22 +143,81 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 - `ScanDeepResearch.kt`：去 `@Key`；`premiumResult` 保持 `@Serialized Map<String,Any?>?`（继续写）；新增 `status: Int`、`errorCode: String?`、`errorDetails: Map<String,Any?>?`（`@Serialized`，JSONB）。
 - `ScanRecord.kt`：新增 `latestDeepResearchId: UUID?`。
 
-### 4.5 迁移处理（旧数据）
+### 4.5 迁移处理（本机已跑过作废的 R2 版 V10 → 回滚重写）
 
-- 线上基本无真实数据。
-- Flyway（新文件，版本号接续现有最大，如 `V10__...`；**文件内注释版本号须与文件名一致**）：
-  - `ALTER TABLE core_ai_scan_deep_research ADD COLUMN status smallint NOT NULL DEFAULT 30, ADD COLUMN error_code varchar(64), ADD COLUMN error_details jsonb;`
-  - `DROP INDEX IF EXISTS <核实后的旧唯一索引名>;`
-  - `CREATE INDEX ... ON core_ai_scan_deep_research (scan_record_id, created_at);`
-  - `ALTER TABLE core_ai_scan_record ADD COLUMN latest_deep_research_id uuid;`
-  - 回填指针（旧数据一 scan 一条）：
-    ```sql
-    UPDATE core_ai_scan_record r
-    SET latest_deep_research_id = d.id
-    FROM core_ai_scan_deep_research d
-    WHERE d.scan_record_id = r.id;
-    ```
-    （若线上曾存在一 scan 多条，须加 `ORDER BY d.created_at DESC` 取最新；本期假设一 scan 一条，见注释。）
+**现状**：R2 版 `V10__deep_research_async.sql` **仅本机 dev 执行过**（flyway_schema_history 有记录、checksum 已固定）；生产及其它环境从未执行。R2 版 V10 已写得完善（按列定位删唯一索引、`DISTINCT ON` 回填指针），**与 PG 版唯一的差别是多加了两列** `doc_version`、`file_key`（R2 残留）。
+
+**方案 A（已选）：本机回滚作废 V10 → 重写 V10 为 PG 版 → repair + 重新 migrate。** 迁移历史保持单一 V10，无 R2 残留、无 V11 技术债。
+
+**本机一次性回滚操作（实现期执行，仅 dev；生产无需）：**
+
+```sql
+-- 1) 回滚 R2 版 V10 加的结构（只在本机 dev 执行）
+ALTER TABLE public.core_ai_scan_record  DROP COLUMN IF EXISTS latest_deep_research_id;
+DROP INDEX IF EXISTS public.ai_scan_deep_research_scan_record_created_idx;
+ALTER TABLE public.core_ai_scan_deep_research
+    DROP COLUMN IF EXISTS status,
+    DROP COLUMN IF EXISTS doc_version,
+    DROP COLUMN IF EXISTS file_key,
+    DROP COLUMN IF EXISTS error_code,
+    DROP COLUMN IF EXISTS error_details;
+-- 注：R2 版删掉的旧唯一索引不恢复——反正 PG 版重写后也会再删一次，且本机无真实数据。
+
+-- 2) 删除 flyway 历史中的 V10 行，让重写后的 V10 重新执行
+DELETE FROM public.flyway_schema_history WHERE version = '10';
+```
+
+> 执行 1)、2) 后，把 `V10__deep_research_async.sql` 重写为下方 PG 版，再 `./gradlew :core-api:flywayMigrate`。如 checksum 仍报错，`./gradlew :core-api:flywayRepair` 后再 migrate。
+
+**重写后的 V10（PG 版）**：
+
+```sql
+-- V10: DeepResearch 异步化 + 历史版本（PG premium_result 存储；取代作废的 R2 方案）
+
+ALTER TABLE public.core_ai_scan_deep_research
+    ADD COLUMN status smallint NOT NULL DEFAULT 30,   -- DEFAULT 仅为旧行回填
+    ADD COLUMN error_code character varying(64),
+    ADD COLUMN error_details jsonb;
+
+-- 回填完成后去掉 DEFAULT：避免未来漏设 status 时静默生成 SUCCESS（P2#1）
+ALTER TABLE public.core_ai_scan_deep_research ALTER COLUMN status DROP DEFAULT;
+
+-- 按「列 + 唯一 + 非主键」定位删除旧唯一索引（V2 改表名未改索引名，不依赖硬编码名）
+DO $$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN
+        SELECT i.relname AS index_name
+        FROM pg_class t
+        JOIN pg_index ix ON t.oid = ix.indrelid
+        JOIN pg_class i ON i.oid = ix.indexrelid
+        JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
+        WHERE t.relname = 'core_ai_scan_deep_research'
+          AND a.attname = 'scan_record_id'
+          AND ix.indisunique AND NOT ix.indisprimary
+    LOOP
+        EXECUTE format('DROP INDEX IF EXISTS public.%I', r.index_name);
+    END LOOP;
+END $$;
+
+CREATE INDEX ai_scan_deep_research_scan_record_created_idx
+    ON public.core_ai_scan_deep_research USING btree (scan_record_id, created_at);
+
+ALTER TABLE public.core_ai_scan_record
+    ADD COLUMN latest_deep_research_id uuid;
+
+-- 回填指针：每 scan 取 (created_at,id) 最新一条（DISTINCT ON，兼容潜在「一 scan 多条」）
+UPDATE public.core_ai_scan_record r
+SET latest_deep_research_id = d.id
+FROM (
+    SELECT DISTINCT ON (scan_record_id) id, scan_record_id
+    FROM public.core_ai_scan_deep_research
+    ORDER BY scan_record_id, created_at DESC, id DESC
+) d
+WHERE d.scan_record_id = r.id;
+```
+
+- 相对 R2 版 V10：**删去 `doc_version` / `file_key` 两列**，新增 `ALTER COLUMN status DROP DEFAULT`，其余（error_code/error_details、按列删唯一索引、DISTINCT ON 回填）保留。
 
 ## 5. GraphQL Schema 变更（`schema/customer/ai.graphqls`）
 
@@ -175,7 +244,7 @@ type DeepResearchStatus {
   deepResearchId: UUID!
   "20=IN_PROGRESS, 30=SUCCESS, 40=FAILED"
   status: Int!
-  "FAILED 时返回：稳定错误码（AI_FAILED/AI_STATUS_REJECTED/TIMEOUT）"
+  "FAILED 时返回：稳定错误码（AI_FAILED/AI_STATUS_REJECTED/TIMEOUT/TASK_SUBMISSION_FAILED）"
   errorCode: String
   "FAILED 且 AI_STATUS_REJECTED 时返回 scan_status（供前端提示补拍）"
   scanStatus: JSON
@@ -202,7 +271,16 @@ type ScanDeepResearch {
 ```
 
 - `ScanRecord.deepResearch`（旧字段，按 scanRecordId 查）→ 改为 `latestDeepResearch`，按 `latest_deep_research_id` 加载。DataLoader key 改为 scanRecord 的 `latest_deep_research_id`。
-- **列表查询不加载 premiumResult**：列表视图只需状态/基础字段，premiumResult 仅详情页经 `latestDeepResearch` 加载。
+- **`ScanDeepResearch` 不再有 `resultUrl` 字段**（R2 残留）：现有 persisted query（`m_ai_createScan`、`m_ai_updateScan`、`q_ai_findMyScanById`、`q_ai_findCollectionItemsByCursor`）里对 `latestDeepResearch { ... resultUrl ... }` 的选择必须全部去掉 `resultUrl`，否则 schema 校验失败。
+- **哪些查询选 `latestDeepResearch { premiumResult }`（P1#4，premiumResult 是 JSONB 大字段，列表场景不选）**：
+
+| 操作 | 是否选 latestDeepResearch.premiumResult | 理由 |
+|------|------|------|
+| `q_ai_findMyScanById`（详情） | **选** | 详情页需要 premiumResult |
+| `m_ai_createScan` / `m_ai_updateScan` 回包 | **选**（仅 scanRecord 回包需要时） | 回包即详情形状；createScan 时 latest 恒 null，开销可忽略 |
+| `m_ai_runDeepResearch` 回包 | 不涉及（只返回 deepResearchId+status） | — |
+| `q_ai_findMyScans`（列表） | **不选** | 列表只需状态/基础字段 |
+| `q_ai_findCollectionItemsByCursor`（collection 列表） | **不选** | 同列表，避免每条带 JSONB 大字段 |
 - premiumResult 直接是 PG `premium_result` 列值（无 R2、无 presign、无下载）。
 
 ## 6. 分层落点（遵循 AGENTS.md 约定）
@@ -234,7 +312,11 @@ type ScanDeepResearch {
   - basicResult **与** premiumResult **均以 API ScanRecord 为准**（premiumResult 直接从 `latestDeepResearch.premiumResult` 读，无需下载 R2）。
   - 若轮询任务 A 成功时服务端 latest 已是更新的 B，`findMyScanById` 返回的 latest 即 B，避免「A 的 basic 配 B 的 premium」。
 - 轮询间隔几秒一次；处理 20/30/40 三态 UI。FAILED 的 AI_STATUS_REJECTED 从 `scanStatus` 读推荐补拍（沿用 `deepResearchRejectionReason`），其它 error_code 做通用失败提示。
-- **premiumResult 读取路径**：`record.latestDeepResearch.premiumResult`（snake_case 内层键不变），与现有 `premiumOf` 消费一致。
+- **本地数据契约（P1#3，前端 agent 纠正：API 形状与本地消费形状不一致，需显式转换）**：
+  - API/codegen 的 `ScanRecord` 用的是 `latestDeepResearch`（`generated/graphql.ts`），但现有展示层 `premiumOf` 读的是 `record.deepResearch.premiumResult`（`scanColumns.ts`）。二者**不一致**，不能说"直接覆盖 SQLite 即可"。
+  - **采用方案**：保留 SQLite/展示层的**本地兼容形状 `deepResearch`**，在 **repository 边界**把 API 的 `latestDeepResearch` 转换为本地 `deepResearch`（给 `LocalScanRecord` 定义明确类型，含 `deepResearch?.premiumResult`）。即 `mergeDeepResearchResult` 这类转换函数要配套扩展 `LocalScanRecord` 类型，消除当前 typecheck 失败。
+  - 展示层 `premiumOf` 等消费者**不变**（仍读本地 `deepResearch.premiumResult`）。snake_case 内层键不变。
+  - 老本地记录、新 API 响应、现有展示逻辑三者通过"API→本地形状在 repository 边界转换"衔接，不断裂。
 - **SQLite 任务恢复（本期必做）**：
   - scan 行加 nullable `pendingDeepResearchId`；mutation 成功写入；SUCCESS/FAILED 清空。
   - 冷启动/回前台有 pending ID 则恢复轮询。
@@ -263,15 +345,19 @@ type ScanDeepResearch {
 | 旧任务晚完成 | CAS 置 SUCCESS 存历史，(created_at,id) 未命中则不动 scan_record、不扣配额 |
 | owner-scoped | 创建、查询均校验 projectId+customerId；非本人 NOT_FOUND |
 | 对外错误 | 只回 error_code + 安全文案 +（补拍场景）scan_status；内部异常不外泄 |
+| **executor 提交失败**（P1#5） | `executor.execute()` 在关闭/资源拒绝时抛错，此时记录已 IN_PROGRESS。**mutation 捕获该异常 → 短事务 CAS 20→40，error_code=TASK_SUBMISSION_FAILED**，并**仍返回 deepResearchId + 终态 status(40)**（前端能据此显示失败/重试，不会拿不到 id 无法恢复） |
+
+**进程内执行器的限制（本期明确接受）**：进程崩溃时，已拿到 deepResearchId 的客户端由既有**惰性超时**（§3.3，超 10 min 置 FAILED）回收；无客户端轮询的僵死记录因「成功才扣」不占配额，放着无害。**本期不做**服务重启自动续跑（那需要持久队列或扫 IN_PROGRESS 的 job）。错误码新增 `TASK_SUBMISSION_FAILED`（连同 AI_FAILED/AI_STATUS_REJECTED/TIMEOUT）。
 
 ## 10. 测试计划（非框架、最小可运行校验）
 
 1. **终态 CAS 幂等**：超时置 FAILED 与后台成功竞争 → 只有一个终态；配额只变化一次。
-2. **乱序完成的 latest 规则**：同 scan 两任务乱序完成 → `latest_deep_research_id` 指向 (created_at,id) 最新的成功任务；旧任务晚完成不覆盖 scan_record。
+2. **乱序完成的 latest 规则（真实并发/事务测试，非 mock affected=0，P0#1）**：对**同一 scan**、pointer 初始为 NULL，用两个真实事务并发跑「旧任务 A」「新任务 B」的成功回写（含 `SELECT FOR UPDATE`），断言最终 `latest_deep_research_id` 指向 (created_at,id) **较新的 B**，无论 A/B 完成先后；A 只成历史。覆盖 pointer=NULL 竞态。
 3. **配额成功才扣**：失败/超时不扣；成功 +1；预检 used>=limit 拒绝。
 4. **basicResult/pointer/premiumResult 原子性**：成功回写事务后，scan_record.basic_result 与 latest_deep_research_id 指向的 premium_result 来自同一次成功。
 5. **owner-scope**：跨 customer 查询/创建 NOT_FOUND。
-6. **多历史版本可插入**：同 scanRecordId 连续 insert 两条不报唯一约束（验证 §4.3 旧唯一索引已删）。
+6. **多历史版本可插入**：同 scanRecordId 连续 insert 两条不报唯一约束（验证 §4.5 旧唯一索引已删）。
+7. **executor 提交失败（P1#5）**：模拟 executor 拒绝 → 记录 CAS 为 FAILED(TASK_SUBMISSION_FAILED)，mutation 仍返回 deepResearchId + status=40。
 
 ## 11. 相对 R2 版本的删除清单（供实现对照回退）
 
@@ -289,5 +375,6 @@ type ScanDeepResearch {
 ## 12. 实现期验证点
 
 1. §6.1 后台构造脱离请求的 ActionContext 供 `scanRunner.run` 调用的具体方式。
-2. §4.3 **线上旧唯一索引真实名称**（`\d core_ai_scan_deep_research`），确保 DROP 命中——否则多历史版本插入崩溃。
+2. §3.4 成功回写的 `SELECT ... FOR UPDATE`：确认 Jimmer KSqlClient 的行锁写法（`forUpdate()`）在 writer 事务内正确锁 `core_ai_scan_record` 行；并确认该回写事务走 writer（isMutation=true）。
 3. §5.3 `getDeepResearchStatus` 的惰性超时 CAS 必须走 writer：确认 `globalTx.withTx` 对 query ctx（`isMutation=false`）是否强制 writer，或改为该查询显式用 writer / 单独 writer 事务。
+4. 旧唯一索引删除已改为**按列定位**（§4.5 的 DO 块），不再依赖硬编码索引名——无需人工 `\d` 核实。
