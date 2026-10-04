@@ -64,6 +64,11 @@ dependencies {
     // UUIDv7 generator (cursor pagination requires time-ordered IDs)
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
 
+    // iOS App Attest 验证（WebAuthn4J appattest 扩展）
+    // 0.30.1.RELEASE 已 smoke test：Gradle 9.6.1 + Corretto 25 可解析/编译/类加载；
+    // 其传递依赖 Jackson 2（jackson-databind 2.x）与 Spring 的 tools.jackson 3 包名不同，可共存。
+    implementation("com.webauthn4j:webauthn4j-appattest:0.30.1.RELEASE")
+
     // PostgreSQL JDBC
     implementation("org.postgresql:postgresql")
 

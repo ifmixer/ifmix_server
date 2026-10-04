@@ -12,6 +12,9 @@ import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.jimmer.ActionContextHolder
+import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
+import com.ifmix.core.api.infra.ratelimit.RateLimitResult
+import com.ifmix.core.api.infra.ratelimit.Window
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.entity.ai.AiTaskErrorCodes
 import com.ifmix.core.api.entity.ai.DeepResearchStatuses
@@ -52,6 +55,7 @@ class AiFetcher(
     private val globalTx: GlobalTxRunner,
     private val ctxProvider: ActionContextProvider,
     private val rateLimiter: com.ifmix.core.api.infra.ratelimit.RateLimiter,
+    private val rlProps: RateLimitProperties,
 ) {
     // --- Scan queries ---
 
@@ -126,7 +130,7 @@ class AiFetcher(
     @DgsMutation(field = "m_ai_createScan")
     fun newScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: NewScanInput): NewScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        rateLimitByIp(ctx, "scan", SCAN_RATE_PER_MIN, SCAN_RATE_PER_DAY, "too many createScan")
+        rateLimitByIp(ctx, "scan", rlProps.scan.legacyIpMinute, rlProps.scan.legacyIpDay, "too many createScan")
         val taskCtx = globalTx.withTx(ctx) { txCtx -> aiService.createScanTask(txCtx, input) }
         var status = com.ifmix.core.api.entity.ai.ScanStatuses.IN_PROGRESS
         var errorCode: String? = null
@@ -156,7 +160,7 @@ class AiFetcher(
         // 异步化（设计 §3.3）：事务内完成 images 更新 + 配额预检 + 创建 IN_PROGRESS 记录，
         // 事务提交后（withTx 返回即已提交）才提交后台任务——后台才能读到已提交的记录。
         val ctx = ctxProvider.fromDfe(dfe)
-        rateLimitByIp(ctx, "deepresearch", DR_RATE_PER_MIN, DR_RATE_PER_DAY, "too many runDeepResearch")
+        rateLimitByIp(ctx, "deep-research", rlProps.deepResearch.legacyIpMinute, rlProps.deepResearch.legacyIpDay, "too many runDeepResearch")
         val taskCtx = globalTx.withTx(ctx) { txCtx -> aiService.createDeepResearchTask(txCtx, input) }
         // executor 提交失败（进程关闭/资源拒绝，设计 §9）：记录已 IN_PROGRESS → CAS 置 FAILED 并返回终态，
         // 前端拿到 deepResearchId + status=40 + errorCode 可直接显示失败/重试，不会拿不到 id 无法恢复。
@@ -226,30 +230,31 @@ class AiFetcher(
     }
 
     /**
-     * AI 重操作的 IP 频率限制：短窗口（防突发）+ 日窗口（防累计滥用）两道，命中即 RATE_LIMITED。
-     * subject 带 prefix 隔离，使 scan / deepresearch 各有独立配额、互不影响，也不与其它接口混。
-     * 无数量上限（终身配额已放开，ScanQuotaConfig=无限），防滥用全靠此 IP 频率限制。
+     * AI 重操作的 legacy IP 频率限制：短窗口（防突发）+ UTC 日窗口（防累计滥用）两道，命中即 RATE_LIMITED
+     * （带 extensions.retryAfterSec：短窗口=窗口剩余秒数、日窗口=到 UTC 零点秒数）。
+     * key 带 projectId 隔离（attest 规格 §4.6 统一格式 `ratelimit:{pid}:{action}:legacy:ip:...`），
+     * action=scan / deep-research 各自独立计数、互不影响。
+     * 当前全部流量走 legacy 严格阈值；有 tokenInstallId 的 install 层/IP 层策略由 attest 接线任务（WP-D）补齐。
      */
     private fun rateLimitByIp(
         ctx: com.ifmix.core.api.infra.http.ActionContext,
-        prefix: String,
+        action: String,
         perMin: Int,
         perDay: Int,
         message: String,
     ) {
+        val projectId = ctx.mustGetProjectId()
         val ip = ctx.clientIp ?: "unknown"
-        if (!rateLimiter.checkFixedWindow("$prefix:min:$ip", perMin, 60L) ||
-            !rateLimiter.checkFixedWindow("$prefix:day:$ip", perDay, 86_400L)
-        ) {
-            throw ApiError(ErrorCode.RATE_LIMITED, message)
+        when (val rl = rateLimiter.check(Window.MINUTE, "ratelimit:$projectId:$action:legacy:ip:min:$ip", perMin)) {
+            is RateLimitResult.Limited ->
+                throw ApiError(ErrorCode.RATE_LIMITED, message, retryAfterSec = rl.retryAfterSec)
+            else -> Unit
         }
-    }
-
-    companion object {
-        private const val SCAN_RATE_PER_MIN = 5
-        private const val SCAN_RATE_PER_DAY = 500
-        private const val DR_RATE_PER_MIN = 3
-        private const val DR_RATE_PER_DAY = 300
+        when (val rl = rateLimiter.check(Window.UTC_DAY, "ratelimit:$projectId:$action:legacy:ip:day:$ip", perDay)) {
+            is RateLimitResult.Limited ->
+                throw ApiError(ErrorCode.RATE_LIMITED, message, retryAfterSec = rl.retryAfterSec)
+            else -> Unit
+        }
     }
 }
 

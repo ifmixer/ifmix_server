@@ -109,6 +109,42 @@ app:
         timeout-sec: 300         # 与典型调用时长（2-3min）对齐，避免超时 key 很快回池
         other-sec: 30
 
+  # 限流阈值（install attestation 规格 §4.6）：每个 action 显式配置，**重启生效**（不做热更新，
+  # 不能当即时 kill switch；紧急降额走一次重启/发布）。key 统一格式 ratelimit:{projectId}:{action}:...，
+  # 按 projectId 隔离。IP 层=系统防护（大阈值）；legacy=无 tokenInstallId 的旧客户端严格阈值（独立计数器）；
+  # install 层=防滥用（小阈值，attest 接线任务使用）。
+  ratelimit:
+    install:
+      ip-minute: 100          # m_install_createInstall 入口短窗口（所有请求，验签前）
+      unverified-ip-day: 100  # createInstall 日窗口：未验证桶（无 proof / INVALID / UNAVAILABLE，OBSERVE 放行）
+      attested-ip-day: 1000   # createInstall 日窗口：VALID 已验证桶
+    attest-challenge:
+      ip-minute: 100          # m_install_createAttestChallenge：纯 HMAC 计算，与 createInstall 入口对齐
+    recover-install:
+      ip-minute: 10           # m_install_recoverInstall
+    attest-existing:
+      ip-minute: 10           # m_install_attestExisting
+      install-day: 3          # 每 install 每 UTC 日新 key 额度
+    anonymous:
+      legacy-ip-minute: 10    # m_customer_createAnonymousCustomer：旧客户端严格阈值
+      ip-minute: 100
+      ip-day: 1000
+      install-day: 5
+    scan:
+      legacy-ip-minute: 5     # m_ai_createScan：旧客户端严格阈值
+      legacy-ip-day: 500
+      ip-minute: 100
+      ip-day: 1000
+      install-minute: 5
+      install-day: 100
+    deep-research:
+      legacy-ip-minute: 3     # m_ai_runDeepResearch：旧客户端严格阈值
+      legacy-ip-day: 300
+      ip-minute: 100
+      ip-day: 1000
+      install-minute: 5
+      install-day: 100
+
   auth:
     issuer: ${AUTH_ISSUER:ifmix}
     # 老版本 app 兼容：token 无 iid 时退回 x-install-id header（不可信，不签进 token）。

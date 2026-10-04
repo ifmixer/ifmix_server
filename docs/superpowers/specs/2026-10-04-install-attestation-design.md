@@ -1,7 +1,7 @@
 # createInstall 平台证明（App Attest / Play Integrity）— 设计规格 v4
 
-日期：2026-10-04
-状态：待审查（v4）
+日期：2026-10-04（v5 修订同日）
+状态：v5 已按第五轮 review 修订，进入实现（实现计划与进度见同目录 `2026-10-04-install-attestation-impl-plan.md`）
 范围：服务端 `ifmix_server/core-api` + `core-job`，客户端 `antique/apps/antique` + `antique/apps/shared`
 
 > **实施范围（2026-10-04 决定）**：目前只有 iOS 客户端。**一期 1a 只实现 iOS**（App Attest + recover）。Android（Play Integrity）协议保留在本文作为 1b，Android 客户端发布前实现。Web / Turnstile 暂不考虑。
@@ -9,6 +9,21 @@
 ---
 
 ## 0. 修订记录
+
+### v5（第五轮 review，2026-10-04，进入实现前）
+
+| review 项 | 处理 |
+|---|---|
+| [阻断] receipt 无来源，fraud metric 链路断头 | attestation 对象不含 receipt；createInstall 保持纯本地验证，`core_install_attestation` 增加 `attestation_object` 列，core-job 新增回填任务用 Apple `POST /v1/attestations` 换 receipt 后清空该列（§3.1、§5.4、§5.8）；`attest_data` 响应更正为 bit0/bit1/creationTimestamp（不含新 receipt、无「下次允许刷新」字段），`next_refresh_at` 改为服务端退避策略（§5.8） |
+| [高] GraphQL 无 Retry-After 通道 | 错误 `extensions.retryAfterSec`（429000 / 429002 必带，503002 可选）；客户端 codes.ts / retry.ts / 调度器读取（§4.4、§4.6、§6.8、§7） |
+| [高] ENFORCE 配置校验口径 | API 路径必填仅 ios=`teamId/bundleId/env`、android=`packageName/certSha256Digests`；deviceCheck* 与 serviceAccount 可选，缺失只影响 core-job（§4.1） |
+| [中] 429002 归属 | 去掉「createInstall 专用」：也用于 attestExisting 的新 key 日额度（§4.4、§6.7） |
+| [中] enabled 的平台判定 | 写明基于自报 `x-client-platform` header，仅用于决定是否生成 key（§5.1） |
+| [中] Redis 故障期 Android 重放敞口 | §3.2 / §4.3 补充：一份 integrityToken 5 分钟内可重放多 install，受 attested 日窗口封顶；ENFORCE 期间 Redis 故障按 P0 告警 |
+| [中] challenge 阈值与 CGNAT | createAttestChallenge 10/60s → 100/60s（纯计算，与 createInstall 入口对齐）（§4.6、§5.1） |
+| [中] findAttestConfig 无缓存 | 参照 FirebaseAppRegistry 加进程内缓存（null 哨兵，重启生效）（§5.2） |
+| [中] 客户端状态机缺口 | backfill 不与 bootstrap 并发；REGISTERED 且 installId 不一致 → 视同 EMPTY 生成新 key；no-proof 403001 → 新 outcome `unsupported`；EMPTY 先 fetchChallenge 再 generateKey（§6.2、§6.4、§6.8） |
+| [低] 杂项 | global off 时 recover 行为；限流 key 格式补 attested/unverified 变体；attestState 存储措辞统一；core-job JdbcClient；install.recover 日志补 mode/provider（§3.3、§4.6、§5.5、§5.6、§6.4） |
 
 ### v4（第四轮 review）
 
@@ -135,6 +150,7 @@ Expo 内部： clientDataHash = SHA256(UTF8(challengeStr))                     /
 ```
 
 - 格式错误或解析失败时不消费 challenge。
+- **receipt 的来源（回填）**：attestation 对象本身不含 receipt。createInstall 只做本地验证，不调 Apple；`attestation_object` 原文随 attestation 行入库（§5.4），core-job 的回填任务用它向 Apple `POST /v1/attestations` 换取 receipt 后清空该列（§5.8）。Apple 侧 attestation 一次性消费：回填遇到「已使用」类响应时清空 attestation_object、放弃该 key 的 receipt（打日志，不重试）。
 - **同一份 proof 重发**：如果第一个请求在消费之前就失败了，重发可以成功；如果第一个请求已经消费了 challenge，重发会得到 INVALID(replay)，客户端转去 recover（§6.4）。
 - **Redis 整体不可用时的完整影响范围**（可用性优先的明确取舍）：同时失去 challenge 一次性消费、Android token 去重、createInstall 的分钟和日限流，以及 createAnonymous / AI 的限流。OBSERVE 下未验证的 createInstall 等于完全没有频控；ENFORCE 下仍然要求有效的平台证明，但 VALID 的新 key 没有 IP 安全阀。补强措施：`AttestGuard` 的验签用**进程内信号量**限制并发（初值 32，可配置）。拿不到许可时按服务端 UNAVAILABLE 处理（OBSERVE 放行、ENFORCE 返回 503002），防止 Redis 故障期间验签把进程打满。Redis 故障会打 `ratelimit.degraded` / `attest.redis_degraded` 两类 ERROR 日志，应接入告警。
 - **同一份 attestation 被重放**：同一份 attestation 在 challenge 有效期（5 分钟）内可以被重放。但被重放的是同一个 keyId，`(project_id, provider, subject)` 唯一约束会把它判成 key_reused，返回 403001，**不会因此多出 install**。实际敞口只有"攻击者拿到一份还没提交的 proof，并抢先提交"这一种情况，而这本来就是持有 proof 的人才能做的事。
@@ -167,6 +183,8 @@ requestHash = base64urlNoPadding(SHA256(UTF8(context)))           // Expo 原样
 
 `LICENSED` 一期不作硬条件。
 
+- **Redis 故障期间的重放敞口**（与 §4.3 的可用性取舍一致，明确记录）：去重失效后，一份被捕获的合法 integrityToken 在其约 5 分钟有效期内可被重放提交出多个 install（上限受 attested 日窗口 1000/IP/天 约束）。iOS 没有这个问题（keyId 唯一约束兜底）。ENFORCE 期间 Redis 故障必须当 P0 告警处理（§4.6）。
+
 ### 3.3 iOS 找回（recoverInstall）
 
 ```
@@ -188,7 +206,7 @@ clientData = "ifmix-install-recover-v1\n" + projectId + "\n" + challengeStr
 
 - recover 防重放的根本保证来自数据库里 counter 的条件更新，不依赖 Redis。Redis 消费只是额外加的一层。
 
-- recover 只要求 `ios` 配置存在，与 mode 无关；未配置 → 400000。
+- recover 只要求 `ios` 配置存在，与 mode、全局开关无关；未配置 → 400000；challenge secret 缺失时 challenge 无法校验 → 503002（全局关闭时客户端本就拿到 enabled=false，会退化走 no-proof create，重复 install 可以接受——attest 已整体关闭）。
 - 旧 installToken 不吊销（install token 无状态、永不过期，与现状一致）。
 
 ---
@@ -224,6 +242,7 @@ clientData = "ifmix-install-recover-v1\n" + projectId + "\n" + challengeStr
 
 - 平台子对象 = 该 provider 可验证；缺失时该 provider 的 proof → INVALID(provider_not_configured)。
 - `mode=ENFORCE` 的有效条件：**至少配置了一个 provider，且所有已配置的子对象都能解析**。未配置的 provider 不会被放行：声明这种 provider 的 proof 一律判为 INVALID(provider_not_configured)，ENFORCE 下返回 403001。
+  - 「能解析」的口径（API 路径）：`ios` 必填 `teamId` / `bundleId` / `env`；`android` 必填 `packageName` / `certSha256Digests`。`deviceCheckKeyId` / `deviceCheckPrivateKey` / `serviceAccount` 是可选字段：缺失不影响 createInstall / recoverInstall / createAttestChallenge 的有效性，只让 core-job 跳过对应任务并打日志；不要因为可选字段缺失把整个 project 判成 config invalid。
   - 推论：ENFORCE 期间上线新平台的客户端（例如 Android），必须在发布前完成两件事：该平台客户端已经带上证明，服务端已经配置好对应子对象。否则这个平台的所有新 install 都会被拒。如果做不到，上线期间先把 mode 切回 OBSERVE。这一条写入发布检查清单（§9）。
 - 配置不满足上述条件时，判定为**配置无效，fail-closed**：
   - createInstall / recoverInstall / createAttestChallenge 都返回 503002；
@@ -286,12 +305,14 @@ clientData = "ifmix-install-recover-v1\n" + projectId + "\n" + challengeStr
 | 503002 | `ATTESTATION_UNAVAILABLE` | Google 依赖故障（1b）、配置无效，或 ENFORCE 下客户端声明 UNAVAILABLE（Redis 故障不会触发） | 加入 `isTransient`，有限重试 |
 | 404000 | `NOT_FOUND`（现有） | recover：key 未绑定 | 废弃 key（§6.4） |
 | 404001 | `INSTALL_NOT_FOUND`（新增） | attestExisting：installToken 指向的 install 已不存在 | 见 §6.7（不是通用 404，客户端只在这个码上清 install） |
-| 429000 | `RATE_LIMITED`（现有） | 入口短窗口超限，proof 尚未校验 | 带 `Retry-After`；在 challenge 有效期内可以重发同一份 proof |
+| 429000 | `RATE_LIMITED`（现有） | 入口短窗口超限，proof 尚未校验 | 带 `Retry-After`（extensions `retryAfterSec`，短窗口剩余秒数）；在 challenge 有效期内可以重发同一份 proof |
 | 403002 | `ATTEST_KEY_BLOCKED`（新增） | key 状态为 BLOCKED / RETIRED（attestExisting、recover） | 废弃 key，不 recover |
 | 409001 | `ATTEST_KEY_BOUND_TO_OTHER_INSTALL`（新增） | attestExisting：这把 key 已经绑定在别的 install 上 | 废弃 key，**保留当前 installToken，不 recover** |
-| 429002 | `INSTALL_DAILY_LIMITED`（新增） | 验签之后的日窗口超限（createInstall 专用） | 带 `Retry-After`（到 UTC 零点的秒数）；客户端废弃已 attest 的 key（§6.4） |
+| 429002 | `INSTALL_DAILY_LIMITED`（新增） | 验签之后的日窗口超限：createInstall 的 attested / unverified IP 日窗口、attestExisting 的新 key 日额度 | 带 `Retry-After`（extensions `retryAfterSec`，到 UTC 零点的秒数）；客户端废弃已 attest 的 key（§6.4） |
 
 已核实：503002 未占用；503001 是客户端为「网关返回非 JSON」合成的 SERVICE_UNAVAILABLE，已在 `isTransient` 内。
+
+- **Retry-After 的传输**：这些错误都发生在 GraphQL（gql / greq）路径，HTTP header 不可用；统一放进 error `extensions.retryAfterSec`（整数秒）。429000 / 429002 必带；503002 可带（不带时客户端用默认退避）。客户端从 extensions 读取（§6.8）；REST 侧维持现状不变。
 
 ### 4.5 切 ENFORCE 前置条件
 
@@ -349,7 +370,7 @@ globalTx.withTx(ctx) { installFacade.createInstall(it, deviceInfo, storeType, de
 - 两个日计数器相互独立，不共享总上限（这是有意的）：OBSERVE 下同一个 IP 每天最多 100 次未验证 + 1000 次已验证。ENFORCE 下非 VALID 请求都在 Guard 阶段被拒，实际只剩 1000 次 VALID。
 - 短窗口没有按验证结果拆分：入口的 100/60s 对所有请求生效。
 - **challenge 在日窗口通过之后才消费**：日窗口返回 429002 时，challenge 还没被消费，但是要等到 UTC 零点才会重置，所以客户端仍然废弃这把 key（§6.4）。并发提交同一份 proof 时，两个请求都能通过校验和日窗口（各扣一次额度），但只有一个能消费成功，另一个得到 403001(replay)。
-- **Retry-After**：429000 返回短窗口的剩余秒数；429002 返回到 UTC 零点的秒数。
+- **Retry-After**：429000 返回短窗口的剩余秒数；429002 返回到 UTC 零点的秒数。传输方式见 §4.4（GraphQL error extensions `retryAfterSec`）。
 
 OBSERVE 下各种 proof 结果归入哪个计数器：
 
@@ -360,7 +381,7 @@ OBSERVE 下各种 proof 结果归入哪个计数器：
 | 未带 proof | unverified |
 | 客户端声明 UNAVAILABLE（OBSERVE 放行） | unverified |
 
-**createAttestChallenge / recoverInstall**：只有短窗口，各自 10 / 60s / IP，单独计数。
+**createAttestChallenge / recoverInstall**：只有短窗口，单独计数。createAttestChallenge 是纯 HMAC 计算，成本可忽略，阈值与 createInstall 入口对齐（100 / 60s / IP），避免「challenge 10 次/分钟」成为 CGNAT 出口下 bootstrap 的瓶颈（createInstall 100/60s 意味着每分钟最多 10 个设备完成 bootstrap）；recoverInstall 10 / 60s / IP。
 
 **attestExisting**（§6.7）：10 / 60s / IP，加上 3 / install / UTC 日，单独计数。challenge 只做计算、不访问 Redis；recover 的防重放靠 counter 的条件更新。
 
@@ -388,6 +409,7 @@ OBSERVE 下各种 proof 结果归入哪个计数器：
   ```
   ratelimit:{projectId}:{action}:ip:min:{ip}
   ratelimit:{projectId}:{action}:ip:day:{ip}:{yyyy-MM-dd}
+  ratelimit:{projectId}:install:ip:day:{attested|unverified}:{ip}:{yyyy-MM-dd}   // createInstall 按验证结果分桶
   ratelimit:{projectId}:{action}:install:min:{iid}
   ratelimit:{projectId}:{action}:install:day:{iid}:{yyyy-MM-dd}
   ratelimit:{projectId}:{action}:legacy:ip:min:{ip}
@@ -412,7 +434,7 @@ app:
       unverified-ip-day: 100
       attested-ip-day: 1000
     attest-challenge:
-      ip-minute: 10
+      ip-minute: 100          # 纯 HMAC 计算，与 createInstall 入口对齐
     recover-install:
       ip-minute: 10
     attest-existing:
@@ -515,7 +537,7 @@ input CreateInstallInput {
 }
 
 extend type Mutation {
-    "无鉴权；独立的 10/60s/IP 短窗口。一次性 challenge，服务端接受 300s，对客户端返回 270s。"
+    "无鉴权；独立的 100/60s/IP 短窗口。一次性 challenge，服务端接受 300s，对客户端返回 270s。"
     m_install_createAttestChallenge: AttestChallengeResult!
     "无鉴权；独立的 10/60s/IP 短窗口。iOS 用 assertion 证明 key 所有权，重签已绑定 install 的 installToken。返回的 attestationStatus 固定为 10。"
     m_install_recoverInstall(input: RecoverInstallInput!): CreateInstallResult!
@@ -523,6 +545,8 @@ extend type Mutation {
 ```
 
 不按平台拆 createInstall：各平台业务相同；按平台观测用日志维度（§5.5）。
+
+- 「平台未配置」的判定基于自报的 `x-client-platform` header（§4.3 原则的例外：这里只决定是否让客户端生成 key，不用于安全判定；客户端谎报平台只会让自己拿不到 proof，ENFORCE 下照样被 403001 拒绝）。
 
 `proof` / `proofStatus` 组合校验（入口完成，先于 Guard）：
 
@@ -540,10 +564,10 @@ extend type Mutation {
 | 单元 | 路径 | 职责 |
 |---|---|---|
 | `AttestConfig` | `infra/attest/` | 配置 DTO + 解析 + ENFORCE 完整性检查 |
-| `ProjectServerConfig` / `ProjectServerConfigFacade` | 现有 | + `appAttestConfig` 列；`findAttestConfig(projectId)` |
+| `ProjectServerConfig` / `ProjectServerConfigFacade` | 现有 | + `appAttestConfig` 列；`findAttestConfig(projectId)`——进程内缓存（参照 `FirebaseAppRegistry`：ConcurrentHashMap + null 哨兵，重启生效）。createInstall / challenge 是无鉴权高频入口，不允许每请求查库 |
 | `AttestChallengeCodec` | `infra/attest/` | 签发 / 校验 HMAC challenge（§3.1），纯计算 |
 | `AttestReplayGuard` | `infra/attest/` | `markUsed(key, ttl)`：SET NX EX，返回 `FIRST / REPLAY / DEGRADED`；DEGRADED 时打节流后的 ERROR |
-| `AppAttestVerifier` | `infra/attest/` | attestation / assertion 的 WebAuthn4J 验证（纯密码学）。production 和 development 是两个独立实例（`DCAttestationDataVerifier.production` 分别为 true / false），按 `ios.env` 选用 |
+| `AppAttestVerifier` | `infra/attest/` | attestation / assertion 的 WebAuthn4J 验证（纯密码学）。production 和 development 是两个独立实例（`DCAttestationDataVerifier.production` 分别为 true / false），按 `ios.env` 选用。已核实源码：production 标志只影响 AAGUID 期望值（`appattest\0…0` / `appattestdevelop`），dev/prod 共用同一信任锚，只需固定一份 Apple 根证书 |
 | `AppAttestTrustAnchors` | `infra/attest/` | 从 classpath 资源 `attest/apple-app-attestation-root-ca.pem` 加载 Apple App Attestation Root CA，**启动时校验 SHA-256 指纹是否与代码里固定的常量一致**，不一致就启动失败。构造 `KeyStoreTrustAnchorRepository` + `DefaultCertPathTrustworthinessVerifier`。**不能**用 JVM 系统信任库，也不能用 Null verifier。Apple 新增或轮换根证书时，更新资源和指纹常量，随版本发布 |
 | `PlayIntegrityVerifier` | `infra/attest/` | decode + 校验 + token 去重 |
 | `AttestGuard` | `infra/attest/` | 拆成三个职责清楚的方法，各自只有一套 INVALID 语义：`verifyProof(...)`：纯技术验证（challenge 格式/签名/时效、WebAuthn4J、信号量），**不套用 mode**，返回 VALID / INVALID / UNAVAILABLE；`decideCreateInstall(verification, mode)`：createInstall 用，套用 §4.3 的矩阵（ENFORCE + INVALID → 403001）；`consume(verification)`：一次性消费 challenge。attestExisting 不调用 mode 决策，由 Fetcher 自己把结果映射成 10/20/30（§6.7）。**不写业务表**；recover / attestExisting 在验签前需要读公钥、绑定和状态时，通过只读的 `InstallFacade.findAttestationByKey` 获取（infra → Facade 只读，有现成先例：`FirebaseAppRegistry → ProjectServerConfigFacade`） |
@@ -559,7 +583,7 @@ data class VerifiedProof(
     val provider: Int,
     val subject: String?,            // iOS keyId；Android null
     val publicKey: ByteArray?,
-    val receipt: ByteArray?,
+    val receipt: ByteArray?,         // createInstall 时恒为 null；receipt 由 core-job 回填任务落库（§5.8）
     val signals: Map<String, Any?>,  // 固定键集合，§5.7
     val evidence: Map<String, Any?>, // 不含原始 token
 )
@@ -596,6 +620,7 @@ CREATE TABLE core_install_attestation (
     provider              INT  NOT NULL,             -- 110 / 120
     subject               TEXT NULL,                 -- iOS keyId；Android NULL
     public_key            BYTEA NULL,
+    attestation_object    BYTEA NULL,                -- 原始 attestation（≤16KB）；core-job 回填 receipt 成功后清空（§5.8）
     sign_count            BIGINT NOT NULL DEFAULT 0, -- iOS 首次 attestation 写 0；recover 的 `sign_count < :new` 依赖它不为 NULL
     receipt               BYTEA NULL,
     receipt_expires_at    TIMESTAMPTZ NULL,
@@ -613,6 +638,7 @@ CREATE UNIQUE INDEX uk_install_attestation_subject
     ON core_install_attestation (project_id, provider, subject) WHERE subject IS NOT NULL;
 CREATE INDEX idx_install_attestation_install ON core_install_attestation (project_id, install_id);
 CREATE INDEX idx_install_attestation_refresh ON core_install_attestation (next_refresh_at) WHERE receipt IS NOT NULL;
+CREATE INDEX idx_install_attestation_backfill ON core_install_attestation (created_at) WHERE receipt IS NULL AND attestation_object IS NOT NULL;
 CREATE INDEX idx_install_attestation_evidence ON core_install_attestation (created_at) WHERE evidence IS NOT NULL;
 ```
 
@@ -625,7 +651,7 @@ core-api 有 actuator，但未接指标导出；现有观测是 logstash JSON �
 
 ```
 event=install.attest   mode provider proofStatus result=missing|valid|invalid|unavailable|client_unavailable reason verifyMs totalMs signals{固定键}
-event=install.recover  result=ok|not_found|invalid|blocked|unavailable reason verifyMs
+event=install.recover  mode provider result=ok|not_found|invalid|blocked|unavailable reason verifyMs
 ```
 
 - `reason` 为有限枚举：challenge_missing / replay / chain_invalid / nonce_mismatch / rp_mismatch / counter / not_play_recognized / cert_mismatch / device_integrity / stale / request_hash / key_reused / provider_not_configured / config_invalid / store_mismatch / redis / google_5xx / google_429 / google_timeout …
@@ -641,9 +667,11 @@ event=install.recover  result=ok|not_found|invalid|blocked|unavailable reason ve
 | core-api | Apple App Attestation Root CA（PEM 资源） | 新增资源文件，从 Apple Private PKI 下载，指纹固定在代码里（见 `AppAttestTrustAnchors`） |
 | core-job | `com.nimbusds:nimbus-jose-jwt:9.40` | 单独声明；DeviceCheck ES256 JWT |
 | core-job | Spring Boot Jackson starter | 新增；解析 JSONB 与 Apple 响应 |
-| core-job | JDK `HttpClient`、现有 `JdbcTemplate` | 无新增 |
+| core-job | JDK `HttpClient`、现有 `JdbcClient` | 无新增 |
 
 DeviceCheck 最小配置 DTO 在 core-job 内单独定义，不放 core-common。
+
+receipt 回填调用 `POST https://api-appattest.apple.com/v1/attestations`（`{key, attestation}`），按当前核实的模型不要求 DeviceCheck JWT；如实现时核实需要，再复用同一套 ES256 JWT 逻辑。该端点是否区分 dev / prod 随 §10.4 一并核实。
 
 ### 5.7 输入限制、信号与保留
 
@@ -658,7 +686,7 @@ DeviceCheck 最小配置 DTO 在 core-job 内单独定义，不放 core-common�
 | 数据 | 保留 |
 |---|---|
 | keyId、public_key、sign_count、status、signals | 跟随 install（install 清理设计时纳入） |
-| receipt | 跟随 key；Apple 过期后由刷新任务替换 |
+| receipt | 跟随 key；由 core-job 回填任务换取，一期不轮换（receipt 没有服务端可自助续期的机制） |
 | evidence（原始 verdict / 证书摘要） | **90 天**后清空（core-job 每日：`UPDATE ... SET evidence = NULL WHERE evidence IS NOT NULL AND created_at < now() - 90d`） |
 | integrityToken 原文 | 不存储（Redis 仅存 hash，TTL 600s） |
 
@@ -667,11 +695,20 @@ DeviceCheck 最小配置 DTO 在 core-job 内单独定义，不放 core-common�
 
 ### 5.8 core-job 任务
 
-**iOS fraud metric 刷新**
-- 选取 `provider=110 AND status=10 AND receipt IS NOT NULL AND next_refresh_at <= now()`（新行 `next_refresh_at` 初始化为 receipt 的 not-before / 下次允许刷新时间）。
-- DeviceCheck JWT（ES256）POST receipt 到 Apple attestation data 端点（按 `ios.env`）。
-- 成功：写新 `receipt`、`receipt_expires_at`、`fraud_metric`、`next_refresh_at`（取响应中的下次允许刷新时间），`refresh_failure_count = 0`。
-- 429 / 5xx：`refresh_failure_count + 1`，`next_refresh_at = now + 指数退避`（封顶 24h），不改 receipt。
+**iOS receipt 回填**（attestation 对象 → receipt）
+- attestation 对象本身不含 receipt；receipt 只能由服务端向 Apple 换取。选取 `provider=110 AND status=10 AND receipt IS NULL AND attestation_object IS NOT NULL`。
+- `POST https://api-appattest.apple.com/v1/attestations`（`{key: keyId, attestation: attestation_object}`；不需要 DeviceCheck JWT，见 §5.6）。
+- 成功：写 `receipt`、`next_refresh_at = now + 24h`（初始刷新间隔，按 §10.4 核实的频率限制校准），清空 `attestation_object`。
+- Apple 侧 attestation 一次性消费：「已使用」类 4xx → 清空 `attestation_object`、打日志 `event=attest.receipt_backfill` reason=already_used，放弃该 key 的 receipt（fraud metric 缺失，可接受），不再重试。
+- 网络错误 / 5xx / 429：`refresh_failure_count + 1`，`next_refresh_at = now + 指数退避`（封顶 24h），保留 attestation_object 等下轮。
+- createInstall 全程不依赖 Apple（纯本地验证）；Apple 故障只影响 fraud metric 的及时性，不影响可用性。
+
+**iOS fraud metric 刷新**（receipt → two bits）
+- 选取 `provider=110 AND status=10 AND receipt IS NOT NULL AND next_refresh_at <= now()`。
+- DeviceCheck JWT（ES256，按 `ios.env` 选 host）POST receipt 到 DeviceCheck attestation data 端点。
+- 响应是 `bit0 / bit1 / creationTimestamp`，**不含新 receipt、没有「下次允许刷新」字段**：`fraud_metric` 按 bit0/bit1 写入（0..3）；`next_refresh_at = now + 24h`（服务端自己的策略，按 §10.4 核实的频率限制校准）；`refresh_failure_count = 0`。
+- 429 / 5xx：`refresh_failure_count + 1`，`next_refresh_at = now + 指数退避`（封顶 24h）。
+- `receipt_expires_at` 一期不写（保留列）。
 - 一期只写入，不封禁。
 
 **evidence 清理**：见 §5.7，每日一次。
@@ -745,6 +782,7 @@ type ProofOutcome =
   | 'rejected'                   // recover 返回 403001
   | 'rate_limited_pre_verify'    // 入口短窗口 429000：proof 还没被校验和消费
   | 'rate_limited_post_verify'   // 验签后的日窗口 429002：proof 已校验但未绑定
+  | 'unsupported';               // no-proof 请求在 ENFORCE 下被 403001 拒绝：状态不变（UNSUPPORTED 终态 / flag 关），UI 按 §6.8 分类
   | 'ambiguous';                 // 网络错误 / 超时，结果未知
 
 interface InstallProofProvider {
@@ -808,7 +846,7 @@ useEffect(() => {
 - **回归测试**：本地已经有 `apiEnv=dev` 的覆盖值时，第一次 challenge / create 请求一定发到 dev，不会发到默认的 prod。
 ### 6.4 iOS 状态机（`lib/attest.ts`）
 
-**存储位置**：单条 JSON 记录存 **AsyncStorage**（key `attestState`），不存 SecureStore。偏离 review「keyId 存 SecureStore」的建议，理由如下：
+**存储位置**：JSON 记录存 **AsyncStorage**（按 `antique.attestState.{projectId}.{apiEnv}` 分多条，见 §6.8），不存 SecureStore。偏离 review「keyId 存 SecureStore」的建议，理由如下：
 - keyId 只是 Secure Enclave 公钥的 hash，attestationObject 也不是秘密；私钥永远不出 SE，存哪里都不影响安全。
 - iOS 上 keychain 在卸载后仍会保留，而 App Attest key 卸载后就失效了。如果存在 SecureStore，重装后读到的是一个已经不能用的 keyId；存 AsyncStorage，它会跟着 App 一起被删掉，和 key 的生命周期正好一致。
 - 只用一个存储、每次一次 JSON 写入，不会出现两个存储之间状态不一致的问题。expo-secure-store 对单个值有大约 2KB 的限制，也放不下几 KB 的 attestationObject。
@@ -836,9 +874,10 @@ UNSUPPORTED      {}                                                // 设备不�
 
 ```
 EMPTY
-  └─ generateKeyAsync() → 写 KEY_READY（失败 → 丢弃此 key，返回 unavailable）
+  └─ fetchChallenge（enabled=false → 返回 no-proof，不生成 key，状态保持 EMPTY；503 → unavailable）
+     → generateKeyAsync() → 写 KEY_READY（失败 → 丢弃此 key，返回 unavailable）
 KEY_READY
-  └─ fetchChallenge（503 → unavailable）
+  └─ fetchChallenge（503 → unavailable；enabled=false 在 EMPTY 已拦截，理论上不会到这里）
      → 写 ATTESTING（失败 → unavailable）
      → attestKeyAsync(keyId, challenge)
           ERR_APP_INTEGRITY_SERVER_UNAVAILABLE（attest 本身没成功）→ 回写 KEY_READY → unavailable（下一轮用同一把 key 重试，符合 Apple 指引）
@@ -857,7 +896,8 @@ ATTESTING（重启后发现：attestKey 的结果未知）
 RECOVER_PENDING
   └─ fetchChallenge → generateAssertionAsync → 返回 recover
 REGISTERED
-  └─ 本地已有 installToken 时不进入 proof 流程；本地凭证丢失时转 RECOVER_PENDING
+  └─ 本地已有 installToken 且 state.installId 一致时不进入 proof 流程；本地凭证丢失时转 RECOVER_PENDING
+  └─ 补证（§6.7）且 state.installId ≠ targetInstallId：视同 EMPTY 重新生成新 key（EMPTY → … → attest_existing 路径，REGISTERED 被新状态覆盖）；失败停在对应的 pending 状态，下次启动继续
 UNSUPPORTED
   └─ 永远返回 no-proof。OBSERVE 下照常创建未验证的 install；ENFORCE 下会被 403001 拒绝（产品策略：不支持 App Attest 的 iOS 设备在 ENFORCE 下不能注册，这类设备需要 iOS 14+ 且有 Secure Enclave，实际极少）
 ```
@@ -874,6 +914,7 @@ UNSUPPORTED
 | create | rate_limited_post_verify（429002，验签后的日窗口） | proof 已经校验过但没有绑定，日窗口要到 UTC 零点才重置 → **废弃 key → EMPTY**，等到 Retry-After 再开始 |
 | create | ambiguous | 保持 ATTESTED_PENDING（下一轮在有效期内重发，过期转 RECOVER_PENDING） |
 | create | replay_or_reused | → **RECOVER_PENDING**（下一轮一定走 recover，不会再 create） |
+| create（no-proof） | unsupported | 本次未带 proof 仍被 403001 拒绝（ENFORCE）→ 状态不变；仅用于上报与 §6.8 的 UI 分类 |
 | recover | recover_registered | → REGISTERED |
 | recover | ambiguous | 保持 RECOVER_PENDING |
 | recover | recover_not_found | 这把 key 已经 attest 过，但服务端从没注册它 → **废弃 key → EMPTY**（绝不对它再次 attest） |
@@ -1112,6 +1153,8 @@ cycle 失败：
   有 Retry-After 时，优先按 Retry-After 等待，不按通用退避
 ```
 
+- **backfill 不与 bootstrap 并发**：启动时先等首次 bootstrap cycle 结束（成功或失败）再调度 backfill workflow；两者共用同一 single-flight、定时器与 Retry-After 规则。
+- **Retry-After 的读取**：从 GraphQL error 的 `extensions.retryAfterSec`（§4.4）取秒数；`codes.ts` / `retry.ts` / 调度器统一解析，没有该字段时按各自默认退避。
 - 任意时刻最多只有一个定时器。`RootLayout` 卸载时，清理定时器和网络监听。
 - App 在后台时不启动新的 cycle；回到前台可以提前触发一次。
 - UNSUPPORTED 和 status=30 不进入定时重试。
@@ -1161,6 +1204,7 @@ cycle 失败：
   - **ENFORCE 下 Google UNAVAILABLE 返回 503002；Redis 故障时，只要其余校验通过就放行，并打 `attest.redis_degraded`。**
   - 声明弱 provider 的垃圾 proof，在 ENFORCE 下返回 403001。
   - mode=ENFORCE 但平台配置缺失，三个接口都返回 503002，并打出 `attest.config_invalid` 日志。
+  - ios 只配 teamId/bundleId/env（缺 deviceCheck*）时配置**有效**：三个接口正常工作，core-job 跳过刷新并打日志（§4.1 口径）。
   - 未知 provider、provider 与子对象不匹配、proof 和 proofStatus 同时出现、proofStatus 取非法值，都返回 400000。
 - 限流：
   - createInstall 日窗口：
@@ -1188,7 +1232,9 @@ cycle 失败：
     8. 短窗口遇到 Redis 故障也返回 Degraded，日志同样受节流；
     9. 同一个 iid 换了 IP，install 层额度保持不变。
   - 429 的两个位置：入口短窗口返回 429000，challenge 没有被消费，带 Retry-After；日窗口返回 429002，challenge 也没有被消费，带上到 UTC 零点的 Retry-After。
+  - Retry-After 契约：429000 / 429002 的 extensions 带 `retryAfterSec`（分别为短窗口剩余秒数、到 UTC 零点的秒数）。
   - 并发提交同一份 proof：只有一个成功，另一个得到 403001(replay)，两次都扣了日额度。
+  - Redis 故障期间重放同一份 Android integrityToken → 去重被跳过、放行（打 `attest.redis_degraded`）；日窗口仍然生效（1b 实现时补测试）。
   - 验签信号量耗尽：OBSERVE 放行，ENFORCE 返回 503002。
   - 下游两层（数值都从配置读取）：
     - createAnonymous：同一个 install 第 6 次被拒；同一个 IP 60 秒内第 101 次、一天内第 1001 次被拒；
@@ -1200,6 +1246,7 @@ cycle 失败：
 - storeType：缺省时存 NULL；取 10 / 20 时正常写入；其它值返回 400000；updateInstall 和 recover 都不修改它；provider 110 VALID 但 storeType≠10 时，只打 `store_mismatch` 日志、不拒绝。
 - `CreateInstallResult.attestationStatus`：VALID 并绑定成功 → 10；OBSERVE 下 INVALID → 20；没带 proof、mode=OFF、全局开关关闭 → 30；recover → 10。
 - `createAttestChallenge`：全局开关关闭、project 未配置、mode=OFF、ios 未配置时，返回 `enabled=false`、`challenge=null`。
+- 全局开关关闭时 recoverInstall 仍正常验签（只要 ios 配置存在且 challenge secret 可用）（§3.3）。
 - `AppAttestTrustAnchors`：资源指纹不一致时启动失败；用 development fixture 去验 production verifier 时失败。
 - `sign_count`：首次 attestation 落库为 0，之后第一次 recover（counter=1）成功。
 - `attestExisting`（补充）：
@@ -1220,7 +1267,7 @@ cycle 失败：
   - INVALID → 20，不报错；
   - 补证之后，用这把 key 可以 recover 成功。
 - `InstallAggHandler`：VALID 落库并派生 platform；key_reused 在 OBSERVE 和 ENFORCE 下都返回 403001 且不建 install；recover 的条件更新（并发 / BLOCKED → 403001）。
-- core-job：`next_refresh_at` 选取、成功写回、429 退避；evidence 90 天清理。
+- core-job：receipt 回填（成功写 receipt + 清 attestation_object + next_refresh_at=+24h；「已使用」4xx 清 attestation_object 且不再重试；网络 / 5xx / 429 退避）、fraud metric 刷新（成功写 fraud_metric + next_refresh_at=+24h；429 退避；deviceCheck 配置缺失时跳过并打日志）、evidence 90 天清理。
 
 客户端：
 - 状态机（逐条覆盖 §6.4 的转移表）：
@@ -1351,7 +1398,7 @@ mode 设为 OBSERVE。`app_attest_config` 只配 `ios`。Android 客户端在这
    - 实现时固定版本 57.0.2，按 antique 仓库约定安装：`pnpm --filter @ifmix/antique exec expo install @expo/app-integrity@57.0.2`（不要用 `pnpm add` 或 `npx expo install`，避免装到错误的 workspace）。真机端到端验证仍放在第 7 项。
 2. App Attest entitlement 在 TestFlight / App Store 构建中是否被忽略（一律走 production）。这一项由 §9 的「TestFlight 真机冒烟」和 codesign 检查作为发布门槛来最终确认。
 3. ✅ 已通过（2026-10-04 smoke test）：`com.webauthn4j:webauthn4j-appattest:0.30.1.RELEASE` 在本项目的 Gradle 9.6.1 + Corretto 25.0.4 下可以解析、编译、类加载。它会引入 Jackson 2（`jackson-databind` / `jackson-dataformat-cbor` 2.21.4），和 Spring 的 Jackson 3（`tools.jackson` 3.1.4）包名不同，可以在同一进程共存。实现时固定使用这个版本。**还没有验证的**：用真实 attestation / assertion 做解析和密码学校验，需要真机 fixture，见第 7 项。
-4. Apple attestation data 端点、receipt 字段（not-before / 过期 / 下次刷新）与频率限制。
+4. ✅ 已核实模型（2026-10-04）：attestation 对象不含 receipt；receipt 由服务端 `POST https://api-appattest.apple.com/v1/attestations`（`{key, attestation}`）换取，attestation 在 Apple 侧一次性消费。**待核实**：该端点是否区分 dev / prod、响应字段与频率限制（决定 `next_refresh_at` 初值）；DeviceCheck `attest_data` 的响应字段（预期 bit0 / bit1 / creationTimestamp）与频率限制。
 5. ~~Redis ≥ 6.2（GETDEL）~~：已不需要。challenge 改成无状态之后只用 `SET NX EX`，所有 Redis 版本都支持。
 6. persisted query：createInstall operation 是否需要更新。
 7. **真机 fixture 端到端**（1a 剩下风险最大的一项），方案见 §10.1。
@@ -1425,7 +1472,7 @@ mode 设为 OBSERVE。`app_attest_config` 只配 `ios`。Android 客户端在这
 | `docs/design/install-tracking.md` | createInstall 的限流说明；新增 attestation 一节，内容引用本规格 |
 | `docs/DATABASE.md` | 新表 `core_install_attestation`；`core_install.store_type`；`core_project_server_config.app_attest_config` |
 | `docs/release.md` | 未发布变更：attestation（默认关）、限流阈值调整、新 env（`APP_ATTEST_GLOBAL_ENABLED`、`APP_ATTEST_CHALLENGE_SECRET`） |
-| `antique/docs/install-tracking-frontend-api.md` | 限流说明；proof / proofStatus / storeType 字段；recover 流程；403001 / 503002 错误码 |
+| `antique/docs/install-tracking-frontend-api.md` | 限流说明；proof / proofStatus / storeType 字段；recover 流程；403001 / 503002 错误码；`retryAfterSec` extensions 契约 |
 | `ifmix_server/.../persisted-queries/customer/customer.json` + `antique/apps/shared/src/api/graphql.ts` | CreateInstall 的 selection set 加上 `attestationStatus`；新增三个 operation；按 §6.6 的发布顺序合入 |
 | `antique/apps/shared/src/api/graphql.ts` 里的 `SENSITIVE_LOG_KEYS` | 加上 installToken（这是已经存在的漏洞）以及证明材料相关的字段（§6.8） |
 | `antique/apps/shared/src/api/codes.ts` 注释 | 403001 / 403002 / 404001 / 409001 / 429002 / 503002 的含义 |

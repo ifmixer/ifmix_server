@@ -6,7 +6,10 @@ import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.jimmer.ActionContextHolder
+import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
 import com.ifmix.core.api.infra.ratelimit.RateLimiter
+import com.ifmix.core.api.infra.ratelimit.RateLimitResult
+import com.ifmix.core.api.infra.ratelimit.Window
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.auth.AuthFacade
 import com.ifmix.core.api.modules.customer.CustomerFacade
@@ -22,6 +25,7 @@ class CustomerFetcher(
     private val globalTx: GlobalTxRunner,
     private val ctxProvider: ActionContextProvider,
     private val rateLimiter: RateLimiter,
+    private val rlProps: RateLimitProperties,
 ) {
 
     @DgsMutation(field = "m_customer_createAnonymousCustomer")
@@ -31,10 +35,16 @@ class CustomerFetcher(
         // 只要求携带有效可信 iid（token 类型不限）：install token 是首装主路径，
         // 但含 iid 的 customer token 等也可 bootstrap；不再强制 type=5。iid 无效/缺失 → UNAUTHORIZED（进入事务前）。
         ctx.mustGetTokenInstallId()
-        // 每 IP 60s 10 次
+        // 每 IP 60s 10 次（legacy 严格阈值独立计数器；key 带 projectId 隔离，见 attest 规格 §4.6）
         val clientIp = ctx.clientIp ?: "unknown"
-        if (!rateLimiter.checkFixedWindow(clientIp, RATE_LIMIT, RATE_WINDOW_SEC)) {
-            throw ApiError(ErrorCode.RATE_LIMITED, "too many anonymous customer creations")
+        when (val rl = rateLimiter.check(
+            Window.MINUTE,
+            "ratelimit:${ctx.mustGetProjectId()}:anonymous:legacy:ip:min:$clientIp",
+            rlProps.anonymous.legacyIpMinute,
+        )) {
+            RateLimitResult.Allowed, RateLimitResult.Degraded -> Unit
+            is RateLimitResult.Limited ->
+                throw ApiError(ErrorCode.RATE_LIMITED, "too many anonymous customer creations", retryAfterSec = rl.retryAfterSec)
         }
         val res = globalTx.withTx(ctx) { txCtx -> authService.createAnonymousCustomer(txCtx) }
         // 只置 customerId；customer 对象由 nested resolver 按需查（客户端不选则不查库）
@@ -55,10 +65,5 @@ class CustomerFetcher(
         val ctx = ActionContextHolder.current()
         return customerFacade.findById(ctx, parent.customerId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "customer not found")
-    }
-
-    companion object {
-        private const val RATE_LIMIT = 10
-        private const val RATE_WINDOW_SEC = 60L
     }
 }

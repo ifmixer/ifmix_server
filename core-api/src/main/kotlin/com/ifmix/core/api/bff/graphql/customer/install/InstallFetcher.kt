@@ -5,7 +5,10 @@ import com.ifmix.core.api.generated.types.UpdateInstallResult
 import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
+import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
 import com.ifmix.core.api.infra.ratelimit.RateLimiter
+import com.ifmix.core.api.infra.ratelimit.RateLimitResult
+import com.ifmix.core.api.infra.ratelimit.Window
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.install.InstallFacade
 import com.netflix.graphql.dgs.DgsComponent
@@ -19,14 +22,22 @@ class InstallFetcher(
     private val globalTx: GlobalTxRunner,
     private val ctxProvider: ActionContextProvider,
     private val rateLimiter: RateLimiter,
+    private val rlProps: RateLimitProperties,
 ) {
     @DgsMutation(field = "m_install_createInstall")
     fun createInstall(dfe: DgsDataFetchingEnvironment, @InputArgument input: Map<String, Any?>?): CreateInstallResult {
         // 无鉴权：requireActorType=null
         val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
         val clientIp = ctx.clientIp ?: "unknown"
-        if (!rateLimiter.checkFixedWindow("install:$clientIp", RATE_LIMIT, RATE_WINDOW_SEC)) {
-            throw ApiError(ErrorCode.RATE_LIMITED, "too many createInstall")
+        // 入口短窗口 100/60s/IP（key 带 projectId 隔离；阈值/限流策略见 attest 规格 §4.6）
+        when (val rl = rateLimiter.check(
+            Window.MINUTE,
+            "ratelimit:${ctx.mustGetProjectId()}:install:ip:min:$clientIp",
+            rlProps.install.ipMinute,
+        )) {
+            RateLimitResult.Allowed, RateLimitResult.Degraded -> Unit
+            is RateLimitResult.Limited ->
+                throw ApiError(ErrorCode.RATE_LIMITED, "too many createInstall", retryAfterSec = rl.retryAfterSec)
         }
         @Suppress("UNCHECKED_CAST")
         val deviceInfo = input?.get("deviceInfo") as? Map<String, Any?>
@@ -53,10 +64,5 @@ class InstallFetcher(
             )
         }
         return UpdateInstallResult(success = ok)
-    }
-
-    companion object {
-        private const val RATE_LIMIT = 10
-        private const val RATE_WINDOW_SEC = 60L
     }
 }
