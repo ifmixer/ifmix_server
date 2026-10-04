@@ -18,6 +18,28 @@ import java.net.SocketTimeoutException
  */
 class SpringAiScanRunnerClassifyTest {
 
+    /** 构造类型化 401（ErrorObject 四字段必填）。 */
+    private fun typed401(): UnauthorizedException =
+        UnauthorizedException.builder()
+            .headers(Headers.builder().build())
+            .error(
+                ErrorObject.builder()
+                    .code("invalid_api_key").message("401 Unauthorized").param("key").type("invalid_request_error")
+                    .build()
+            )
+            .build()
+
+    /** 构造类型化 403。 */
+    private fun typed403(): PermissionDeniedException =
+        PermissionDeniedException.builder()
+            .headers(Headers.builder().build())
+            .error(
+                ErrorObject.builder()
+                    .code("permission_denied").message("403 Forbidden").param("key").type("permission_denied")
+                    .build()
+            )
+            .build()
+
     /** (rateLimited, invalidKey, timeout, other) = (300, 3600, 300, 30)，与 yml 默认一致便于核对。 */
     private fun classify(e: Exception) = SpringAiScanRunner.classify(e, 300, 3600, 300, 30)
 
@@ -30,19 +52,27 @@ class SpringAiScanRunnerClassifyTest {
     @Test
     fun `typed 401 via UnauthorizedException in wrapped cause chain`() {
         // Spring AI 可能包装 SDK 异常：类型化 401 在 cause 链上 → typedInvalidKey=true（触发永久禁用）
+<<<<<<< Updated upstream
         val unauth = UnauthorizedException.builder()
             .headers(Headers.builder().build())
             .build()
         assertThat(classify(IllegalStateException(unauth)))
+=======
+        assertThat(classify(IllegalStateException(typed401())))
+>>>>>>> Stashed changes
             .isEqualTo(KeyFailure(3600, "401", typedInvalidKey = true))
     }
 
     @Test
     fun `typed 403 via PermissionDeniedException always has reason 403`() {
+<<<<<<< Updated upstream
         val denied = PermissionDeniedException.builder()
             .headers(Headers.builder().build())
             .build()
         assertThat(classify(RuntimeException(denied)))
+=======
+        assertThat(classify(RuntimeException(typed403())))
+>>>>>>> Stashed changes
             .isEqualTo(KeyFailure(3600, "403", typedInvalidKey = true))
     }
 

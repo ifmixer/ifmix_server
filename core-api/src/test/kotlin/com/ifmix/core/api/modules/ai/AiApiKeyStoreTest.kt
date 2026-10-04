@@ -128,7 +128,11 @@ class AiApiKeyStoreTest {
         // 而非改前「窗口起点差 1、重叠 4/5」的反复重探。
         val fake = Fake((1..20).map { "k$it" }, probeWindow = 5, cursorSeed = 0)
         val order = fake.store.currentKeys().map { it.id } // 拿到打乱后的内部顺序
+<<<<<<< Updated upstream
         (1..20).forEach { fake.store.markCooldown(order[it - 1], 60, "429") }
+=======
+        order.forEach { fake.store.markCooldown(it, 60, "429") }
+>>>>>>> Stashed changes
         repeat(4) { assertThat(fake.store.pick()).isNull() }
         // 4 次全冷却：窗口 [0..4] / [5..9] / [10..14] / [15..19]，恰好覆盖全池
         val expectedWindows = (0 until 4).map { windowStart ->
