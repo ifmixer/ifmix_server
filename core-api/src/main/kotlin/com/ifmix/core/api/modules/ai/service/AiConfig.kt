@@ -1,9 +1,9 @@
 package com.ifmix.core.api.modules.ai.service
 
-import com.ifmix.core.api.modules.ai.repo.AiApiKeyRepository
 import com.ifmix.core.api.entity.ai.AiApiKey
 import com.ifmix.core.api.entity.ai.ApiProviders
 import com.ifmix.core.api.entity.ai.enabled
+import com.ifmix.core.api.entity.ai.id
 import com.ifmix.core.api.entity.ai.provider
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.dao.DataAccessException
 import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Duration
+import java.util.UUID
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -22,18 +23,22 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * AI 模块 bean 装配。
  *
- * AiApiKeyStore 的三个接缝（loadKeys / readCooldowns / markCooldownFn）都以 lambda 注入
+ * AiApiKeyStore 的四个接缝（loadKeys / readCooldowns / markCooldownFn / disableKeyFn）都以 lambda 注入
  * （不适合直接 @Component 注册），在此处用 sqlClient + StringRedisTemplate 组装。
  *
  * 降级（设计见 docs/design/ai-api-key-pool.md）：Redis 异常 → 视为「未冷却」放行 + 限频 WARN，
  * 不设内存兜底层（重试上界已存在）。注意不要改成「判返回 null」——连接断开时 Spring 抛的是
  * RedisConnectionFailureException（DataAccessException 子类），判空兜不住。
+ *
+ * 禁用（docs/superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md）：类型化 401/403
+ * 的永久禁用是 best-effort 副作用——DB 写失败只限频 WARN、Redis 1h 冷却仍在、300s 后列表重载移出，
+ * 因此 **任何异常都不得逃出 disableKeyFn**（catch Exception 整体收敛而非按类型列举——
+ * Jimmer 异常不经 Spring 翻译、不是 DataAccessException，按类型列举兜不住）。
  */
 @Configuration
 class AiConfig(
     private val sqlClient: KSqlClient,
     private val redis: StringRedisTemplate,
-    private val aiApiKeyRepo: AiApiKeyRepository,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -79,7 +84,7 @@ class AiConfig(
                     val values = redis.opsForValue().multiGet(keyIds.map { cooldownKey(it) }).orEmpty()
                     List(keyIds.size) { i -> values.getOrNull(i) != null }
                 } catch (e: DataAccessException) {
-                    warnDegraded("MGET cooldowns", e)
+                    warnDegraded("MGET cooldowns", "redis failed (fail-open, cooldown disabled until redis recovers)", e)
                     List(keyIds.size) { false }
                 }
             }
@@ -88,20 +93,42 @@ class AiConfig(
             try {
                 redis.opsForValue().set(cooldownKey(keyId), reason, Duration.ofSeconds(cooldownSec))
             } catch (e: DataAccessException) {
-                warnDegraded("SET cooldown", e)
+                warnDegraded("SET cooldown", "redis failed (fail-open, cooldown disabled until redis recovers)", e)
+            }
+        },
+        disableKeyFn = { keyId ->
+            // 失效 key 的永久禁用（不可逆，需人工恢复）。best-effort 副作用：任何异常在此收敛
+            // （Jimmer 异常不经 Spring 翻译、不是 DataAccessException，catch Exception 整体兜住），
+            // 绝不向 runner 逃逸导致扫描失败；DB 故障时 Redis 1h 冷却 + 300s 列表重载仍能把 key 移出。
+            try {
+                val affected = sqlClient.createUpdate(AiApiKey::class) {
+                    where(table.id eq UUID.fromString(keyId))
+                    set(table.enabled, false)
+                }.execute()
+                if (affected > 0) {
+                    log.warn("AI API key disabled (enabled=false). keyId={} — 需运营确认是否误杀，恢复：改回 enabled=true 或删除行", keyId)
+                } else {
+                    log.info("AI API key disable was a no-op (already disabled or deleted). keyId={}", keyId)
+                }
+            } catch (e: Exception) {
+                warnDegraded("disable key (PG enabled=false)", "db write failed (Redis 1h cooldown still active; retry is idempotent)", e)
             }
         },
         probeWindow = probeWindow,
     )
 
-    private fun warnDegraded(op: String, e: Exception) {
+    /**
+     * key 池降级限频 WARN（Redis / DB 共用同一限频槽——同属「key 池降级」告警）。
+     * reason 必须描述**实际故障与后果**（硬编码 "redis failed" 会在 DB 故障时误导排查），
+     * 由调用点按 op 各自传入。
+     */
+    internal fun warnDegraded(op: String, reason: String, e: Exception) {
         val now = System.currentTimeMillis()
         val last = lastDegradedWarnAtMs.get()
         if (now - last >= TimeUnit.SECONDS.toMillis(DEGRADED_WARN_INTERVAL_SEC) &&
             lastDegradedWarnAtMs.compareAndSet(last, now)
         ) {
-            log.warn("AI key-pool degraded: redis failed (fail-open, cooldown disabled until redis recovers). op={} error={}",
-                op, e.toString())
+            log.warn("AI key-pool degraded: {} op={} error={}", reason, op, e.toString())
         }
     }
 

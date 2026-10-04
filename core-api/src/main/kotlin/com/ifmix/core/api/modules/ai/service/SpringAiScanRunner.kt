@@ -26,12 +26,30 @@ import java.net.URI
 import java.util.concurrent.TimeoutException
 
 /**
+ * 异常分类结果（设计见 docs/superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md）：
+ * 冷却秒数 + 冷却原因（"429"/"401"/"403"/"timeout"/"error"，写 Redis value 与日志）
+ * + [typedInvalidKey]——是否由**类型化** 401/403 异常判定（cause 链含
+ * [UnauthorizedException] / [PermissionDeniedException]）。
+ *
+ * 分层判定：类型化异常是 API 确实 401/403 的强信号 → 冷却 **+ 永久禁用**（不可逆，需人工恢复）；
+ * message 兜底短语可能被网关自定义错误页 / SDK 包装 message 误中 → 仅冷却（1h 自动解冻）。
+ * 不可逆操作只走高置信度路径。
+ */
+internal data class KeyFailure(
+    val cooldownSec: Long,
+    val reason: String,
+    val typedInvalidKey: Boolean = false,
+)
+
+/**
  * ScanRunner 基于 Spring AI OpenAI-compatible model。
  *
  * key 池交互（provider 无关，设计见 docs/design/ai-api-key-pool.md）：
  * - 每次尝试从 [AiApiKeyStore.pick] 轮询取 key（候选全冷却返回 null，计为一次 attempt）；
- * - 失败按类型冷却（时长见 app.ai.apikey-pool.cooldown.*）：429→300s、401/403（key 失效）→1h+ERROR、
- *   超时→300s、其他→30s；JSON 解析失败不冷却（模型输出问题，非 key 问题），attempt 已消耗、游标已推进；
+ * - 失败按类型冷却（时长见 app.ai.apikey-pool.cooldown.*）：429→300s、401/403（key 失效）→1h、
+ *   超时→300s、其他→30s；**类型化** 401/403（cause 链含 Unauthorized/PermissionDenied）额外永久禁用
+ *   （PG enabled=false，不可逆）；message 兜底命中仅冷却；JSON 解析失败不冷却（模型输出问题，非 key 问题），
+ *   attempt 已消耗、游标已推进；
  * - 单模型重试上界 [MAX_ATTEMPTS_PER_MODEL]，与 key 池大小解耦；总预算 [scanDeadlineSec] 兜底最坏等待。
  *
  * 成功返回 AI 解析的 JSON Map；失败抛 ApiError。
@@ -78,7 +96,7 @@ open class SpringAiScanRunner(
         private const val MAX_CAUSE_DEPTH = 16
 
         /**
-         * 异常 → (冷却秒数, 冷却原因)。类型优先、message 兜底——message 兜底**不含纯数字匹配**
+         * 异常 → [KeyFailure]。类型优先、message 兜底——message 兜底**不含纯数字匹配**
          * （"429" in m 会把 request id "42917" 误判成限流、"40312" 误判成 key 失效），沿 cause 链下探。
          * 纯函数（冷却时长入参），供单测锁定分类行为。
          */
@@ -88,12 +106,19 @@ open class SpringAiScanRunner(
             invalidKeySec: Long,
             timeoutSec: Long,
             otherSec: Long,
-        ): Pair<Long, String> = when {
-            isRateLimitException(e) -> rateLimitedSec to "429"
-            isInvalidKeyException(e) ->
-                invalidKeySec to if (chainOf(e).any { it is PermissionDeniedException }) "403" else "401"
-            isTimeoutException(e) -> timeoutSec to "timeout"
-            else -> otherSec to "error"
+        ): KeyFailure = when {
+            isRateLimitException(e) -> KeyFailure(rateLimitedSec, "429")
+            isInvalidKeyException(e) -> {
+                val typed = chainOf(e).any { it is UnauthorizedException || it is PermissionDeniedException }
+                // 类型化判定（typed）命中即 key 确实 401/403，永久禁用；仅 message 兜底命中则只冷却。
+                KeyFailure(
+                    invalidKeySec,
+                    if (chainOf(e).any { it is PermissionDeniedException }) "403" else "401",
+                    typedInvalidKey = typed,
+                )
+            }
+            isTimeoutException(e) -> KeyFailure(timeoutSec, "timeout")
+            else -> KeyFailure(otherSec, "error")
         }
 
         /**
@@ -223,18 +248,25 @@ open class SpringAiScanRunner(
                         throw ApiError(ErrorCode.INVALID_REQUEST, "AI rejected the request (invalid image or input)")
                     }
                     // 分类 → 冷却（冷却在 Redis，跨实例共享）。分类纯函数见 [classify]。
-                    val (cooldownSec, reason) = classify(
+                    val failure = classify(
                         e, cooldownRateLimitedSec, cooldownInvalidKeySec, cooldownTimeoutSec, cooldownOtherSec,
                     )
-                    if (reason == "401" || reason == "403") {
-                        // key 失效：长冷却移出轮换 + ERROR，提示运营在 key 表 enabled=false 清理
-                        log.error("AI API key invalid — cooling down. reason={} cooldown={}s keyId={} model={} duration={}ms msg={}",
-                            reason, cooldownSec, doc.id, model, System.currentTimeMillis() - attemptStartMs, e.message)
+                    if (failure.typedInvalidKey) {
+                        // 类型化 401/403：key 确实失效——长冷却移出轮换 + 永久禁用（PG enabled=false，
+                        // 300s 后列表重载彻底移出；DB 写失败在禁用 seam 内收敛，不影响主流程），
+                        // 不可逆，需运营手工恢复（enabled=true 或删除行）。
+                        keyStore.disableKey(doc.id)
+                        log.error("AI API key invalid — disabled (PG enabled=false) + cooling down. reason={} cooldown={}s keyId={} model={} duration={}ms msg={}",
+                            failure.reason, failure.cooldownSec, doc.id, model, System.currentTimeMillis() - attemptStartMs, e.message)
+                    } else if (failure.reason == "401" || failure.reason == "403") {
+                        // message 兜底命中：疑似失效但类型化判定未中——只长冷却（1h 自动解冻），不永久禁用（避免误杀好 key）。
+                        log.warn("AI API key possibly invalid (message-based, not typed) — cooling down only. reason={} cooldown={}s keyId={} model={} duration={}ms msg={}",
+                            failure.reason, failure.cooldownSec, doc.id, model, System.currentTimeMillis() - attemptStartMs, e.message)
                     } else {
                         log.warn("Scan attempt failed — cooling down. reason={} cooldown={}s keyId={} model={} duration={}ms",
-                            reason, cooldownSec, doc.id, model, System.currentTimeMillis() - attemptStartMs, e)
+                            failure.reason, failure.cooldownSec, doc.id, model, System.currentTimeMillis() - attemptStartMs, e)
                     }
-                    keyStore.markCooldown(doc.id, cooldownSec, reason)
+                    keyStore.markCooldown(doc.id, failure.cooldownSec, failure.reason)
                 }
             }
             log.warn("All attempts exhausted for model, trying next. model={}", model)

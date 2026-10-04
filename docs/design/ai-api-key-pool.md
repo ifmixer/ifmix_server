@@ -159,9 +159,11 @@ app:
 - 2026-10-01 三次评审修订：新增 **`app.ai.scan-deadline-sec`（默认 600s）总预算**——扫描在 GraphQL 请求内同步执行，连续超时最坏 4×6min×模型数，超预算抛 AI_UNAVAILABLE（`classify` 抽为 companion 纯函数并补单测）；`spring.data.redis.timeout: 500ms`（Lettuce 默认 60s 会让卡住的 Redis 每次 MGET 等满 60s；全局影响面 = key 池降级 / RateLimiter 快速抛错 / CacheAside 快速失败）；401/403 的 message 兜底**去掉纯数字匹配**（request id "40312" 会误判成 key 失效被冷却 1h，只留类型化异常 + 短语）；冷却原因 `"5xx"` → **`"error"`**（else 分支也接住 400/网络错误，标 5xx 误导排查）；`probeWindow` 去掉 store 默认值（由 AiConfig 显式注入，默认值只在 yml/@Value 一处）；测试文件挪到与包名一致的目录。
 - 2026-10-01 四次评审修订：`"429" in m` 纯数字匹配删除（与 401/403 同类问题，request id "42917" 会误判限流，配套单测）；deadline 检查改为「剩余时间不足一次 call-timeout 时不发起新 attempt」（`now + callTimeout >= deadline` 即放弃——否则实际最坏耗时是 deadline + 一次调用超时 ≈ 960s，且网关/客户端超时通常更短）；KDoc 过期的「超时→60s」改为引用配置；deadline 日志字段 `modelsTried` → `model`。
 - 2026-10-01 五次评审修订：runner `init` 增加 **`scanDeadlineSec > callTimeoutSec` 启动校验**（deadline ≤ call-timeout 时每次扫描都会在首试前被拦下、静默全量 AI_UNAVAILABLE，现在启动即失败）+ 配套单测；确定取舍：默认 600/360 下**超时一次即结束**，换 key 重试仅对快速失败生效，写入「已知取舍」（扫描改异步后可重估，届时把 deadline 提到 call-timeout 的 2 倍以上）。
+- 2026-10-04 演进（本文不改，见 spec）：401/403 **类型化**命中新增 PG `enabled=false` 永久禁用（message 兜底仍只冷却），`pick()` 全冷却时净推进 probe 跳窗口——设计、分层判定与验证见 [ai-key-disable-and-probe-skip-design](../superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md)。
 
 ## 关联
 
 - 表通用化（改名 `core_ai_api_key` + `provider` 列）：[api-key-table](api-key-table.md)
 - key 导入与配对（Agnes provider）：[agnes-key-import](../scripts/agnes-key-import.md)
 - 实体：`entity/ai/AiApiKey.kt`（`AiApiKeyTypes`：10=PERSONAL / 20=ENTERPRISE）
+- 演进（401/403 永久禁用 + pick 全冷却跳窗口）：[ai-key-disable-and-probe-skip-design](../superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md)

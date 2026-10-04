@@ -18,7 +18,9 @@ class AiApiKeyStoreTest {
     private class Fake(keyIds: List<String>, probeWindow: Int = 8, cursorSeed: Long = 0) {
         val cooled = mutableSetOf<String>()
         val marks = mutableListOf<Triple<String, Long, String>>()
+        val disabled = mutableListOf<String>()
         val mgetSizes = mutableListOf<Int>()
+        val mgetIdSets = mutableListOf<List<String>>()
         var loadCount = 0
 
         val store = AiApiKeyStore(
@@ -28,11 +30,15 @@ class AiApiKeyStoreTest {
             },
             readCooldowns = { ids ->
                 mgetSizes.add(ids.size)
+                mgetIdSets.add(ids.toList())
                 ids.map { it in cooled }
             },
             markCooldownFn = { id, sec, reason ->
                 marks.add(Triple(id, sec, reason))
                 cooled.add(id)
+            },
+            disableKeyFn = { id ->
+                disabled.add(id)
             },
             probeWindow = probeWindow,
             cursorSeed = cursorSeed,
@@ -114,5 +120,57 @@ class AiApiKeyStoreTest {
         // 环形回绕：第三次窗口 [9,0,1]，第四次 [0,1,2]
         assertThat(fake.store.pick()!!.id).isEqualTo(order[9].id)
         assertThat(fake.store.pick()!!.id).isEqualTo(order[0].id)
+    }
+
+    @Test
+    fun `all-cooled pick skips the whole probe window instead of overlapping`() {
+        // 全冷却时净推进 probe（1 + (probe-1)）：每次 pick 的窗口互不重叠，
+        // 而非改前「窗口起点差 1、重叠 4/5」的反复重探。
+        val fake = Fake((1..20).map { "k$it" }, probeWindow = 5, cursorSeed = 0)
+        val order = fake.store.currentKeys().map { it.id } // 拿到打乱后的内部顺序
+        (1..20).forEach { fake.store.markCooldown(order[it - 1], 60, "429") }
+        repeat(4) { assertThat(fake.store.pick()).isNull() }
+        // 4 次全冷却：窗口 [0..4] / [5..9] / [10..14] / [15..19]，恰好覆盖全池
+        val expectedWindows = (0 until 4).map { windowStart ->
+            (0 until 5).map { order[(windowStart * 5 + it) % 20] }.toSet()
+        }
+        assertThat(fake.mgetIdSets.map { it.toSet() }).isEqualTo(expectedWindows)
+    }
+
+    @Test
+    fun `hit after fully cooled segment needs probe hops not probe-per-window`() {
+        // 设计示例：池位置 0..9 全冷却、位置 10 起正常，probe=5（cursorSeed=0）。
+        // 改前 4 次 attempt 窗口 [0..4]..[3..7] 重叠，爬不出 10 个冷却 key；
+        // 改后 attempt1 [0..4] 全冷却 → +5，attempt2 [5..9] 全冷却 → +5，attempt3 [10..14] 命中位置 10。
+        // 池加载时 shuffled，按 currentKeys() 实际顺序取目标。
+        val fake = Fake((1..15).map { "k$it" }, probeWindow = 5, cursorSeed = 0)
+        val order = fake.store.currentKeys().map { it.id }
+        order.slice(0 until 10).forEach { fake.store.markCooldown(it, 60, "429") }
+        assertThat(fake.store.pick()).isNull()
+        assertThat(fake.store.pick()).isNull()
+        assertThat(fake.store.pick()!!.id).isEqualTo(order[10])
+        // 命中后游标净 +1，回到常规轮询
+        assertThat(fake.store.pick()!!.id).isEqualTo(order[11])
+    }
+
+    @Test
+    fun `probe=1 degrades to legacy behavior on all-cooled`() {
+        // probe=1（clamp 下限或 n=1）：全冷却时额外 +0，退化为改前「每次 pick 只推进 1 步」。
+        val fake = Fake((1..5).map { "k$it" }, probeWindow = 1, cursorSeed = 0)
+        val order = fake.store.currentKeys().map { it.id }
+        order.slice(0 until 3).forEach { fake.store.markCooldown(it, 60, "429") }
+        assertThat(fake.store.pick()).isNull() // 窗口 [0] 全冷却
+        assertThat(fake.store.pick()).isNull() // 窗口 [1]
+        assertThat(fake.store.pick()).isNull() // 窗口 [2]
+        assertThat(fake.store.pick()!!.id).isEqualTo(order[3])
+    }
+
+    @Test
+    fun `disableKey delegates to disableKeyFn without touching cooldown`() {
+        val fake = Fake(listOf("a", "b"))
+        fake.store.disableKey("a")
+        assertThat(fake.disabled).contains("a")
+        assertThat(fake.marks).hasSize(0)
+        assertThat(fake.cooled).doesNotContain("a")
     }
 }

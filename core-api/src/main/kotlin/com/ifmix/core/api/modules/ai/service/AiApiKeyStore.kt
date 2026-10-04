@@ -22,6 +22,8 @@ class AiApiKeyStore(
     private val loadKeys: () -> List<AiApiKeyDoc>,
     private val readCooldowns: (List<String>) -> List<Boolean>,
     private val markCooldownFn: (keyId: String, cooldownSec: Long, reason: String) -> Unit,
+    /** 失效 key 的永久禁用（PG enabled=false，不可逆，需人工恢复）；由 AiConfig 用全局 sqlClient 组装，异常在组装侧收敛。 */
+    private val disableKeyFn: (keyId: String) -> Unit,
     /** 单次 pick 的探测窗口（无默认值，由 AiConfig 从 app.ai.apikey-pool.probe-window 显式注入）；下限 1（误配 0/负数时 clamp，否则 pick 恒空）。 */
     probeWindow: Int,
     /** 轮询游标初值；默认随机，单测传固定值获得确定性（负数由 floorMod 归一）。 */
@@ -65,8 +67,10 @@ class AiApiKeyStore(
 
     /**
      * 轮询选一个未冷却的 key。
-     * 每调用游标 +1，从游标处环形取 probe 个候选，一次批量读冷却状态，返回第一个未冷却者；
-     * 候选全冷却返回 null（调用方计为一次 attempt，游标已推进，下一轮自然换窗口）。
+     * 每调用游标净 +1（命中语义不变），从游标处环形取 probe 个候选，一次批量读冷却状态，
+     * 返回第一个未冷却者；候选全冷却返回 null 并额外推进 (probe-1)（净推进 probe）——
+     * 连续冷却区段下每次 attempt 跳过整段窗口，而非以下一窗起点重叠 4/5 反复重探同批冷却 key
+     * （probe=1 时额外 +0，退化为原行为；原子相对增量，并发下跳跃只增不减）。
      */
     fun pick(): AiApiKeyDoc? {
         val ks = currentKeys()
@@ -76,15 +80,24 @@ class AiApiKeyStore(
         val start = Math.floorMod(cursor.getAndIncrement(), n.toLong()).toInt()
         val candidates = List(probe) { ks[(start + it) % n] }
         val cooled = readCooldowns(candidates.map { it.id })
-        return candidates.asSequence()
+        val hit = candidates.asSequence()
             .zip(cooled.asSequence())
             .firstOrNull { !it.second }
             ?.first
+        if (hit == null && probe > 1) {
+            cursor.addAndGet((probe - 1).toLong())
+        }
+        return hit
     }
 
     /** 标记 key 冷却（秒）。reason 记录冷却原因（"429"/"401"/"403"/"timeout"/"5xx"），便于排查。 */
     fun markCooldown(keyId: String, cooldownSec: Long, reason: String) {
         markCooldownFn(keyId, cooldownSec, reason)
+    }
+
+    /** 永久禁用 key（PG enabled=false，不可逆——恢复需人工改回或删除行）。 */
+    fun disableKey(keyId: String) {
+        disableKeyFn(keyId)
     }
 
     private fun cached(): List<AiApiKeyDoc>? {
