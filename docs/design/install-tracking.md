@@ -176,7 +176,7 @@ core_install.id = API installId = JWT iid
 | logout | 从 customer token 的 iid | 有 iid 则解绑；legacy token 缺 iid 时只撤销会话 |
 | deleteAccount（requestAccountDeletion） | 不需要 iid | 用户**请求删除的当下**，按 `customer_id` 软删该 customer 的**全部**有效关系（`customer_id = actorId, deleted_at IS NULL → deleted_at = now`）。一个 customer 可能被多个 install 绑过（换设备），全部解绑。不依赖 iid，不受 iid 缺失影响 |
 
-> **兼容说明**：本轮选择强制方案，不实现按 appVersion/project 的 legacy 无 iid 灰度。logout 仍保留旧 token 缺 iid 时只撤销会话的兼容；新 createAnonymous/login/refresh 均执行强 token/iid 校验。refresh 只续期并保留 iid/anonymous，不调用 bind。
+> **兼容说明**：本轮选择强制方案，不实现按 appVersion/project 的 legacy 无 iid 灰度。logout 仍保留旧 token 缺 iid 时只撤销会话的兼容；新 createAnonymous/login/refresh 均执行强 token/iid 校验。refresh 续期并保留 iid/anonymous；若 refresh token 属于 customer，会对 (iid, customer) 执行幂等 bind（已绑定 NoOp、软删复活），见 `AuthAggHandler.refresh`。
 
 > **两条删除链路别混淆**：
 > - **用户主动删除账号**（`requestAccountDeletion`，API 侧）：本设计在此**软删**关系（保留行作审计），customer 尚在。
