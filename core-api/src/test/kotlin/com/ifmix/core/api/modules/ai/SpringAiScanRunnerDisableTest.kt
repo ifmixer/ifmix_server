@@ -56,7 +56,7 @@ class SpringAiScanRunnerDisableTest {
         /** 默认失败链用的类型化 401 异常（headers 必填，error 给一个 message 便于排查）。 */
         val unauth = UnauthorizedException.builder()
             .headers(Headers.builder().build())
-            .error(ErrorObject.builder().message("401 Unauthorized").build())
+            .error(ErrorObject.builder().code("invalid_api_key").message("401 Unauthorized").param("key").type("invalid_request_error").build())
             .build()
 
         init {
@@ -66,10 +66,11 @@ class SpringAiScanRunnerDisableTest {
             doReturn("m").`when`(factory).defaultModel
             doReturn(false).`when`(keyStore).isEmpty()
             doReturn(doc).`when`(keyStore).pick()
-            doReturn(mapOf<String, Any>("ok" to true)).`when`(mapper).readValue(any(), any())
+            val okResult: Map<String, Any> = mapOf("ok" to true)
+            doReturn(okResult).`when`(mapper).readValue(any<String>(), any<Class<Any>>())
             doReturn("sys").`when`(scanPrompt).systemPrompt(input)
             doReturn("user").`when`(scanPrompt).userPrompt(input)
-            doAnswer { unauth }.`when`(spec).call()
+            doAnswer { throw unauth }.`when`(spec).call()
             runner = SpringAiScanRunner(
                 chatClientFactory = factory,
                 keyStore = keyStore,
@@ -111,7 +112,7 @@ class SpringAiScanRunnerDisableTest {
         // 禁用是 best-effort 副作用（AiConfig 侧 catch Exception 收敛）；即便 seam 本身抛出，
         // runner 也不依赖其返回值——主流程照常走完全部 attempt 后以 AI_UNAVAILABLE 收敛。
         val fx = Fixture()
-        doAnswer { throw RuntimeException("boom") }.doReturn(Unit).`when`(fx.keyStore).disableKey(any())
+        doAnswer { throw RuntimeException("boom") }.`when`(fx.keyStore).disableKey(any())
         val err = assertThrows<ApiError> { fx.runner.run(fx.ctx, fx.input) }
         assertThat(err.errorCode).isEqualTo(ErrorCode.AI_UNAVAILABLE)
         verify(fx.keyStore, atLeastOnce()).disableKey(fx.doc.id)

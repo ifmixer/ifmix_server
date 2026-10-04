@@ -110,11 +110,7 @@ open class SpringAiScanRunner(
             isRateLimitException(e) -> KeyFailure(rateLimitedSec, "429")
             isInvalidKeyException(e) -> {
                 val typed = chainOf(e).any { it is UnauthorizedException || it is PermissionDeniedException }
-<<<<<<< Updated upstream
-                // 类型化判定（typed）命中即 key 确实 401/403，永久禁用；仅 message 兜底命中则只冷却。
-=======
                 // 类型化判定（typed）命中即 key 确实 401/403 → 永久禁用；仅 message 兜底命中则只冷却。
->>>>>>> Stashed changes
                 KeyFailure(
                     invalidKeySec,
                     if (chainOf(e).any { it is PermissionDeniedException }) "403" else "401",
@@ -259,9 +255,6 @@ open class SpringAiScanRunner(
                         // 类型化 401/403：key 确实失效——长冷却移出轮换 + 永久禁用（PG enabled=false，
                         // 300s 后列表重载彻底移出；DB 写失败在禁用 seam 内收敛，不影响主流程），
                         // 不可逆，需运营手工恢复（enabled=true 或删除行）。
-<<<<<<< Updated upstream
-                        keyStore.disableKey(doc.id)
-=======
                         // 禁用是 best-effort 副作用，主路径已在 AiConfig.disableKeyFn 内 catch Exception 收敛；
                         // 此处再本地兜一层，保证「任何异常不得导致扫描失败」的不变量（scan/deep-research 共用本 catch 分支）。
                         try {
@@ -269,7 +262,6 @@ open class SpringAiScanRunner(
                         } catch (e: Exception) {
                             log.warn("disableKey skipped (best-effort, scan continues). keyId={} model={}", doc.id, model, e)
                         }
->>>>>>> Stashed changes
                         log.error("AI API key invalid — disabled (PG enabled=false) + cooling down. reason={} cooldown={}s keyId={} model={} duration={}ms msg={}",
                             failure.reason, failure.cooldownSec, doc.id, model, System.currentTimeMillis() - attemptStartMs, e.message)
                     } else if (failure.reason == "401" || failure.reason == "403") {

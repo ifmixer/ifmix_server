@@ -52,27 +52,13 @@ class SpringAiScanRunnerClassifyTest {
     @Test
     fun `typed 401 via UnauthorizedException in wrapped cause chain`() {
         // Spring AI 可能包装 SDK 异常：类型化 401 在 cause 链上 → typedInvalidKey=true（触发永久禁用）
-<<<<<<< Updated upstream
-        val unauth = UnauthorizedException.builder()
-            .headers(Headers.builder().build())
-            .build()
-        assertThat(classify(IllegalStateException(unauth)))
-=======
         assertThat(classify(IllegalStateException(typed401())))
->>>>>>> Stashed changes
             .isEqualTo(KeyFailure(3600, "401", typedInvalidKey = true))
     }
 
     @Test
     fun `typed 403 via PermissionDeniedException always has reason 403`() {
-<<<<<<< Updated upstream
-        val denied = PermissionDeniedException.builder()
-            .headers(Headers.builder().build())
-            .build()
-        assertThat(classify(RuntimeException(denied)))
-=======
         assertThat(classify(RuntimeException(typed403())))
->>>>>>> Stashed changes
             .isEqualTo(KeyFailure(3600, "403", typedInvalidKey = true))
     }
 
