@@ -1,0 +1,40 @@
+docs/design/infra/wire-encryption.md
+  s_6263bb97dddc59::t_855be652f30508 316,354
+docs/design/infra/wire-v3-plan-client.md
+  s_6263bb97dddc59::t_d935d03007ca3e 6,20,34,51,63,71
+docs/design/infra/wire-v3-plan-server.md
+  s_6263bb97dddc59::t_2bf28b719a2412 20
+docs/design/proposals/rpc-pilot-client.md
+  s_6263bb97dddc59::t_c3e18ce83d1628 1,4-6,10,15-26,29-203,205,207,209-213,215,217,219,221-223,225,227,229-233,235,237-239
+docs/design/proposals/rpc-pilot-server.md
+  s_db31b686394892::t_d55818060bb72e 4-6,10,12,15-25,28,30,32-39,41,43,45,47,49,51-54,56,58,60,62,64-65,67-399
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b05da91a04ff705514893e245a9d5dd02caead9",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_6263bb97dddc59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaac9707533b23b71",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    },
+    "s_db31b686394892": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6715a16-be5b-4a46-8289-a357905e15c3",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
