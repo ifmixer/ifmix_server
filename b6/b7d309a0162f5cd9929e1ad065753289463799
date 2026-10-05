@@ -1,0 +1,14 @@
+docs/superpowers/specs/2026-10-04-install-attestation-impl-plan.md
+  h_b17efd5c751f9f 9-10,308,313,316-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6b7d309a0162f5cd9929e1ad065753289463799",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
