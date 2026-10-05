@@ -8,57 +8,92 @@ import assertk.assertions.isNull
 import jakarta.servlet.http.HttpServlet
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.bouncycastle.crypto.AsymmetricCipherKeyPair
+import org.bouncycastle.crypto.hpke.HPKE
+import org.bouncycastle.crypto.hpke.HPKEContextWithEncapsulation
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.mock.web.MockFilterChain
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
-import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
-import java.security.KeyFactory
-import java.security.KeyPairGenerator
-import java.security.interfaces.XECPublicKey
-import java.security.spec.NamedParameterSpec
-import java.security.spec.X509EncodedKeySpec
-import java.security.spec.XECPrivateKeySpec
 import java.util.Base64
 import java.util.HexFormat
 import java.util.zip.GZIPInputStream
 import javax.crypto.Cipher
-import javax.crypto.KDF
-import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.HKDFParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import tools.jackson.databind.json.JsonMapper
+import kotlin.io.path.readText
 
 /**
- * v2 加解密往返 + filter 行为。测试侧"客户端"用 JDK crypto 独立实现线格式（不复用 WireCrypto 的代码）；
- * 固定向量由客户端 JS 实现（antique: apps/shared/src/api/wireCrypto.ts，固定 eph/nonce/ts）生成，见设计 §7。
+ * v3（RFC 9180 HPKE）向量驱动 + 加解密往返 + filter 行为。
+ * 测试侧"客户端"用 BouncyCastle HPKE（与生产同库，seal 路径）+ JDK AES-GCM（响应 resKey 独立
+ * 用客户端侧 HPKE-Export 推导，不复用 WireCrypto 代码）组装/拆解线格式；
+ * RFC 官方向量（wire-v3-rfc-vectors.json，生成与来源见同目录 gen_vectors.py）逐字节锁定 HPKE 实现。
  */
 class WireCryptoTest {
 
-    private val crypto = WireCrypto(
-        mapOf(
-            1 to HF.parseHex(SERVER_PRIV_HEX),
-            7 to ByteArray(32) { 3 },
-        ),
-    )
+    private val crypto = WireCrypto(mapOf(1 to HEX.parseHex(SERVER_PRIV_HEX), 7 to ByteArray(32) { 3 }))
+
+    // ---- RFC 官方向量（T1） ----
 
     @Test
-    fun `opens js client fixed vector`() {
-        val opened = crypto.open(HF.parseHex(REQ_VECTOR_HEX))
-        assertThat(opened.body.toString(Charsets.UTF_8)).isEqualTo(REQ_JSON)
-        assertThat(opened.clientTsMs).isEqualTo(1_700_000_000_000L)
-        assertThat(opened.kid).isEqualTo(1)
+    fun `rfc vectors - receiver open and sender seal match byte for byte`() {
+        val mapper = JsonMapper.builder().build()
+        val doc = mapper.readTree(javaClass.getResource("/wire-v3/wire-v3-rfc-vectors.json")!!.openStream().reader().readText())
+        val base = doc.get("vectors").asArray()
+            .filter { it.get("mode").asInt() == 0 }
+            .let { check(it.size == 1) { "expect 1 base-mode vector, got ${it.size}" }; it }
+        val v = base.get(0)
+        val vhpke = HPKE(HPKE.mode_base, HPKE.kem_X25519_SHA256, HPKE.kdf_HKDF_SHA256, HPKE.aead_AES_GCM256)
+        val info = HexFormat.of().parseHex(v.get("info").asString())
+        val enc = HexFormat.of().parseHex(v.get("enc").asString())
+
+        // 服务端侧：skRm（X25519 32B raw）→ 公钥推导须与官方 pkRm 逐字节一致
+        val rKp = vhpke.deserializePrivateKey(HexFormat.of().parseHex(v.get("skRm").asString()), null)
+        assertThat(vhpke.serializePublicKey(rKp.public).toHex()).isEqualTo(v.get("pkRm").asString())
+
+        // 接收方 Open：官方向量 257 条 encryption（nonce = base_nonce XOR seq，HPKE 标准约定）逐条还原明文。
+        // BC base-mode context 每 open 一次推进 seq，须与向量的 seq 递增对齐；新建一次 context 顺序消费。
+        val rctx = vhpke.setupBaseR(enc, rKp, info)
+        for (i in 0 until v.get("encryptions").size()) {
+            val e = v.get("encryptions").get(i)
+            val pt = rctx.open(HexFormat.of().parseHex(e.get("aad").asString()), HexFormat.of().parseHex(e.get("ct").asString()))
+            assertThat(pt.toHex()).isEqualTo(e.get("pt").asString())
+        }
+
+        // 独立 AES-GCM 交叉验证（key/nonce 直接取自向量，不走 BC HPKE 路径）：同一 ct 必须解出同一 pt
+        val first = v.get("encryptions").get(0)
+        val gcm = Cipher.getInstance("AES/GCM/NoPadding")
+        gcm.init(
+            Cipher.DECRYPT_MODE,
+            SecretKeySpec(HexFormat.of().parseHex(v.get("key").asString()), "AES"),
+            GCMParameterSpec(128, HexFormat.of().parseHex(first.get("nonce").asString())),
+        )
+        gcm.updateAAD(HexFormat.of().parseHex(first.get("aad").asString()))
+        assertThat(gcm.doFinal(HexFormat.of().parseHex(first.get("ct").asString())).toHex()).isEqualTo(first.get("pt").asString())
+
+        // 导出一致性：Export(exporter_context="", L=32) 与官方 exports[0] 相同（wire v3 的 resKey 即此机制）。
+        // 用独立 context（上面 rctx 已消费 257 个 seq）。
+        assertThat(vhpke.setupBaseR(enc, rKp, info).export(ByteArray(0), 32).toHex())
+            .isEqualTo(v.get("exports").get(0).get("exported_value").asString())
+
+        // 发送方 Seal：deriveKeyPair(ikmE) 复现官方 enc（enc=pkEm），逐条 seal 与官方 ct 逐字节一致。
+        // 官方向量的 257 条 encryption 按 seq=0,1,2,… 递增（nonce = base_nonce XOR seq），
+        // 单个 sender context 顺序 seal 即复现该 seq 递增，须跨条目复用同一 context。
+        val eKp = vhpke.deriveKeyPair(HexFormat.of().parseHex(v.get("ikmE").asString()))
+        val sctx = vhpke.setupBaseS(rKp.public, info, eKp)
+        assertThat(sctx.encapsulation.toHex()).isEqualTo(enc.toHex())
+        for (i in 0 until v.get("encryptions").size()) {
+            val e = v.get("encryptions").get(i)
+            val ct = sctx.seal(HexFormat.of().parseHex(e.get("aad").asString()), HexFormat.of().parseHex(e.get("pt").asString()))
+            assertThat(ct.toHex()).isEqualTo(e.get("ct").asString())
+        }
     }
 
-    @Test
-    fun `derives public key matching externally generated keypairs`() {
-        assertThat(crypto.publicKey(1)!!.toHex()).isEqualTo(SERVER_PUB_HEX)
-        // openssl genpkey 生成、非本实现产物的 keypair：验证推导等价 openssl pkey -pubout
-        val dev = WireCrypto.parse("1:$DEV_PRIV_B64")
-        assertThat(dev.publicKey(1)!!.toHex()).isEqualTo(DEV_PUB_HEX)
-    }
+    // ---- 端到端 round-trip（T3） ----
 
     @Test
     fun `round trips with independent client impl`() {
@@ -67,6 +102,7 @@ class WireCryptoTest {
         val opened = crypto.open(client.sealRequest(body.toByteArray(), ts = 42))
         assertThat(opened.body.toString(Charsets.UTF_8)).isEqualTo(body)
         assertThat(opened.clientTsMs).isEqualTo(42L)
+        assertThat(opened.kid).isEqualTo(1)
 
         val sealed = opened.seal("resp-响应".toByteArray())
         assertThat(sealed[0]).isEqualTo(0.toByte()) // 小响应不 gzip
@@ -87,44 +123,83 @@ class WireCryptoTest {
     }
 
     @Test
-    fun `multi kid, unknown kid, tampering, missing ts, empty config`() {
+    fun `request gzip - pt above 4096 boundary is compressed and recovered`() {
+        val client = TestClient(crypto.publicKey(1)!!, kid = 1)
+        // 5KB 请求 body → pt = ts(8) + 5120 > 4096 → 客户端 gzip，服务端解压还原
+        val body = "x".repeat(5120)
+        val opened = crypto.open(client.sealRequest(body.toByteArray(), ts = 1))
+        assertThat(opened.body.toString(Charsets.UTF_8)).isEqualTo(body)
+        // 边界：pt 恰好 4096（body 4088 = 4096 - ts 8）不压；4097（body 4089）压
+        val noCompress = "y".repeat(4096 - 8)
+        val openedNo = crypto.open(client.sealRequest(noCompress.toByteArray(), ts = 1))
+        assertThat(openedNo.body.size).isEqualTo(4096 - 8)
+        val compress = "z".repeat(4097 - 8)
+        val openedYes = crypto.open(client.sealRequest(compress.toByteArray(), ts = 1))
+        assertThat(openedYes.body.size).isEqualTo(4097 - 8)
+    }
+
+    @Test
+    fun `request decompress limit rejects zip bomb`() {
+        val tiny = WireCrypto(mapOf(1 to HEX.parseHex(SERVER_PRIV_HEX)), maxDecompressedBytes = 64)
+        val client = TestClient(tiny.publicKey(1)!!, kid = 1)
+        // pt = ts(8) + body；body 4200 → pt 4208 > 4096 → 客户端 gzip → 解压后 4200 > 64 上限 → 拒（zip-bomb）
+        val wire = client.sealRequest("a".repeat(4200).toByteArray())
+        assertThrows<WireCryptoException> { tiny.open(wire) }
+        // 非 gzip 小请求（pt ≤ 4096，天然在 1MB 类上限内）正常
+        val okWire = client.sealRequest("b".repeat(32).toByteArray())
+        assertThat(tiny.open(okWire).body.size).isEqualTo(32)
+    }
+
+    @Test
+    fun `unknown flag bit rejected`() {
+        val client = TestClient(crypto.publicKey(1)!!, kid = 1)
+        val wire = client.sealRequest("x".toByteArray())
+        val badFlags = wire.copyOf().also { it[HEADER_LEN - 1] = (it[HEADER_LEN - 1].toInt() or 0x02).toByte() }
+        assertThrows<WireCryptoException> { crypto.open(badFlags) }
+    }
+
+    @Test
+    fun `multi kid, unknown kid, bad enc, tampering`() {
         val c7 = TestClient(crypto.publicKey(7)!!, kid = 7)
         assertThat(crypto.open(c7.sealRequest("x".toByteArray())).body.toString(Charsets.UTF_8)).isEqualTo("x")
 
         val unknownKid = c7.sealRequest("x".toByteArray()).also { it[1] = 9 }
         assertThrows<WireCryptoException> { crypto.open(unknownKid) }
 
+        // 坏 enc（全零 X25519 低阶点）：HPKE 库拒绝
+        val zeroEncPayload = byteArrayOf(3, 7) + ByteArray(32) + byteArrayOf(0) + ByteArray(16 + 8)
+        assertThrows<WireCryptoException> { crypto.open(zeroEncPayload) }
+        // 篡改 ct（GCM 认证失败）
         val tampered = c7.sealRequest("x".toByteArray()).also { it[it.size - 1] = (it.last() + 1).toByte() }
         assertThrows<WireCryptoException> { crypto.open(tampered) }
-
-        val badVer = c7.sealRequest("x".toByteArray()).also { it[0] = 3 }
+        // 乱序/过短 payload
+        val badVer = c7.sealRequest("x".toByteArray()).also { it[0] = 2 }
         assertThrows<WireCryptoException> { crypto.open(badVer) }
-        assertThrows<WireCryptoException> { crypto.open(ByteArray(10)) }
+        assertThrows<WireCryptoException> { crypto.open(ByteArray(40)) }
+    }
 
-        // GCM 合法但 inner 无 8 字节 ts
-        val noTs = TestClient(crypto.publicKey(1)!!, kid = 1).sealRequest(ByteArray(0), inner = ByteArray(0))
+    @Test
+    fun `inner without ts rejected`() {
+        val client = TestClient(crypto.publicKey(1)!!, kid = 1)
+        val noTs = client.sealRequest(ByteArray(0), inner = ByteArray(0))
         assertThrows<WireCryptoException> { crypto.open(noTs) }
+    }
 
-        // 低阶（小序）点 ephPub：JDK Montgomery ladder 不拒绝、照算 shared，必须靠黑名单拒。
-        // 全零 32B（x=0）与 2^255-1（order-2 点，两种符号位编码）各一例；
-        // 其余 8 个编码同逻辑（5 个 x × 2 符号位，见 WireCrypto.LOW_ORDER_EPH_PUBS）。
-        for (dangerous in listOf(
-            "0000000000000000000000000000000000000000000000000000000000000000",
-            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
-            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-        )) {
-            val payload = byteArrayOf(2, 1) + HF.parseHex(dangerous) + ByteArray(12 + 16)
-            assertThrows<WireCryptoException> { crypto.open(payload) }
-        }
-
+    @Test
+    fun `empty config and config errors`() {
         val empty = WireCrypto.parse("")
         assertThat(empty.isEnabled).isEqualTo(false)
         assertThat(empty.publicKey(1)).isNull()
-        assertThrows<WireCryptoException> { empty.open(tampered) }
+        val any = TestClient(crypto.publicKey(1)!!, kid = 1).sealRequest("x".toByteArray())
+        assertThrows<WireCryptoException> { empty.open(any) }
         // 配置错误与 payload 错误区分：前者启动期 fail-fast
         assertThrows<IllegalArgumentException> { WireCrypto.parse("bad") }
-        assertThrows<IllegalArgumentException> { WireCrypto.parse("0:${Base64.getEncoder().encodeToString(ByteArray(32))}") }
-        assertThrows<IllegalArgumentException> { WireCrypto.parse("1:${Base64.getEncoder().encodeToString(ByteArray(31))}") }
+        assertThrows<IllegalArgumentException> {
+            WireCrypto.parse("0:${Base64.getEncoder().encodeToString(ByteArray(32))}")
+        }
+        assertThrows<IllegalArgumentException> {
+            WireCrypto.parse("1:${Base64.getEncoder().encodeToString(ByteArray(31))}")
+        }
     }
 
     @Test
@@ -141,7 +216,8 @@ class WireCryptoTest {
 
     // ---- filter ----
 
-    private fun v2Filter() = WireCryptoFilter("1:${Base64.getEncoder().encodeToString(HF.parseHex(SERVER_PRIV_HEX))}")
+    private fun v3Filter(keys: String = "1:${Base64.getEncoder().encodeToString(HEX.parseHex(SERVER_PRIV_HEX))}") =
+        WireCryptoFilter(keys, WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES)
 
     /** 内层 servlet 回显看到的 content-type / body，便于断言解密包装；status 可指定。 */
     private fun runFilter(filter: WireCryptoFilter, req: MockHttpServletRequest, status: Int = 200): MockHttpServletResponse {
@@ -162,70 +238,75 @@ class WireCryptoTest {
     fun `filter decrypts request, encrypts response, keeps status`() {
         val client = TestClient(crypto.publicKey(1)!!, kid = 1)
         val req = MockHttpServletRequest("POST", "/customer/core/greq/m_x").apply {
-            addHeader(RequestHeaders.PROTO_VERSION, "2")
+            addHeader(RequestHeaders.WIREP_VERSION, "3")
             contentType = "application/octet-stream"
             setContent(client.sealRequest("""{"q":1}""".toByteArray(), ts = System.currentTimeMillis()))
         }
-        val res = runFilter(v2Filter(), req, status = 401)
+        val res = runFilter(v3Filter(), req, status = 401)
         assertThat(res.status).isEqualTo(401)
         assertThat(res.contentType).isEqualTo("application/octet-stream")
-        assertThat(res.getHeader(RequestHeaders.PROTO_VERSION)).isEqualTo("2")
+        assertThat(res.getHeader(RequestHeaders.WIREP_VERSION)).isEqualTo("3")
         assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
             .isEqualTo("ct=application/json;hdr=application/json;body=${"{\"q\":1}"}")
     }
 
     @Test
     fun `filter bad payload returns plain 400003, empty config too, v1 passes through untouched`() {
-        val bad = runFilter(v2Filter(), MockHttpServletRequest("POST", "/x").apply {
-            addHeader(RequestHeaders.PROTO_VERSION, "2"); contentType = "application/octet-stream"; setContent(ByteArray(80))
+        val bad = runFilter(v3Filter(), MockHttpServletRequest("POST", "/x").apply {
+            addHeader(RequestHeaders.WIREP_VERSION, "3"); contentType = "application/octet-stream"; setContent(ByteArray(80))
         })
         assertThat(bad.status).isEqualTo(400)
         assertThat(bad.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
-        assertThat(bad.getHeader(RequestHeaders.PROTO_VERSION)).isNull()
+        assertThat(bad.getHeader(RequestHeaders.WIREP_VERSION)).isNull()
 
-        // 未配 key：合法 v2 请求同样 400003（isEnabled=false → 客户端降级明文）
-        val noKeys = runFilter(WireCryptoFilter(""), MockHttpServletRequest("POST", "/x").apply {
-            addHeader(RequestHeaders.PROTO_VERSION, "2"); contentType = "application/octet-stream"
+        // 未配 key：合法 v3 请求同样 400003（isEnabled=false → 客户端降级明文）
+        val noKeys = runFilter(WireCryptoFilter("", WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES), MockHttpServletRequest("POST", "/x").apply {
+            addHeader(RequestHeaders.WIREP_VERSION, "3"); contentType = "application/octet-stream"
             setContent(TestClient(crypto.publicKey(1)!!, kid = 1).sealRequest("{}".toByteArray(), ts = System.currentTimeMillis()))
         })
         assertThat(noKeys.status).isEqualTo(400)
         assertThat(noKeys.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
 
-        val plain = runFilter(v2Filter(), MockHttpServletRequest("POST", "/x").apply { contentType = "application/json"; setContent("{}".toByteArray()) })
+        val plain = runFilter(v3Filter(), MockHttpServletRequest("POST", "/x").apply { contentType = "application/json"; setContent("{}".toByteArray()) })
         assertThat(plain.contentAsString).isEqualTo("ct=application/json;hdr=application/json;body={}")
-        assertThat(plain.getHeader(RequestHeaders.PROTO_VERSION)).isNull()
+        assertThat(plain.getHeader(RequestHeaders.WIREP_VERSION)).isNull()
 
-        val v1 = runFilter(v2Filter(), MockHttpServletRequest("POST", "/x").apply {
-            addHeader(RequestHeaders.PROTO_VERSION, "1"); contentType = "application/json"; setContent("{}".toByteArray())
+        val v1 = runFilter(v3Filter(), MockHttpServletRequest("POST", "/x").apply {
+            addHeader(RequestHeaders.WIREP_VERSION, "1"); contentType = "application/json"; setContent("{}".toByteArray())
         })
         assertThat(v1.contentAsString).isEqualTo("ct=application/json;hdr=application/json;body={}")
+        // 旧 v2 头名不再识别（v2 从未上线，不做兼容）：按 v1 明文放行
+        val oldName = runFilter(v3Filter(), MockHttpServletRequest("POST", "/x").apply {
+            addHeader("x-proto-version", "2"); contentType = "application/octet-stream"; setContent(ByteArray(80))
+        })
+        assertThat(oldName.contentAsString).contains("body=") // 明文原样回显
     }
 
     /**
-     * 防御性行为固化：v2 头但空 body（无 setContent）→ 明文 400 + 400003。
-     * 无 body 请求没有密钥材料（resKey 派生自请求内 ephPub），不可能"跳过解密、仍加密响应"；
+     * 防御性行为固化：v3 头但空 body（无 setContent）→ 明文 400 + 400003。
+     * 无 body 请求没有密钥材料（resKey 派生自请求内 enc），不可能"跳过解密、仍加密响应"；
      * 此测试防止未来被改成那种走不通的路。
      */
     @Test
-    fun `filter v2 header with empty body returns plain 400003`() {
-        val res = runFilter(v2Filter(), MockHttpServletRequest("POST", "/x").apply {
-            addHeader(RequestHeaders.PROTO_VERSION, "2"); contentType = "application/octet-stream"
+    fun `filter v3 header with empty body returns plain 400003`() {
+        val res = runFilter(v3Filter(), MockHttpServletRequest("POST", "/x").apply {
+            addHeader(RequestHeaders.WIREP_VERSION, "3"); contentType = "application/octet-stream"
         })
         assertThat(res.status).isEqualTo(400)
         assertThat(res.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
-        assertThat(res.getHeader(RequestHeaders.PROTO_VERSION)).isNull()
+        assertThat(res.getHeader(RequestHeaders.WIREP_VERSION)).isNull()
     }
 
     @Test
     fun `filter clock skew over 5min is warn-only, request still processed`() {
         val client = TestClient(crypto.publicKey(1)!!, kid = 1)
         val req = MockHttpServletRequest("POST", "/customer/core/greq/m_x").apply {
-            addHeader(RequestHeaders.PROTO_VERSION, "2")
+            addHeader(RequestHeaders.WIREP_VERSION, "3")
             contentType = "application/octet-stream"
             // ts = 1 小时前（> 5min 偏差）
             setContent(client.sealRequest("""{"q":1}""".toByteArray(), ts = System.currentTimeMillis() - 3_600_000L))
         }
-        val res = runFilter(v2Filter(), req)
+        val res = runFilter(v3Filter(), req)
         assertThat(res.status).isEqualTo(200)
         assertThat(res.contentType).isEqualTo("application/octet-stream")
         assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
@@ -233,68 +314,67 @@ class WireCryptoTest {
     }
 
     companion object {
-        private val HF = HexFormat.of()
+        val HEX = HexFormat.of()
+        const val HEADER_LEN = 35 // 与 WireCrypto 头长对齐（ver‖kid‖enc‖flags）
 
-        /** 跨语言固定向量：独立 eph/server keypair、固定 nonce/ts，由客户端 JS 实现生成（设计 §7）。 */
+        /** 固定服务端 key（openssl genpkey -algorithm X25519 生成；dev key 与 application-local.yml 同源）。 */
         private const val SERVER_PRIV_HEX = "3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f"
+        /** 该私钥的 X25519 公钥（openssl pkey -pubout 等价；与 BC 推导交叉锁定）。 */
         private const val SERVER_PUB_HEX = "8855b39f1b92789433851a5ce8348487ec0cf7dd7777b8b9c2673d6994de6745"
-        private const val REQ_VECTOR_HEX =
-            "02015fef13fc76023a9ee6ded987b6aa93958cdc2097ef9fc845d5319c9ca100d35e" +
-                "abababababababababababab" +
-                "512e68c7e72e1f1defb1fa4c293ebb6d07060d27d6ff9d14b52a7af99717dd28ec408b04d66b5ed27dc3c43e4ce3ed30b8fd4a9e32e7959ee5eea34605ff33ddfe25cb270e273c8515f7cf87f8988148e6f9d1daed76378066fb47f6516abc454d431dc745aaf02b04e88a687f598c"
-        private const val REQ_JSON =
-            """{"query": "mutation{m_install_createInstall(input:{}){installToken}}", "variables": {}}"""
-
-        /** openssl genpkey -algorithm X25519 生成（dev key：application-local.yml 与客户端 local/dev 预设同源）。 */
-        private const val DEV_PRIV_B64 = "V64XjEMXAoqme3StrLwe1+Yt1Z3/BwrJOUCnsuqx2lk="
-        private const val DEV_PUB_HEX = "2d2e43125e756b7fdcf2336c857750e2fd3bbd48449583783342968d24caf904"
     }
 }
 
-private val X509_PREFIX = HexFormat.of().parseHex("302a300506032b656e032100")
+private fun ByteArray.toHex() = HexFormat.of().formatHex(this)
 
-private fun ByteArray.toHex(): String = HexFormat.of().formatHex(this)
+/** 独立实现的"客户端"：BC HPKE 封装请求 + JDK AES-GCM 解响应（响应 resKey 用客户端侧 Export 独立推导）。 */
+private class TestClient(private val serverPub: ByteArray, private val kid: Int) {
+    private val hpke = HPKE(HPKE.mode_base, HPKE.kem_X25519_SHA256, HPKE.kdf_HKDF_SHA256, HPKE.aead_AES_GCM256)
+    private val eph: AsymmetricCipherKeyPair = hpke.generatePrivateKey()
 
-private fun gcm(mode: Int, key: ByteArray, nonce: ByteArray, aad: ByteArray, input: ByteArray): ByteArray =
-    Cipher.getInstance("AES/GCM/NoPadding").run {
-        init(mode, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
-        updateAAD(aad)
-        doFinal(input)
-    }
+    /** 每次 sealRequest 新建独立 sender context（seq 从 0）；BC base-mode context 每 seal 推进 seq，
+     *  跨调用复用会让 nonce 漂移，与 wire v3 每请求独立 ephemeral 语义不符。resKey 亦从新 context 导出。 */
+    private fun freshSender(): HPKEContextWithEncapsulation =
+        hpke.setupBaseS(hpke.deserializePublicKey(serverPub), "ifmix-wire-v3".toByteArray(), eph)
 
-/** 独立实现的"客户端"：JDK crypto 组装/拆解线格式，不触碰 WireCrypto 的任何代码。 */
-private class TestClient(serverPub: ByteArray, private val kid: Int) {
-    private val kp = KeyPairGenerator.getInstance("X25519").generateKeyPair()
-    private val ephPub = (kp.public as XECPublicKey).u.toByteArray().reversedArray().copyOf(32) // u 大端 → 小端 32B
-    private val okm: ByteArray
+    /** 响应 resKey：HPKE-Export(context, "ifmix-wire-v3-res", 32)。新 context 的 Export 与任意已用 seq 的 context 相同（导出 secret 只依赖 shared secret）。 */
+    private val resKey: ByteArray = freshSender().export("ifmix-wire-v3-res".toByteArray(), 32)
+    val enc: ByteArray = freshSender().encapsulation
 
-    init {
-        val ka = KeyAgreement.getInstance("X25519")
-        ka.init(kp.private)
-        ka.doPhase(KeyFactory.getInstance("X25519").generatePublic(X509EncodedKeySpec(X509_PREFIX + serverPub)), true)
-        val shared = ka.generateSecret()
-        okm = KDF.getInstance("HKDF-SHA256").deriveData(
-            HKDFParameterSpec.ofExtract().addIKM(shared).addSalt(ephPub + serverPub).thenExpand("ifmix-wire-v2".toByteArray(), 64),
-        )
-    }
-
-    /** ver|kid|ephPub|nonce|GCM(reqKey, nonce, ts(8 BE) ‖ body)；[inner] 供无 ts 等边界用例。 */
+    /** ver|kid|enc|flags|HPKE-Seal(aad=前35B, pt)；[inner] 供无 ts 等边界用例。每次独立 sender context。 */
     fun sealRequest(
         body: ByteArray,
         ts: Long = 42L,
-        nonce: ByteArray = ByteArray(12) { it.toByte() },
         inner: ByteArray? = null,
     ): ByteArray {
-        val header = byteArrayOf(2, kid.toByte()) + ephPub
-        val plain = inner ?: ByteBuffer.allocate(8).putLong(ts).array() + body
-        return header + nonce + gcm(Cipher.ENCRYPT_MODE, okm.copyOfRange(0, 32), nonce, header, plain)
+        val cws = freshSender()
+        val pt = inner ?: ByteBuffer.allocate(8).putLong(ts).array() + body
+        val compressed = pt.size > GZIP_THRESHOLD
+        val flags = if (compressed) 1 else 0
+        val payload = if (compressed) pt.gzip() else pt
+        val header = byteArrayOf(3, kid.toByte()) + cws.encapsulation + byteArrayOf(flags.toByte())
+        // 请求 AAD = 前 35B（ver‖kid‖enc‖flags）
+        val sealed = cws.seal(header, payload)
+        return header + sealed
     }
 
-    /** 校验 flags（未知位即失败）→ GCM → bit0 时 gunzip。 */
+    /** 校验 flags（未知位即失败）→ AES-GCM(resKey, nonce, aad=enc‖flags) → bit0 时 gunzip。 */
     fun openResponse(wire: ByteArray): ByteArray {
         val flags = wire[0].toInt() and 0xff
         check(flags and 0b1111_1110 == 0) { "unknown flag bits: $flags" }
-        val plain = gcm(Cipher.DECRYPT_MODE, okm.copyOfRange(32, 64), wire.copyOfRange(1, 13), ephPub + byteArrayOf(wire[0]), wire.copyOfRange(13, wire.size))
-        return if (flags and 1 == 1) GZIPInputStream(ByteArrayInputStream(plain)).readAllBytes() else plain
+        val nonce = wire.copyOfRange(1, 13)
+        val aad = enc + byteArrayOf(flags.toByte())
+        val plain = Cipher.getInstance("AES/GCM/NoPadding").run {
+            init(Cipher.DECRYPT_MODE, SecretKeySpec(resKey, "AES"), GCMParameterSpec(128, nonce))
+            updateAAD(aad)
+            doFinal(wire.copyOfRange(13, wire.size))
+        }
+        return if (flags and 1 == 1) GZIPInputStream(java.io.ByteArrayInputStream(plain)).readAllBytes() else plain
     }
+}
+
+private const val GZIP_THRESHOLD = 4096
+
+private fun ByteArray.gzip(): ByteArray = ByteArrayOutputStream().use { buf ->
+    java.util.zip.GZIPOutputStream(buf).use { it.write(this) }
+    buf.toByteArray()
 }
