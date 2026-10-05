@@ -1,0 +1,121 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  s_ed306234e02c33::t_55222973944b8f 133,163,233-241,243-258,261,266-280,282-285
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/customer/CustomerFetcher.kt
+  s_ed306234e02c33::t_5214c3218d6291 37,39-43,45-84
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/install/InstallFetcher.kt
+  s_bbd8c737302094::t_d291e1d64e7593 3-5,8-11,13,23,27,29-40,48-49,51-52,57-59,62,69,72-121,124-127,148-380
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestChallengeCodec.kt
+  s_ed306234e02c33::t_4ad83d1e4c62b8 136-138
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestGuard.kt
+  s_ed306234e02c33::t_159984b4b9500f 1-558
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/InstallFacade.kt
+  s_ed306234e02c33::t_90cc8baab94644 3-4,8-9,26,29-70
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/handler/InstallAggHandler.kt
+  s_ed306234e02c33::t_619ae88e473527 3,5,14,17,26,32-223,341-343
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/ProjectServerConfigFacade.kt
+  s_ed306234e02c33::t_c96e48c9410bd6 3,8-9,24-43
+core-api/src/main/resources/application.yml
+  s_ed306234e02c33::t_79633c93dec99b 150-159
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  s_c289a88c346fea::t_302837226ff74d 21-24
+core-api/src/main/resources/schema/customer/customer.graphqls
+  s_ed306234e02c33::t_357eb64871d685 23
+core-api/src/main/resources/schema/customer/install.graphqls
+  s_c289a88c346fea::t_e8fc5fdbae3fb5 2-3,10-11,21-79,83,85,96,100-105
+core-api/src/test/kotlin/com/ifmix/api/core/modules/install/CreateInstallPkTest.kt
+  s_ed306234e02c33::t_9b264a9d541bb9 11,41
+core-api/src/test/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcherRateLimitTest.kt
+  s_ed306234e02c33::t_6ec53203d9ed01 1-228
+core-api/src/test/kotlin/com/ifmix/core/api/bff/graphql/customer/customer/CustomerFetcherRateLimitTest.kt
+  s_ed306234e02c33::t_7a93b29cb08531 1-173
+core-api/src/test/kotlin/com/ifmix/core/api/bff/graphql/customer/install/InstallFetcherAttestTest.kt
+  s_bbd8c737302094::t_9a65830dffd231 1-505
+core-api/src/test/kotlin/com/ifmix/core/api/infra/attest/AttestGuardTest.kt
+  s_ed306234e02c33::t_227b958fe3efa9 1-368
+core-api/src/test/kotlin/com/ifmix/core/api/modules/install/handler/InstallAggHandlerAttestTest.kt
+  s_ed306234e02c33::t_3ed19637413a0d 1-254
+core-job/build.gradle.kts
+  s_bbd8c737302094::t_e347d6e4c336f8 17-22,28-29
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AppAttestConfig.kt
+  s_b58708c0db0533::t_22026bfbcfa8ba 1-40
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AppleReceiptClient.kt
+  s_bbd8c737302094::t_82dd1779a5d9f1 1-21
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AppleReceiptClientImpl.kt
+  s_b58708c0db0533::t_193e7fddd51a73 1-76
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AttestJobConfig.kt
+  s_bbd8c737302094::t_7168b2fbfdb6bc 1-31
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AttestJobs.kt
+  s_bbd8c737302094::t_9c75627b7ac828 1-69
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AttestationRepo.kt
+  s_b58708c0db0533::t_1041bffae4c294 1-218
+core-job/src/main/kotlin/com/ifmix/core/job/attest/DeviceCheckClient.kt
+  s_b58708c0db0533::t_86910cbd04deda 1-148
+core-job/src/main/kotlin/com/ifmix/core/job/attest/EvidenceCleanupCleaner.kt
+  s_b58708c0db0533::t_a12e95d61a5818 1-28
+core-job/src/main/kotlin/com/ifmix/core/job/attest/FraudMetricRefreshCleaner.kt
+  s_b58708c0db0533::t_e5f47de7524faa 1-79
+core-job/src/main/kotlin/com/ifmix/core/job/attest/ReceiptBackfillCleaner.kt
+  s_b58708c0db0533::t_7e59478a284084 1-71
+core-job/src/main/resources/application.yml
+  s_bbd8c737302094::t_5dc00f4667d2af 34-43
+core-job/src/test/kotlin/com/ifmix/core/job/attest/AppAttestConfigTest.kt
+  s_b58708c0db0533::t_1926e563056484 1-55
+core-job/src/test/kotlin/com/ifmix/core/job/attest/AttestRepoTestDb.kt
+  s_b58708c0db0533::t_34d8d7a2f077ee 1-204
+core-job/src/test/kotlin/com/ifmix/core/job/attest/AttestTestFakes.kt
+  s_b58708c0db0533::t_b2e48f57050a3b 1-49
+core-job/src/test/kotlin/com/ifmix/core/job/attest/EvidenceCleanupTest.kt
+  s_b58708c0db0533::t_b7c5ae06795305 1-65
+core-job/src/test/kotlin/com/ifmix/core/job/attest/FraudMetricRefreshTest.kt
+  s_b58708c0db0533::t_d52079d9706577 1-105
+core-job/src/test/kotlin/com/ifmix/core/job/attest/ReceiptBackfillTest.kt
+  s_b58708c0db0533::t_edca3439e579be 1-113
+docs/DATABASE.md
+  s_bbd8c737302094::t_c1d88ee8fad73c 41,212-224
+docs/design/install-tracking.md
+  s_bbd8c737302094::t_8b55bf4638158b 127-136,227,237-238,248-297,310,314-319,323-332
+docs/release.md
+  s_bbd8c737302094::t_ff893ffff36248 7,12-23
+docs/superpowers/specs/2026-10-04-install-attestation-impl-plan.md
+  s_bbd8c737302094::t_2130b33cebb029 9-10,260,301,306-371,379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8f1df688b02d99412044d478b529c696b4c097a",
+  "prompts": {},
+  "sessions": {
+    "s_b58708c0db0533": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a725474b65bf2a709",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    },
+    "s_bbd8c737302094": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49b8941f-ca8e-4719-a626-34dbd76b2de1",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    },
+    "s_c289a88c346fea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a79c72241f02b1cce",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    },
+    "s_ed306234e02c33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4ca9125469d41aef",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
