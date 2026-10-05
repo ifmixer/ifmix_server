@@ -1,7 +1,7 @@
 # Wire 加密（x-proto-version: 2）— 设计规格
 
 日期：2026-10-04
-状态：待用户审查
+状态：已评审（2026-10-05，安全模型结论与演进决策见 §9）
 范围：服务端 `ifmix_server/core-api` + 客户端 `antique/apps/shared`、`antique/apps/antique`
 目标：对全部 GraphQL 操作（白名单机制已移除，所有接口加密）的请求/响应 body 做应用层加密，抓包（含设备持有者自己装证书抓包）看不到明文；
 老客户端不受影响；性能与流量「不比 v1 差」。
@@ -13,10 +13,25 @@
 - 网络第三方已由 HTTPS 防住。本设计防的是**设备持有者抓包 / 拆包**：
   - 拆包只能拿到服务端**公钥**，解不了任何流量（含别人的）。
   - 抓包看不到明文 body。
+
+### 与 attest 的分工（安全定位）
+
+wire 加密**不是安全边界，而是成本清除器**：它保证伪造流量没有廉价的产生方式，必须穿过体系中最贵的
+一道门——硬件背书的设备信任（attest：Play Integrity / App Attest）。组合后的滥用路径穷举：
+
+- **动态逆向**（root/越狱 + Frida hook 加密前数据）：被 attest 封死——hook 需要 root/越狱/重打包，
+  attestation 随之失败；
+- **静态构造**（逆向包内协议代码、自行实现加密客户端）：可行，但产物没有合法 attestation → 服务端拒收；
+- **唯一幸存路径**：真机 + 真 app（设备农场 / UI 自动化）——纯经济学问题（设备成本 + 封号风险）。
+
+AI 把「理解协议 + 写构造客户端」的成本压到小时级，因此 **attest（而非协议保密性）才是承重层**；
+wire 的作用是封死绕过 attest 的动态路径。纪律：**服务端永不信任客户端**——配额、付费、entitlement、
+幂等全部服务端裁决；加密与 attest 只提高「假装合法客户端」的成本，永不构成「请求可信」的证据。
+
 - **非目标**：
   - 防 root/越狱设备上 Frida hook 加密前数据（客户端加密的天花板）。
-  - 防重放（ts 仅用于观测）。
-  - 隐藏 `Authorization` header。
+  - 防语义级重放（同一业务操作重复提交）：归幂等设计（docs/design/idempotency.md）与敏感操作的一次性服务端凭据（§9）。字节级重放另见 §9 的 ts 时效决策（待实施）。
+  - 隐藏 `Authorization` header：v2.1 规划 header 进 body 收掉这个尾巴（§9）。
   - 强制 v2：服务端继续接受明文 v1；何时拒绝 v1 另行决定。
 - 加密不替代服务端鉴权 / 限流 / App Check（App Check 由另一份规格负责）。
 
@@ -80,7 +95,7 @@ flags bit0 = 1 → payload = gzip(原文)；bit1–7 保留，必须为 0
 - 只处理 `x-proto-version: 2`；其余原样放行（v1 不变）。
 - 请求解密后包装为明文 JSON 请求：`Content-Type`、`Content-Length` 还原。
 - 缓存内层响应，`seal` 后写回，保留 status。
-- 时钟偏差 > 5min：`wire.clock.skew` warn，不拒绝。
+- 时钟偏差 > 5min：`wire.clock.skew` warn，不拒绝（已决策改为拒绝 + 独立错误码防误降级，见 §9，待实施）。
 - 解密失败：**明文** 400 + `{"code":"400003","msg":"bad encrypted payload","data":null}`，`wire.decrypt.failed` warn（带 kid）。成功日志也带 kid，用于轮换时观察旧 kid 流量。
 - 错误码：`ErrorCode.WIRE_DECRYPT_FAILED("400003")`；头常量：`RequestHeaders.PROTO_VERSION`。
 
@@ -145,7 +160,7 @@ flags bit0 = 1 → payload = gzip(原文)；bit1–7 保留，必须为 0
 | 老服务端 / 回滚，不认识 v2 | 415 | 明文重发一次；本进程后续都走明文 |
 | 未配 key / kid 已删 | 明文 400 + 400003 | 同上 |
 | 请求篡改 / 格式非法 | 明文 400 + 400003 | 同上 |
-| 设备时钟偏差 > 5min | 正常处理 + warn | 无感 |
+| 设备时钟偏差 > 5min | 正常处理 + warn（ts 时效实施后改为独立错误码拒绝，见 §9） | 无感（实施后提示校时，不降级） |
 | 网关错误页（CF 5xx / HTML） | 明文 | 按 content-type 不是 octet-stream 识别，交给现有错误处理（同 v1） |
 | 响应解密失败 / 未知 flag / gunzip 失败 | — | **不重发**，抛 `SERVICE_UNAVAILABLE` |
 | 客户端加密本身抛错 | — | 本次直接发明文；本进程后续都走明文 |
@@ -224,3 +239,54 @@ kid 取值 1–255。
   - 删 noble 相关的 jest 配置和随机数补丁。
 - 测试：按第 7 节补齐；重新生成跨语言向量。
 - 白名单机制移除，所有 GraphQL 操作加密（服务端无协议改动，filter 本与路径无关）。
+
+## 9. 安全模型结论与演进路线（2026-10-05 评审）
+
+### 分层定位
+
+HTTPS 管传输（网络第三方）、wire 管设备持有者（HTTPS 终结后的 body）、attest 管设备真实性、
+服务端裁决管一切决策。wire 的价值是让前两道门前面不再有免费的侧门（详析见 §1「与 attest 的分工」）。
+
+### 已决策：保留降级与 kill switch（不做"去降级"）
+
+- HTTPS 之下降级是零成本保险：服务端事故（漏配 key / 坏版本 / 回滚）全体静默降明文照常可用，
+  kill switch（OTA 关 flag）永远可用。去掉它，任何 crypto 相关的机型 bug 的爆炸半径从
+  「这些设备静默走明文」变成「这些设备完全不可用」。
+- 降级信号（415 / 400003）是未认证明文：HTTP 下中间人可伪造它强制全体降级（SSL-stripping 变体）——
+  这也是 HTTPS 必须保留的理由之一。
+- 「服务端拒绝明文 v1」维持另行决定：强制 v2 之日 = 未升级老版本全体不可用，需等渗透长尾（6–18 个月）。
+
+### 已决策：HTTPS 保留，不换 HTTP
+
+- wire 只覆盖 body，且仅在 flag 开 / 有公钥 / 未降级时生效；header（含 Authorization）、
+  信封外流量（图片下载、OTA 更新包、第三方 SDK、webhook）、容器错误页全在加密之外——
+  HTTP 下全部成为网络攻击面，且降级信号可被武器化（上一条）。
+- 平台强制（iOS ATS / Android cleartext）与 CF 架构均按 HTTPS 建立；TLS 开销在 CF 终结 + 硬件 AES
+  下微不足道，无可换的收益。
+
+### 已规划：v2.1 header 进 body（收掉 token 在 header 的尾巴）
+
+- **线协议不动**（ver=2 字节格式不变）：仅改加密前的 JSON 载荷为
+  `{"meta": {…敏感头…}, "query": "", "variables": {…}}`；老客户端继续走 header，服务端并存读取。
+- 服务端：`DecryptedRequest` 解密后从 body meta 供应 `getHeader("Authorization")` 等，
+  AuthInterceptor / RequestParser 无感知。
+- 永远留在 body 外的信封标记：`x-proto-version` / `Content-Type`（服务端要先看到它才知道要解密——鸡生蛋）
+  与 CF 注入头（`cf-bot-score`、真实 IP——限流依赖）。
+- 收益定位：对网络第三方无增益（HTTPS 已藏 header）；对设备持有者是收尾（token 本是其自有会话凭证）。
+
+### 已决策（待实施）：ts 强制时效 + 字节级重放封堵
+
+- 现状 |skew| > 5min 仅 warn；改为**拒绝**，但必须用**独立错误码**（如 `400004`）明文返回——
+  不能复用 400003，否则时钟不准的诚实用户会触发进程级降级、全体降明文。
+- 配合窗口内 (ephPub + nonce) 的 LRU 去重，字节级原样重放彻底封死（有效期从永久缩到 5min 窗口）。
+- 边界：对全新构造的请求无效（攻击者每次生成新 eph/nonce/ts）——语义级防护见下一条。
+
+### 结论记录：客户端自供值不能作安全边界
+
+- requestId / nonce / ts 均在攻击者完全控制下。「查 requestId 是否请求过」只防最懒的字节重放，
+  对能构造者完全无效（每次生成新值）。请求层去重的正确定位是**传输幂等**（网络重试去重），不是安全控制。
+- 防「同一业务操作重复提交」：**语义幂等**——状态机 + DB 唯一约束 + 幂等键绑定业务实体
+  （scanId / purchaseToken / rewardId），见 docs/design/idempotency.md。
+- 敏感操作（发起扫描、领取类）：**服务端签发一次性操作凭据**（与 attest challenge 同构：
+  绑定 customerId + 操作类型 + 短 TTL，消费即作废）——把防重放的锚点从攻击者可控字段
+  移到服务端自有状态。

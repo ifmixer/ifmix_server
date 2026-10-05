@@ -1,6 +1,7 @@
 package com.ifmix.core.api.infra.http
 
 import assertk.assertThat
+import assertk.assertions.contains
 import assertk.assertions.isEqualTo
 import assertk.assertions.isLessThan
 import assertk.assertions.isNull
@@ -104,11 +105,22 @@ class WireCryptoTest {
         val noTs = TestClient(crypto.publicKey(1)!!, kid = 1).sealRequest(ByteArray(0), inner = ByteArray(0))
         assertThrows<WireCryptoException> { crypto.open(noTs) }
 
+        // 低阶（小序）点 ephPub：JDK Montgomery ladder 不拒绝、照算 shared，必须靠黑名单拒。
+        // 全零 32B（x=0）与 2^255-1（order-2 点，两种符号位编码）各一例；
+        // 其余 8 个编码同逻辑（5 个 x × 2 符号位，见 WireCrypto.LOW_ORDER_EPH_PUBS）。
+        for (dangerous in listOf(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        )) {
+            val payload = byteArrayOf(2, 1) + HF.parseHex(dangerous) + ByteArray(12 + 16)
+            assertThrows<WireCryptoException> { crypto.open(payload) }
+        }
+
         val empty = WireCrypto.parse("")
         assertThat(empty.isEnabled).isEqualTo(false)
         assertThat(empty.publicKey(1)).isNull()
         assertThrows<WireCryptoException> { empty.open(tampered) }
-
         // 配置错误与 payload 错误区分：前者启动期 fail-fast
         assertThrows<IllegalArgumentException> { WireCrypto.parse("bad") }
         assertThrows<IllegalArgumentException> { WireCrypto.parse("0:${Base64.getEncoder().encodeToString(ByteArray(32))}") }
@@ -202,6 +214,22 @@ class WireCryptoTest {
         assertThat(res.status).isEqualTo(400)
         assertThat(res.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
         assertThat(res.getHeader(RequestHeaders.PROTO_VERSION)).isNull()
+    }
+
+    @Test
+    fun `filter clock skew over 5min is warn-only, request still processed`() {
+        val client = TestClient(crypto.publicKey(1)!!, kid = 1)
+        val req = MockHttpServletRequest("POST", "/customer/core/greq/m_x").apply {
+            addHeader(RequestHeaders.PROTO_VERSION, "2")
+            contentType = "application/octet-stream"
+            // ts = 1 小时前（> 5min 偏差）
+            setContent(client.sealRequest("""{"q":1}""".toByteArray(), ts = System.currentTimeMillis() - 3_600_000L))
+        }
+        val res = runFilter(v2Filter(), req)
+        assertThat(res.status).isEqualTo(200)
+        assertThat(res.contentType).isEqualTo("application/octet-stream")
+        assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
+            .contains("""{"q":1}""")
     }
 
     companion object {

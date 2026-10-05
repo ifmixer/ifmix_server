@@ -35,6 +35,11 @@ app:
     # access token 有效期（秒），默认 15 分钟，靠 refresh 续期。
     access-ttl-sec: ${AUTH_ACCESS_TTL_SEC:900}
 
+  # x-proto-version: 2 wire 加密私钥（可选）：`kid:base64,...` 多 kid 并存以便轮换；
+  # 缺省 = 不支持 v2，v2 请求全部 400003，客户端自动降级明文。
+  wire-crypto:
+    keys: ${WIRE_CRYPTO_KEYS:}
+
   storage:
     type: ${STORAGE_TYPE:s3}
     region: ${STORAGE_REGION:auto}
