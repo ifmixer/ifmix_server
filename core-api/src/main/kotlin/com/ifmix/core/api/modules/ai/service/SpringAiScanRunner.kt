@@ -257,12 +257,16 @@ open class SpringAiScanRunner(
                         // 不可逆，需运营手工恢复（enabled=true 或删除行）。
                         // 禁用是 best-effort 副作用，主路径已在 AiConfig.disableKeyFn 内 catch Exception 收敛；
                         // 此处再本地兜一层，保证「任何异常不得导致扫描失败」的不变量（scan/deep-research 共用本 catch 分支）。
+                        var disableAttempted = false
                         try {
                             keyStore.disableKey(doc.id)
+                            disableAttempted = true
                         } catch (e: Exception) {
                             log.warn("disableKey skipped (best-effort, scan continues). keyId={} model={}", doc.id, model, e)
                         }
-                        log.error("AI API key invalid — disabled (PG enabled=false) + cooling down. reason={} cooldown={}s keyId={} model={} duration={}ms msg={}",
+                        // 措辞与实际结果一致：DB 写失败（seam 内吞掉）时 key 实际只被冷却，不得断言「已禁用」
+                        log.error("AI API key invalid — {} + cooling down. reason={} cooldown={}s keyId={} model={} duration={}ms msg={}",
+                            if (disableAttempted) "disabling (PG enabled=false, best-effort)" else "cooldown-only (disable failed)",
                             failure.reason, failure.cooldownSec, doc.id, model, System.currentTimeMillis() - attemptStartMs, e.message)
                     } else if (failure.reason == "401" || failure.reason == "403") {
                         // message 兜底命中：疑似失效但类型化判定未中——只长冷却（1h 自动解冻），不永久禁用（避免误杀好 key）。

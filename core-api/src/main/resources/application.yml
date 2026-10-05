@@ -80,9 +80,10 @@ app:
     strict: ${APP_HEADER_VALIDATION_STRICT:false}
   storage:
     # 连接/密钥（endpoint/access-key/secret-key）由各环境自行配置（local 写死、prod 环境变量）。
+    # buckets 按需由环境覆盖 app.storage.buckets.<id>（默认空 map，主配置不留 {} 占位——
+    # Boot 4 下空 map 占位会触发 String→Map 绑定失败导致 Spring 上下文起不来）。
     type: ${STORAGE_TYPE:s3}
     region: ${STORAGE_REGION:us-east-1}
-    buckets: {}
   pay:
     # Google Play Pub/Sub push 的共享 token：端点按 ?token=xxx 或 X-Webhook-Token 头校验（恒定时间比较）。
     # 未配置时 /webhooks/iap/google 一律 403（IAP 未启用的环境保持关闭，防无鉴权写入）。

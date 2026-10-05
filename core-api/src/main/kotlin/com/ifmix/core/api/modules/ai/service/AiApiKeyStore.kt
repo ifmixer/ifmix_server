@@ -90,7 +90,7 @@ class AiApiKeyStore(
         return hit
     }
 
-    /** 标记 key 冷却（秒）。reason 记录冷却原因（"429"/"401"/"403"/"timeout"/"5xx"），便于排查。 */
+    /** 标记 key 冷却（秒）。reason 记录冷却原因（"429"/"401"/"403"/"timeout"/"error"），便于排查。 */
     fun markCooldown(keyId: String, cooldownSec: Long, reason: String) {
         markCooldownFn(keyId, cooldownSec, reason)
     }
