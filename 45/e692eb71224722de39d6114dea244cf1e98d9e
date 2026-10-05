@@ -1,0 +1,44 @@
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ImageRef.kt
+  h_b17efd5c751f9f 7,28
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanDeepResearch.kt
+  h_b17efd5c751f9f 9
+core-api/src/main/kotlin/com/ifmix/core/api/entity/ai/ScanRecord.kt
+  h_b17efd5c751f9f 42
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestConfig.kt
+  h_b17efd5c751f9f 6
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 418
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiApiKeyStore.kt
+  h_b17efd5c751f9f 12
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiConfig.kt
+  h_b17efd5c751f9f 29,33
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  h_b17efd5c751f9f 29,47
+core-api/src/main/resources/application-prod.yml
+  h_b17efd5c751f9f 6
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 4,96
+core-api/src/main/resources/db/migration/V10__deep_research_async.sql
+  h_b17efd5c751f9f 2
+core-api/src/main/resources/schema/customer/ai.graphqls
+  h_b17efd5c751f9f 60,88,169
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiApiKeyStoreTest.kt
+  h_b17efd5c751f9f 14
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiConfigDisableKeyDbTest.kt
+  h_b17efd5c751f9f 28
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiConfigDisableKeyFnTest.kt
+  h_b17efd5c751f9f 21
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/SpringAiScanRunnerDisableTest.kt
+  h_b17efd5c751f9f 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45e692eb71224722de39d6114dea244cf1e98d9e",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
