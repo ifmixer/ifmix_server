@@ -3,7 +3,7 @@
 > **给接手的 agent**：先读 ifmix_server 仓库 `docs/design/infra/wire-encryption.md` §10（v3 契约，唯一真相源）→ 本文件。契约若与本文件不一致，以 §10 为准并回改本文件。逐任务更新「状态」，**不要重做已完成任务**。
 > - 仓库：`/Users/jason/ai/myprojects/antique`（`apps/shared` + `apps/antique`）
 > - 服务端计划见 ifmix_server `docs/design/infra/wire-v3-plan-server.md`（双端并行，互不阻塞；联调见 §2）
-> - 最后更新：2026-10-05（计划创建，全部任务 pending）
+> - 最后更新：2026-10-06（T1–T3 完成；T4 联调待服务端就绪后执行）
 
 ## 0. 一页纸摘要
 
@@ -17,7 +17,7 @@
 Suite:   KEM=0x0020 DHKEM(X25519,HKDF-SHA256) | KDF=0x0001 HKDF-SHA256 | AEAD=0x0002 AES-256-GCM | mode=base
 info:    "ifmix-wire-v3"
 请求:    ver(1)=3 | kid(1) | enc(32) | flags(1) | HPKE-Seal(pkR=kid公钥, info, aad, pt) ‖ tag(16)
-         aad = ver‖kid‖enc‖flags（36B）；pt = ts_ms(8,BE) ‖ body
+         aad = ver‖kid‖enc‖flags（35B，1+1+32+1）；pt = ts_ms(8,BE) ‖ body
          flags bit0=1 → pt 整体 gzip 后再加密；pt > 4096 才压（4096 不压、4097 压）
 响应:    flags(1) | nonce(12) | AES-256-GCM(resKey, nonce, aad=enc‖flags, payload) ‖ tag(16)
          resKey = HPKE-Export(context, "ifmix-wire-v3-res", 32)
@@ -31,7 +31,7 @@ config:  客户端内置 WIRE_KEY_CONFIG = { version: 3, keys: [{ kid: number, p
 
 ### T1 选型（已定稿，实现 agent 不再选择）
 
-- [ ] **状态：pending（选型已定：noble 组装，见下）**
+- [x] **状态：done（2026-10-06）** @noble/curves@1.9.7 + @noble/hashes@1.8.0 + @noble/ciphers@1.3.0 已入 `packages/client-sdk/packages/api` devDeps（dual 支持经 jest babel transform；noble 2.x 为 ESM-only，故锁 1.x）。注意：实际未装 pako/`react-native-get-random-values`——gzip 沿用 SDK 已有的 fflate（等价库）；随机源改为 SDK `setWireRandomSource()` 注入（app 层用 expo-crypto），无需新原生模块。
 
 **决策（2026-10-05，用户已确认授权拍板）：`@noble/curves`（X25519）+ `@noble/hashes`（HKDF-SHA256）+ `@noble/ciphers`（AES-256-GCM）按 RFC 9180 组装 base mode（约 100–150 行机械性胶水），gzip 用 `pako`。不采用 `@hpke/core`。**
 
@@ -48,7 +48,7 @@ config:  客户端内置 WIRE_KEY_CONFIG = { version: 3, keys: [{ kid: number, p
 
 ### T2 wireCrypto.ts 重写
 
-- [ ] **状态：pending** ｜ 依赖：T1
+- [x] **状态：done（2026-10-06）** 实际落点为 `packages/client-sdk/packages/api/src/api/wireCrypto.ts`（Phase 7-9 已从 apps/shared 迁至 SDK 子树）。v2 的 `WireCryptoImpl` 注入接口整体移除（noble 纯 JS 后无原生适配需求）：`sealRequest(key, body, overrides?)`，`client.ts` 的 `getWireCrypto` 与 app 侧 quick-crypto 适配层删除；`x-proto-version: 3`、请求 gzip（>4096）、响应 Exporter resKey、未知 flag 拒绝均已实现。ephemeral 密钥对每请求现生成（仅随机 32B）。
 - 重写 `apps/shared/src/api/wireCrypto.ts`：
   - 导出接口尽量保持现有形状（client.ts / ensureInstallWhenOnline 等调用点**零改动**为先决目标）；内部全部换 HPKE。
   - `WIRE_KEY_CONFIG` 常量按契约更新为 `{ version: 3, keys: [{kid, pk}] }`（值与服务端 agent 对齐，见 §2 联调）。
@@ -60,7 +60,7 @@ config:  客户端内置 WIRE_KEY_CONFIG = { version: 3, keys: [{ kid: number, p
 
 ### T3 测试
 
-- [ ] **状态：pending** ｜ 依赖：T2
+- [x] **状态：done（2026-10-06）** `hpke-vectors.json`（RFC 官方向量，`scripts/gen-wire-vectors.ts` 脚本生成，来源 cfrg/draft-irtf-cfrg-hpke test-vectors.json，含 source sha256）逐字节锁定 HPKE 组装（enc/key schedule/3 条 encryptions/3 条 exports/接收方 open）。信封层：独立 mock 服务端 round-trip（含中文）、gzip 边界 4096/4097、响应 gzip、未知 flag 拒绝、篡改拒绝、解压上限 1MB、确定性/随机路径、gqlOp 集成 + 降级（415/400003）。SDK 152 tests、app 173 tests 全绿；typecheck 与 HEAD 基线一致（无新增错误）。
 - 官方向量用例：从 HPKE 工作组向量（与服务端同一来源，见服务端计划 T1）驱动 Seal/Open，逐字节对拍。
 - 端到端 round-trip：请求密文→（模拟服务端）解密→响应→客户端解密；覆盖 >4KB 请求 gzip、4096/4097 边界、未知 flag 拒绝、坏 kid、坏 enc、降级路径（服务端无 key → 明文）。
 - 既有 wire 相关测试同步迁移（v2 的用例中与信封格式绑定的部分重写，与降级/编排相关的保留）。
@@ -68,7 +68,7 @@ config:  客户端内置 WIRE_KEY_CONFIG = { version: 3, keys: [{ kid: number, p
 
 ### T4 收尾与联调（依赖双端 T3 完成）
 
-- [ ] **状态：pending**
+- [ ] **状态：pending（2026-10-06：客户端 T1–T3 完成，等服务端实现后联调）**
 - 真机/模拟器联调：连本地服务端跑通 createScan（构造 >4KB 请求验证压缩）+ 大响应 gzip + 降级路径。
 - 联调时核对三项易错点：① 双端 key config 的 kid/pk 一致；② ts 字节序（BE）与拼接顺序（ts 在前）；③ flags 位定义一致（请求 bit0=gzip、响应 bit0=gzip、其余必须 0）。
 - 回写本文状态 + ifmix_server 侧 `docs/design/infra/wire-encryption.md` §10.4 步骤 2 勾选（需要动 server 仓库时与服务端 agent 协调）。
