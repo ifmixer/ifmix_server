@@ -1,0 +1,14 @@
+docs/superpowers/specs/2026-10-04-wire-encryption-design.md
+  h_b17efd5c751f9f 1-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b17a16e2f9d432fb1224a6467aa99179b587738d",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
