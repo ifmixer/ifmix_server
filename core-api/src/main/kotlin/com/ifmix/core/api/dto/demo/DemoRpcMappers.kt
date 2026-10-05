@@ -70,8 +70,10 @@ object DemoRpcMappers {
                     recId = it.recId,
                     title = it.title,
                     priority = it.priority,
-                    createdAt = requireInstant(it.createdAt, "recItem.createdAt"),
-                    updatedAt = it.updatedAt?.let { s -> requireInstant(s, "recItem.updatedAt") },
+                    // §4.4 定稿：客户端不提交 createdAt/updatedAt，由 mapper 统一打戳。
+                    // generated input 的 createdAt 是必填 DateTime!（Instant），updatedAt 保持 null（服务端补全）。
+                    createdAt = Instant.now(),
+                    updatedAt = null,
                 )
             },
         )
@@ -216,9 +218,4 @@ object DemoRpcMappers {
     private fun requireSortDirection(direction: String): SortDirection =
         runCatching { SortDirection.valueOf(direction) }.getOrNull()
             ?: throw ApiError(ErrorCode.INVALID_REQUEST, "invalid sortDirection: $direction")
-
-    /** 实体侧 DateTime 非空但缺省为 ISO-8601 字符串时解析（recItem.createdAt 在 schema 中为必填）。 */
-    private fun requireInstant(s: String?, name: String): Instant =
-        runCatching { Instant.parse(s) }.getOrNull()
-            ?: throw ApiError(ErrorCode.INVALID_REQUEST, "invalid or missing DateTime: $name = $s")
 }

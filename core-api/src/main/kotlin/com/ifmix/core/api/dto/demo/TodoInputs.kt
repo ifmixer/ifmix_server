@@ -13,9 +13,11 @@ data class TodoRecommendInputDto(
     val sectionId: java.util.UUID, val sectionName: String, val viewCount: Int? = null,
     val recItems: List<TodoRecItemInputDto>? = null,
 )
+/** 客户端不提交 createdAt/updatedAt（服务端生成字段；客户端 rpcDemo.ts 用 Omit 对齐）。
+ *  注意与 GraphQL input 的差异：GraphQL 的 TodoRecItemInput.createdAt 是必填（老客户端自己造时间戳），
+ *  RPC 契约改为服务端 mapper 统一打戳，见 §4.4。 */
 data class TodoRecItemInputDto(
     val recId: java.util.UUID, val title: String? = null, val priority: Int,
-    val createdAt: String? = null, val updatedAt: String? = null,
 )
 data class UpdateTodoInputDto(val id: java.util.UUID, val set: UpdateTodoSetInputDto?, val unset: List<String>? = null)
 data class UpdateTodoSetInputDto(val title: String? = null, val done: Boolean? = null, val note: String? = null, val recommend: TodoRecommendInputDto? = null)
