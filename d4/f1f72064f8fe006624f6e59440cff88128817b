@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-10-04-wire-encryption-design.md
+  s_9609e94622ddf5::t_5553ed497a99ef 23,25-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4f1f72064f8fe006624f6e59440cff88128817b",
+  "prompts": {},
+  "sessions": {
+    "s_9609e94622ddf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f31cda57-976c-40be-a6c9-6f3f8a1e6ec0",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
