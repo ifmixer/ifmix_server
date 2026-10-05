@@ -1,0 +1,21 @@
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiConfigDisableKeyFnTest.kt
+  s_626a923fe44bc3::t_ac070c8709f034 9-10
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/SpringAiScanRunnerDisableTest.kt
+  s_626a923fe44bc3::t_6bc1b6196d5066 59,69-70,73,115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0033f56addcfeede9dde417647070a0dcb617ce",
+  "prompts": {},
+  "sessions": {
+    "s_626a923fe44bc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b34dc526-22e4-47c7-b827-bd3064965bf5",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
