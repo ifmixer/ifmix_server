@@ -5,6 +5,8 @@
 > - 前置：demo 试点（C1–C5）已验收合并；服务端按 `rpc-pilot-server.md` / 后续模块规格文档并行实施，**每个 R 阶段开始前确认对应服务端模块已就绪（联调可用），否则该阶段挂起等待，不要先改后弃**。
 > - **硬边界：gqlOp 路径与 trusted documents/codegen 全量保留到 R5；每迁移一个模块只是"新增 RPC 封装 + client 方法"，不改既有 gql 方法的行为；attest/auth/install/pay/noti 包的会话语义不动。**
 
+**阶段状态**：R0 客户端侧 done（2026-10-06：8 个 reqName 四段新命名 + URL 迁到 `/rpc/customer/core/{actionName}`，全量 17 suite / 168 tests 绿）；R0 联调 E2E **挂起**（服务端 S4 demo controller/路由未落地、localhost:3001 未起、服务端 DemoSpecs.kt 仍旧名）—— 等 gate 1。R1 pending · R2 pending · R3 pending · R4 pending · R5 pending
+
 ## 0. 现状与总览
 
 - demo 8 个 action 客户端已走 RPC（`rpc.ts`/`rpcDemo.ts`/`client.ts` `todo*Rpc` 方法），但用的是**旧命名**（`m_demo_createTodo`），本计划 R0 统一改为四段新命名。
