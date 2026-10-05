@@ -6,8 +6,8 @@
 > 每完成一个任务/子步骤，立即更新本文件的状态行与任务状态。
 >
 > - 分支：`feature/attest`（不要自行 commit，除非用户明确要求；若 commit 必须先跑 GitNexus detect-changes）
-> - 最后更新：2026-10-05（**全部完成**：antique 前端 T8/T9/T10 先前会话已 commit（feature/attest 2f16c84）；ifmix_server 服务端 T5 WP-D 接线 + T6 WP-E core-job + T7 编译测试验收 + T11 服务端文档同步今日完成，未 commit（用户未要求））
-> - 当前阶段：**收尾** —— 1a 实现全部 done、编译测试绿（e2e 7 类本地 PG 缺库环境性失败除外）。遗留：Apple 端点/响应字段路径（§10.4 假设集中在 core-job 两个 Impl，实测不符只改 Impl）、真机 fixture 采样工具（§10.1 本期不做）
+> - 最后更新：2026-10-05（**服务端全部完成并已 commit**：ifmix_server `feature/attest` 的 `c8f1df6`（T5-T7 + T11 文档 + [中] key_reused 修复）+ `6042e06`（本文档）；antique 前端 T8/T9/T10 在 `2f16c84`。V15 迁移已真库验证）
+> - 当前阶段：**服务端收尾完成** —— 1a 机器可做部分全部闭环（代码/测试/文档/commit/flyway 真库）。仅剩人工项：真机 fixture（§10.1）+ TestFlight 冒烟（§9）+ §10.4 Apple 端点假设实测核实（集中在 core-job 两个 Impl）
 
 ---
 
