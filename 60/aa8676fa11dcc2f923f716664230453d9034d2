@@ -1,0 +1,24 @@
+AGENTS.md
+  s_b049fe9f48e3d7::t_4bc48be3734f62 53-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60aa8676fa11dcc2f923f716664230453d9034d2",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_b049fe9f48e3d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6987755fd0109673",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
