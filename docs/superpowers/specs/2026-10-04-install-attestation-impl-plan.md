@@ -6,8 +6,8 @@
 > 每完成一个任务/子步骤，立即更新本文件的状态行与任务状态。
 >
 > - 分支：`feature/attest`（不要自行 commit，除非用户明确要求；若 commit 必须先跑 GitNexus detect-changes）
-> - 最后更新：2026-10-05（**全部完成**：antique 前端 T8/T9/T10 先前会话已 commit（feature/attest 2f16c84）；ifmix_server 服务端 T5 WP-D 接线 + T6 WP-E core-job + T7 编译测试验收 + T11 服务端文档同步今日完成，未 commit（用户未要求））
-> - 当前阶段：**收尾** —— 1a 实现全部 done、编译测试绿（e2e 7 类本地 PG 缺库环境性失败除外）。遗留：Apple 端点/响应字段路径（§10.4 假设集中在 core-job 两个 Impl，实测不符只改 Impl）、真机 fixture 采样工具（§10.1 本期不做）
+> - 最后更新：2026-10-05（**全部完成**：antique 前端 T8/T9/T10 先前会话已 commit（feature/attest 2f16c84），T9/T10 代码 review 发现的中1/中2/中3/低①②③④ 亦已于今日前端会话修复（未 commit）；ifmix_server 服务端 T5 WP-D 接线 + T6 WP-E core-job + T7 编译测试验收 + T11 服务端文档同步今日完成，未 commit（用户未要求））
+> - 当前阶段：**收尾** —— 1a 实现全部 done、编译测试绿（e2e 7 类本地 PG 缺库环境性失败除外）。遗留：Apple 端点/响应字段路径（§10.4 假设集中在 core-job 两个 Impl，实测不符只改 Impl）、真机 fixture 采样工具（§10.1 本期不做）、低⑤ Dev-only 迟到写入可接受项
 
 ---
 
@@ -305,30 +305,16 @@ fixture key 不保留）、features/install/clearCredentials.ts（改走协调�
 typecheck（antique 仓库的 tsc/lint 命令，进仓库后确认）+ 单测。
 **状态：done**（备注：`pnpm --filter @ifmix/antique run typecheck`（tsc --noEmit）0 错误；全量 `npx jest` 30 套件 / 205 测试全绿。过程中修了 2 个测试自身的问题（非实现 bug）：① ensureInstallWhenOnline.test.ts 的 `flush` 用裸 `setTimeout(0)` 在该套件 fake timers 下永不触发（11 例 5s 超时）→ 改 `jest.advanceTimersByTimeAsync(0)`；② 该套件 makeDeps 默认 `backfill.shouldRun=false` 与「bootstrap 成功后接续补证」用例自相矛盾（§6.8 默认补证可跑）→ 默认改 true，「不跑」用例本就显式覆盖。api.test.ts 新增 `jest.mock('@/lib/attest')` + react-native mock（api.ts 经 attest.ts 引入原生依赖链，原套件未 mock 导致解析失败）。shared 层 127 测试绿（T8 已验）
 
-#### T9/T10 代码 review 发现（2026-10-05，协调会话复核；待修，交给下一个 agent）
+#### T9/T10 代码 review 发现（2026-10-05，协调会话复核；**全部已修**（中1/中2/中3/低①②③④ done，低⑤ Dev-only 保持可接受）
 
 typecheck 0 错误；shared 127 + antique 205 测试全绿；§6.4 状态机、协调器锁规则、404001 收敛链、
 persisted query、脱敏、wipe 保留规则、entitlement/runtimeVersion 均核对通过。以下为发现的问题：
 
-- **[中1] 每个全新验证 install 会在下次启动补证时绑定第二把 key**。
-  链路：`report('create_verified')` 拿不到 installId（契约只传 outcome）→ REGISTERED.installId 缺省
-  （attest.ts:925-934）→ `shouldBackfillAttestation` 对「REGISTERED 且 installId 未知」返回 true
-  （attest.ts:1016）→ 首个 bootstrap 成功后调度必然触发 backfill（_layout.tsx）→
-  `next(backfill)` 对 REGISTERED+installId 未知走 runCreateFlow 生成**新 key**（attest.ts:846-851）
-  → 绑定为第二条 attestation。后果：flag 开后每个 iOS 新装 2 把 SE key / 2 次 attest /
-  fraud metric ×2 / 占 3/day 新 key 额度；attest.ts:926 注释「幂等 attestExisting 会补上」不成立
-  （幂等要求同一把 key）。修复建议 (a)（推荐）：扩展契约 `report(outcome, meta?: { installId? })`，
-  client 在 create/recover 成功时传 `result.installId`，attest.ts 写入 REGISTERED（符合 §6.4
-  REGISTERED{keyId, installId}）；(b) `shouldBackfillAttestation` 对 REGISTERED 一律返回 false
-  （实践安全：bootstrap 会先消费 REGISTERED→recover，但偏离 §6.7 触发表）。
+- **[中1] 每个全新验证 install 会在下次启动补证时绑定第二把 key**。✅ **已修（2026-10-05 前端会话，方案 a）**：契约扩展 `report(outcome, meta?: { installId?: string })`（`installProof.ts`，meta 来源=服务端 result.installId）；`client.ts runInstallBootstrap` 成功路径（create/recover）带 meta，catch 失败 report 不带；`attest.ts` `create_verified`/`recover_registered` 写入 REGISTERED（backfill 语境 targetInstallId 优先、bootstrap 用 meta），并删除「待补证幂等回填」错误注释。测试：shared `client.attest.test.ts` 加 reportedMeta 断言（成功 `{installId}`、失败 undefined）；antique `attest.test.ts` 新增 4 用例（bootstrap meta 写入 + §6.7 不再补证 / 无 meta 缺省 / RECOVER_PENDING 经 meta 补写 / backfill targetInstallId 优先）。
 - **[中2] 429002 + Retry-After 截断 10min → 循环烧 key**。✅ **已修（2026-10-05 前端会话）**：`ensureInstallWhenOnline.ts` `runCycle` catch 里 429002（`ApiCode.INSTALL_DAILY_LIMITED`，`@ifmix/app-shared` 常量非字符串硬编码）两阶段通用 → `goIdle()` 本次启动终结（下次冷启动自然重来，服务端窗口到 UTC 零点重置）；429000 保持截断重试语义不变；头注释终结列表已更新。测试：原「Retry-After 优先」用例改用 429000，新增 429000 超长截断 / 429002 终结 / 403001+isUnsupported 终结 / 403001 未注入对照组退避 4 用例（该套件 15/15 绿）。
 - **[中3] UNSUPPORTED 设备在 ENFORCE 下无限定时重试**（仅 ENFORCE 生效，当前 OBSERVE 无影响）。✅ **已修（2026-10-05 前端会话）**：`ensureInstallWhenOnline.ts` `InstallSchedulerDeps` 新增可选 `isUnsupported?: () => boolean`（app 层注入 `isAttestUnsupported`），`runCycle` catch 里 bootstrap 阶段命中 → `goIdle()`；`_layout.tsx` 已接线。
-- **[低]** ① ✅ 已修（2026-10-05 前端会话）：`attest.debug6.test.ts` 已删除（rule1 持久化失败场景 `attest.test.ts`「存储写入语义（规则 1 / 规则 2）」行 258/271/283 已覆盖，无需迁移）；② client.ts `MAX_INSTALL_STEPS=2`
-  与 §6.2「最多 2 步」示例（create→recover→create 共 3 请求）不符：实际最多 2 请求，recover 404
-  后的「立即用新 key 重新 create」推迟到下一调度轮——收敛性不受影响，改代码为 3 或修规格文字，
-  二选一；③ `runAttestExisting` 把 provider 的 'unavailable' step（如 challenge 网络瞬断）也当
-  status=30 返回 → 本次启动放弃补证；应区分：unavailable → 抛出交调度退避，仅 no-proof → 30；
-  ④ ✅ 已修（2026-10-05 前端会话）：docs/CHANGELOG.md「createInstall 10/60s/IP」已改为「入口 100/60s/IP」；⑤ `clearAllAttestStates`（Dev）后，在途原生流程的迟到
+- **[低]** ① ✅ 已修（2026-10-05 前端会话）：`attest.debug6.test.ts` 已删除（rule1 持久化失败场景 `attest.test.ts`「存储写入语义（规则 1 / 规则 2）」行 258/271/283 已覆盖，无需迁移）；② ✅ 已修：`client.ts` `MAX_INSTALL_STEPS` 2→3（对齐 §6.2 示例 create→recover→create 3 请求同 cycle 收敛；`PROGRESSABLE_OUTCOMES` 保证 3 轮下不无限前进）；③ ✅ 已修：`runAttestExisting` 的 `unavailable` step → `throw step.cause ?? Error('attest backfill unavailable')`（交调度器退避重试，single-flight 经 `.finally` 清除不粘滞；no-proof 等其余非 attest_existing kind 仍按 NOT_ATTEMPTED=30 返回）。测试：shared 新增 3 步收敛 / unavailable 上抛 / 无 cause 包装 3 用例；`ensureInstallWhenOnline.ts` 行 45 注释「≤2 步」已同步改「≤3 步」；④ ✅ 已修（2026-10-05 前端会话）：docs/CHANGELOG.md「createInstall 10/60s/IP」已改为「入口 100/60s/IP」；
+  ⑤ `clearAllAttestStates`（Dev）后，在途原生流程的迟到
   commitBestEffort 仍可能复活已清状态（mutex 只挡临界区、挡不住锁外流程的后续写入）——Dev-only，
   可接受，彻底修需 epoch 校验。
 
