@@ -18,4 +18,12 @@ interface ProjectServerConfig : BaseProjectEntity {
     @Serialized
     @Column(name = "fcm_config")
     val fcmConfig: Map<String, Any?>?
+
+    /**
+     * 平台证明（App Attest / Play Integrity）配置（JSONB）。null = 该 project 未启用证明。
+     * 含 DeviceCheck .p8 私钥 / Play service account 等敏感凭据，与 fcmConfig 同受「绝不下发前端」约束。
+     */
+    @Serialized
+    @Column(name = "app_attest_config")
+    val appAttestConfig: Map<String, Any?>?
 }

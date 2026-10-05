@@ -49,13 +49,16 @@ class GraphQLExceptionHandler(
                 else ->
                     log.debug("GraphQL ApiError code={} errorName={} path={} msg={}", code.externalCode, code.name, path, apiError.message)
             }
+            // extensions.retryAfterSec：限流类错误建议等待秒数（GraphQL 路径 HTTP header 不可用，规格 §4.4）
+            val extensions = linkedMapOf<String, Any?>(
+                "code" to code.externalCode,
+                "errorName" to code.name,
+            )
+            apiError.retryAfterSec?.let { extensions["retryAfterSec"] = it }
             return GraphqlErrorBuilder.newError(env)
                 .message(code.clientMessage(apiError.message, exposeErrors))
                 .errorType(code.toGraphQLErrorType())
-                .extensions(mapOf(
-                    "code" to code.externalCode,
-                    "errorName" to code.name,
-                ))
+                .extensions(extensions)
                 .build()
         }
         // 非 ApiError：未预期的程序异常（NPE/DB/Redis 等）。记 error 带 stack 便于排查；

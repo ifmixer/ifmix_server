@@ -24,6 +24,19 @@ enum class ErrorCode(val externalCode: String, val status: HttpStatus) {
 
     /** 日配额用尽（与 RATE_LIMITED 区分：前者是短期限流，后者是日配额） */
     QUOTA_EXCEEDED("429001", HttpStatus.TOO_MANY_REQUESTS),
+
+    /** install 平台证明失败：缺失/无效/replay/key 已绑定（createInstall 收到后应转 recover） */
+    ATTESTATION_FAILED("403001", HttpStatus.FORBIDDEN),
+    /** key 状态为 BLOCKED / RETIRED：禁止 recover / 新绑定（已签发 installToken 不吊销） */
+    ATTEST_KEY_BLOCKED("403002", HttpStatus.FORBIDDEN),
+    /** key 已绑定在别的 install 上：废弃 key，保留当前 installToken，不 recover */
+    ATTEST_KEY_BOUND_TO_OTHER_INSTALL("409001", HttpStatus.CONFLICT),
+    /** installToken 指向的 install 已不存在（attestExisting；客户端只在此码上清 install） */
+    INSTALL_NOT_FOUND("404001", HttpStatus.NOT_FOUND),
+    /** 平台证明临时不可用：验证方故障 / 配置无效 / ENFORCE 下客户端声明 UNAVAILABLE（可带 retryAfterSec） */
+    ATTESTATION_UNAVAILABLE("503002", HttpStatus.SERVICE_UNAVAILABLE),
+    /** 验签后的日窗口超限：createInstall 的 attested/unverified IP 日额度、attestExisting 新 key 日额度（必带 retryAfterSec=到 UTC 零点秒数） */
+    INSTALL_DAILY_LIMITED("429002", HttpStatus.TOO_MANY_REQUESTS),
 }
 
 /** 线上隐藏细节时，5xx / 未预期异常对客户端统一返回的通用文案（客户端按 code 做本地化）。 */

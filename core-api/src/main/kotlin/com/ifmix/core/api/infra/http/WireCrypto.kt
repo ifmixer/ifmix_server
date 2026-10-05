@@ -83,7 +83,7 @@ class WireCrypto(keys: Map<Int, ByteArray>) {
         val ephPub = payload.copyOfRange(2, HEADER_LEN)
         val nonce = payload.copyOfRange(HEADER_LEN, HEADER_LEN + NONCE_LEN)
         return try {
-            if (ephPub.contentEquals(LOW_ORDER_EPH_PUBS)) throw WireCryptoException(kid) // 低阶点：JDK 不拒绝，显式黑名单
+            if (LOW_ORDER_EPH_PUBS.any { ephPub.contentEquals(it) }) throw WireCryptoException(kid)
             val shared = x25519(key.priv, ephPub)
             val okm = KDF.getInstance("HKDF-SHA256").deriveData(
                 HKDFParameterSpec.ofExtract().addIKM(shared).addSalt(ephPub + key.pubRaw).thenExpand(INFO, OKM_LEN),

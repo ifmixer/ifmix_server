@@ -84,9 +84,10 @@ app:
     keys: ${WIRE_CRYPTO_KEYS:}
   storage:
     # 连接/密钥（endpoint/access-key/secret-key）由各环境自行配置（local 写死、prod 环境变量）。
+    # buckets 按需由环境覆盖 app.storage.buckets.<id>（默认空 map，主配置不留 {} 占位——
+    # Boot 4 下空 map 占位会触发 String→Map 绑定失败导致 Spring 上下文起不来）。
     type: ${STORAGE_TYPE:s3}
     region: ${STORAGE_REGION:us-east-1}
-    buckets: {}
   pay:
     # Google Play Pub/Sub push 的共享 token：端点按 ?token=xxx 或 X-Webhook-Token 头校验（恒定时间比较）。
     # 未配置时 /webhooks/iap/google 一律 403（IAP 未启用的环境保持关闭，防无鉴权写入）。
@@ -113,8 +114,54 @@ app:
         timeout-sec: 300         # 与典型调用时长（2-3min）对齐，避免超时 key 很快回池
         other-sec: 30
 
+  # 限流阈值（install attestation 规格 §4.6）：每个 action 显式配置，**重启生效**（不做热更新，
+  # 不能当即时 kill switch；紧急降额走一次重启/发布）。key 统一格式 ratelimit:{projectId}:{action}:...，
+  # 按 projectId 隔离。IP 层=系统防护（大阈值）；legacy=无 tokenInstallId 的旧客户端严格阈值（独立计数器）；
+  # install 层=防滥用（小阈值，attest 接线任务使用）。
+  ratelimit:
+    install:
+      ip-minute: 100          # m_install_createInstall 入口短窗口（所有请求，验签前）
+      unverified-ip-day: 100  # createInstall 日窗口：未验证桶（无 proof / INVALID / UNAVAILABLE，OBSERVE 放行）
+      attested-ip-day: 1000   # createInstall 日窗口：VALID 已验证桶
+    attest-challenge:
+      ip-minute: 100          # m_install_createAttestChallenge：纯 HMAC 计算，与 createInstall 入口对齐
+    recover-install:
+      ip-minute: 10           # m_install_recoverInstall
+    attest-existing:
+      ip-minute: 10           # m_install_attestExisting
+      install-day: 3          # 每 install 每 UTC 日新 key 额度
+    anonymous:
+      legacy-ip-minute: 10    # m_customer_createAnonymousCustomer：旧客户端严格阈值
+      ip-minute: 100
+      ip-day: 1000
+      install-day: 5
+    scan:
+      legacy-ip-minute: 5     # m_ai_createScan：旧客户端严格阈值
+      legacy-ip-day: 500
+      ip-minute: 100
+      ip-day: 1000
+      install-minute: 5
+      install-day: 100
+    deep-research:
+      legacy-ip-minute: 3     # m_ai_runDeepResearch：旧客户端严格阈值
+      legacy-ip-day: 300
+      ip-minute: 100
+      ip-day: 1000
+      install-minute: 5
+      install-day: 100
+
   auth:
     issuer: ${AUTH_ISSUER:ifmix}
+
+  # install 平台证明（App Attest / Play Integrity，规格 §4.1）：
+  # - 全局 kill switch 走 env APP_ATTEST_GLOBAL_ENABLED（Spring 宽松绑定自动映射到 app.attest.global-enabled，默认 false）；
+  # - challenge HMAC 密钥走 env APP_ATTEST_CHALLENGE_SECRET（`current[,previous]`，32 字节 base64，不进 yml——secret）；
+  # - per-project 配置存 core_project_server_config.app_attest_config（JSONB，null = 关）。
+  attest:
+    # 全局开关（§4.1）：OFF 时 createAttestChallenge 恒返回 enabled=false，createInstall 不做校验（attestationStatus=30）
+    global-enabled: false
+    # 验签并发信号量（§3.1：Redis 故障期防验签把进程打满；拿不到许可 → UNAVAILABLE，OBSERVE 放行 / ENFORCE 503002）
+    verify-permits: ${APP_ATTEST_VERIFY_PERMITS:32}
     # 老版本 app 兼容：token 无 iid 时退回 x-install-id header（不可信，不签进 token）。
     # 老 app 全部升级（会调 m_install_createInstall 拿 installToken）后置 false。
     legacy-install-id-fallback: ${APP_LEGACY_INSTALL_ID_FALLBACK:true}

@@ -34,6 +34,10 @@ interface Install : BaseProjectEntity {
     @Column(name = "reg_ip")
     val regIp: String?
 
+    /** 安装来源商店 Int 码：10=APP_STORE / 20=GOOGLE_PLAY。客户端按构建渠道写死，write-once，仅统计（规格 §5.9）。 */
+    @Column(name = "store_type")
+    val storeType: Int?
+
     @Column(name = "firebase_install_id")
     val firebaseInstallId: String?
 
