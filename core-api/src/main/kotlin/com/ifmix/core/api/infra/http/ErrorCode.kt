@@ -13,7 +13,7 @@ enum class ErrorCode(val externalCode: String, val status: HttpStatus) {
     AI_UNAVAILABLE("503000", HttpStatus.SERVICE_UNAVAILABLE),
     INTERNAL("500000", HttpStatus.INTERNAL_SERVER_ERROR),
     APP_CONFIG_MISSING("400002", HttpStatus.BAD_REQUEST),
-    /** x-proto-version: 2 请求解密失败（格式/kid/认证任一不通过，不区分原因）。明文返回，客户端据此降级明文重试。 */
+    /** x-wirep-version: 3 请求解密失败（格式/kid/认证/解压超限任一不通过，不区分原因）。明文返回，客户端据此降级明文重试。 */
     WIRE_DECRYPT_FAILED("400003", HttpStatus.BAD_REQUEST),
     AUTH_PROVIDER_FAILED("401001", ErrorCode.UNAUTHORIZED.status),
 

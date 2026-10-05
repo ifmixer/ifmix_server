@@ -78,10 +78,12 @@ app:
   # header 格式软校验：生产默认 false（非法→WARN 当缺失，不影响请求）；local 覆盖为 true 尽早暴露客户端 bug。
   header-validation:
     strict: ${APP_HEADER_VALIDATION_STRICT:false}
-  # x-proto-version: 2 body 加密私钥（X25519 原始 32 字节 base64），格式 `kid:base64,kid:base64`，多 kid 并存以便轮换。
-  # 空 = 不支持 v2（v2 请求返回 400003，客户端自动降级明文）。生产用 env WIRE_CRYPTO_KEYS 注入，见 WireCrypto。
+  # x-wirep-version: 3 wire 加密私钥（RFC 9180 HPKE；X25519 原始 32 字节 base64），格式 `kid:base64,kid:base64`，多 kid 并存以便轮换。
+  # 空 = 不支持 v3（v3 请求返回 400003，客户端自动降级明文）。生产用 env WIRE_CRYPTO_KEYS 注入，见 WireCrypto。
+  # max-decompressed-bytes：请求 gunzip 后明文上限（防 zip-bomb，超限 400003），默认 1MB，可 env 覆盖。
   wire-crypto:
     keys: ${WIRE_CRYPTO_KEYS:}
+    max-decompressed-bytes: ${WIRE_MAX_DECOMPRESSED_BYTES:1048576}
   storage:
     # 连接/密钥（endpoint/access-key/secret-key）由各环境自行配置（local 写死、prod 环境变量）。
     # buckets 按需由环境覆盖 app.storage.buckets.<id>（默认空 map，主配置不留 {} 占位——
