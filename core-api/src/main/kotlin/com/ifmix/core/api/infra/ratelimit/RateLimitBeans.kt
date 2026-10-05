@@ -9,7 +9,7 @@ import org.springframework.data.redis.core.StringRedisTemplate
  * 限流 bean 装配。RateLimiter 需 lambda-free 但含构造依赖，集中在此 @Bean。
  */
 @Configuration
-@EnableConfigurationProperties(RateLimitConfig::class, ScanQuotaConfig::class)
+@EnableConfigurationProperties(RateLimitConfig::class, ScanQuotaConfig::class, RateLimitProperties::class)
 class RateLimitBeans {
 
     @Bean

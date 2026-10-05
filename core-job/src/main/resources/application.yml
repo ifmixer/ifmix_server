@@ -31,6 +31,16 @@ app:
     cleanup:
       batch-size: 500
       tombstone-window-days: 7
+  # install attestation（WP-E）三个批处理任务（--job.name=attestReceiptBackfill / attestFraudMetricRefresh / attestEvidenceCleanup）
+  attest:
+    batch-size: 200
+    backoff-base-hours: 1
+    backoff-cap-hours: 24
+    refresh-interval-hours: 24
+    evidence-retain-days: 90
+    apple-endpoint: https://api-appattest.apple.com/v1/attestations
+    apple-timeout-ms: 15000
+    devicecheck-timeout-ms: 15000
 
 logging:
   level:

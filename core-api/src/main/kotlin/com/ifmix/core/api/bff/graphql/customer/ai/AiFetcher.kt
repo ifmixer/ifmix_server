@@ -12,6 +12,9 @@ import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.jimmer.ActionContextHolder
+import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
+import com.ifmix.core.api.infra.ratelimit.RateLimitResult
+import com.ifmix.core.api.infra.ratelimit.Window
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.entity.ai.AiTaskErrorCodes
 import com.ifmix.core.api.entity.ai.DeepResearchStatuses
@@ -52,6 +55,7 @@ class AiFetcher(
     private val globalTx: GlobalTxRunner,
     private val ctxProvider: ActionContextProvider,
     private val rateLimiter: com.ifmix.core.api.infra.ratelimit.RateLimiter,
+    private val rlProps: RateLimitProperties,
 ) {
     // --- Scan queries ---
 
@@ -126,7 +130,7 @@ class AiFetcher(
     @DgsMutation(field = "m_ai_createScan")
     fun newScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: NewScanInput): NewScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
-        rateLimitByIp(ctx, "scan", SCAN_RATE_PER_MIN, SCAN_RATE_PER_DAY, "too many createScan")
+        rateLimitByAction(ctx, "scan", DownstreamLimits.of(rlProps.scan), "too many createScan")
         val taskCtx = globalTx.withTx(ctx) { txCtx -> aiService.createScanTask(txCtx, input) }
         var status = com.ifmix.core.api.entity.ai.ScanStatuses.IN_PROGRESS
         var errorCode: String? = null
@@ -156,7 +160,7 @@ class AiFetcher(
         // 异步化（设计 §3.3）：事务内完成 images 更新 + 配额预检 + 创建 IN_PROGRESS 记录，
         // 事务提交后（withTx 返回即已提交）才提交后台任务——后台才能读到已提交的记录。
         val ctx = ctxProvider.fromDfe(dfe)
-        rateLimitByIp(ctx, "deepresearch", DR_RATE_PER_MIN, DR_RATE_PER_DAY, "too many runDeepResearch")
+        rateLimitByAction(ctx, "deep-research", DownstreamLimits.of(rlProps.deepResearch), "too many runDeepResearch")
         val taskCtx = globalTx.withTx(ctx) { txCtx -> aiService.createDeepResearchTask(txCtx, input) }
         // executor 提交失败（进程关闭/资源拒绝，设计 §9）：记录已 IN_PROGRESS → CAS 置 FAILED 并返回终态，
         // 前端拿到 deepResearchId + status=40 + errorCode 可直接显示失败/重试，不会拿不到 id 无法恢复。
@@ -226,30 +230,63 @@ class AiFetcher(
     }
 
     /**
-     * AI 重操作的 IP 频率限制：短窗口（防突发）+ 日窗口（防累计滥用）两道，命中即 RATE_LIMITED。
-     * subject 带 prefix 隔离，使 scan / deepresearch 各有独立配额、互不影响，也不与其它接口混。
-     * 无数量上限（终身配额已放开，ScanQuotaConfig=无限），防滥用全靠此 IP 频率限制。
+     * 下游接口的 install 层限流（attest 规格 §4.6「下游接口的 install 层」）：
+     * - 有可信 [ActionContext.tokenInstallId]（只认 token 签名过的 iid；scan/DR 用 customer token 的 iid）：
+     *   install 层（scan/DR：5/min + 100/天）→ IP 层（100/min + 1000/天）。install 层拒绝不碰 IP 计数器；
+     *   IP 层拒绝时 install 额度已扣、**不退**（被拒请求一律不退款）。
+     * - 无 iid（legacy fallback 兼容期，旧 app 只带可伪造的 x-install-id）：走 legacy IP 层
+     *   （独立计数器，key 带 `legacy:` 段：scan 5/min+500/天、DR 3/min+300/天），不占新大额 IP 计数器——
+     *   旧客户端的攻击面不被放大。legacy fallback 关闭后 `tokenInstallId==null` 的请求在业务前被拒
+     *   （`mustGetTokenInstallId` 现有语义 401000，此处不重复）。
+     * 顺序 install 层 → IP 层 → 业务；按 projectId 隔离。
      */
-    private fun rateLimitByIp(
-        ctx: com.ifmix.core.api.infra.http.ActionContext,
-        prefix: String,
-        perMin: Int,
-        perDay: Int,
-        message: String,
+    /** scan / deep-research 的限流阈值（RateLimitProperties 的 Scan / DeepResearch 字段一致，取公共六项）。 */
+    private data class DownstreamLimits(
+        val legacyIpMinute: Int,
+        val legacyIpDay: Int,
+        val ipMinute: Int,
+        val ipDay: Int,
+        val installMinute: Int,
+        val installDay: Int,
     ) {
-        val ip = ctx.clientIp ?: "unknown"
-        if (!rateLimiter.checkFixedWindow("$prefix:min:$ip", perMin, 60L) ||
-            !rateLimiter.checkFixedWindow("$prefix:day:$ip", perDay, 86_400L)
-        ) {
-            throw ApiError(ErrorCode.RATE_LIMITED, message)
+        companion object {
+            fun of(s: RateLimitProperties.Scan) = DownstreamLimits(s.legacyIpMinute, s.legacyIpDay, s.ipMinute, s.ipDay, s.installMinute, s.installDay)
+            fun of(d: RateLimitProperties.DeepResearch) = DownstreamLimits(d.legacyIpMinute, d.legacyIpDay, d.ipMinute, d.ipDay, d.installMinute, d.installDay)
         }
     }
 
-    companion object {
-        private const val SCAN_RATE_PER_MIN = 5
-        private const val SCAN_RATE_PER_DAY = 500
-        private const val DR_RATE_PER_MIN = 3
-        private const val DR_RATE_PER_DAY = 300
+    private fun rateLimitByAction(
+        ctx: com.ifmix.core.api.infra.http.ActionContext,
+        action: String,
+        limits: DownstreamLimits,
+        message: String,
+    ) {
+        val projectId = ctx.mustGetProjectId()
+        val ip = ctx.clientIp ?: "unknown"
+        val iid = ctx.tokenInstallId
+        when {
+            iid != null -> {
+                // install 层（防滥用，额度小）：先查 install 再查 IP（§4.6「被拒不退」语义）
+                checkRateLimit(Window.MINUTE, "ratelimit:$projectId:$action:install:min:$iid", limits.installMinute, message)
+                checkRateLimit(Window.UTC_DAY, "ratelimit:$projectId:$action:install:day:$iid", limits.installDay, message)
+                // IP 层（系统防护，额度大）
+                checkRateLimit(Window.MINUTE, "ratelimit:$projectId:$action:ip:min:$ip", limits.ipMinute, message)
+                checkRateLimit(Window.UTC_DAY, "ratelimit:$projectId:$action:ip:day:$ip", limits.ipDay, message)
+            }
+            else -> {
+                // legacy（无可信 iid，兼容期旧客户端）：严格阈值独立计数器，不占新大额 IP 计数器
+                checkRateLimit(Window.MINUTE, "ratelimit:$projectId:$action:legacy:ip:min:$ip", limits.legacyIpMinute, message)
+                checkRateLimit(Window.UTC_DAY, "ratelimit:$projectId:$action:legacy:ip:day:$ip", limits.legacyIpDay, message)
+            }
+        }
+    }
+
+    private fun checkRateLimit(window: Window, key: String, limit: Int, message: String) {
+        when (val rl = rateLimiter.check(window, key, limit)) {
+            is RateLimitResult.Limited ->
+                throw ApiError(ErrorCode.RATE_LIMITED, message, retryAfterSec = rl.retryAfterSec)
+            else -> Unit
+        }
     }
 }
 

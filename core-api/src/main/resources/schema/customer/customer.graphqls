@@ -20,6 +20,6 @@ type CreateAnonymousResult {
 }
 
 extend type Mutation {
-    "创建匿名 Customer 并签发 token（无需鉴权）。每 IP 60s 限 10 次。"
+    "创建匿名 Customer 并签发 token（无需鉴权）。每 install 5 次/UTC 天、每 IP 60s 限 100 次 + 1000 次/天（有可信 iid）；legacy 无 iid 走 10/60s 严格阈值（超限 429000 带 retryAfterSec，超限日额度 429001/429002）。"
     m_customer_createAnonymousCustomer: CreateAnonymousResult!
 }

@@ -8,6 +8,7 @@ import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.install.handler.InstallAggHandler
+import com.ifmix.core.api.modules.install.repo.InstallAttestationRepository
 import com.ifmix.core.api.modules.install.repo.InstallCustomerRelationRepository
 import com.ifmix.core.api.modules.install.repo.InstallRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
@@ -37,7 +38,7 @@ class CreateInstallPkTest {
     fun `createInstall writes one UUID as PK, returns it, and signs it as JWT iid`() {
         val repo = CapturingInstallRepo()
         val jwt = AuthJwtService(testAuthJwtKeys(), issuer = "test-issuer")
-        val handler = InstallAggHandler(repo, InstallCustomerRelationRepository(), jwt)
+        val handler = InstallAggHandler(repo, InstallCustomerRelationRepository(), mock(), jwt)
 
         val res = handler.createInstall(ctx(), deviceInfo = null)
 
