@@ -1,0 +1,18 @@
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AttestJobs.kt
+  h_b17efd5c751f9f 14-19,24-25,67
+docs/release.md
+  h_b17efd5c751f9f 20
+docs/superpowers/specs/2026-10-04-install-attestation-impl-plan.md
+  h_b17efd5c751f9f 238-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6cb60c7e2600abfb81da99f9435c3e97e20984c6",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
