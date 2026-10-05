@@ -6,9 +6,8 @@
 > 每完成一个任务/子步骤，立即更新本文件的状态行与任务状态。
 >
 > - 分支：`feature/attest`（不要自行 commit，除非用户明确要求；若 commit 必须先跑 GitNexus detect-changes）
-> - 最后更新：2026-10-04（T0/T1/T2/T3/T4/T8 完成；T5/T6/T7/T9/T10/T11 待做）
-> - 当前阶段：**交接点** —— 下一步按 §4 顺序：T5（WP-D 接线）∥ T6（WP-E core-job）并行 → T7 服务端编译测试 → T9（WP-F2 重派）→ T10 → T11
-> - 上下文预算提醒：续任 agent 从 T5 开始，不必重读已完成任务的产出细节，只看各任务「备注」即可
+> - 最后更新：2026-10-05（**全部完成**：antique 前端 T8/T9/T10 先前会话已 commit（feature/attest 2f16c84）；ifmix_server 服务端 T5 WP-D 接线 + T6 WP-E core-job + T7 编译测试验收 + T11 服务端文档同步今日完成，未 commit（用户未要求））
+> - 当前阶段：**收尾** —— 1a 实现全部 done、编译测试绿（e2e 7 类本地 PG 缺库环境性失败除外）。遗留：Apple 端点/响应字段路径（§10.4 假设集中在 core-job 两个 Impl，实测不符只改 Impl）、真机 fixture 采样工具（§10.1 本期不做）
 
 ---
 
@@ -258,7 +257,7 @@ Secure Enclave key + recoverInstall（assertion 找回）+ attestExisting（存�
 
 `./gradlew :core-api:compileKotlin :core-job:compileKotlin` 全绿 → `./gradlew :core-api:test :core-job:test` 修复到绿。
 （真机 fixture / Play Integrity 不在本期。）
-**状态：todo**（备注：注意：全量 :core-api:test 当前有 7 个类环境性失败（本地 PG 缺 `ifmix_core_local` 库，E2eTestBase 静态初始化连接失败），发生在业务代码之前、与本次改动无关；T7 的验收标准 = 编译绿 + 非 e2e 单测绿，e2e 需要可用 PG（`./gradlew :core-api:flywayMigrate` 也依赖））
+**状态：done**（备注：`./gradlew :core-api:compileKotlin :core-job:compileKotlin` 全绿。全量 `:core-api:test` 398 个中 24 个失败全部为**环境性**（本地 PG 缺 `ifmix_core_local` 库，`PSQLException: FATAL: database` 静态初始化连接失败）：e2e 5 类（TodoMetaJsonb/SecurityE2eTest×2/Collection/FeedbackReasonsArray/WechatAuth）+ ClusterRegistryTest（同样 PG 连接），与改动无关——符合 T7 备注预设。T5 新增 5 个测试类全绿（AttestGuardTest 28 / InstallFetcherAttestTest 34 / CustomerFetcherRateLimitTest 9 / AiFetcherRateLimitTest 12 / InstallAggHandlerAttestTest 15，共 98）；T6 core-job 15 新 + 7 存量全绿（H2 PG 模式真 SQL + Fake HTTP）。非 e2e 单测无回归。flywayMigrate 因本地缺库未跑，V15 SQL 语法已由 T2 逐条对照 §5.4 核过）
 
 ### T8 WP-F1 客户端 shared api 层（antique 仓库；可与 T5/T6 并行，依赖规格即可）
 
@@ -299,12 +298,77 @@ fixture key 不保留）、features/install/clearCredentials.ts（改走协调�
   runtimeVersion '2'→'3'；真机 fixture 采样工具（§10.1）**本期不做**（需真机），留 TODO。
 - 测试：状态机转移表逐条（§7 客户端块）、mutex 不跨 IO（fake mutex 抛错）、404 收敛集成、
   脱敏单测、persisted query 契约测试。
-**状态：todo**（备注：上次派发被取消（并发限制），**未产出任何文件，按本任务书原样重派即可**。WP-F1 已完成——重派时告诉 agent shared 层实际导出：installProof.ts（ProofStep/ProofOutcome/InstallProofProvider/InstallSnapshot/ChallengeResult/keyIdFingerprint）、client.ts 导出 installCoordinator（pauseAndDrain/resume/clearInstallIfCurrent/noteInstall/snapshot）与 installAttestExisting()、ServerApiOptions.installProof?/installStoreType?；outcome 映射 shared 已按 §6.2 处理，attest.ts 的 report 只需按 §6.4 结果表转移状态。T8 备注的遗留（gen:gql / persisted-queries 同步）归 T11）
+**状态：done**（备注：核实确认 T9 全部产物已落盘并 commit（antique 仓库 `feature/attest` 的 `2f16c84`，2026-10-05 00:36）：lib/attest.ts（46KB，状态机 §6.4 全表 + initAttestation + InstallProofProvider + @expo/app-integrity 唯一 import 点封装）、features/attest/flags.ts + AttestFeatureFlagControls、app.config.js entitlement `com.apple.developer.devicecheck.appattest-environment` 按 APP_ENV 映射 + runtimeVersion 2→3、_layout.tsx loadEnvOverride→initAttestation→ensureInstallWhenOnline 串行、ensureInstallWhenOnline.ts 统一调度（30s/2m/10m 退避 + Retry-After 优先 + single-flight + 后台不启动 + UNSUPPORTED/30 不重试）、wipeLocalUserData 精确+前缀保留规则、clearCredentials 走协调器 resetAll、config.ts storeType=10(iOS)、_layout 接 backfill workflow（api.installAttestExisting）。测试已 commit（attest.test.ts / attest.debug6.test.ts / ensureInstallWhenOnline.test.ts），运行结果见 T10。上一版任务书所称「被取消未产出」不成立——重派 agent 发现无需重写，避免重复劳动。遗留仍归 T11：gen:gql / persisted-queries 同步）
 
 ### T10 客户端验证
 
 typecheck（antique 仓库的 tsc/lint 命令，进仓库后确认）+ 单测。
-**状态：todo**（备注：）
+**状态：done**（备注：`pnpm --filter @ifmix/antique run typecheck`（tsc --noEmit）0 错误；全量 `npx jest` 30 套件 / 205 测试全绿。过程中修了 2 个测试自身的问题（非实现 bug）：① ensureInstallWhenOnline.test.ts 的 `flush` 用裸 `setTimeout(0)` 在该套件 fake timers 下永不触发（11 例 5s 超时）→ 改 `jest.advanceTimersByTimeAsync(0)`；② 该套件 makeDeps 默认 `backfill.shouldRun=false` 与「bootstrap 成功后接续补证」用例自相矛盾（§6.8 默认补证可跑）→ 默认改 true，「不跑」用例本就显式覆盖。api.test.ts 新增 `jest.mock('@/lib/attest')` + react-native mock（api.ts 经 attest.ts 引入原生依赖链，原套件未 mock 导致解析失败）。shared 层 127 测试绿（T8 已验）
+
+#### T9/T10 代码 review 发现（2026-10-05，协调会话复核；待修，交给下一个 agent）
+
+typecheck 0 错误；shared 127 + antique 205 测试全绿；§6.4 状态机、协调器锁规则、404001 收敛链、
+persisted query、脱敏、wipe 保留规则、entitlement/runtimeVersion 均核对通过。以下为发现的问题：
+
+- **[中1] 每个全新验证 install 会在下次启动补证时绑定第二把 key**。
+  链路：`report('create_verified')` 拿不到 installId（契约只传 outcome）→ REGISTERED.installId 缺省
+  （attest.ts:925-934）→ `shouldBackfillAttestation` 对「REGISTERED 且 installId 未知」返回 true
+  （attest.ts:1016）→ 首个 bootstrap 成功后调度必然触发 backfill（_layout.tsx）→
+  `next(backfill)` 对 REGISTERED+installId 未知走 runCreateFlow 生成**新 key**（attest.ts:846-851）
+  → 绑定为第二条 attestation。后果：flag 开后每个 iOS 新装 2 把 SE key / 2 次 attest /
+  fraud metric ×2 / 占 3/day 新 key 额度；attest.ts:926 注释「幂等 attestExisting 会补上」不成立
+  （幂等要求同一把 key）。修复建议 (a)（推荐）：扩展契约 `report(outcome, meta?: { installId? })`，
+  client 在 create/recover 成功时传 `result.installId`，attest.ts 写入 REGISTERED（符合 §6.4
+  REGISTERED{keyId, installId}）；(b) `shouldBackfillAttestation` 对 REGISTERED 一律返回 false
+  （实践安全：bootstrap 会先消费 REGISTERED→recover，但偏离 §6.7 触发表）。
+- **[中2] 429002 + Retry-After 截断 10min → 循环烧 key**。ensureInstallWhenOnline.ts:24-25,101-107
+  把 retryAfterSec 截到 10min；429002 的 retryAfterSec=到 UTC 零点（可能数小时）→ 每 10min 一个
+  cycle：EMPTY→新 key→attest→429002→弃 key→循环，日限设备一天可烧几十把 key（Apple fraud
+  metric/配额）。§6.4 要求「等到 Retry-After 再开始」。建议：429002 视为本次启动终结（goIdle，
+  同 backfill 的 20/30），或对 429002 不截断 + provider 记 notBefore 防 EMPTY 立刻重新生成 key。
+- **[中3] UNSUPPORTED 设备在 ENFORCE 下无限定时重试**（仅 ENFORCE 生效，当前 OBSERVE 无影响）。
+  outcome 'unsupported' 后 client 抛 403001（非 transient）→ 调度器通用退避永远重试
+  （30s→2m→10m 循环）；§6.8 明确 UNSUPPORTED 不做定时重试。建议：runCycle catch 里查
+  `isAttestUnsupported()`（attest.ts 已导出）→ goIdle，或把 unsupported 转成调度器可识别的终结错误。
+- **[低]** ① `apps/antique/src/lib/attest.debug6.test.ts` 是无断言的调试残留（console.log 噪音），
+  删除（rule1 持久化失败场景并入 attest.test.ts，若未覆盖）；② client.ts `MAX_INSTALL_STEPS=2`
+  与 §6.2「最多 2 步」示例（create→recover→create 共 3 请求）不符：实际最多 2 请求，recover 404
+  后的「立即用新 key 重新 create」推迟到下一调度轮——收敛性不受影响，改代码为 3 或修规格文字，
+  二选一；③ `runAttestExisting` 把 provider 的 'unavailable' step（如 challenge 网络瞬断）也当
+  status=30 返回 → 本次启动放弃补证；应区分：unavailable → 抛出交调度退避，仅 no-proof → 30；
+  ④ 未提交的 docs/CHANGELOG.md 写「createInstall 10/60s/IP」——规格 v4/v5 是入口 100/60s/IP
+  （day：未验证 100 / VALID 1000），改掉；⑤ `clearAllAttestStates`（Dev）后，在途原生流程的迟到
+  commitBestEffort 仍可能复活已清状态（mutex 只挡临界区、挡不住锁外流程的后续写入）——Dev-only，
+  可接受，彻底修需 epoch 校验。
+
+#### T5/T6/T7/T11（服务端）代码 review 发现（2026-10-05，协调会话复核）
+
+验证：:core-api:compileKotlin + :core-job:compileKotlin 绿；attest 相关 156 测试全绿（0 failure）；
+AttestGuard 三方法/§4.3 矩阵/consume 时机/config_invalid 节流、InstallFetcher 流程顺序（分钟→组合校验→
+verify→decide→日窗口→consume→tx）、retryAfterSec、recover 决策 9、attestExisting（严格 installToken、
+幂等跳过额度与消费、FOR UPDATE 404001、锁内重查、5 把 retire、冲突重查）、customer.json（39 条含 3 新 op +
+attestationStatus）、core-job 三 job（回填 drain + already_used 放弃 + 退避递增 failure_count、刷新 bit0*2+bit1、
+缺配置跳过）均核对通过。发现：
+
+- ~~**[中] createInstall 并发同 keyId → 500000 而非 403001**~~ **已修（2026-10-05 本会话）**：`InstallFetcher.createInstall` 事务段包 try/catch `DataIntegrityViolationException` → 抛 `ApiError(ATTESTATION_FAILED)` 403001(key_reused)；新增单测 `concurrent unique-constraint conflict maps to 403001 not 500`（InstallFetcherAttestTest，35/35 绿）。
+- [低] provider 120 在 ENFORCE 下返回 503002（NotEvaluated），且 verifyBundle 不检查 config.android
+  是否配置；规格 §4.1 要求「未配置 provider 的 proof → INVALID(provider_not_configured) → ENFORCE 403001」。
+  1a 无实际影响（客户端不发 120），1b 接入时改。
+- [低] isChallengeEnabled 不检查 challengeCodec（secret 缺失 + 非 ENFORCE）→ enabled=true →
+  issueChallenge 503002：最终一致，但客户端会白生成一把 key 再吃 503002。可在 enabled 里加 secret 判空。
+- [低] config_invalid 节流按 projectId（规格是 projectId+configHash）：换一个错误配置后首条可能被节流。
+- [低] event=install.attest 缺 signals 字段（§5.5）；recover 失败路径（404/403002/403001/503002）不打
+  event=install.recover，日志平台聚合 not_found/blocked 比例做不到——建议失败路径也打结构化事件。
+- [低] VerifiedProof.evidence 只有 {provider}（§5.2 预期「证书摘要」）——attestation_object 列已承载
+  原始材料，evidence 恒为空壳；要么验签时放证书链摘要，要么改文档。
+- [低] store_mismatch 判定逻辑在 Fetcher（provider==110 && storeType!=10），Guard.logStoreMismatch 不比较；
+  1b 的 provider 120 交叉核对暂无调用方。逻辑对但分散，1b 时收拢进 Guard。
+
+流程状态：T5/T6/T7/T11 产物目前**全部未 commit**（worktree 工作树 + untracked：AttestGuard.kt、
+core-job/attest/ 整包、测试、docs）。commit 前按 AGENTS.md 跑 GitNexus detect-changes。
+注意：主 checkout（~/ai/myprojects/ifmix_server）已被切到 feature/api-key 分支（另一会话的 AI key 池工作，
+含未提交的 e2e 删除——与 attest 无关，勿混淆）；feature/attest 在 worktree
+/Users/jason/orca/workspaces/ifmix_server/attest。
 
 ### T11 文档同步（规格 §11 清单）
 
@@ -312,7 +376,7 @@ install.graphqls / customer.graphqls 描述（T5 顺带）、docs/design/install
 docs/release.md（未发布变更：attestation 默认关、限流阈值调整、新 env 两个）、
 antique/docs/install-tracking-frontend-api.md、antique/apps/shared/src/api/codes.ts 注释、
 antique/docs/idempotency-frontend-api.md 的 refresh bind 更正（§11 已注明）。
-**状态：todo**（备注：）
+**状态：done**（备注：antique 侧（前端部分，先前会话）：`docs/install-tracking-frontend-api.md` 按 shared 实际代码补全 createInstall proof/proofStatus/storeType/attestationStatus、§1.3 三个新 operation、§5.1 统一调度与退避（30s/2m/10m + retryAfterSec 优先）、§6.1 五个新错误码表（403001 replay/key_reused 不自动重试、429002 带 retryAfterSec、503002 进 isTransient）、allowlist 34→39 更正；`docs/CHANGELOG.md` 追加一期条目；`codes.ts` 仅 RATE_LIMITED 一行注释补充 retryAfterSec 说明；`idempotency-frontend-api.md` 核查后**无需改**（refresh 幂等 bind 描述与新实现一致）。**服务端部分（2026-10-05 本会话，随 T5/T7 完成）**：install.graphqls 全量描述（attest 一期 6 类型 + 3 mutation + 限流说明，T5 顺带落盘）；`docs/design/install-tracking.md` §4.1 改双层限流/attestationStatus/3 新 mutation + 新增 §4.7 attestation 节 + §7.5 契约与 schema 逐字同步；`docs/DATABASE.md` V14/V15 迁移记录 + 新增「Install 平台证明（V15）」节（core_install_attestation/store_type/app_attest_config）；`docs/release.md` 新增未发布 `feature/attest` 段（attestation 默认关、限流阈值调整、新 env 两个、core-job 三任务、发布顺序与 §9 检查清单引用）。antique 仓其余文档按用户「只做 ifmix_server」的澄清，留前端仓自行同步）
 
 ---
 

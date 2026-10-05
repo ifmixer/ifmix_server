@@ -38,6 +38,7 @@
 | cs | `core_cs_support_request` | project | SupportRequest |
 | install | `core_install` | project | Install |
 | install | `core_install_customer_relation` | project | InstallCustomerRelation |
+| install | `core_install_attestation` | project | InstallAttestation |
 
 > `install_id`（`InstallIdProps`，entity/common）：客户端安装标识，由 `x-install-id` header 上报，服务端仅记录（可伪造，不用于鉴权），用于行为分析。已铺到 `core_ai_scan_record` / `core_ai_scan_collection` / `core_cs_feedback` / `core_cs_support_request`（均可空）。
 
@@ -208,6 +209,19 @@ input CommonFindOptions {
   - V9 新建 `core_ai_customer_scan_metrics`（每 customer 一行，`customer_id` 唯一，行不存在 = 计数 0，首次写入懒建），回填 V4 两列中非零的计数；`core_customer` 旧列暂留（实体不再映射），发布完成后另起迁移删除。
   - V5 install 追踪：新建 `core_install` + `core_install_customer_relation`。
   - V6 Install ID 收敛：`core_install.id = API installId = JWT iid`，删除冗余 `core_install.install_id`；四张 Customer 业务表 `install_id` 安全转为 nullable UUID，新写入由应用层强制 token iid。已在本地 PG 18.1 从 V5→V6 验证，未删除任何 resource。
+  - V14 `core_project_server_config`（project 级服务端专属配置 JSONB，不下发前端；含 `fcm_config` / `app_attest_config`）。
+  - V15 install attestation（一期 1a）：`core_project_server_config` + `app_attest_config` JSONB；`core_install` + `store_type` INT NULL；新建 `core_install_attestation`（只存 VALID 长期凭证/绑定，含 `attestation_object` 回填列 + 4 个部分/唯一索引）。设计见 `docs/superpowers/specs/2026-10-04-install-attestation-design.md` §5.4。
+
+## Install 平台证明（V15，install attestation 一期 1a）
+
+详见 `docs/superpowers/specs/2026-10-04-install-attestation-design.md`（§0 v5 修订表 + §5.4/§5.8/§5.9）。
+
+- **`core_install_attestation`**：只存 VALID 的长期凭证与绑定（失败尝试不入表，只进日志）。`(project_id, provider, subject)` 部分唯一索引（subject 非空时）；`provider` 110=APP_ATTEST / 120=PLAY_INTEGRITY；`status` 10=ACTIVE / 20=BLOCKED / 30=RETIRED；`sign_count BIGINT NOT NULL DEFAULT 0`（recover 条件更新依赖非 NULL）。
+  - **`attestation_object`**：原始 attestation（≤16KB），core-job 回填任务向 Apple `POST /v1/attestations` 换 receipt 成功后清空（§5.8 / §2 决策 1）。
+  - **`receipt` / `fraud_metric` / `next_refresh_at` / `refresh_failure_count`**：core-job 回填 + fraud metric 刷新写入；`receipt_expires_at` 一期不写（保留列）。
+  - **`signals` JSONB NOT NULL**：验证信号（固定键集合）；**`evidence` JSONB NULL**：佐证（不含原始 token），90 天后由 core-job 清空。
+- **`core_install.store_type`**：安装来源商店（10=APP_STORE / 20=GOOGLE_PLAY），客户端上报、write-once、仅统计（§5.9）。
+- **`core_project_server_config.app_attest_config`**：per-project 证明配置 JSONB（null=关），含 `mode`（OFF/OBSERVE/ENFORCE）与 `ios`/`android` 子对象；**服务端专属、绝不下发**（沿用该表约束）。
 
 ## Install 设备追踪（V5）
 

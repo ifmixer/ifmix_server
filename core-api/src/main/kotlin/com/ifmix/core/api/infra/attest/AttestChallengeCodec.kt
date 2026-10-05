@@ -133,6 +133,9 @@ class AttestChallengeCodec(
         /** 有效期（服务端接受窗口）；对客户端返回 expiresInSec=270。 */
         const val TTL_SEC = 300L
 
+        /** 对客户端返回的时间预算（§5.1：服务端接受 300s，客户端 270s，留传输与 attest 余量）。 */
+        const val CHALLENGE_CLIENT_TTL_SEC = 270
+
         private val MAC_PREFIX_UTF8 = MAC_PREFIX.toByteArray(Charsets.UTF_8)
         private val B64_URL_ENCODER = Base64.getUrlEncoder().withoutPadding()
         private val B64_URL_DECODER = Base64.getUrlDecoder()

@@ -147,6 +147,16 @@ app:
 
   auth:
     issuer: ${AUTH_ISSUER:ifmix}
+
+  # install 平台证明（App Attest / Play Integrity，规格 §4.1）：
+  # - 全局 kill switch 走 env APP_ATTEST_GLOBAL_ENABLED（Spring 宽松绑定自动映射到 app.attest.global-enabled，默认 false）；
+  # - challenge HMAC 密钥走 env APP_ATTEST_CHALLENGE_SECRET（`current[,previous]`，32 字节 base64，不进 yml——secret）；
+  # - per-project 配置存 core_project_server_config.app_attest_config（JSONB，null = 关）。
+  attest:
+    # 全局开关（§4.1）：OFF 时 createAttestChallenge 恒返回 enabled=false，createInstall 不做校验（attestationStatus=30）
+    global-enabled: false
+    # 验签并发信号量（§3.1：Redis 故障期防验签把进程打满；拿不到许可 → UNAVAILABLE，OBSERVE 放行 / ENFORCE 503002）
+    verify-permits: ${APP_ATTEST_VERIFY_PERMITS:32}
     # 老版本 app 兼容：token 无 iid 时退回 x-install-id header（不可信，不签进 token）。
     # 老 app 全部升级（会调 m_install_createInstall 拿 installToken）后置 false。
     legacy-install-id-fallback: ${APP_LEGACY_INSTALL_ID_FALLBACK:true}

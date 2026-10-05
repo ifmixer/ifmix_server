@@ -1,10 +1,14 @@
 # ==================== Install ====================
+# 限流说明（规格 §11 首行 + §4.6）：所有 m_install_* 均按 projectId 隔离计数（key 前缀 ratelimit:{projectId}:...）；
+# 超限错误携带 extensions.retryAfterSec（429000=短窗口剩余秒、429002=到 UTC 零点秒），客户端据此退避。
 
 type CreateInstallResult {
     "服务端生成的 installId"
     installId: UUID!
     "install token（JWT，type=5）。永不过期，无需刷新。"
     installToken: String!
+    "10=VERIFIED_PERSISTED（证明有效且已绑定）/ 20=NOT_PERSISTED（带了 proof 但没有绑定：OBSERVE 下 INVALID 等）/ 30=NOT_ATTEMPTED（没带 proof 或服务端未校验）。只有 10 能让客户端进入 REGISTERED"
+    attestationStatus: Int!
 }
 
 type UpdateInstallResult {
@@ -14,10 +18,71 @@ type UpdateInstallResult {
 input CreateInstallInput {
     "设备信息（自由结构 JSON：型号/OS 版本/厂商等），可空"
     deviceInfo: JSON
+    "平台证明；是否必填由服务端 mode 决定（ENFORCE 下缺失/无效 → 403001）"
+    proof: InstallProofInput
+    "未带 proof 时的客户端自报状态：缺省=未启用 / 20=UNAVAILABLE（临时故障，OBSERVE 放行、ENFORCE → 503002）。与 proof 互斥，见 §4.3"
+    proofStatus: Int
+    "安装来源商店：10=APP_STORE / 20=GOOGLE_PLAY。客户端按构建渠道写死；缺省存 NULL；其它值 400000。write-once，仅统计"
+    storeType: Int
+}
+
+input InstallProofInput {
+    "110=APP_ATTEST / 120=PLAY_INTEGRITY。未实现或不匹配的子对象 → 400000"
+    provider: Int!
+    "provider=110 时必填"
+    appAttest: AppAttestProofInput
+    "provider=120 时必填（1b）"
+    playIntegrity: PlayIntegrityProofInput
+}
+
+input AppAttestProofInput {
+    "credentialId（base64 / base64url，≤64 字符）"
+    keyId: String!
+    "attestationObject 原文（base64，≤16KB）"
+    attestationObject: String!
+    "m_install_createAttestChallenge 签发的 challenge（76 字符，≤128）"
+    challenge: String!
+}
+
+input PlayIntegrityProofInput {
+    "Play Integrity token（base64，≤16KB）"
+    integrityToken: String!
+    "requestHash 的随机 nonce（base64url，≤64 字符）"
+    nonce: String!
+}
+
+input RecoverInstallInput {
+    "已绑定 attestation 的 credentialId"
+    keyId: String!
+    "assertion 原文（base64，≤4KB）；clientData = \"ifmix-install-recover-v1\\n\" + projectId + \"\\n\" + challenge"
+    assertion: String!
+    "challenge 原文"
+    challenge: String!
+}
+
+type AttestChallengeResult {
+    "false = 服务端当前不需要证明（全局开关关闭 / project 未配置 / mode=OFF / 平台未配置）：客户端不要生成 key，直接走 no-proof"
+    enabled: Boolean!
+    "enabled=false 时为 null"
+    challenge: String
+    "客户端可用的时间预算（270s），服务端实际接受 300s，留出传输和 attest 的余量"
+    expiresInSec: Int!
+}
+
+input AttestExistingInput {
+    "平台证明（1a 只支持 provider 110），与 createInstall 相同结构"
+    proof: InstallProofInput!
+}
+
+type AttestExistingResult {
+    "10=VERIFIED_PERSISTED / 20=NOT_PERSISTED（proof INVALID）/ 30=NOT_EVALUATED（服务端 OFF 或未配置）"
+    attestationStatus: Int!
 }
 
 input UpdateInstallInput {
+    "Firebase Install 追踪 id（仅更新非空字段）"
     firebaseInstallId: String
+    "FCM 推送 token（仅更新非空字段）"
     fcmToken: String
     scanResultNotiEnabled: Boolean
     deepResearchNotiEnabled: Boolean
@@ -28,8 +93,14 @@ input UpdateInstallInput {
 # installId 一律取自 token 的 iid，不入参、不采信 x-install-id header。
 
 extend type Mutation {
-    "无鉴权；每 IP 60s 限 10 次。生成 installId + 签发 installToken(type=5)。"
+    "无鉴权；入口 100/60s/IP 短窗口（超限 429000 带 retryAfterSec），验签后按 attested（1000/天）/ unverified（100/天）IP 日窗口（超限 429002 带 retryAfterSec=到 UTC 零点秒数）。生成 installId + 签发 installToken(type=5)，平台证明绑定（§5.3）。"
     m_install_createInstall(input: CreateInstallInput): CreateInstallResult!
     "需 token（installToken 或 customerToken，取 iid）；仅更新非空字段。"
     m_install_updateInstall(input: UpdateInstallInput!): UpdateInstallResult!
+    "无鉴权；独立的 100/60s/IP 短窗口。一次性 challenge：纯 HMAC 计算不碰 Redis，服务端接受 300s，对客户端返回 270s。"
+    m_install_createAttestChallenge: AttestChallengeResult!
+    "无鉴权；独立的 10/60s/IP 短窗口。iOS 用 assertion 证明 key 所有权，重签已绑定 install 的 installToken。返回的 attestationStatus 固定为 10；与 mode/全局开关无关（未配置 400000、secret 缺失 503002、key 无绑定 404000、BLOCKED/RETIRED 403002、counter 重放 403001）。"
+    m_install_recoverInstall(input: RecoverInstallInput!): CreateInstallResult!
+    "只接受 installToken（type=5、无 actor、带 iid，否则 401000）。把 App Attest key 绑定到当前 install（§6.7 补证）。限流：10/60s/IP + 3/install/UTC 日（新 key，超限 429002 带 retryAfterSec）；install 行不存在 404001、key 封禁 403002、绑他人 409001、replay 403001。"
+    m_install_attestExisting(input: AttestExistingInput!): AttestExistingResult!
 }
