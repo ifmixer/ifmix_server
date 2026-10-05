@@ -1,0 +1,41 @@
+core-api/build.gradle.kts
+  s_9609e94622ddf5::t_589510a2b7dd88 194-202
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/install/InstallFetcher.kt
+  s_9609e94622ddf5::t_4352c52453fe77 28-31,64-65
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ErrorCode.kt
+  s_9609e94622ddf5::t_fe4e92146fbca7 16-17
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GenWireDevKey.kt
+  s_9609e94622ddf5::t_0d713b9cc8d04a 1-36
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestHeaders.kt
+  s_9609e94622ddf5::t_23e717a40593ab 18-19
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCrypto.kt
+  s_9609e94622ddf5::t_712d6fec5d6f7c 1-163
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCryptoFilter.kt
+  s_9609e94622ddf5::t_bae3a17f784c9a 1-103
+core-api/src/main/resources/application-local.yml
+  s_9609e94622ddf5::t_5cbf66cf5f62fa 42-44
+core-api/src/main/resources/application-prod.yml
+  s_9609e94622ddf5::t_6654855e5dd0ef 14
+core-api/src/main/resources/application.yml
+  s_9609e94622ddf5::t_8942600b712fb9 81-84
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/WireCryptoTest.kt
+  s_9609e94622ddf5::t_0d6f2a0a0ceaba 1-272
+docs/superpowers/specs/2026-10-04-wire-encryption-design.md
+  s_9609e94622ddf5::t_221f1bcdcffa84 6,23,25-26,111,154,180,198,210,220,226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c66ed4ccc410de6829b72c06e466447fa99063a",
+  "prompts": {},
+  "sessions": {
+    "s_9609e94622ddf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f31cda57-976c-40be-a6c9-6f3f8a1e6ec0",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
