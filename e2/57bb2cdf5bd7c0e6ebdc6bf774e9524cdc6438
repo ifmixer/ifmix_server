@@ -1,0 +1,33 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionContext.kt
+  s_6263bb97dddc59::t_2c559487d30857 52-57,91-93
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionContextFactory.kt
+  s_6263bb97dddc59::t_fafb33027a0f74 1-184
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionSpec.kt
+  s_6263bb97dddc59::t_75a9c18089a103 1-22
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ApiError.kt
+  s_6263bb97dddc59::t_eaa99256d10503 10-11
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestMeta.kt
+  s_6263bb97dddc59::t_fa67e5989dc446 1-37
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RpcRequestBody.kt
+  s_6263bb97dddc59::t_8bf60f634ea4b7 1-14
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/rpc/ActionContextFactoryTest.kt
+  s_6263bb97dddc59::t_6c13435ac10227 1-479
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/rpc/GlobalExceptionHandlerRetryTest.kt
+  s_6263bb97dddc59::t_9940aa4d5dbe84 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e257bb2cdf5bd7c0e6ebdc6bf774e9524cdc6438",
+  "prompts": {},
+  "sessions": {
+    "s_6263bb97dddc59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaac9707533b23b71",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
