@@ -1,0 +1,25 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  s_626a923fe44bc3::t_d8b56acd56a0eb 113,115-117,262,264-272
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiApiKeyStoreTest.kt
+  s_626a923fe44bc3::t_38c4f457fa847f 131,133-135
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/SpringAiScanRunnerClassifyTest.kt
+  s_626a923fe44bc3::t_c9c75cd7e77d38 21-42,55,60-62,68,73-75
+docs/design/ai-api-key-pool.md
+  s_626a923fe44bc3::t_122953a0d9fb3d 162,164-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "637a9218400872249f53e2c8666bfe1c05d223fc",
+  "prompts": {},
+  "sessions": {
+    "s_626a923fe44bc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b34dc526-22e4-47c7-b827-bd3064965bf5",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
