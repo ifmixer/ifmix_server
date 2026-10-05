@@ -10,6 +10,14 @@ data class CommonFindOptions(
     val filter: FilterGroup? = null,
     val cursor: String? = null,
     val sortBy: String? = null,
-    val sortDirection: String? = null,   // "ASC" | "DESC"
+    val sortDirection: String? = null,   // "ASC" | "DESC"（大小写敏感）
     val limit: Int? = null,
 )
+
+/** 非法 sortDirection 抛 INVALID_REQUEST（消费边界调用；纯函数便于单测）。 */
+fun CommonFindOptions.requireValidSortDirection() {
+    sortDirection?.takeIf { it !in setOf("ASC", "DESC") }?.let {
+        throw com.ifmix.core.api.infra.http.ApiError(
+            com.ifmix.core.api.infra.http.ErrorCode.INVALID_REQUEST, "invalid sortDirection: $it")
+    }
+}

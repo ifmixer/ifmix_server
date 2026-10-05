@@ -1,7 +1,7 @@
 package com.ifmix.core.api.entity.demo
 
-import com.ifmix.core.api.generated.types.TodoRecommendInput
-import com.ifmix.core.api.generated.types.TodoRecItemInput
+import com.ifmix.core.api.dto.demo.TodoRecommendInput
+import com.ifmix.core.api.dto.demo.TodoRecItemInput
 import java.time.Instant
 import java.util.UUID
 
@@ -21,17 +21,18 @@ data class TodoRecommend(
     )
 }
 
-fun TodoRecommendInput.toDomain() = TodoRecommend(
+/** 客户端不提交 createdAt/updatedAt（rpc-rollout 契约）：统一由服务端打戳 [stamp]，同批 recItems 共享同一时间戳。 */
+fun TodoRecommendInput.toDomain(stamp: Instant = Instant.now()) = TodoRecommend(
     sectionId = sectionId,
     sectionName = sectionName,
     viewCount = viewCount,
-    recItems = recItems?.map { it.toDomain() },
+    recItems = recItems?.map { it.toDomain(stamp) },
 )
 
-fun TodoRecItemInput.toDomain() = TodoRecommend.RecItem(
+fun TodoRecItemInput.toDomain(stamp: Instant) = TodoRecommend.RecItem(
     recId = recId,
     title = title,
     priority = priority,
-    createdAt = createdAt,
-    updatedAt = updatedAt,
+    createdAt = stamp,
+    updatedAt = null,
 )

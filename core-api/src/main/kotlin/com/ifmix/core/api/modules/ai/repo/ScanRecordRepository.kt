@@ -23,7 +23,7 @@ import com.ifmix.core.api.entity.ai.promptVersion
 import com.ifmix.core.api.entity.ai.updatedAt
 import com.ifmix.core.api.entity.ai.userDisplayName
 import com.ifmix.core.api.entity.ai.userNotes
-import com.ifmix.core.api.generated.types.CommonFindOptions
+import com.ifmix.core.api.dto.common.CommonFindOptions
 import com.ifmix.core.api.generated.types.ScanUnsetField
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
 import com.ifmix.core.api.generated.types.UpdateScanInput

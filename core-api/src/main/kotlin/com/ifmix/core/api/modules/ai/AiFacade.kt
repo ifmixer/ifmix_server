@@ -5,7 +5,7 @@ import com.ifmix.core.api.dto.ai.DeepResearchTaskContext
 import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.dto.ai.ScanStatusSnapshot
 import com.ifmix.core.api.dto.ai.ScanTaskContext
-import com.ifmix.core.api.generated.types.CommonFindOptions
+import com.ifmix.core.api.dto.common.CommonFindOptions
 import com.ifmix.core.api.generated.types.NewScanInput
 import com.ifmix.core.api.generated.types.RunDeepResearchInput
 import com.ifmix.core.api.generated.types.UpdateScanInput

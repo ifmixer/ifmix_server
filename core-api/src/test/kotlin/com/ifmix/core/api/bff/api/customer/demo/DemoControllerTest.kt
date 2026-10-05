@@ -2,13 +2,13 @@ package com.ifmix.core.api.bff.api.customer.demo
 
 import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.dto.common.PageInfo
-import com.ifmix.core.api.dto.demo.TodoDto
-import com.ifmix.core.api.dto.demo.TodoItemDto
+import com.ifmix.core.api.dto.demo.TodoRes
+import com.ifmix.core.api.dto.demo.TodoItemRes
 import com.ifmix.core.api.entity.demo.Todo
 import com.ifmix.core.api.entity.demo.TodoItem
-import com.ifmix.core.api.generated.types.CreateTodoInput
-import com.ifmix.core.api.generated.types.UpdateTodoInput
-import com.ifmix.core.api.generated.types.UpdateTodoItemsMutationInput
+import com.ifmix.core.api.dto.demo.CreateTodoInput
+import com.ifmix.core.api.dto.demo.UpdateTodoInput
+import com.ifmix.core.api.dto.demo.UpdateTodoItemsMutationInput
 import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.auth.VerifiedToken
 import com.ifmix.core.api.infra.http.ActionContext
@@ -119,7 +119,7 @@ class DemoControllerTest {
     fun `findTodoById success returns 200000 envelope and query bypasses tx`() {
         val todo = fullTodo(UUID.randomUUID(), "t")
         whenever(queryService.findTodoById(any(), eq(todo.id))).thenReturn(
-            TodoDto(id = todo.id, title = "t", done = false, note = null, meta = null, recommend = null,
+            TodoRes(id = todo.id, title = "t", done = false, note = null, meta = null, recommend = null,
                 items = emptyList(), itemCount = 0, pendingCount = 0, finishCount = 0,
                 createdAt = now.toString(), updatedAt = null),
         )
@@ -139,18 +139,18 @@ class DemoControllerTest {
         whenever(queryService.findTodosByIds(any(), eq(listOf(a)))).thenReturn(emptyList())
         val resp = controller.findTodosByIds(request(), body(validMeta(), mapOf("ids" to listOf(a.toString()))))
         assertEquals("200000", resp.body!!.code)
-        assertEquals(emptyList<TodoDto>(), resp.body!!.data)
+        assertEquals(emptyList<TodoRes>(), resp.body!!.data)
         verifyNoInteractions(globalTx)
         LogContext.clear()
     }
 
     @Test
     fun `findTodos success passes dto find options to query service`() {
-        whenever(queryService.findTodos(any(), anyOrNull())).thenReturn(Page(emptyList<TodoDto>(), PageInfo()))
+        whenever(queryService.findTodos(any(), anyOrNull())).thenReturn(Page(emptyList<TodoRes>(), PageInfo()))
         // input 显式含 findOptions（此处 null）→ FindTodosInput(findOptions=null)，controller 传 null 给聚合层
         val resp = controller.findTodos(request(), body(validMeta(), mapOf("findOptions" to null)))
         assertEquals("200000", resp.body!!.code)
-        assertEquals(emptyList<TodoDto>(), resp.body!!.data?.items)
+        assertEquals(emptyList<TodoRes>(), resp.body!!.data?.items)
         verifyNoInteractions(globalTx)
         LogContext.clear()
     }
@@ -161,8 +161,8 @@ class DemoControllerTest {
         whenever(facade.create(any(), any())).thenReturn(fullTodo(id, "created"))
         whenever(queryService.findTodosByIds(any(), eq(listOf(id)))).thenReturn(
             listOf(
-                TodoDto(id = id, title = "created", done = false, note = null, meta = null, recommend = null,
-                    items = listOf(TodoItemDto(id = UUID.randomUUID(), content = "i", done = false, note = null,
+                TodoRes(id = id, title = "created", done = false, note = null, meta = null, recommend = null,
+                    items = listOf(TodoItemRes(id = UUID.randomUUID(), content = "i", done = false, note = null,
                         createdAt = now.toString(), updatedAt = null)),
                     itemCount = 1, pendingCount = 1, finishCount = 0,
                     createdAt = now.toString(), updatedAt = now.toString()),
@@ -174,7 +174,7 @@ class DemoControllerTest {
         assertEquals(id, resp.body!!.data?.todo?.id)
         // mutation 包了 withTx（mock 直通，但仍记录调用）
         verify(globalTx).withTx<Any>(any(), any())
-        // input 经 mapper 转 generated CreateTodoInput
+        // input 直接反序列化为协议 DTO（CreateTodoInput，generated 已删）
         val captor = argumentCaptor<CreateTodoInput>()
         verify(facade).create(any(), captor.capture())
         assertEquals("created", captor.firstValue.title)
@@ -187,7 +187,7 @@ class DemoControllerTest {
     fun `updateTodo writes in tx then reads back`() {
         val id = UUID.randomUUID()
         whenever(queryService.findTodoById(any(), eq(id))).thenReturn(
-            TodoDto(id = id, title = "updated", done = false, note = null, meta = null, recommend = null,
+            TodoRes(id = id, title = "updated", done = false, note = null, meta = null, recommend = null,
                 items = emptyList(), itemCount = 0, pendingCount = 0, finishCount = 0,
                 createdAt = now.toString(), updatedAt = now.toString()),
         )
@@ -271,28 +271,21 @@ class DemoControllerTest {
         LogContext.clear()
     }
 
-    // ===== 4. 转换边界：mapper 抛 ApiError(INVALID_REQUEST) 的 HTTP 映射 =====
+    // ===== 4. 转换边界：协议层纯校验函数抛 ApiError(INVALID_REQUEST) =====
 
     @Test
     fun `mapper invalid request errors map to 400 400000 via global handler`() {
         val handler = GlobalExceptionHandler(exposeErrors = true)
-        // a) 非法 unset 字段（UpdateTodoInputDto.unset 非 TodoUnsetField 枚举值）
+        // a) 非法 unset 字段（requireUnsetFields 纯校验）
         val unsetEx = run {
-            val input = com.ifmix.core.api.dto.demo.UpdateTodoInputDto(id = UUID.randomUUID(), set = null, unset = listOf("NOT_A_FIELD"))
-            try { com.ifmix.core.api.dto.demo.DemoRpcMappers.toGenerated(input); throw AssertionError("expected ApiError") }
+            try { com.ifmix.core.api.dto.demo.requireUnsetFields(listOf("NOT_A_FIELD"), com.ifmix.core.api.dto.demo.TODO_UNSET_FIELDS); throw AssertionError("expected ApiError") }
             catch (e: ApiError) { e }
         }
         assertEquals(ErrorCode.INVALID_REQUEST, unsetEx.errorCode)
 
-        // b) 非法 FilterOp（dto/common CommonFindOptions.filter → generated 转换）
+        // b) 非法 FilterOp（requireFilterOp 纯校验）
         val opEx = run {
-            val options = com.ifmix.core.api.dto.common.CommonFindOptions(
-                filter = com.ifmix.core.api.dto.common.FilterGroup(
-                    and = listOf(com.ifmix.core.api.dto.common.FilterExpr(
-                        field = com.ifmix.core.api.dto.common.FieldFilter(field = "title", op = "REGEX"))),
-                ),
-            )
-            try { com.ifmix.core.api.dto.demo.DemoRpcMappers.toGenerated(options); throw AssertionError("expected ApiError") }
+            try { com.ifmix.core.api.dto.common.requireFilterOp("REGEX"); throw AssertionError("expected ApiError") }
             catch (e: ApiError) { e }
         }
         assertEquals(ErrorCode.INVALID_REQUEST, opEx.errorCode)

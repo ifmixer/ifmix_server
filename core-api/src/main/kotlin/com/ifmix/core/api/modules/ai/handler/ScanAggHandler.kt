@@ -3,7 +3,7 @@ package com.ifmix.core.api.modules.ai.handler
 import com.ifmix.core.api.generated.types.NewScanInput
 import com.ifmix.core.api.generated.types.RunDeepResearchInput
 import com.ifmix.core.api.generated.types.UpdateScanInput
-import com.ifmix.core.api.generated.types.CommonFindOptions
+import com.ifmix.core.api.dto.common.CommonFindOptions
 import com.ifmix.core.api.dto.ai.AiScanResult
 import com.ifmix.core.api.dto.ai.DeepResearchResult
 import com.ifmix.core.api.dto.ai.DeepResearchTaskContext

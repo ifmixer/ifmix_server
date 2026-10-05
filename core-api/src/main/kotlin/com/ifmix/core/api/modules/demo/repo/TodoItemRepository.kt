@@ -7,8 +7,7 @@ import com.ifmix.core.api.entity.demo.id
 import com.ifmix.core.api.entity.demo.content
 import com.ifmix.core.api.entity.demo.done
 import com.ifmix.core.api.entity.demo.note
-import com.ifmix.core.api.generated.types.TodoItemUnsetField
-import com.ifmix.core.api.generated.types.UpdateTodoItemInput
+import com.ifmix.core.api.dto.demo.UpdateTodoItemInput
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.*
@@ -64,17 +63,17 @@ class TodoItemRepository {
             where(table.id eq input.id)
 
             // unset 优先
-            if (TodoItemUnsetField.NOTE in unset) {
+            if ("NOTE" in unset) {
                 set(table.note, null as String?)
             } else {
                 set?.note?.let { set(table.note, it) }
             }
 
-            if (TodoItemUnsetField.NOTE !in unset) {
+            if ("NOTE" !in unset) {
                 set?.content?.let { set(table.content, it) }
             }
 
-            if (TodoItemUnsetField.NOTE !in unset) {
+            if ("NOTE" !in unset) {
                 set?.done?.let { set(table.done, it) }
             }
         }.execute()

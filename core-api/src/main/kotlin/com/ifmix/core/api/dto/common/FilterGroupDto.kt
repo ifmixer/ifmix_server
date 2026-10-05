@@ -11,3 +11,14 @@ data class FieldFilter(
     val value: Any? = null,            // JSON 标量
     val values: List<Any>? = null,     // JSON 数组
 )
+
+/** 合法 filter op（协议字符串，大小写敏感）。 */
+val FILTER_OPS = setOf("EQ", "NE", "GT", "GTE", "LT", "LTE", "IN", "NIN", "LIKE", "IS_NULL", "IS_NOT_NULL")
+
+/** 非法 op 抛 INVALID_REQUEST（消费边界调用；纯函数便于单测）。 */
+fun requireFilterOp(op: String) {
+    if (op !in FILTER_OPS) {
+        throw com.ifmix.core.api.infra.http.ApiError(
+            com.ifmix.core.api.infra.http.ErrorCode.INVALID_REQUEST, "invalid filter op: $op")
+    }
+}

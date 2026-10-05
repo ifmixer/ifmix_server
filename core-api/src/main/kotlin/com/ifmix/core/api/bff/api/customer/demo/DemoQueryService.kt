@@ -1,8 +1,8 @@
 package com.ifmix.core.api.bff.api.customer.demo
 
 import com.ifmix.core.api.dto.common.Page
-import com.ifmix.core.api.dto.demo.DemoRpcMappers
-import com.ifmix.core.api.dto.demo.TodoDto
+import com.ifmix.core.api.dto.demo.DemoApiMappers
+import com.ifmix.core.api.dto.demo.TodoRes
 import com.ifmix.core.api.entity.demo.Todo
 import com.ifmix.core.api.entity.demo.TodoItem
 import com.ifmix.core.api.infra.http.ActionContext
@@ -20,11 +20,11 @@ import java.util.UUID
  * - 批量 = 1 次 findByIds + 1 次 items + 1 次 counts，结果按**入参 ID 顺序**重排
  *   （`findByIds` 返回顺序不作数；库中未命中的 id 静默丢弃，对齐 GraphQL q_demo_findTodosByIds 语义）；
  * - 分页 = 1 次 findByOptions（Page&lt;Todo&gt;）+ 1 次 items + 1 次 counts，保持页内顺序；
- *   dto/common [com.ifmix.core.api.dto.common.CommonFindOptions] 在此经 [DemoRpcMappers.toGenerated]
- *   转 generated 侧（非法 op / sortDirection 抛 ApiError(INVALID_REQUEST)，对齐 mapper 边界）；
+ *   dto/common [com.ifmix.core.api.dto.common.CommonFindOptions] 直传 Facade
+ *   （非法 op / sortDirection 在 CrudRepoTemplate 边界抛 ApiError(INVALID_REQUEST)）；
  * - counts 缺 key → 填 0（对齐 `TodoItemCountsDataLoader.ZERO` 语义）；items 缺 todo → 空列表。
  *
- * TodoDto 永远带全 items + counts（固定 DTO 决策，proposal §4）。
+ * TodoRes 永远带全 items + counts（固定 DTO 决策，proposal §4）。
  */
 @Service
 class DemoQueryService(private val facade: DemoFacade) {
@@ -32,18 +32,18 @@ class DemoQueryService(private val facade: DemoFacade) {
     private val ZERO_COUNTS = TodoItemCounts(itemCount = 0, pendingCount = 0, finishCount = 0)
 
     /** 单条：todo + 该条 items + counts（3 次查询）。miss → null（controller 裁决 NOT_FOUND 404000）。 */
-    fun findTodoById(ctx: ActionContext, id: UUID): TodoDto? =
+    fun findTodoById(ctx: ActionContext, id: UUID): TodoRes? =
         assemble(ctx, facade.findById(ctx, id)?.let { listOf(it) } ?: emptyList()).singleOrNull()
 
     /** 批量：1 次 findByIds + 1 次 items + 1 次 counts，按入参 ids 顺序组装；入参空 → 空结果（零查询，不查 facade）。 */
-    fun findTodosByIds(ctx: ActionContext, ids: List<UUID>): List<TodoDto> {
+    fun findTodosByIds(ctx: ActionContext, ids: List<UUID>): List<TodoRes> {
         if (ids.isEmpty()) return emptyList()
         return assemble(ctx, facade.findByIds(ctx, ids), ids)
     }
 
     /** 分页：1 次 findByOptions + 1 次 items + 1 次 counts，保持页内顺序。 */
-    fun findTodos(ctx: ActionContext, findOptions: com.ifmix.core.api.dto.common.CommonFindOptions?): Page<TodoDto> {
-        val page = facade.findTodos(ctx, findOptions?.let { DemoRpcMappers.toGenerated(it) })
+    fun findTodos(ctx: ActionContext, findOptions: com.ifmix.core.api.dto.common.CommonFindOptions?): Page<TodoRes> {
+        val page = facade.findTodos(ctx, findOptions)
         val byId = assemble(ctx, page.items).associateBy { it.id }
         return Page(page.items.map { byId.getValue(it.id) }, page.pageInfo)
     }
@@ -52,7 +52,7 @@ class DemoQueryService(private val facade: DemoFacade) {
      * 组装：批量查 items/counts 后按 [order]（缺省 = 根查询原顺序）重排。
      * 库中未命中的 id 不出现在结果里；[order] 重复 id 只保留首个（[associateBy] 语义）。
      */
-    private fun assemble(ctx: ActionContext, todos: List<Todo>, order: List<UUID>? = null): List<TodoDto> {
+    private fun assemble(ctx: ActionContext, todos: List<Todo>, order: List<UUID>? = null): List<TodoRes> {
         if (todos.isEmpty()) return emptyList()
 
         val todoIds = todos.map { it.id }
@@ -63,7 +63,7 @@ class DemoQueryService(private val facade: DemoFacade) {
         val foundById = todos.associateBy { it.id }
         val sequence: List<Todo> = order?.distinct()?.mapNotNull { foundById[it] } ?: todos
         return sequence.map { todo ->
-            DemoRpcMappers.toDto(
+            DemoApiMappers.toDto(
                 todo,
                 itemsByTodoId.getOrDefault(todo.id, emptyList()),
                 countsMap[todo.id] ?: ZERO_COUNTS,

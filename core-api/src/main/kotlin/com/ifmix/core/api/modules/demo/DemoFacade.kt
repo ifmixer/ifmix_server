@@ -2,10 +2,10 @@ package com.ifmix.core.api.modules.demo
 
 import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.entity.demo.Todo
-import com.ifmix.core.api.generated.types.CreateTodoInput
-import com.ifmix.core.api.generated.types.CommonFindOptions
-import com.ifmix.core.api.generated.types.UpdateTodoInput
-import com.ifmix.core.api.generated.types.UpdateTodoItemsMutationInput
+import com.ifmix.core.api.dto.demo.CreateTodoInput
+import com.ifmix.core.api.dto.common.CommonFindOptions
+import com.ifmix.core.api.dto.demo.UpdateTodoInput
+import com.ifmix.core.api.dto.demo.UpdateTodoItemsMutationInput
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.demo.handler.TodoAggHandler

@@ -1,10 +1,10 @@
 package com.ifmix.core.api.infra.repo
 
+import com.ifmix.core.api.dto.common.CommonFindOptions
 import com.ifmix.core.api.dto.common.Page
-import com.ifmix.core.api.generated.types.CommonFindOptions
-import com.ifmix.core.api.generated.types.SortDirection
 import com.ifmix.core.api.infra.codec.Base58
 import com.ifmix.core.api.infra.db.ModuleCtx
+import com.ifmix.core.api.dto.common.requireValidSortDirection
 import org.babyfish.jimmer.sql.ast.Selection
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
@@ -202,7 +202,8 @@ class ProjectCrudRepoTemplate<E : Any, ID : Comparable<ID>>(
         val sortBy = (findOptions?.sortBy ?: this.id).also {
             require(it in sortable) { "sortBy '$it' not allowed. Allowed: $sortable" }
         }
-        val desc = findOptions?.sortDirection != SortDirection.ASC
+        findOptions?.requireValidSortDirection()
+        val desc = findOptions?.sortDirection != "ASC"
 
         // 解析复合 cursor（整体 Base58 编码）: 解码后 sortBy==id → "{id}", 否则 → "{sortValue},{id}"
         val rawCursor = findOptions?.cursor?.let { runCatching { Base58.decodeString(it) }.getOrNull() }

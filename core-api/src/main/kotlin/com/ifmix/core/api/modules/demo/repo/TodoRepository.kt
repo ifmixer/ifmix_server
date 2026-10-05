@@ -14,10 +14,8 @@ import com.ifmix.core.api.entity.demo.note
 import com.ifmix.core.api.entity.demo.recommend
 import com.ifmix.core.api.entity.demo.customerId
 import com.ifmix.core.api.entity.demo.todoId
-import com.ifmix.core.api.generated.types.CommonFindOptions
-import com.ifmix.core.api.generated.types.TodoRecommendInput
-import com.ifmix.core.api.generated.types.TodoUnsetField
-import com.ifmix.core.api.generated.types.UpdateTodoInput
+import com.ifmix.core.api.dto.common.CommonFindOptions
+import com.ifmix.core.api.dto.demo.UpdateTodoInput
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
 import org.babyfish.jimmer.sql.ast.mutation.DeleteMode
@@ -83,19 +81,19 @@ class TodoRepository {
             where(table.id eq input.id)
 
             // unset 优先：如果字段同时出现在 set 和 unset，以 unset 为准
-            if (TodoUnsetField.NOTE in unset) {
+            if ("NOTE" in unset) {
                 set(table.note, null as String?)
             } else {
                 set?.note?.let { set(table.note, it) }
             }
 
-            if (TodoUnsetField.RECOMMEND in unset) {
+            if ("RECOMMEND" in unset) {
                 set(table.recommend, null as TodoRecommend?)
             } else {
                 set?.recommend?.let { set(table.recommend, it.toDomain()) }
             }
 
-            if (TodoUnsetField.NOTE !in unset && TodoUnsetField.RECOMMEND !in unset) {
+            if ("NOTE" !in unset && "RECOMMEND" !in unset) {
                 set?.title?.let { set(table.title, it) }
                 set?.done?.let { set(table.done, it) }
             }

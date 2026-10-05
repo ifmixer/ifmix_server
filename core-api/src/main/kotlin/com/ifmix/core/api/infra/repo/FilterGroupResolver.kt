@@ -1,9 +1,8 @@
 package com.ifmix.core.api.infra.repo
 
-import com.ifmix.core.api.generated.types.FieldFilter
-import com.ifmix.core.api.generated.types.FilterExpr
-import com.ifmix.core.api.generated.types.FilterGroup
-import com.ifmix.core.api.generated.types.FilterOp
+import com.ifmix.core.api.dto.common.FieldFilter
+import com.ifmix.core.api.dto.common.FilterExpr
+import com.ifmix.core.api.dto.common.FilterGroup
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import org.babyfish.jimmer.meta.ImmutableProp
@@ -80,18 +79,21 @@ object FilterGroupResolver {
         val targetType = prop.returnClass
         val column = query.table.get<Comparable<Any>>(fieldName)
 
+        // op 为协议字符串（与 dto/common FieldFilter 一致）；非法值 400，不经枚举。
+        com.ifmix.core.api.dto.common.requireFilterOp(filter.op)
         return when (filter.op) {
-            FilterOp.EQ -> column eq coerce(filter.value, targetType)
-            FilterOp.NE -> column ne coerce(filter.value, targetType)
-            FilterOp.GT -> column gt coerce(filter.value, targetType)
-            FilterOp.GTE -> column ge coerce(filter.value, targetType)
-            FilterOp.LT -> column lt coerce(filter.value, targetType)
-            FilterOp.LTE -> column le coerce(filter.value, targetType)
-            FilterOp.LIKE -> (column as KExpression<String>).like(filter.value as String, LikeMode.ANYWHERE)
-            FilterOp.IN -> column valueIn coerceList(filter.values, targetType)
-            FilterOp.NIN -> column valueNotIn coerceList(filter.values, targetType)
-            FilterOp.IS_NULL -> column.isNull()
-            FilterOp.IS_NOT_NULL -> column.isNotNull()
+            "EQ" -> column eq coerce(filter.value, targetType)
+            "NE" -> column ne coerce(filter.value, targetType)
+            "GT" -> column gt coerce(filter.value, targetType)
+            "GTE" -> column ge coerce(filter.value, targetType)
+            "LT" -> column lt coerce(filter.value, targetType)
+            "LTE" -> column le coerce(filter.value, targetType)
+            "LIKE" -> (column as KExpression<String>).like(filter.value as String, LikeMode.ANYWHERE)
+            "IN" -> column valueIn coerceList(filter.values, targetType)
+            "NIN" -> column valueNotIn coerceList(filter.values, targetType)
+            "IS_NULL" -> column.isNull()
+            "IS_NOT_NULL" -> column.isNotNull()
+            else -> throw ApiError(ErrorCode.INVALID_REQUEST, "invalid filter op: ${filter.op}")
         }
     }
 

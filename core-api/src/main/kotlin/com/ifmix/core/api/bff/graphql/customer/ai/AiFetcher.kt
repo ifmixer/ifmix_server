@@ -71,8 +71,24 @@ class AiFetcher(
         @InputArgument findOptions: com.ifmix.core.api.generated.types.CommonFindOptions?,
     ): Page<ScanRecord> {
         val ctx = ctxProvider.fromDfe(dfe)
-        return aiService.findMyScans(ctx, findOptions)
+        // 临时适配（M5 删 GraphQL 时一并删除）：generated → dto/common CommonFindOptions
+        val dto = findOptions?.let {
+            com.ifmix.core.api.dto.common.CommonFindOptions(
+                filter = it.filter?.let { g -> toDtoFilterGroup(g) },
+                cursor = it.cursor,
+                sortBy = it.sortBy,
+                sortDirection = it.sortDirection?.name,
+                limit = it.limit,
+            )
+        }
+        return aiService.findMyScans(ctx, dto)
     }
+
+    private fun toDtoFilterGroup(g: com.ifmix.core.api.generated.types.FilterGroup): com.ifmix.core.api.dto.common.FilterGroup =
+        com.ifmix.core.api.dto.common.FilterGroup(
+            and = g.and?.map { e -> com.ifmix.core.api.dto.common.FilterExpr(field = e.field?.let { f -> com.ifmix.core.api.dto.common.FieldFilter(f.field, f.op.name, f.value, f.values) }, group = e.group?.let { toDtoFilterGroup(it) }) },
+            or = g.or?.map { e -> com.ifmix.core.api.dto.common.FilterExpr(field = e.field?.let { f -> com.ifmix.core.api.dto.common.FieldFilter(f.field, f.op.name, f.value, f.values) }, group = e.group?.let { toDtoFilterGroup(it) }) },
+        )
 
     // --- Collection queries ---
 

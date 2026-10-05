@@ -4,11 +4,14 @@ import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.entity.demo.Todo
 import com.ifmix.core.api.entity.demo.TodoItem
 import com.ifmix.core.api.entity.demo.toDomain
-import com.ifmix.core.api.generated.types.CreateTodoInput
-import com.ifmix.core.api.generated.types.CreateTodoItemForTodoInput
-import com.ifmix.core.api.generated.types.CommonFindOptions
-import com.ifmix.core.api.generated.types.UpdateTodoInput
-import com.ifmix.core.api.generated.types.UpdateTodoItemsMutationInput
+import com.ifmix.core.api.dto.demo.CreateTodoInput
+import com.ifmix.core.api.dto.demo.CreateTodoItemForTodoInput
+import com.ifmix.core.api.dto.common.CommonFindOptions
+import com.ifmix.core.api.dto.demo.UpdateTodoInput
+import com.ifmix.core.api.dto.demo.TODO_ITEM_UNSET_FIELDS
+import com.ifmix.core.api.dto.demo.TODO_UNSET_FIELDS
+import com.ifmix.core.api.dto.demo.requireUnsetFields
+import com.ifmix.core.api.dto.demo.UpdateTodoItemsMutationInput
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.db.UuidV7
 import com.ifmix.core.api.modules.demo.repo.TodoItemRepository
@@ -78,10 +81,12 @@ class TodoAggHandler(
     }
 
     fun partialUpdate(mc: ModuleCtx, projectId: String, input: UpdateTodoInput) {
+        requireUnsetFields(input.unset, TODO_UNSET_FIELDS)
         todoRepo.partialUpdate(mc, projectId, input)
     }
 
     fun batchUpdateItems(mc: ModuleCtx, projectId: String, input: UpdateTodoItemsMutationInput) {
+        input.update?.forEach { requireUnsetFields(it.unset, TODO_ITEM_UNSET_FIELDS) }
         // Delete
         input.delete?.let { ids ->
             if (ids.isNotEmpty()) todoItemRepo.deleteByIds(mc, projectId, ids)
@@ -119,3 +124,4 @@ class TodoAggHandler(
         todoItemRepo.save(mc, todoItem)
     }
 }
+

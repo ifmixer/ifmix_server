@@ -4,14 +4,11 @@ import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.dto.common.PageInfo
 import com.ifmix.core.api.entity.demo.Todo
 import com.ifmix.core.api.entity.demo.TodoItem
-import com.ifmix.core.api.generated.types.CommonFindOptions as GenCommonFindOptions
-import com.ifmix.core.api.generated.types.SortDirection
 import com.ifmix.core.api.dto.common.CommonFindOptions
 import com.ifmix.core.api.dto.common.FieldFilter
 import com.ifmix.core.api.dto.common.FilterExpr
 import com.ifmix.core.api.dto.common.FilterGroup
-import com.ifmix.core.api.dto.demo.DemoRpcMappers
-import com.ifmix.core.api.dto.demo.TodoDto
+import com.ifmix.core.api.dto.demo.TodoRes
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
@@ -38,7 +35,7 @@ import java.util.UUID
 /**
  * [DemoQueryService] 聚合策略单测（brief §5.3-3）：
  * mock [DemoFacade] 三类批量返回（findByIds / findItemsByTodoIds / countItemsByTodoIds），
- * 断言 TodoDto 组装顺序与入参 ids 一致、缺 counts 补 0、缺 items 补空列表、禁循环 findById（无 N+1）。
+ * 断言 TodoRes 组装顺序与入参 ids 一致、缺 counts 补 0、缺 items 补空列表、禁循环 findById（无 N+1）。
  */
 class DemoQueryServiceTest {
 
@@ -104,13 +101,13 @@ class DemoQueryServiceTest {
         val result = service.findTodosByIds(ctx, listOf(a, b, c))
 
         assertEquals(listOf(a, c), result.map { it.id }, "assembly order must follow input id order")
-        val dtoA: TodoDto = result.first()
+        val dtoA: TodoRes = result.first()
         assertEquals("t1", dtoA.title)
         assertEquals(listOf("i1", "i2"), dtoA.items.map { it.content })
         assertEquals(0, dtoA.itemCount, "missing counts must be zero-filled")
         assertEquals(0, dtoA.pendingCount)
         assertEquals(0, dtoA.finishCount)
-        val dtoC: TodoDto = result[1]
+        val dtoC: TodoRes = result[1]
         assertEquals(listOf("i3"), dtoC.items.map { it.content })
         assertEquals(1, dtoC.itemCount)
         assertEquals(1, dtoC.finishCount)
@@ -163,11 +160,11 @@ class DemoQueryServiceTest {
     // ===== 分页聚合 =====
 
     @Test
-    fun `findTodos aggregates page in page order passing generated find options to facade`() {
+    fun `findTodos aggregates page in page order passing dto find options to facade`() {
         val a = UUID.randomUUID()
         val b = UUID.randomUUID()
         val page = Page(listOf(todo(a, "t1"), todo(b, "t2")), PageInfo(nextCursor = b.toString(), hasMore = true))
-        whenever(facade.findTodos(eq(ctx), eq(GenCommonFindOptions(limit = 10, sortDirection = SortDirection.DESC))))
+        whenever(facade.findTodos(eq(ctx), eq(CommonFindOptions(limit = 10, sortDirection = "DESC"))))
             .thenReturn(page)
         whenever(facade.findItemsByTodoIds(eq(ctx), eq(listOf(a, b))))
             .thenReturn(listOf(item(b, "i2", true)))   // a 缺 items → 空列表
@@ -198,28 +195,5 @@ class DemoQueryServiceTest {
 
         assertEquals(listOf(a), result.items.map { it.id })
         assertEquals(0, result.items.first().itemCount, "absent counts map entry must zero-fill")
-        verify(facade).findTodos(eq(ctx), isNull())
-    }
-
-    @Test
-    fun `findTodos converts dto find options to generated and rejects illegal filter op with INVALID_REQUEST`() {
-        // 转换断言：dto.common → generated（op 字符串 → 枚举）
-        val optCaptor = argumentCaptor<GenCommonFindOptions>()
-        whenever(facade.findTodos(eq(ctx), any())).thenReturn(Page(emptyList(), PageInfo()))
-        service.findTodos(ctx, CommonFindOptions(limit = 7, sortDirection = "ASC"))
-        verify(facade).findTodos(eq(ctx), optCaptor.capture())
-        assertEquals(7, optCaptor.firstValue.limit)
-        assertEquals(SortDirection.ASC, optCaptor.firstValue.sortDirection)
-        verify(facade, never()).findTodos(eq(ctx), isNull())
-
-        // 边界：非法 FilterOp → mapper 抛 ApiError(INVALID_REQUEST)，facade 不被调用
-        val badOptions = CommonFindOptions(
-            filter = FilterGroup(and = listOf(FilterExpr(field = FieldFilter(field = "title", op = "REGEX")))),
-        )
-        val ex = assertThrows<ApiError> { service.findTodos(ctx, badOptions) }
-        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
-        assertTrue(ex.message!!.contains("invalid filter op: REGEX"))
-        // 非法 op 在 toGenerated 即抛，facade.findTodos 只在合法路径被调一次
-        verify(facade, times(1)).findTodos(eq(ctx), any())
-    }
+        verify(facade).findTodos(eq(ctx), isNull())    }
 }
