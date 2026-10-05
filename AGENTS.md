@@ -48,7 +48,7 @@ docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一
 | notification | [scan-async-notification-push](docs/design/notification/scan-async-notification-push.md)（✅ 已实现） | scan 异步化 + notification 模块基座（FCM 寻址、深链、配额预留） |
 | notification | [deep-research-push](docs/design/notification/deep-research-push.md)（✅ 已实现） | DR 完成 push（对 scan push 的增量） |
 | notification | [push-feature-flag](docs/design/notification/push-feature-flag.md)（✅ 已实现） | 前端 hard code flag + mutation 传参（非后端 kill switch） |
-| infra | [wire-encryption](docs/design/infra/wire-encryption.md)（✅ 已实现） | wire 加密 v2（X25519+HKDF+AES-256-GCM）、降级模型、安全模型与演进决策 |
+| infra | [wire-encryption](docs/design/infra/wire-encryption.md)（v2 已实现未发布；§10 v3 HPKE 提案已定稿，v1.0.6 前实施） | wire 加密：v2 → v3（RFC 9180 HPKE）、降级模型、安全模型与演进决策 |
 | infra | [idempotency](docs/design/infra/idempotency.md)（✅ 决策完成） | 创建接口幂等性评估：不建通用幂等，语义幂等 + 业务唯一键 |
 | proposals | [graphql-to-http-rpc-openapi](docs/design/proposals/graphql-to-http-rpc-openapi.md)（📝 未实施） | GraphQL → HTTP RPC + OpenAPI 迁移计划（移动端上线前执行） |
 

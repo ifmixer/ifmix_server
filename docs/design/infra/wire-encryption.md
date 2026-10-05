@@ -1,10 +1,12 @@
-# Wire 加密（x-proto-version: 2）— 设计规格
+# Wire 加密 — 设计规格
 
-日期：2026-10-04
-状态：已评审（2026-10-05，安全模型结论与演进决策见 §9）
+日期：2026-10-04（v2）；2026-10-05 增补 v3 提案（迁移 RFC 9180 HPKE，见 §10）
+状态：v2 已实现但**未发布**（客户端 flag 默认关、key 未配）；**v3 提案已评审定稿，v1.0.6 发布前实施**——v2 从未上线，v3 直接取代 v2，不保留 v2 双版本兼容；明文 v1 降级保留
 范围：服务端 `ifmix_server/core-api` + 客户端 `antique/apps/shared`、`antique/apps/antique`
 目标：对全部 GraphQL 操作（白名单机制已移除，所有接口加密）的请求/响应 body 做应用层加密，抓包（含设备持有者自己装证书抓包）看不到明文；
 老客户端不受影响；性能与流量「不比 v1 差」。
+
+> **§10 优先**：v2 的信封格式（§2–§8）被 v3（§10）取代，v2 章节保留作背景与演进依据；§9 安全模型结论对 v3 继续有效。
 
 ---
 
@@ -290,3 +292,70 @@ HTTPS 管传输（网络第三方）、wire 管设备持有者（HTTPS 终结后
 - 敏感操作（发起扫描、领取类）：**服务端签发一次性操作凭据**（与 attest challenge 同构：
   绑定 customerId + 操作类型 + 短 TTL，消费即作废）——把防重放的锚点从攻击者可控字段
   移到服务端自有状态。
+
+---
+
+## 10. v3 提案（2026-10-05 定稿，v1.0.6 发布前实施）：迁移 RFC 9180 HPKE
+
+### 10.0 动机与边界
+
+- v2 信封（§2–§8）是自研封帧：双端实现对齐、跨语言固定向量、新服务接入都要自己维护。v2 的 HPKE 形态（X25519 + HKDF-SHA256 + AES-256-GCM + 请求级 ephemeral 公钥）与 RFC 9180 标准只差"封装格式"一步，**趁 v2 未发布直接标准化**，零兼容成本。
+- **不做 OHTTP**（relay/gateway）：OHTTP 的目标是向服务端隐藏客户端 IP（双盲隐私），与本项目需求错位——per-IP 限流 / attest IP 日窗口 / cf-bot-score 全依赖识别客户端，relay 共享 IP 会打碎它们；CF OHTTP Gateway 尚为 closed beta，不可押注主传输层。未来若出现"匿名上报"类需求，单独为该路径评估 OHTTP。
+- 不变的威胁模型与结论：§1 威胁模型、§9 安全模型结论（ts 仅 warn、语义幂等承担防重放、降级保留）对 v3 继续有效。attest 才是滥用防线，wire 只是成本清除器。
+- v2 从未上线：**v3 直接取代 v2，服务端不保留 v2 解析路径**；明文 v1 兼容不变（无 `x-proto-version: 3` 的请求按 v1 放行）。
+
+### 10.1 HPKE 参数与信封
+
+Suite（RFC 9180 标识符）：`KEM = DHKEM(X25519, HKDF-SHA256) 0x0020`，`KDF = HKDF-SHA256 0x0001`，`AEAD = AES-256-GCM 0x0002`，Mode = **base (0x00)**。
+
+**请求**（`Content-Type: application/octet-stream`）：
+
+```
+ver(1)=3 | kid(1) | enc(32) | flags(1) | HPKE-Seal(pkR=kid 对应公钥, info, aad, pt) ‖ tag
+info = "ifmix-wire-v3"
+aad  = ver ‖ kid ‖ enc ‖ flags（36 字节，flags 参与 AAD 防翻转）
+pt   = ts_ms(8, BE) ‖ body（body 为原 JSON；flags bit0=1 表示 pt 整体 gzip 压缩后作为被加密输入）
+```
+
+- HPKE base mode 单次 Seal 自带派生 nonce（base_nonce + seq=0），**无需显式 nonce 字段**；enc 即客户端 ephemeral 公钥。
+- **请求压缩**：`body` 序列化后与 ts 拼成 pt，pt > 4096 字节则 gzip（flags bit0=1）。服务端解密后按 flags 解压，**解压上限 1MB（可配 `app.wire.max-decompressed-bytes`）**，超限按 400003 拒绝——防 zip-bomb。
+- `ts_ms` 保留：仅遥测；偏差仅 warn（§9 决策不变）。
+
+**响应**：复用请求的 HPKE 上下文密钥导出（标准 Exporter 接口，替代 v2 手工派生的 resKey）：
+
+```
+resKey = HPKE-Export(context, "ifmix-wire-v3-res", L=32)
+flags(1) | nonce(12) | AES-256-GCM(resKey, nonce, aad = enc ‖ flags, payload) ‖ tag
+```
+
+- nonce 每响应 `SecureRandom` 现生成；flags bit0 = payload gzip（阈值 4096，与 v2 相同）；未知 flag 位客户端必须失败。
+- 服务端收到请求即完成 HPKE-Open 拿到 context；context 生命周期仅限该请求。
+
+### 10.2 密钥配置与轮换
+
+- **服务端**（配置侧，同 v2）：env `APP_WIRE_KEYS = kid:base64私钥[,kid:base64私钥]`，多 kid 并存支持轮换；客户端内置的 key config 含 `{kid, kemId, kdfId, aeadId, pk}` 列表，客户端按 kid 加密。轮换 = 服务端加新 kid + 客户端 OTA 更新 config，旧 kid 保留至存量客户端消化完。
+- **客户端密钥轮换（2026-10-05 需求，后端零配合）**：HPKE base mode 下客户端 ephemeral 密钥对**后端从不存储/绑定**，只消费请求内的 enc——因此前端任意策略均可行且无需后端感知：
+  - **默认：每次请求一对**（keygen 亚毫秒级，等价于最强轮换，前向保密窗口最小化）——推荐。
+  - 可选优化：会话对 + 随机 TTL（如 1–24h 随机）轮换，省 keygen；复用期间 enc 不变不损害安全性（每请求 HPKE context 独立），仅拉长前向保密窗口。
+  - 禁止：跨请求长期固化 + 与身份绑定的"客户端长期密钥"（无收益，徒增指纹性）。
+
+### 10.3 实现选型
+
+- **服务端**：BouncyCastle `bcprov-jdk18on` ≥ 1.77 的 `org.bouncycastle.hpke`（RFC 9180 完整实现）；JDK 仅保留 AES-GCM/gzip。禁用任何手写密码学常数——低阶点等输入校验全部交给 HPKE 库。
+- **客户端**（antique，TS/Expo RN）：**选型已定（2026-10-05）**——`@noble/curves` + `@noble/hashes` + `@noble/ciphers` 按 RFC 9180 组装 base mode（约 100–150 行机械性胶水，官方向量 CI 锁定）+ `pako` gzip + `react-native-get-random-values`。不采用 `@hpke/core`（WebCrypto-only，Hermes 需接 quick-crypto 原生模块 polyfill，三方版本矩阵脆弱且无性能收益）。完整理由见 [wire-v3-plan-client](wire-v3-plan-client.md) T1。
+- **测试向量**：RFC 9180 附录 A **不含** X25519+AES-256-GCM 组合——向量取自 HPKE 工作组官方向量仓库 `github.com/hpkewg/test-vectors`（JSON，含 DHKEM(X25519)/HKDF-SHA256/AES-256-GCM base mode 组合），以脚本生成、注明出处；双端再对一组自生成端到端向量（请求密文 → 服务端解密 → 响应密文 → 客户端解密 round-trip）。**严禁手誊十六进制常数进源码**——向量文件一律脚本生成。
+- 错误模型沿用 v2：解密失败统一明文 400003，不区分原因；`WireCryptoFilter` 顺序（wire +1 → logging +5 → status +10）与 gzip 阈值不变。
+
+### 10.4 迁移步骤（v1.0.6 内完成）
+
+> 实现计划已按前后端拆分：服务端 [wire-v3-plan-server](wire-v3-plan-server.md)、客户端 [wire-v3-plan-client](wire-v3-plan-client.md)（可并行执行，前后端各 1 个 agent，联调 1 个收尾）。
+
+1. 服务端：新增 HPKE 实现（替代 `WireCrypto` 的 HKDF/信封逻辑，类名/接入点不变），配置解析、Filter、降级、400003 语义不动；RFC 向量测试 + 端到端向量测试。
+2. 客户端：`apps/shared/src/api/wireCrypto.ts` 重写为 HPKE 封装（含请求 gzip + 解压上限对齐），固定向量测试对齐 RFC。
+3. 双端联调：真机走通 createScan（>4KB 请求验证压缩）+ 大响应 gzip + 降级路径（key 未配 → v1 明文）。
+4. 文档：本节状态改为已实现；release.md / Changelog 回写。
+
+### 10.5 v2 遗留处置
+
+- v2 的低阶点黑名单教训（常数表三方不一致）直接作废——v3 输入校验交给 HPKE 库，全零 shared 检查随自定义 KDF 一并消失。
+- v2 章节标记「已取代」，仅供理解演进；git 历史可查代码原貌。
