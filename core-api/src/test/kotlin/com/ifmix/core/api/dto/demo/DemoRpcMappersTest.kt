@@ -45,13 +45,8 @@ class DemoRpcMappersTest {
         sectionName = "home",
         viewCount = 42,
         recItems = listOf(
-            TodoRecItemInputDto(
-                recId = recId,
-                title = "tip",
-                priority = 1,
-                createdAt = now.toString(),
-                updatedAt = null,
-            ),
+            // §4.4 定稿：客户端不提交 createdAt/updatedAt（服务端 mapper 打戳）
+            TodoRecItemInputDto(recId = recId, title = "tip", priority = 1),
         ),
     )
 
@@ -104,18 +99,20 @@ class DemoRpcMappersTest {
     }
 
     @Test
-    fun `recItem createdAt 缺失抛 INVALID_REQUEST`() {
+    fun `recItem 打戳 createdAt 非空且 updatedAt 为 null`() {
         val input = CreateTodoInputDto(
             title = "t",
             recommend = TodoRecommendInputDto(
                 sectionId = sectionId,
                 sectionName = "home",
-                recItems = listOf(TodoRecItemInputDto(recId = recId, priority = 1, createdAt = null)),
+                recItems = listOf(TodoRecItemInputDto(recId = recId, priority = 1)),
             ),
         )
-        assertInvalidRequest(ErrorCode.INVALID_REQUEST, "DateTime") {
-            DemoRpcMappers.toGenerated(input)
-        }
+        val gen = DemoRpcMappers.toGenerated(input)
+        val recItem = gen.recommend!!.recItems!!.single()
+        Assertions.assertNotNull(recItem.createdAt, "mapper must stamp createdAt (client omits it)")
+        Assertions.assertTrue(recItem.createdAt.isBefore(Instant.now().plusSeconds(5)))
+        Assertions.assertNull(recItem.updatedAt, "updatedAt must stay null (server side fills it later)")
     }
 
     // ===== DTO → generated 字段对齐 =====
@@ -130,28 +127,19 @@ class DemoRpcMappersTest {
             items = listOf(CreateTodoItemInputDto(content = "c", done = false, note = null)),
         )
         val gen = DemoRpcMappers.toGenerated(dto)
+        val recItem = gen.recommend!!.recItems!!.single()
+        Assertions.assertEquals(recId, recItem.recId)
+        Assertions.assertEquals("tip", recItem.title)
+        Assertions.assertEquals(1, recItem.priority)
+        // §4.4 定稿：createdAt 由 mapper 打戳（非固定 now），updatedAt 保持 null
+        Assertions.assertNotNull(recItem.createdAt)
+        Assertions.assertNull(recItem.updatedAt)
+        Assertions.assertEquals("t", gen.title)
+        Assertions.assertEquals(true, gen.done)
+        Assertions.assertEquals("n", gen.note)
         Assertions.assertEquals(
-            CreateTodoInput(
-                title = "t",
-                done = true,
-                note = "n",
-                recommend = TodoRecommendInput(
-                    sectionId = sectionId,
-                    sectionName = "home",
-                    viewCount = 42,
-                    recItems = listOf(
-                        TodoRecItemInput(
-                            recId = recId,
-                            title = "tip",
-                            priority = 1,
-                            createdAt = now,
-                            updatedAt = null,
-                        ),
-                    ),
-                ),
-                items = listOf(CreateTodoItemInput(content = "c", done = false, note = null)),
-            ),
-            gen,
+            listOf(CreateTodoItemInput(content = "c", done = false, note = null)),
+            gen.items,
         )
     }
 
@@ -242,8 +230,9 @@ class DemoRpcMappersTest {
         Assertions.assertEquals(inRec.recId, outRec.recId)
         Assertions.assertEquals(inRec.title, outRec.title)
         Assertions.assertEquals(inRec.priority, outRec.priority)
-        Assertions.assertEquals(inRec.createdAt, outRec.createdAt)
-        Assertions.assertEquals(inRec.updatedAt, outRec.updatedAt)
+        // 客户端不提交时间戳：mapper 打戳后往返出的 createdAt 非空、updatedAt 为 null
+        Assertions.assertNotNull(outRec.createdAt)
+        Assertions.assertNull(outRec.updatedAt)
     }
 
     // ===== entity → DTO =====
