@@ -1,0 +1,24 @@
+core-api/src/main/resources/application.yml
+  s_626a923fe44bc3::t_c89118d3e22326 81-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c7d0f2578bbd45cb6000b84a5a94974bf637a59",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_626a923fe44bc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b34dc526-22e4-47c7-b827-bd3064965bf5",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
