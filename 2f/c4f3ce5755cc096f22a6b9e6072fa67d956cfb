@@ -1,0 +1,21 @@
+core-api/src/main/resources/application-prod.yml
+  s_9609e94622ddf5::t_91b6e2ff8b589c 38-42
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/WireCryptoTest.kt
+  s_9609e94622ddf5::t_3c79772a9b5d6a 4,108-119,219-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2fc4f3ce5755cc096f22a6b9e6072fa67d956cfb",
+  "prompts": {},
+  "sessions": {
+    "s_9609e94622ddf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f31cda57-976c-40be-a6c9-6f3f8a1e6ec0",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
