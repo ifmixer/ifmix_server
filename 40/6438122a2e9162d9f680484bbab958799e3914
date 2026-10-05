@@ -1,0 +1,31 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiApiKeyStore.kt
+  s_626a923fe44bc3::t_0d0501d802295b 25-26,70-73,83,87-90,98-102
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  s_626a923fe44bc3::t_0fc13d9393b2fb 28-43,49-52,99,109-121,251,254-264,267,269
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiApiKeyStoreTest.kt
+  s_626a923fe44bc3::t_f9d510c6524ed8 21,23,33,40-42,124-175
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiConfigDisableKeyFnTest.kt
+  s_626a923fe44bc3::t_77e2d567c67fdf 1-77
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/SpringAiScanRunnerClassifyTest.kt
+  s_626a923fe44bc3::t_f5b559d68b7f01 5,7-10,15-17,26-27,31-51,53,59,64-65,71,76
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/SpringAiScanRunnerDisableTest.kt
+  s_626a923fe44bc3::t_6228ea7893f5a5 1-131
+docs/design/ai-api-key-pool.md
+  s_626a923fe44bc3::t_64738a5a423722 162,169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "406438122a2e9162d9f680484bbab958799e3914",
+  "prompts": {},
+  "sessions": {
+    "s_626a923fe44bc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b34dc526-22e4-47c7-b827-bd3064965bf5",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
