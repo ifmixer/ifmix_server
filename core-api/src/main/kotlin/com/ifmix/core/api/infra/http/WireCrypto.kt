@@ -83,6 +83,8 @@ class WireCrypto(keys: Map<Int, ByteArray>) {
         val ephPub = payload.copyOfRange(2, HEADER_LEN)
         val nonce = payload.copyOfRange(HEADER_LEN, HEADER_LEN + NONCE_LEN)
         return try {
+            // 低阶点黑名单（RFC 7748 erratum bad-input 编码）：JDK 的常数时间 Montgomery ladder 对这些点
+            // 不拒绝、照常算出 shared（落在 ≤8 个可枚举值里）——攻击者伪造请求即可枚举 resKey 解受害者响应，必须显式拒。
             if (LOW_ORDER_EPH_PUBS.any { ephPub.contentEquals(it) }) throw WireCryptoException(kid)
             val shared = x25519(key.priv, ephPub)
             val okm = KDF.getInstance("HKDF-SHA256").deriveData(
@@ -126,6 +128,30 @@ class WireCrypto(keys: Map<Int, ByteArray>) {
         private val RNG = SecureRandom()
         private val BASE_POINT = ByteArray(KEY_LEN).also { it[0] = 9 } // RFC 7748：基点 u = 9（小端）
         private val X509_PREFIX = java.util.HexFormat.of().parseHex("302a300506032b656e032100")
+
+        /**
+         * 低阶（小序）点 ephPub 黑名单。x25519 的 8-torsion 点 x 坐标 {0, 2^255−1, p−2, p−14, p−22}
+         * （p = 2^255−19）；每个 x 两种 32 字节小端编码（符号位 0/1）= 10 个值。
+         * 全零 32B（x=0）被 JDK 直接 reject（InvalidKeyException），列在此仅作完整性。
+         * 命中任一则拒绝请求——否则攻击者可枚举 ≤8 个 shared 值解受害者响应（resKey 固定 32B 密钥）。
+         */
+        private val LOW_ORDER_EPH_PUBS: List<ByteArray> = listOf(
+            // x = 0（全零编码）
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "0000000000000000000000000000000000000000000000000000000000000080",
+            // x = 2^255 - 1（order 2）
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            // x = p - 2（order 4）
+            "ebffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+            "ebffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            // x = p - 14（order 4）
+            "dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+            "dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            // x = p - 22（order 4）
+            "d7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+            "d7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        ).map { java.util.HexFormat.of().parseHex(it) }
 
         /**
          * 解析配置 `kid:base64私钥,kid:base64私钥`（env 友好）。空串 → 无 key（isEnabled=false，
