@@ -1,0 +1,167 @@
+docs/superpowers/specs/2026-10-04-wire-encryption-design.md
+  h_b17efd5c751f9f 25-26
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/install/InstallFetcher.kt
+  h_b17efd5c751f9f 3-5,8-11,13,16,18-19,23,27,29-40,47-49,51-52,57-63,65-67,69,72-102,104-119,121,124-127,149-362,365-379
+  h_b17efd5c751f9f 64,103,120,363-364
+core-api/build.gradle.kts
+  h_b17efd5c751f9f 67-71
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 15-17,58,133,163,233-241,243-258,260-261,264,266-280,284-289
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/customer/CustomerFetcher.kt
+  h_b17efd5c751f9f 9,11-12,28,37,39-43,45-84
+core-api/src/main/kotlin/com/ifmix/core/api/entity/install/Install.kt
+  h_b17efd5c751f9f 37-40
+core-api/src/main/kotlin/com/ifmix/core/api/entity/install/InstallAttestation.kt
+  h_b17efd5c751f9f 1-80
+core-api/src/main/kotlin/com/ifmix/core/api/entity/project/ProjectServerConfig.kt
+  h_b17efd5c751f9f 21-28
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AppAttestTrustAnchors.kt
+  h_b17efd5c751f9f 1-101
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AppAttestVerifier.kt
+  h_b17efd5c751f9f 1-268
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestChallengeCodec.kt
+  h_b17efd5c751f9f 1-144
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestConfig.kt
+  h_b17efd5c751f9f 1-236
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestGuard.kt
+  h_b17efd5c751f9f 1-558
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestReplayGuard.kt
+  h_b17efd5c751f9f 1-99
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/GraphQLExceptionHandler.kt
+  h_b17efd5c751f9f 52-57,61
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ApiError.kt
+  h_b17efd5c751f9f 8-12
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ErrorCode.kt
+  h_b17efd5c751f9f 27-39
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCrypto.kt
+  h_b17efd5c751f9f 86
+core-api/src/main/kotlin/com/ifmix/core/api/infra/ratelimit/RateLimitBeans.kt
+  h_b17efd5c751f9f 12
+core-api/src/main/kotlin/com/ifmix/core/api/infra/ratelimit/RateLimitProperties.kt
+  h_b17efd5c751f9f 1-76
+core-api/src/main/kotlin/com/ifmix/core/api/infra/ratelimit/RateLimiter.kt
+  h_b17efd5c751f9f 5,9,13,15-44,50-51,54-99,141,144-146,153-194,209-210
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiApiKeyStore.kt
+  h_b17efd5c751f9f 25-26,70-73,83,87-90,93,98-102
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiConfig.kt
+  h_b17efd5c751f9f 6,17,26,32-36,87,96-114,120-125,131
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  h_b17efd5c751f9f 28-43,49-52,99,109-121,251,254-274,277,279
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/InstallFacade.kt
+  h_b17efd5c751f9f 3-4,8-9,26,29-70
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/handler/InstallAggHandler.kt
+  h_b17efd5c751f9f 3,5,14,17,26,32-223,341-343
+core-api/src/main/kotlin/com/ifmix/core/api/modules/install/repo/InstallAttestationRepository.kt
+  h_b17efd5c751f9f 1-115
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/ProjectServerConfigFacade.kt
+  h_b17efd5c751f9f 3,8-9,24-43
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 87-88,117-152,155-164
+core-api/src/main/resources/attest/apple-app-attestation-root-ca.pem
+  h_b17efd5c751f9f 1-14
+core-api/src/main/resources/db/migration/V15__install_attestation.sql
+  h_b17efd5c751f9f 1-36
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 21-24
+core-api/src/main/resources/schema/customer/customer.graphqls
+  h_b17efd5c751f9f 23
+core-api/src/main/resources/schema/customer/install.graphqls
+  h_b17efd5c751f9f 2-3,10-11,21-79,83,85,96,100-105
+core-api/src/test/kotlin/com/ifmix/api/core/common/jimmer/cluster/ClusterRegistryTest.kt
+  h_b17efd5c751f9f 6-7,12-28,31
+core-api/src/test/kotlin/com/ifmix/api/core/common/ratelimit/RateLimiterTest.kt
+  h_b17efd5c751f9f 10,14,16-18,20,41-42,103-254
+core-api/src/test/kotlin/com/ifmix/api/core/modules/install/CreateInstallPkTest.kt
+  h_b17efd5c751f9f 11,41
+core-api/src/test/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcherRateLimitTest.kt
+  h_b17efd5c751f9f 1-228
+core-api/src/test/kotlin/com/ifmix/core/api/bff/graphql/customer/customer/CustomerFetcherRateLimitTest.kt
+  h_b17efd5c751f9f 1-173
+core-api/src/test/kotlin/com/ifmix/core/api/bff/graphql/customer/install/InstallFetcherAttestTest.kt
+  h_b17efd5c751f9f 1-505
+core-api/src/test/kotlin/com/ifmix/core/api/infra/attest/AppAttestTrustAnchorsTest.kt
+  h_b17efd5c751f9f 1,5-8,11-14,16,18-23,26-31,33-41,46-50,52-53
+core-api/src/test/kotlin/com/ifmix/core/api/infra/attest/AttestByteContractTest.kt
+  h_b17efd5c751f9f 1-116
+core-api/src/test/kotlin/com/ifmix/core/api/infra/attest/AttestChallengeCodecTest.kt
+  h_b17efd5c751f9f 1-139
+core-api/src/test/kotlin/com/ifmix/core/api/infra/attest/AttestConfigTest.kt
+  h_b17efd5c751f9f 1-238
+core-api/src/test/kotlin/com/ifmix/core/api/infra/attest/AttestGuardTest.kt
+  h_b17efd5c751f9f 1-368
+core-api/src/test/kotlin/com/ifmix/core/api/infra/attest/AttestReplayGuardTest.kt
+  h_b17efd5c751f9f 1-89
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiApiKeyStoreTest.kt
+  h_b17efd5c751f9f 21,23,33,40-42,124-175
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiConfigDisableKeyDbTest.kt
+  h_b17efd5c751f9f 1,3-18,20-23,25,28-32,34,36-38,40-54,57,59,61-76,78-81,83,85,88-103,105-110
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiConfigDisableKeyFnTest.kt
+  h_b17efd5c751f9f 1-79
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/SpringAiScanRunnerClassifyTest.kt
+  h_b17efd5c751f9f 5,7-10,15-17,21-42,48-62,66-67,69,75,80-81,87,92
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/SpringAiScanRunnerDisableTest.kt
+  h_b17efd5c751f9f 1-31,34-37,39-40,42-86,90-97,101-107,111-119,123-130
+core-api/src/test/kotlin/com/ifmix/core/api/modules/install/handler/InstallAggHandlerAttestTest.kt
+  h_b17efd5c751f9f 1-15,17-24,26,29-34,36-50,52-72,74-75,77-93,95-102,104,106-120,124-130,132-136,140-143,145-149,151,153-158,162-167,169,171-176,180-185,187-192,194-198,202-206,208-216,218-223,225-232,234-251
+core-job/build.gradle.kts
+  h_b17efd5c751f9f 17-22,28-29
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AppAttestConfig.kt
+  h_b17efd5c751f9f 1-40
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AppleReceiptClient.kt
+  h_b17efd5c751f9f 1-21
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AppleReceiptClientImpl.kt
+  h_b17efd5c751f9f 1-76
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AttestJobConfig.kt
+  h_b17efd5c751f9f 1-31
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AttestJobs.kt
+  h_b17efd5c751f9f 1-68
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AttestationRepo.kt
+  h_b17efd5c751f9f 1-218
+core-job/src/main/kotlin/com/ifmix/core/job/attest/DeviceCheckClient.kt
+  h_b17efd5c751f9f 1-148
+core-job/src/main/kotlin/com/ifmix/core/job/attest/EvidenceCleanupCleaner.kt
+  h_b17efd5c751f9f 1,3-4,6-7,10-11,13,16-21,23-26
+core-job/src/main/kotlin/com/ifmix/core/job/attest/FraudMetricRefreshCleaner.kt
+  h_b17efd5c751f9f 1-79
+core-job/src/main/kotlin/com/ifmix/core/job/attest/ReceiptBackfillCleaner.kt
+  h_b17efd5c751f9f 1-71
+core-job/src/main/resources/application.yml
+  h_b17efd5c751f9f 34-43
+core-job/src/test/kotlin/com/ifmix/core/job/attest/AppAttestConfigTest.kt
+  h_b17efd5c751f9f 1-55
+core-job/src/test/kotlin/com/ifmix/core/job/attest/AttestRepoTestDb.kt
+  h_b17efd5c751f9f 1-204
+core-job/src/test/kotlin/com/ifmix/core/job/attest/AttestTestFakes.kt
+  h_b17efd5c751f9f 1-49
+core-job/src/test/kotlin/com/ifmix/core/job/attest/EvidenceCleanupTest.kt
+  h_b17efd5c751f9f 1,3-7,10-12,15-16,18,20-27,30,33-48,52-63
+core-job/src/test/kotlin/com/ifmix/core/job/attest/FraudMetricRefreshTest.kt
+  h_b17efd5c751f9f 1-105
+core-job/src/test/kotlin/com/ifmix/core/job/attest/ReceiptBackfillTest.kt
+  h_b17efd5c751f9f 1,3-5,8-11,14-15,17,19-23,25-28,31-49,53-69,72-76,78,80,82-88,90-106,108-111
+docs/DATABASE.md
+  h_b17efd5c751f9f 41,212-224
+docs/design/ai-api-key-pool.md
+  h_b17efd5c751f9f 162,169
+docs/design/install-tracking.md
+  h_b17efd5c751f9f 127-136,185,227,237-238,248-297,310,314-319,323-332
+docs/release.md
+  h_b17efd5c751f9f 7,12-23
+docs/superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md
+  h_b17efd5c751f9f 1-186
+docs/superpowers/specs/2026-10-04-install-attestation-design.md
+  h_b17efd5c751f9f 1-1481
+docs/superpowers/specs/2026-10-04-install-attestation-impl-plan.md
+  h_b17efd5c751f9f 1-443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16ba88e2cee2d9d7e1c6a4a87b71a7433bc429c7",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
