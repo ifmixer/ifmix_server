@@ -235,6 +235,8 @@ Secure Enclave key + recoverInstall（assertion 找回）+ attestExisting（存�
 
 ### T6 WP-E core-job（依赖 T2 的表结构；与 T5 并行）
 
+> **【2026-10-05 运维决定】三个 job 的执行入口已注释**（`AttestJobs` 的 @Bean 全部注释掉，代码/cleaner/测试保留）：线上暂不调度。影响面=0（createInstall/recover/attestExisting 纯本地验证）；代价=fraud_metric 缺失 + attestation_object 列增长。恢复步骤见 AttestJobs.kt 类注释与 docs/release.md。
+
 涉及：`core-job/build.gradle.kts`（+`com.nimbusds:nimbus-jose-jwt:9.40`、+Spring Boot Jackson starter）、
 新包 `com.ifmix.core.job.attest/`。
 

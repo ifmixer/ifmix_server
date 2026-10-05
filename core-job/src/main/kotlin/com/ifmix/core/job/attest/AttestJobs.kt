@@ -1,16 +1,6 @@
 package com.ifmix.core.job.attest
 
-import org.springframework.batch.core.job.Job
-import org.springframework.batch.core.job.builder.JobBuilder
-import org.springframework.batch.core.repository.JobRepository
-import org.springframework.batch.core.step.Step
-import org.springframework.batch.core.step.builder.StepBuilder
-import org.springframework.batch.core.step.tasklet.Tasklet
-import org.springframework.batch.infrastructure.repeat.RepeatStatus
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.transaction.PlatformTransactionManager
 
 /**
  * install attestation（WP-E）三个批处理 Job（名即 --job.name，外部 cron 触发，见 [com.ifmix.core.job.JobDispatcher]）。
@@ -21,10 +11,18 @@ import org.springframework.transaction.PlatformTransactionManager
  *  - `attestReceiptBackfill`：[ReceiptBackfillCleaner] —— iOS attestation_object 换 receipt（§5.8）。
  *  - `attestFraudMetricRefresh`：[FraudMetricRefreshCleaner] —— receipt 换 DeviceCheck two bits（§5.8 / §2 决策 2）。
  *  - `attestEvidenceCleanup`：[EvidenceCleanupCleaner] —— evidence 90 天清理（§5.7）。
+ *
+ * **【2026-10-05 运维决定】线上暂不调度这三个 job**（不影响 createInstall/recover/attestExisting ——
+ * 它们纯本地验证，不依赖 receipt/fraud_metric；代价仅 fraud metric 缺失 + attestation_object 列增长，
+ * 见规格 §5.8 与计划文档 T6 备注）。**执行入口已注释**：三个 @Bean 不再注册，`--job.name=attest*` 会以
+ * 退出码 2（未知 name）拒绝。Cleaner 组件保留且可单测。恢复调度：取消下方注释、重新部署，并在外部
+ * cron 配回三个 --job.name；首次启用会回填全部历史 attestation_object，注意对 Apple 的集中请求量。
  */
 @Configuration(proxyBeanMethods = false)
 class AttestJobs {
 
+    /*
+    // 【入口注释 2026-10-05】线上暂不调度；恢复 = 取消注释整个方法（三个都要恢复才完整）。
     @Bean
     fun attestReceiptBackfillJob(
         jobRepository: JobRepository,
@@ -66,4 +64,5 @@ class AttestJobs {
         val step = StepBuilder("attestEvidenceCleanupStep", jobRepository).tasklet(tasklet, jobTxManager).build()
         return JobBuilder("attestEvidenceCleanup", jobRepository).start(step).build()
     }
+    */
 }
