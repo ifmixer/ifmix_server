@@ -1,4 +1,4 @@
-package com.ifmix.core.api.infra.http.rpc
+package com.ifmix.core.api.infra.http.api
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
@@ -469,7 +469,7 @@ class ActionContextFactoryTest {
     fun `unknown meta fields are ignored for forward compatibility`() {
         val json = """{"meta":{"projectId":"$projectId","deviceModel":"X","futureField":123}}"""
         val body = tools.jackson.module.kotlin.jacksonObjectMapper()
-            .readValue(json, com.ifmix.core.api.infra.http.RpcRequestBody::class.java)
+            .readValue(json, com.ifmix.core.api.infra.http.ApiRequestBody::class.java)
         val m = body.meta
         assertThat(m).isNotNull()
         val ctx = relaxed.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), m)

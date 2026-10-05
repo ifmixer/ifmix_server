@@ -121,6 +121,8 @@ class ActionContextFactory(
 
         // ===== requestId（meta.reqId 优先，缺省回落 x-req-id header 通道）=====
         val requestId = m.reqId?.takeIf { it.isNotBlank() } ?: LogContext.requestId(request)
+        // 回写 attribute：GlobalExceptionHandler 错误路径构造 Envelope.reqId（factory 抛出/后续异常均可读到）。
+        request.setAttribute(RequestHeaders.PARSED_REQ_ID_ATTR, requestId)
 
         // ===== meta 独有字段 / 版本字段（仅记录用途，无格式校验）=====
         val userTz = m.userTz?.trim()?.takeIf { it.isNotEmpty() }

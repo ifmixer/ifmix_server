@@ -1,4 +1,4 @@
-package com.ifmix.core.api.bff.rpc.customer.demo
+package com.ifmix.core.api.bff.api.customer.demo
 
 import com.ifmix.core.api.infra.http.ActionSpec
 import com.ifmix.core.api.infra.http.ActorRequirement

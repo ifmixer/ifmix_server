@@ -1,4 +1,4 @@
-package com.ifmix.core.api.bff.rpc.customer.demo
+package com.ifmix.core.api.bff.api.customer.demo
 
 import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.dto.common.PageInfo
@@ -18,7 +18,7 @@ import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.http.GlobalExceptionHandler
 import com.ifmix.core.api.infra.http.LogContext
 import com.ifmix.core.api.infra.http.RequestMeta
-import com.ifmix.core.api.infra.http.RpcRequestBody
+import com.ifmix.core.api.infra.http.ApiRequestBody
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.demo.DemoFacade
 import com.ifmix.core.api.entity.common.ActorTypes
@@ -54,8 +54,9 @@ import kotlin.reflect.full.declaredMemberFunctions
 class DemoControllerTest {
 
     private val projectId = "ifmix-demo"
+    private val reqId = "req-demo-1"
     /** factory 解析 meta 后产出的 ctx（query 直用、mutation 写后读用「原 ctx」）。 */
-    private val ctx = ActionContext(projectId = projectId)
+    private val ctx = ActionContext(projectId = projectId, requestId = reqId)
     private val now = Instant.parse("2026-10-06T00:00:00Z")
 
     private val jwt = mock<AuthJwtService>()
@@ -87,14 +88,14 @@ class DemoControllerTest {
 
     // ===== 公共构造 =====
 
-    /** customer token + projectId 的合法 meta。 */
-    private fun validMeta() = RequestMeta(projectId = projectId, accessToken = "SECRET-customer")
+    /** customer token + projectId 的合法 meta（reqId 显式带上，供 Envelope.reqId 回显断言）。 */
+    private fun validMeta() = RequestMeta(reqId = reqId, projectId = projectId, accessToken = "SECRET-customer")
 
-    /** 用 mapper 把 meta/input 段组装成 controller 收到的 [RpcRequestBody]（wire 形状）；input 空 → null 段。 */
-    private fun body(meta: RequestMeta?, input: Map<String, Any?>): RpcRequestBody {
+    /** 用 mapper 把 meta/input 段组装成 controller 收到的 [ApiRequestBody]（wire 形状）；input 空 → null 段。 */
+    private fun body(meta: RequestMeta?, input: Map<String, Any?>): ApiRequestBody {
         val node = if (input.isEmpty()) null
         else objectMapper.convertValue(input, tools.jackson.databind.node.ObjectNode::class.java)
-        return RpcRequestBody(meta, node)
+        return ApiRequestBody(meta, node)
     }
 
     private fun request() = MockHttpServletRequest().apply { LogContext.start(this) }
@@ -126,6 +127,7 @@ class DemoControllerTest {
 
         assertEquals("200000", resp.body!!.code)
         assertEquals(todo.id, resp.body!!.data?.id)
+        assertEquals(reqId, resp.body!!.reqId, "Envelope.reqId must echo meta.reqId on success")
         verifyNoInteractions(globalTx)   // query 路径不进 withTx
         verifyNoInteractions(facade)     // query 直走聚合层
         LogContext.clear()
@@ -258,7 +260,7 @@ class DemoControllerTest {
     @Test
     fun `missing input segment fails with invalid request`() {
         val ex = assertThrows(Exception::class.java) {
-            controller.findTodoById(request(), RpcRequestBody(validMeta(), null))
+            controller.findTodoById(request(), ApiRequestBody(validMeta(), null))
         }
         // Jackson 3：FindTodoByIdInput.id 非空但缺失 → InvalidNullException（400 语义，
         // 由 Spring 经 HttpMessageNotReadable 边界映射为 INVALID_REQUEST/400000）
@@ -308,14 +310,14 @@ class DemoControllerTest {
     @Test
     fun `routes one-to-one with DemoSpecs and mutation prefix matches isMutation`() {
         val specs = setOf(
-            com.ifmix.core.api.bff.rpc.customer.demo.DemoSpecs.FIND_TODO_BY_ID,
-            com.ifmix.core.api.bff.rpc.customer.demo.DemoSpecs.FIND_TODOS_BY_IDS,
-            com.ifmix.core.api.bff.rpc.customer.demo.DemoSpecs.FIND_TODOS,
-            com.ifmix.core.api.bff.rpc.customer.demo.DemoSpecs.CREATE_TODO,
-            com.ifmix.core.api.bff.rpc.customer.demo.DemoSpecs.UPDATE_TODO,
-            com.ifmix.core.api.bff.rpc.customer.demo.DemoSpecs.BATCH_UPDATE_TODO_ITEMS,
-            com.ifmix.core.api.bff.rpc.customer.demo.DemoSpecs.DELETE_TODO,
-            com.ifmix.core.api.bff.rpc.customer.demo.DemoSpecs.DELETE_TODO_BY_IDS,
+            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.FIND_TODO_BY_ID,
+            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.FIND_TODOS_BY_IDS,
+            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.FIND_TODOS,
+            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.CREATE_TODO,
+            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.UPDATE_TODO,
+            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.BATCH_UPDATE_TODO_ITEMS,
+            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.DELETE_TODO,
+            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.DELETE_TODO_BY_IDS,
         )
         assertEquals(8, specs.size)
         specs.forEach { spec ->

@@ -45,7 +45,8 @@ class GlobalExceptionHandler(
             ex.retryAfterSec != null -> resp.header("Retry-After", ex.retryAfterSec.toString())
             code == ErrorCode.AI_UNAVAILABLE -> resp.header("Retry-After", "60")
         }
-        return resp.body(body)
+        // 错误路径 reqId：factory 已解析（attribute）优先，其次 x-req-id header，再无则 null。
+        return resp.body(body.copy(reqId = reqIdOf(request)))
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
@@ -76,6 +77,16 @@ class GlobalExceptionHandler(
         log.atError().setCause(ex).addKeyValue("headers", HeaderDump.of(request)).log("Unhandled exception")
         val msg = if (exposeErrors) (ex.message ?: "error") else GENERIC_SERVER_ERROR_MESSAGE
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(Envelope.error(ErrorCode.INTERNAL.externalCode, msg))
+            .body(Envelope.error(ErrorCode.INTERNAL.externalCode, msg).copy(reqId = reqIdOf(request)))
+    }
+
+    /**
+     * 错误路径 reqId 兜底（rollout §3.1）：factory 已解析的 attribute（[RequestHeaders.PARSED_REQ_ID_ATTR]）优先，
+     * 其次 `x-req-id` header（factory 之前的失败，如 body 不可读），再无则 null（明文 curl 不带 reqId）。
+     */
+    private fun reqIdOf(request: jakarta.servlet.http.HttpServletRequest?): String? {
+        if (request == null) return null
+        return request.getAttribute(RequestHeaders.PARSED_REQ_ID_ATTR) as? String
+            ?: request.getHeader(RequestHeaders.REQ_ID)?.takeIf { it.isNotBlank() }
     }
 }

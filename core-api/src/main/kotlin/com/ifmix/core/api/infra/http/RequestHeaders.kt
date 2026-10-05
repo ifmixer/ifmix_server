@@ -22,4 +22,10 @@ object RequestHeaders {
     const val WIREP_VERSION = "x-wirep-version"
     /** Cloudflare bot score（1-99，越低越像 bot）。需在 CF Transform Rule 里把 cf.bot_management.score 写入该请求头。 */
     const val CF_BOT_SCORE = "cf-bot-score"
+
+    /**
+     * RPC 请求 attribute key（非 header）：[ActionContextFactory.fromRpc] 解析出 requestId 后回写，
+     * 供 [GlobalExceptionHandler] 在错误路径构造 Envelope.reqId（factory 之前的失败用 [REQ_ID] header 兜底）。
+     */
+    const val PARSED_REQ_ID_ATTR = "com.ifmix.parsed.reqId"
 }
