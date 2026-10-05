@@ -313,7 +313,7 @@ Suite（RFC 9180 标识符）：`KEM = DHKEM(X25519, HKDF-SHA256) 0x0020`，`KDF
 ```
 ver(1)=3 | kid(1) | enc(32) | flags(1) | HPKE-Seal(pkR=kid 对应公钥, info, aad, pt) ‖ tag
 info = "ifmix-wire-v3"
-aad  = ver ‖ kid ‖ enc ‖ flags（36 字节，flags 参与 AAD 防翻转）
+aad  = ver ‖ kid ‖ enc ‖ flags（35 字节，1+1+32+1；flags 参与 AAD 防翻转）
 pt   = ts_ms(8, BE) ‖ body（body 为原 JSON；flags bit0=1 表示 pt 整体 gzip 压缩后作为被加密输入）
 ```
 
@@ -351,7 +351,7 @@ flags(1) | nonce(12) | AES-256-GCM(resKey, nonce, aad = enc ‖ flags, payload) 
 > 实现计划已按前后端拆分：服务端 [wire-v3-plan-server](wire-v3-plan-server.md)、客户端 [wire-v3-plan-client](wire-v3-plan-client.md)（可并行执行，前后端各 1 个 agent，联调 1 个收尾）。
 
 1. 服务端：新增 HPKE 实现（替代 `WireCrypto` 的 HKDF/信封逻辑，类名/接入点不变），配置解析、Filter、降级、400003 语义不动；RFC 向量测试 + 端到端向量测试。
-2. 客户端：`apps/shared/src/api/wireCrypto.ts` 重写为 HPKE 封装（含请求 gzip + 解压上限对齐），固定向量测试对齐 RFC。
+2. ~~客户端：`apps/shared/src/api/wireCrypto.ts` 重写为 HPKE 封装（含请求 gzip + 解压上限对齐），固定向量测试对齐 RFC。~~ ✅ 2026-10-06 完成（实际落点 `packages/client-sdk/packages/api/src/api/wireCrypto.ts`，见 wire-v3-plan-client.md T2/T3）。
 3. 双端联调：真机走通 createScan（>4KB 请求验证压缩）+ 大响应 gzip + 降级路径（key 未配 → v1 明文）。
 4. 文档：本节状态改为已实现；release.md / Changelog 回写。
 

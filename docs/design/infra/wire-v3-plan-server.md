@@ -17,7 +17,7 @@
 Suite:   KEM=0x0020 DHKEM(X25519,HKDF-SHA256) | KDF=0x0001 HKDF-SHA256 | AEAD=0x0002 AES-256-GCM | mode=base
 info:    "ifmix-wire-v3"
 请求:    ver(1)=3 | kid(1) | enc(32) | flags(1) | HPKE-Seal(pkR=kid公钥, info, aad, pt) ‖ tag(16)
-         aad = ver‖kid‖enc‖flags（36B，flags 参与 AAD 防翻转）
+         aad = ver‖kid‖enc‖flags（35B，1+1+32+1；flags 参与 AAD 防翻转）
          pt  = ts_ms(8,BE) ‖ body ；flags bit0=1 → pt 整体 gzip 后再加密
          pt > 4096 才 gzip（4096 不压、4097 压）
 响应:    flags(1) | nonce(12) | AES-256-GCM(resKey, nonce, aad=enc‖flags, payload) ‖ tag(16)
