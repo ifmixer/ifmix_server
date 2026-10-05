@@ -1,0 +1,35 @@
+core-api/src/main/kotlin/com/ifmix/core/api/dto/common/FilterGroupDto.kt
+  s_6263bb97dddc59::t_7d2c45b1f4c794 1-13
+core-api/src/main/kotlin/com/ifmix/core/api/dto/common/FindOptionsDto.kt
+  s_b16a4a219f3717::t_6a2f4608ffce4d 1-15
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/DemoRpcMappers.kt
+  s_b16a4a219f3717::t_5d9f66bcbfb1e6 1-224
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/TodoInputs.kt
+  s_b16a4a219f3717::t_3abd3f9e3cca07 1-29
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/TodoViews.kt
+  s_b16a4a219f3717::t_b1866ace6fa7a1 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b14dbbae3b1b342ab3bc90d1608d808b76a36fa3",
+  "prompts": {},
+  "sessions": {
+    "s_6263bb97dddc59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaac9707533b23b71",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    },
+    "s_b16a4a219f3717": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a439536327c567b9d",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
