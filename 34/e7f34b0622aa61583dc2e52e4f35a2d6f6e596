@@ -1,0 +1,18 @@
+docs/design/proposals/graphql-to-http-rpc-openapi.md
+  h_b17efd5c751f9f 4-7,19-24,28,34-84,94,113-116,145-148,223,264,279-294
+docs/design/proposals/rpc-pilot-client.md
+  h_b17efd5c751f9f 1-77
+docs/design/proposals/rpc-pilot-server.md
+  h_b17efd5c751f9f 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "34e7f34b0622aa61583dc2e52e4f35a2d6f6e596",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
