@@ -1,0 +1,21 @@
+core-api/src/main/resources/application.yml
+  s_626a923fe44bc3::t_77c4919745e332 112-147
+docs/design/ai-api-key-pool.md
+  s_626a923fe44bc3::t_952ef814279073 162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d823692bb18c676a89368a0a2f499f59b3e1572c",
+  "prompts": {},
+  "sessions": {
+    "s_626a923fe44bc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b34dc526-22e4-47c7-b827-bd3064965bf5",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
