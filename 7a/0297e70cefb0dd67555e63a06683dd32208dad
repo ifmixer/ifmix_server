@@ -1,0 +1,14 @@
+docs/superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md
+  h_b17efd5c751f9f 1-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a0297e70cefb0dd67555e63a06683dd32208dad",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
