@@ -26,7 +26,7 @@ import java.net.URI
 import java.util.concurrent.TimeoutException
 
 /**
- * 异常分类结果（设计见 docs/superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md）：
+ * 异常分类结果（设计见 docs/design/ai/api-key-disable-and-probe-skip.md）：
  * 冷却秒数 + 冷却原因（"429"/"401"/"403"/"timeout"/"error"，写 Redis value 与日志）
  * + [typedInvalidKey]——是否由**类型化** 401/403 异常判定（cause 链含
  * [UnauthorizedException] / [PermissionDeniedException]）。
@@ -44,7 +44,7 @@ internal data class KeyFailure(
 /**
  * ScanRunner 基于 Spring AI OpenAI-compatible model。
  *
- * key 池交互（provider 无关，设计见 docs/design/ai-api-key-pool.md）：
+ * key 池交互（provider 无关，设计见 docs/design/ai/api-key-pool.md）：
  * - 每次尝试从 [AiApiKeyStore.pick] 轮询取 key（候选全冷却返回 null，计为一次 attempt）；
  * - 失败按类型冷却（时长见 app.ai.apikey-pool.cooldown.*）：429→300s、401/403（key 失效）→1h、
  *   超时→300s、其他→30s；**类型化** 401/403（cause 链含 Unauthorized/PermissionDenied）额外永久禁用

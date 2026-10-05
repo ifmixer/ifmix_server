@@ -25,7 +25,7 @@ import org.testcontainers.containers.PostgreSQLContainer
 import java.util.UUID
 
 /**
- * disableKeyFn 的真库验证（设计见 docs/superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md）：
+ * disableKeyFn 的真库验证（设计见 docs/design/ai/api-key-disable-and-probe-skip.md）：
  * 插入 enabled=true 行 → 经 [AiConfig.aiApiKeyStore] 组装的 store.disableKey → 断言 enabled=false；
  * 0 行场景（不存在的 key id）为幂等 no-op。
  * 不起 Spring 上下文，PG + Flyway + newKSqlClient 模式沿用 CustomerScanMetricsRepositoryDbTest；

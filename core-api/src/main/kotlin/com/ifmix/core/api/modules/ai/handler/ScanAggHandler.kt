@@ -415,7 +415,7 @@ class ScanAggHandler(
     fun findById(sc: ModuleCtx, id: UUID): ScanRecord? =
         scanRepo.findByIdOwned(sc, sc.action.mustGetProjectId(), sc.action.mustGetActorId(), id)
 
-    // ==================== DeepResearch 异步任务（设计 docs/superpowers/specs/2026-10-02） ====================
+    // ==================== DeepResearch 异步任务（设计 docs/design/ai/deep-research-async.md） ====================
 
     companion object {
         /** 惰性超时：IN_PROGRESS 且 updatedAt 早于该秒数 → 查询侧 CAS 置 FAILED(TIMEOUT)（设计决策 8，5 min）。 */

@@ -1,5 +1,5 @@
 -- V10: DeepResearch 异步化 + 历史版本（PG premium_result 存储；取代作废的 R2 方案）
--- 设计 docs/superpowers/specs/2026-10-03-deep-research-async-pg-versioning-design.md §4
+-- 设计 docs/design/ai/deep-research-async.md §4
 
 ALTER TABLE public.core_ai_scan_deep_research
     ADD COLUMN status smallint NOT NULL DEFAULT 30,   -- DEFAULT 仅为旧行回填

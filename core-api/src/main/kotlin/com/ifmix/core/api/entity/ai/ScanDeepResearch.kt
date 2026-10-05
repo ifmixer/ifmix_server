@@ -6,7 +6,7 @@ import java.util.UUID
 
 /**
  * DeepResearch 任务实体。一 scan 可有多条历史版本（每次发起新建记录），
- * 权威指针在 scan_record.latest_deep_research_id（见 docs/superpowers/specs/2026-10-03 设计 §3.4）。
+ * 权威指针在 scan_record.latest_deep_research_id（见 docs/design/ai/deep-research-async.md 设计 §3.4）。
  * scanRecordId 为逻辑外键（跨聚合，不用 @ManyToOne）。
  * 结果（premium_result JSONB）直接存 PG；历史版本长期保留，归档策略见设计 §1.1（本期不做）。
  */

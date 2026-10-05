@@ -4,7 +4,7 @@ package com.ifmix.core.api.entity.ai
  * 图片引用（存储在 `ai_scan_record.image_keys` JSONB 中）。图片顺序由数组顺序决定。
  *
  * category — 图片分类编码（Int 全链路透传，主图/默认为 0，其余从 10 起步长 10 便于插值）。
- * 完整码表见 docs/DATABASE.md「枚举码表登记 / ImageRef.category」：
+ * 完整码表见 docs/guide/DATABASE.md「枚举码表登记 / ImageRef.category」：
  *
  * | Code | 名称        | 说明                          |
  * |------|-------------|-------------------------------|
@@ -25,7 +25,7 @@ data class ImageRef(val key: String, val category: ImageCategory? = null)
 /** 图片分类编码。typealias（Int 全链路透传），码表见 [ImageCategories]。 */
 typealias ImageCategory = Int
 
-/** 图片分类码表（主图/默认 0，其余从 10 起步长 10）。见 docs/DATABASE.md。 */
+/** 图片分类码表（主图/默认 0，其余从 10 起步长 10）。见 docs/guide/DATABASE.md。 */
 object ImageCategories {
     /** 主图 / 默认。scan/DeepResearch 图片缺省 category 时统一落此值。 */
     const val MAIN: ImageCategory = 0

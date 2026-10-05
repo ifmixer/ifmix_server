@@ -3,7 +3,7 @@
 # 「必须填」的密钥/连接串不放 base，由本文件用环境变量注入（local 则在 application-local.yml 写死）。
 #
 # 启动：SPRING_PROFILES_ACTIVE=prod java -jar core-api.jar
-# 环境变量来源：systemd EnvironmentFile=/opt/app/env（见 docs/DEPLOY.md）。
+# 环境变量来源：systemd EnvironmentFile=/opt/app/env（见 docs/ops/DEPLOY.md）。
 #
 # 必须在 /opt/app/env 提供（缺失即启动失败，刻意为之）：
 #   PG_WRITER_URL / PG_READER_URL / PG_USERNAME / PG_PASSWORD

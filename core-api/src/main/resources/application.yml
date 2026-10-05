@@ -1,7 +1,7 @@
 # 基础配置：默认值一律取「线上版本」；环境相关值用 ${ENV:线上默认}。
 # 本地开发靠 application-local.yml 把线上默认覆盖回本地值（graphiql/swagger 打开、日志 DEBUG、
 #   header 严格、本地 DB/Redis/R2、dev JWT 等）。
-# 生产密钥/连接串由环境变量注入（/opt/app/env，见 docs/DEPLOY.md）；个别不便用 env 的项放 application-prod.yml。
+# 生产密钥/连接串由环境变量注入（/opt/app/env，见 docs/ops/DEPLOY.md）；个别不便用 env 的项放 application-prod.yml。
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE}
@@ -93,7 +93,7 @@ app:
     # 未配置时 /webhooks/iap/google 一律 403（IAP 未启用的环境保持关闭，防无鉴权写入）。
     google-webhook-token: ${GOOGLE_WEBHOOK_TOKEN:}
   ai:
-    # AI 通用配置（provider 无关；key 池设计见 docs/design/ai-api-key-pool.md）
+    # AI 通用配置（provider 无关；key 池设计见 docs/design/ai/api-key-pool.md）
     model-fallback-order: ""
     # 提示词版本：加载 prompts/${name}_${promptVersion}.md，并随扫描结果落库
     prompt-version: ${SCAN_PROMPT_VERSION:v10}

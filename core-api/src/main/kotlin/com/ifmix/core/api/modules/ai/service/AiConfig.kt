@@ -26,11 +26,11 @@ import java.util.concurrent.atomic.AtomicLong
  * AiApiKeyStore 的四个接缝（loadKeys / readCooldowns / markCooldownFn / disableKeyFn）都以 lambda 注入
  * （不适合直接 @Component 注册），在此处用 sqlClient + StringRedisTemplate 组装。
  *
- * 降级（设计见 docs/design/ai-api-key-pool.md）：Redis 异常 → 视为「未冷却」放行 + 限频 WARN，
+ * 降级（设计见 docs/design/ai/api-key-pool.md）：Redis 异常 → 视为「未冷却」放行 + 限频 WARN，
  * 不设内存兜底层（重试上界已存在）。注意不要改成「判返回 null」——连接断开时 Spring 抛的是
  * RedisConnectionFailureException（DataAccessException 子类），判空兜不住。
  *
- * 禁用（docs/superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md）：类型化 401/403
+ * 禁用（docs/design/ai/api-key-disable-and-probe-skip.md）：类型化 401/403
  * 的永久禁用是 best-effort 副作用——DB 写失败只限频 WARN、Redis 1h 冷却仍在、300s 后列表重载移出，
  * 因此 **任何异常都不得逃出 disableKeyFn**（catch Exception 整体收敛而非按类型列举——
  * Jimmer 异常不经 Spring 翻译、不是 DataAccessException，按类型列举兜不住）。

@@ -18,7 +18,7 @@ import java.util.UUID
 
 /**
  * 锁定「任何异常不得逃出 disableKeyFn」不变量（设计见
- * docs/superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md）：
+ * docs/design/ai/api-key-disable-and-probe-skip.md）：
  * 禁用是扫描路径上的 best-effort 副作用，DB 故障绝不能让扫描失败。
  * Jimmer 异常不经 Spring 翻译、不是 DataAccessException，按类型列举兜不住——
  * 实现是 catch (Exception) 整体收敛，本测试用纯单测（stub [KSqlClient]，不依赖 DB）锁死。

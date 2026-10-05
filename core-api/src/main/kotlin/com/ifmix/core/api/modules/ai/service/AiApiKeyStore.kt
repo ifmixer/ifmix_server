@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 /**
  * AI API Key 池（provider 无关的通用逻辑）：轮询选取 + 分布式冷却。
  *
- * 设计（docs/design/ai-api-key-pool.md）：
+ * 设计（docs/design/ai/api-key-pool.md）：
  * - key 列表内存缓存（TTL 内复用），加载时打乱（shuffled）切断导入数据按账号聚集的相邻热点；
  * - 冷却状态在 Redis（SET + EX，自带过期解冻），跨实例共享、重载/重启不清零；
  * - 选取为 round-robin + 探测窗口：游标每请求 +1（初值随机），一次批量读探测 probe 个候选，

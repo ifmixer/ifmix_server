@@ -32,7 +32,7 @@ import java.util.UUID
 
 /**
  * 类型化 401/403 → 永久禁用 + message 兜底 → 只冷却的 runner 侧行为（设计见
- * docs/superpowers/specs/2026-10-04-ai-key-disable-and-probe-skip-design.md）。
+ * docs/design/ai/api-key-disable-and-probe-skip.md）。
  * mock ChatClient.prompt().call() 按分支抛出类型化/兜底异常，断言 disableKey 的调用与否；
  * disableKey 本身抛任意异常时主流程不中断（runner 对禁用 seam 无返回值依赖）。
  *

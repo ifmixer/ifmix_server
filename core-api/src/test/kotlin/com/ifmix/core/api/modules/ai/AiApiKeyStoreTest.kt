@@ -11,7 +11,7 @@ import com.ifmix.core.api.modules.ai.service.AiApiKeyStore
 import org.junit.jupiter.api.Test
 
 /**
- * AI API Key 池纯逻辑单测（Redis 读写用内存 fake lambda，见 docs/design/ai-api-key-pool.md）。
+ * AI API Key 池纯逻辑单测（Redis 读写用内存 fake lambda，见 docs/design/ai/api-key-pool.md）。
  */
 class AiApiKeyStoreTest {
 
