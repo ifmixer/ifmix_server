@@ -1,0 +1,23 @@
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/DemoRpcMappers.kt
+  s_8afd7ba9cec998::t_71c25cea162991 73-76
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/TodoInputs.kt
+  s_8afd7ba9cec998::t_cba90168b2fe37 16-18
+core-api/src/test/kotlin/com/ifmix/core/api/dto/demo/DemoRpcMappersTest.kt
+  s_8afd7ba9cec998::t_1a1c4051f86e3e 48-49,102,108,111-115,130-139,141-142,233-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "179767c4fbe100f471bb840ff8458098a0049bc5",
+  "prompts": {},
+  "sessions": {
+    "s_8afd7ba9cec998": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a501d82b1c226ddc6",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
