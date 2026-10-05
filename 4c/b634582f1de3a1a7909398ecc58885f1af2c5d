@@ -1,0 +1,25 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiApiKeyStore.kt
+  s_626a923fe44bc3::t_a94541686027de 93
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  s_626a923fe44bc3::t_bfcc7e8ad9c266 260,263,267-269
+core-api/src/main/resources/application.yml
+  s_626a923fe44bc3::t_43a296de46dd78 83-84
+core-api/src/test/kotlin/com/ifmix/api/core/common/jimmer/cluster/ClusterRegistryTest.kt
+  s_626a923fe44bc3::t_ff162b11ad6efc 6-7,12-28,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cb634582f1de3a1a7909398ecc58885f1af2c5d",
+  "prompts": {},
+  "sessions": {
+    "s_626a923fe44bc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b34dc526-22e4-47c7-b827-bd3064965bf5",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
