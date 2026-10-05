@@ -364,8 +364,10 @@ attestationStatus）、core-job 三 job（回填 drain + already_used 放弃 + �
 - [低] store_mismatch 判定逻辑在 Fetcher（provider==110 && storeType!=10），Guard.logStoreMismatch 不比较；
   1b 的 provider 120 交叉核对暂无调用方。逻辑对但分散，1b 时收拢进 Guard。
 
-流程状态：T5/T6/T7/T11 产物目前**全部未 commit**（worktree 工作树 + untracked：AttestGuard.kt、
-core-job/attest/ 整包、测试、docs）。commit 前按 AGENTS.md 跑 GitNexus detect-changes。
+流程状态：T5/T6/T7/T11 服务端产物**已全部 commit**（`c8f1df6`，含 [中] key_reused 修复 + 156 个相关测试全绿；
+GitNexus detect-changes 已跑：scope=all「No changes detected」）。**V15 已在真实库验证**（2026-10-05）：
+临时库 `attest_v15_check` 全量 15/15 migrate + 索引/列 DDL 核对（uk_subject 部分唯一索引、4 个部分/普通索引、
+sign_count/receipt 列默认值）+ `core_api_local` 增量单步 V15 成功；临时库已删。
 注意：主 checkout（~/ai/myprojects/ifmix_server）已被切到 feature/api-key 分支（另一会话的 AI key 池工作，
 含未提交的 e2e 删除——与 attest 无关，勿混淆）；feature/attest 在 worktree
 /Users/jason/orca/workspaces/ifmix_server/attest。
