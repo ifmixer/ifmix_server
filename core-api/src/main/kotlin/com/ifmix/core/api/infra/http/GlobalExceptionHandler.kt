@@ -39,7 +39,12 @@ class GlobalExceptionHandler(
         val body = if (details != null) Envelope.errorWithDetails(code.externalCode, msg, details)
             else Envelope.error(code.externalCode, msg)
         val resp = ResponseEntity.status(code.status)
-        if (code == ErrorCode.AI_UNAVAILABLE) resp.header("Retry-After", "60")
+        // Retry-After：retryAfterSec（限流类 429 / 降级 503）优先于 AI_UNAVAILABLE 的固定 60s。
+        // 用 when 保证头只写一次——ResponseEntity.header() 是 append 语义，两条 if 会留下重复头。
+        when {
+            ex.retryAfterSec != null -> resp.header("Retry-After", ex.retryAfterSec.toString())
+            code == ErrorCode.AI_UNAVAILABLE -> resp.header("Retry-After", "60")
+        }
         return resp.body(body)
     }
 

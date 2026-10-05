@@ -49,6 +49,12 @@ data class ActionContext(
     val appVersion: String? = null,
     /** x-ota-version：热更新版本号，形如 `1-23-3`（runtimeVersion-buildNumber-otaSeq）。原样透传。 */
     val otaVersion: String? = null,
+    /** IANA 时区名（RPC meta 独有，可选，仅记录用途，无格式校验）。 */
+    val userTz: String? = null,
+    /** 设备型号（RPC meta 独有，可选，仅记录用途）。 */
+    val deviceModel: String? = null,
+    /** 操作系统版本（RPC meta 独有，可选，仅记录用途）。 */
+    val osVersion: String? = null,
     // ===== 操作元信息 =====
     val actionName: String? = null,
     val isMutation: Boolean = false,
@@ -82,6 +88,9 @@ data class ActionContext(
         "loc" to locale,
         "cur" to currency,
         "cty" to country,
+        "tz" to userTz,
+        "dm" to deviceModel,
+        "os" to osVersion,
     )
 
     fun mustGetProjectId() = projectId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-project-id is required")
