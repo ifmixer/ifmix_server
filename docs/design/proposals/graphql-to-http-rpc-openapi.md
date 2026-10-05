@@ -4,7 +4,9 @@
 >
 > **2026-10-06 讨论定稿**：去 GraphQL 的决策依据、请求信封 `{meta, input}` 与命名（§一）、header 留守原则与限流职责边界（§一）、与 wire v3 的合并执行顺序（§六）。
 >
-> **试点实施**：demo 模块作为首个迁移对象，实现任务已拆分给前后端 agent——服务端见 [rpc-pilot-server](rpc-pilot-server.md)、客户端见 [rpc-pilot-client](rpc-pilot-client.md)（试点通过 review 前不迁移其他模块、不删 GraphQL）。URL 决策：不带 resourceId，统一 `POST /customer/core/rpc/{reqName}`；DTO 分界规则见 §一「DTO 与转换」。
+> **试点实施**：demo 模块作为首个迁移对象，实现任务已拆分给前后端 agent——服务端见 [rpc-pilot-server](rpc-pilot-server.md)、客户端见 [rpc-pilot-client](rpc-pilot-client.md)（试点通过 review 前不迁移其他模块、不删 GraphQL）。URL 决策：不带 resourceId，统一 `POST /rpc/customer/core/{actionName}`；DTO 分界规则见 §一「DTO 与转换」。
+>
+> **全量迁移**：demo 之后的客户端迁移计划见 [rpc-rollout-client](rpc-rollout-client.md)（R0–R5 阶段、39 个 action 新名总表、四个 review gate；action 命名四段规范 `{q|m}_{module}_{resource}_{action}` 的单一真相表在该文件 §1）。
 
 **目标：** 在移动端上线前，将 `core-api` 的 34 个 DGS GraphQL action 迁移为 HTTP RPC，并以 OpenAPI/Swagger 作为唯一移动端 API 契约。
 
