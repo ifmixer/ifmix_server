@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-10-04-install-attestation-impl-plan.md
+  s_bbd8c737302094::t_f636c8d372ce56 367-370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6042e069fc4a013892add2811754a70a76ece4eb",
+  "prompts": {},
+  "sessions": {
+    "s_bbd8c737302094": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49b8941f-ca8e-4719-a626-34dbd76b2de1",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
