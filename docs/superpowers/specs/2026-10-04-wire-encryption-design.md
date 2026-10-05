@@ -20,17 +20,10 @@
   - 强制 v2：服务端继续接受明文 v1；何时拒绝 v1 另行决定。
 - 加密不替代服务端鉴权 / 限流 / App Check（App Check 由另一份规格负责）。
 
-### 适用范围（白名单）
+### 适用范围
 
-客户端按 apiName 白名单决定是否加密，名单外请求一律明文 v1：
-
-| apiName | 理由 |
-|---|---|
-| `m_install_createInstall` | 签发 installToken |
-| `m_customer_createAnonymousCustomer` | 响应含 accessToken / refreshToken |
-| `q_ai_findMyScanById` | 扫描详情 + 深度研究结果（`latestDeepResearch.premiumResult`，DR 结果只经此接口下发） |
-
-扩展 = 只往名单加 apiName（OTA 即可），**机制、格式、服务端都不改**。服务端 filter 对任何路径的 v2 请求都生效。
+客户端对**所有** GraphQL 操作加密（gqlOp 持有 wire 参数且本进程未降级即加密）；名单机制不存在。
+服务端 filter 按 `x-proto-version: 2` 头生效，与路径无关，从来不需要白名单。
 
 ## 2. 线上格式与算法
 
