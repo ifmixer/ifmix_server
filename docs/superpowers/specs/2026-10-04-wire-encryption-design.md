@@ -3,7 +3,7 @@
 日期：2026-10-04
 状态：待用户审查
 范围：服务端 `ifmix_server/core-api` + 客户端 `antique/apps/shared`、`antique/apps/antique`
-目标：对白名单内 API 的请求/响应 body 做应用层加密，抓包（含设备持有者自己装证书抓包）看不到明文；
+目标：对全部 GraphQL 操作（白名单机制已移除，所有接口加密）的请求/响应 body 做应用层加密，抓包（含设备持有者自己装证书抓包）看不到明文；
 老客户端不受影响；性能与流量「不比 v1 差」。
 
 ---
@@ -20,17 +20,10 @@
   - 强制 v2：服务端继续接受明文 v1；何时拒绝 v1 另行决定。
 - 加密不替代服务端鉴权 / 限流 / App Check（App Check 由另一份规格负责）。
 
-### 适用范围（白名单）
+### 适用范围
 
-客户端按 apiName 白名单决定是否加密，名单外请求一律明文 v1：
-
-| apiName | 理由 |
-|---|---|
-| `m_install_createInstall` | 签发 installToken |
-| `m_customer_createAnonymousCustomer` | 响应含 accessToken / refreshToken |
-| `q_ai_findMyScanById` | 扫描详情 + 深度研究结果（`latestDeepResearch.premiumResult`，DR 结果只经此接口下发） |
-
-扩展 = 只往名单加 apiName（OTA 即可），**机制、格式、服务端都不改**。服务端 filter 对任何路径的 v2 请求都生效。
+客户端对**所有** GraphQL 操作加密：gqlOp 持有 wire 参数且本进程未降级即加密。
+服务端 filter 按 `x-proto-version: 2` 头生效、与路径无关，从来不需要白名单。
 
 ## 2. 线上格式与算法
 
@@ -115,8 +108,7 @@ flags bit0 = 1 → payload = gzip(原文)；bit1–7 保留，必须为 0
 - 依赖变化：删除 `@noble/curves`、`@noble/hashes`、`@noble/ciphers`；新增 `fflate`（固定版本，只用 gunzip）。
 
 ### `apps/shared/src/api/graphql.ts`
-- `WIRE_API_NAMES: ReadonlySet<string>`：第 1 节白名单，唯一需要随扩展修改的地方。
-- `GqlOpts.wire?: { key: WireKey; crypto: WireCryptoImpl }`。gqlOp 在 `wire` 存在、apiName 在白名单内、且本进程未降级时才加密。
+- `GqlOpts.wire?: { key: WireKey; crypto: WireCryptoImpl }`。gqlOp 在 `wire` 存在且本进程未降级时，对所有操作加密（无 apiName 白名单）。
 - `sendMaybeEncrypted` 负责加密、发送、降级（第 5 节），并记录 `sealMs` / `openMs` / `resBytes`，通过回调上报。
 
 ### `apps/shared/src/api/client.ts`
@@ -159,6 +151,7 @@ flags bit0 = 1 → payload = gzip(原文)；bit1–7 保留，必须为 0
 | 客户端加密本身抛错 | — | 本次直接发明文；本进程后续都走明文 |
 
 - 415 / 400003 可以安全重发：解密在服务端最外层 filter，业务还没执行。
+- 全接口模式（无白名单）下，415 / 400003 触发的进程级降级影响整个 app——**所有**接口降为明文，不再是单接口粒度；这是接受的取舍。
 - 响应解密失败不重发：业务可能已执行（例如扣了配额）。
 - 降级状态只在进程内有效，重启 app 后重新尝试；代码里用 `ponytail:` 注释标注这个取舍。
 
@@ -184,7 +177,7 @@ kid 取值 1–255。
 2. 发新原生包（runtime 3），prod 公钥写入 `env.ts`，默认开关 `false`。
 3. 内部验证：用 Developer 开关在低端 Android + iPhone 上实测。
 4. 全量门槛：低端 Android 上 `sealMs + openMs` 的 p95 < 10ms。满足后 OTA 把默认开关改为 `true`；出问题时 OTA 改回 `false`（kill switch）。
-5. 全量前用 curl 对比一次流量：同一个大响应，v1 经 CF 的传输大小 vs v2 密文大小。
+5. 全量前用 curl 对比一次流量：抽多个大响应接口，v1 经 CF 的传输大小 vs v2 密文大小。
 
 ## 7. 测试
 
@@ -202,7 +195,7 @@ kid 取值 1–255。
 ### 客户端 shared（注入 `node:crypto`）
 - `wireCrypto.test.ts`：对独立的 node:crypto 服务端实现做往返；篡改；未知 flag；gzip 响应；固定向量。
 - gqlOp 测试：
-  - 白名单内加密、名单外明文；
+  - 所有操作加密；降级后保持明文；
   - 415 / 400003 降级，降级后保持明文；
   - 响应解密失败不重发；
   - 明文错误页照常处理；
@@ -214,7 +207,7 @@ kid 取值 1–255。
 - 移除为 noble 加的 babel 转换和 TextEncoder 补丁。
 
 ### E2E
-- 本地 `bootRun`，用 shared client 跑白名单三个接口；`q_ai_findMyScanById` 选一条 >4KB 的记录覆盖 gzip 分支。临时脚本，跑完删除。
+- 本地 `bootRun`，用 shared client 跑代表性接口集（小响应 + 一条 >4KB 大响应，覆盖 gzip 分支）。临时脚本，跑完删除。
 - 真机：用 Developer 开关手动验证。
 
 ## 8. 相对已实现版本（未提交）的改动清单
@@ -224,9 +217,10 @@ kid 取值 1–255。
   - Filter / 配置 / 错误码 / 头常量不变。
 - 客户端 shared：
   - noble 换成注入式 `WireCryptoImpl`；加 fflate；
-  - 白名单 `WIRE_API_NAMES`；`GqlOpts.wireKey` 改为 `wire`；加 `onWireMetrics`。
+  - `GqlOpts.wireKey` 改为 `wire`；加 `onWireMetrics`。
 - 客户端 app：
   - 加 quick-crypto 三个原生依赖、config plugin、runtimeVersion 3；
   - `currentWire()` 加 web 排除；指标上报；
   - 删 noble 相关的 jest 配置和随机数补丁。
 - 测试：按第 7 节补齐；重新生成跨语言向量。
+- 白名单机制移除，所有 GraphQL 操作加密（服务端无协议改动，filter 本与路径无关）。

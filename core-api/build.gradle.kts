@@ -191,3 +191,12 @@ tasks.register<JavaExec>("flywayRepair") {
     mainClass.set("com.ifmix.core.api.infra.jimmer.FlywayRepair")
     classpath = sourceSets["main"].runtimeClasspath
 }
+
+// wire 加密 key 生成 — X25519 keypair → 服务端私钥 b64（WIRE_CRYPTO_KEYS）+ 客户端公钥 hex（env.ts wireKey）。
+// 用法: ./gradlew :core-api:genWireDevKey
+tasks.register<JavaExec>("genWireDevKey") {
+    group = "build"
+    description = "Generate a wire-crypto X25519 keypair (server private key b64 + client public key hex)."
+    mainClass.set("com.ifmix.core.api.infra.http.GenWireDevKeyKt")
+    classpath = sourceSets["main"].runtimeClasspath
+}

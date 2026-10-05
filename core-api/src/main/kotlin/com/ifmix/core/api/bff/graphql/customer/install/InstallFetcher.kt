@@ -25,7 +25,10 @@ class InstallFetcher(
         // 无鉴权：requireActorType=null
         val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
         val clientIp = ctx.clientIp ?: "unknown"
-        if (!rateLimiter.checkFixedWindow("install:$clientIp", RATE_LIMIT, RATE_WINDOW_SEC)) {
+        // 每 IP 两道：短窗口防突发 + 日窗口防累计滥用（同 AiFetcher 模式）。
+        if (!rateLimiter.checkFixedWindow("install:min:$clientIp", RATE_LIMIT, RATE_WINDOW_SEC) ||
+            !rateLimiter.checkFixedWindow("install:day:$clientIp", RATE_LIMIT_DAY, RATE_WINDOW_DAY_SEC)
+        ) {
             throw ApiError(ErrorCode.RATE_LIMITED, "too many createInstall")
         }
         @Suppress("UNCHECKED_CAST")
@@ -58,5 +61,7 @@ class InstallFetcher(
     companion object {
         private const val RATE_LIMIT = 10
         private const val RATE_WINDOW_SEC = 60L
+        private const val RATE_LIMIT_DAY = 50
+        private const val RATE_WINDOW_DAY_SEC = 86_400L
     }
 }

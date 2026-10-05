@@ -39,6 +39,9 @@ app:
   # 本地 header 格式严格：非法即整个请求报错，尽早暴露客户端 bug（base 默认 false）。
   header-validation:
     strict: true
+  # dev 专用 wire key（kid=1，公钥 LS5DEl51a3/c8jNshXdQ4v07vUhElYN4M0KWjSTK+QQ=，客户端 local/dev 预设内置）。
+  wire-crypto:
+    keys: '1:V64XjEMXAoqme3StrLwe1+Yt1Z3/BwrJOUCnsuqx2lk='
   show-sql: true
   auth:
     jwt-private-key: '{"kty":"OKP","crv":"Ed25519","kid":"dev-ephemeral","use":"sig","d":"SyR2r1MAt8RrOuvKdIEY1uF-ukq5Ph04yCQKr8GIK10","x":"yPmYi9PmtYaEQpLlvLZRmOL_bCwmYGpzgd4P6iTFIdY"}'
