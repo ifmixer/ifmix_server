@@ -1,0 +1,29 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoSpecs.kt
+  s_db31b686394892::t_160a6100e5dfa1 1
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/Envelope.kt
+  s_db31b686394892::t_d8269d8876d64a 3-10
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GlobalExceptionHandler.kt
+  s_db31b686394892::t_9e97cb20e93ae6 48-49,80-90
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestHeaders.kt
+  s_db31b686394892::t_3a72c9f637fee1 25-30
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/api/ActionContextFactoryTest.kt
+  s_db31b686394892::t_4cc34a953539bb 1,472
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/api/GlobalExceptionHandlerRetryTest.kt
+  s_db31b686394892::t_a405ad8b360862 1,9,11,56-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "309d5cdbb98b1f54f724aa5ce84373965c6a809f",
+  "prompts": {},
+  "sessions": {
+    "s_db31b686394892": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6715a16-be5b-4a46-8289-a357905e15c3",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
