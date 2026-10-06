@@ -1,0 +1,21 @@
+docs/design/proposals/graphql-to-http-rpc-openapi.md
+  s_db31b686394892::t_138b0447ddab10 3,13,29,39,99,188,265
+docs/design/proposals/rpc-rollout-client.md
+  s_db31b686394892::t_4ad9978b1e102d 13,126-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "933fff5342c0e71d7d13148e99c32e62ecd3c40e",
+  "prompts": {},
+  "sessions": {
+    "s_db31b686394892": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6715a16-be5b-4a46-8289-a357905e15c3",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
