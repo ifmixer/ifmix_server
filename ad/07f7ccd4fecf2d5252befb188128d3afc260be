@@ -1,0 +1,27 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/rpc/customer/demo/DemoController.kt
+  s_db31b686394892::t_8ddc961752d39f 1-141
+core-api/src/main/kotlin/com/ifmix/core/api/bff/rpc/customer/demo/DemoQueryService.kt
+  s_db31b686394892::t_06298862a53351 1-73
+core-api/src/main/kotlin/com/ifmix/core/api/bff/rpc/customer/demo/DemoSpecs.kt
+  s_db31b686394892::t_4ba772603d5433 1-22
+core-api/src/test/kotlin/com/ifmix/core/api/bff/rpc/customer/demo/DemoControllerTest.kt
+  s_db31b686394892::t_205a2678e53064 1-339
+core-api/src/test/kotlin/com/ifmix/core/api/bff/rpc/customer/demo/DemoQueryServiceTest.kt
+  s_db31b686394892::t_905ade95a2dc3b 1-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad07f7ccd4fecf2d5252befb188128d3afc260be",
+  "prompts": {},
+  "sessions": {
+    "s_db31b686394892": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6715a16-be5b-4a46-8289-a357905e15c3",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
