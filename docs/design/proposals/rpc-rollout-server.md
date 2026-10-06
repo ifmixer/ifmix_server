@@ -40,50 +40,39 @@ mapper:   手写 companion factory + Res 字段无默认值（§3.2；敏感字�
 3. 错误路径：`ActionContextFactory.fromRpc` 在计算 requestId 后立即 `request.setAttribute("com.ifmix.parsed.reqId", requestId)`（attr 常量放 RequestHeaders companion）；`GlobalExceptionHandler.handleApiError` 与 `handleGeneric` 的 body 构造改为带 reqId：`request?.getAttribute(ATTR) as? String ?: request?.getHeader(RequestHeaders.REQ_ID)`。factory 抛出的异常发生在 setAttribute 之后，天然带值；factory 之前挂掉的（如 body 不可读）用 header 兜底，再没有就 null。
 4. 测试：成功响应体含 `reqId` 且与请求 `meta.reqId` 同值；401/429/500 错误响应体含 reqId；无任何 reqId 来源（明文 curl 不带）时字段为 null 不报错。
 
-### 3.2 mapper 规则：手写 companion factory（2026-10-06 实施讨论定稿，弃 Konvert）
+### 3.2 mapper 规则：三层分工（2026-10-06 实施讨论定稿，弃 Konvert）
 
-弃 Konvert/convertValue 类反射映射的理由：entity 字段改名 → 输出**静默**变 null（编译期零提示），且 Jimmer unload 风险（读未加载属性抛 UnloadedException）只是从 mapper 代码挪进序列化路径，排查更难。手写样板买的是编译期安全。
+弃 Konvert/convertValue 类反射映射的理由：entity 字段改名 → 输出**静默**变 null（编译期零提示），且 Jimmer unload 风险（读未加载属性抛 UnloadedException）只是从 mapper 代码挪进序列化路径，排查更难。但手写不是唯一形态——按视图性质分三层：
 
-规则：
-
-1. **出参 Res DTO 字段一律不给默认值**（null 语义除外）：新增字段必须同步 factory，漏写即编译错误——这是「深度嵌套加字段静默丢失」的护栏，靠纪律维持。
-2. **mapper = DTO 的 companion factory**（`XxxRes.of(...)`）：代码贴着 DTO，加字段时 IDE 直接在 factory 标红；不再新增独立 `XxxApiMappers` object（存量迁过来）。
-3. 聚合组装仍由调用方批量取好传入：先根分页 → 收集 IDs 批量查 items/counts/关联 → Map 组装，禁循环 findById。
-4. **观众相关变换（如手机号 mask）用值类型收口，策略全系统一处**。不用自定义 serializer：serializer 是 `(value, provider)` 纯函数，拿不到请求/用户；构造期决策把「观众」消在 DTO 创建处，序列化层零魔法（mask 发生在 wire 加密前，天然不冲突）：
+1. **纯实体投影（含深嵌套同模块关联）→ Jimmer DTO 生成，零手写**：形状声明在 DTO 文件里（嵌套也在），KSP 生成构造器；entity 字段改名 → 重新生成 → 引用点编译报错。unload 错配优先用「DTO 直接作为查询投影」根除（按 DTO 形状生成 fetch，形状声明与加载同源；以项目 Jimmer 版本支持为准）。
+2. **多源聚合 / 协议形状 → 手写 companion factory**：items+counts、latestDeepResearch 权威指针、页面级组装——这些本来就是组装逻辑，不是字段映射，生成器帮不上。
+3. **观众相关变换（如手机号 mask）→ 值类型，构造期决策**。不用自定义 serializer：serializer 是 `(value, provider)` 纯函数，拿不到请求/用户；构造期决策把「观众」消在 DTO 创建处，序列化层零魔法（mask 发生在 wire 加密前，天然不冲突）。**factory 传 `ActionContext` 而非投影出 Viewer**——ctx 是完备上下文，mask 只是一种场景，以后任何 ctx 相关的展示决策都不用再改签名：
 
    ```kotlin
    @JvmInline
    value class PhoneRes(private val value: String) {
        companion object {
            /** mask 策略唯一落点；展示语义，不进 entity/repo 层（raw 手机号短信/风控还要用）。 */
-           fun of(raw: String?, viewer: Viewer): PhoneRes? =
-               raw?.let { PhoneRes(if (viewer.seeRawPhone) it else mask(it)) }
+           fun of(raw: String?, ctx: ActionContext): PhoneRes? =
+               raw?.let { PhoneRes(if (ctx.isManager) it else mask(it)) }
            private fun mask(p: String) = p.take(3) + "****" + p.takeLast(4)
-       }
-   }
-
-   /** 观众可见性：从 ActionContext 派生的唯一判定点（新增可见性维度只改这里）。 */
-   data class Viewer(val seeRawPhone: Boolean) {
-       companion object {
-           fun of(ctx: ActionContext): Viewer =
-               Viewer(seeRawPhone = ctx.actor?.actorType == ActorTypes.MANAGER)
        }
    }
 
    data class CustomerDetailRes(
        val id: UUID,
        val nickname: String,
-       val phone: PhoneRes?,                       // mask 与否由构造时的 viewer 决定
+       val phone: PhoneRes?,                       // mask 与否由构造时的 ctx 决定
        val items: List<CustomerItemRes>,
        val createdAt: String,
    ) {
        companion object {
-           /** viewer 必填：漏传是编译错误，不静默。聚合由调用方批量取好传入。 */
-           fun of(customer: Customer, items: List<CustomerItem>, viewer: Viewer): CustomerDetailRes =
+           /** ctx 必填：漏传是编译错误，不静默。聚合由调用方批量取好传入。 */
+           fun of(customer: Customer, items: List<CustomerItem>, ctx: ActionContext): CustomerDetailRes =
                CustomerDetailRes(
                    id = customer.id,
                    nickname = customer.nickname,
-                   phone = PhoneRes.of(customer.phone, viewer),
+                   phone = PhoneRes.of(customer.phone, ctx),
                    items = items.map(CustomerItemRes::of),
                    createdAt = customer.createdAt.toString(),
                )
@@ -91,8 +80,11 @@ mapper:   手写 companion factory + Res 字段无默认值（§3.2；敏感字�
    }
    ```
 
-   演进：若「观众相关变换」将来泛滥（多角色 × 多字段 × 频繁新增），再评估 `@JsonView` + `provider.getActiveView()` 通道（Spring 原生支持 handler 级声明；需先实测 DEFAULT_VIEW_INCLUSION 在 Jackson 3 的默认值，激活 view 后未标注属性可能被整体排除）。
-5. **配套 repo 纪律**：每个 Res 对应固定全字段 Fetcher，不做动态裁剪——service 从全字段改成部分字段时，mapper 读 unloaded 属性是**显式抛错**，不是静默错值。
+   （`ActionContext.isManager` 之类的可读性派生属性放 ActionContext 上，策略判定单点，不散在 DTO 里。DTO factory 依赖 ActionContext 是有意的：它是协议产物、纯数据类，换来签名稳定。）敏感字段落在纯 Jimmer DTO 投影里时，该视图改手写 factory——mask 一处性与零手写投影按需求量切换，不为假想需求预上 @JsonView 机制。
+
+4. **出参 Res 字段一律不给默认值**（null 语义除外）：新增字段必须同步 factory，漏写即编译错误——「深度嵌套加字段静默丢失」的护栏。
+5. **配套 repo 纪律**：每个 Res 对应固定全字段 Fetcher，不做动态裁剪——service 改成部分字段时，mapper 读 unloaded 属性是**显式抛错**，不是静默错值。
+6. **演进**：观众相关变换泛滥时（多角色 × 多字段），再评估 `@JsonView` + `provider.getActiveView()` 通道（Spring 原生支持 handler 级声明；需先实测 DEFAULT_VIEW_INCLUSION 在 Jackson 3 的默认值，激活 view 后未标注属性可能被整体排除）。
 
 ### 3.3 Controller 迁移规则（2026-10-06 实施修订：ActionSpec 撤销，常量上 controller）
 
