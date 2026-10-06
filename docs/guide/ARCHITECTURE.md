@@ -170,7 +170,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   ├── codec/                  # Base58 (UUID ↔ 22-char URL-safe)
 │   ├── graphql/                # ActionContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
 │   │                           # trusted/ (GReq persisted query: ReqNamePathInterceptor, GReqRouterConfig, TrustedDocumentProvider)
-│   ├── http/                   # ActionContext, RequestContext, ApiError, ErrorCode, GraphQlErrorBody, Interceptors
+│   ├── http/                   # ActionContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
 │   ├── auth/                   # AuthInterceptor, AuthJwtService, AuthJwtKeys, Hashing
 │   ├── redis/                  # CacheAside, RedisConfig
 │   ├── ratelimit/              # RateLimiter, TierResolver, RateLimitConfig
@@ -279,7 +279,7 @@ DB (via Jimmer KSqlClient)
 - GraphQL: `/customer/core/gql`（`x-project-id` 必填）
 - Webhook: `POST /webhooks/iap/*`（JWS 验签）
 - JWKS: `GET /.well-known/jwks`
-- 错误响应全站统一 GraphQL 形状：`{"errors":[{message, extensions:{code, errorName, retryAfterSec?, details?}}]}`，HTTP status = code 前三位。业务错误经 GraphQLExceptionHandler 进 `errors[].extensions`；引擎外的边缘错误（wire 解密失败、404、malformed body、未捕获 500 等）由 GlobalExceptionHandler / WireCryptoFilter 输出同形状（`GraphQlErrorBody`）——客户端全站只读 `errors[0].extensions.code` 一个解码点。批量操作的部分 item 失败在 data 内建模 per-item 结果，不占 `errors[]`（errors 留给协议/执行层，带 path）。
+- REST 响应: `Envelope<T>` (`{code, msg, data}`)
 
 ### 请求头
 

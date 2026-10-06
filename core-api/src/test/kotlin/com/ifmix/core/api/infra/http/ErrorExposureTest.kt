@@ -10,8 +10,7 @@ class ErrorExposureTest {
     private val prod = GlobalExceptionHandler(exposeErrors = false)
     private val test = GlobalExceptionHandler(exposeErrors = true)
 
-    private fun msgOf(resp: org.springframework.http.ResponseEntity<*>): String =
-        (resp.body as GraphQlErrorBody).errors[0].message
+    private fun msgOf(resp: org.springframework.http.ResponseEntity<*>): String = (resp.body as Envelope<*>).msg
 
     @Test
     fun `prod hides 5xx ApiError message`() {

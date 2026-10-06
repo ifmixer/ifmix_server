@@ -16,7 +16,6 @@
 - **`m_customer_deleteAccount`**（V7）：软删 + 解绑全部 install 关系 + 吊销全部 refresh token，事务内原子生效；`DeletionReasons` 码表。
 
 ### Changed
-- **错误响应统一为 GraphQL 形状**：`Envelope{code,msg,data}` 移除，GraphQL 引擎之外的错误（wire 解密失败 400003、404、malformed body、未捕获 500 等）也输出 `{"errors":[{message, extensions:{code, errorName, retryAfterSec?, details?}}]}`，HTTP status = code 前三位不变；客户端全站只读 `errors[0].extensions.code`。wire v2 解密失败体随之变更（v2 未发布，无兼容负担）。
 - **refresh 契约明确**：`m_auth_refreshToken` 的 Authorization 携带 **customer access token（type=10）**；过期后 refresh 返回 `TOKEN_EXPIRED`，客户端应自动登出（有意设计）。refresh token 暂不校验 `expires_at`（接入第三方登录前，见 `docs/guide/AUTH_DESIGN.md`）。
 - **错误透出收紧**：线上（`app.expose-errors=false`）5xx 只返回通用文案，`details`/内部异常信息不再透出。
 - **日志 JSON 化**（logstash 一行一条）：MDC 上下文（rid/pid/iid/cid/ip/bot/plat/av/ov/loc/cur/cty）为顶层字段；请求日志含 req/res 摘要；线上看日志需 `jq`。
