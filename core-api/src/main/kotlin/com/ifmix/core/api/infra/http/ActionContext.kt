@@ -36,11 +36,6 @@ data class ActionContext(
     val tokenInstallId: UUID? = null,
     /** token 的 type claim：5=install / 10=customer / 20=manager。无 token 时 null。 */
     val tokenType: Int? = null,
-    /**
-     * 老版本 app 兼容（app.auth.legacy-install-id-fallback=true 时才有值）：token 无 iid 时退回 x-install-id header。
-     * 不可信（客户端可伪造），只用于写入/关系维护，绝不签进 token 的 iid。等老 app 升级完关掉开关即恒为 null。
-     */
-    val legacyInstallId: UUID? = null,
     /** 请求 id（客户端 x-req-id 原值，或服务端生成的 UUID；客户端 x-req-id 或服务端生成，响应头 x-req-id 返回）。 */
     val requestId: String? = null,
     /** Cloudflare bot score（cf-bot-score header，1-99，越低越像 bot）。仅记录用途。 */
@@ -95,8 +90,8 @@ data class ActionContext(
      */
     fun mustGetTokenInstallId() = installIdOrNull() ?: throw ApiError(ErrorCode.UNAUTHORIZED, "trusted install id required")
 
-    /** token iid 优先；无则（仅兼容开关开启时）退回 header 的 [legacyInstallId]。 */
-    fun installIdOrNull(): UUID? = tokenInstallId ?: legacyInstallId
+    /** token 的可信 iid。v1.0.6 起 legacy fallback（x-install-id header 回退）已删除，无 iid 即拒绝写入。 */
+    fun installIdOrNull(): UUID? = tokenInstallId
 
     /**
      * login 入口：必须携带 iid，允许两类上下文——
@@ -108,11 +103,9 @@ data class ActionContext(
         val ok = when (tokenType) {
             AuthJwtService.TOKEN_TYPE_CUSTOMER -> actorId != null
             AuthJwtService.TOKEN_TYPE_INSTALL -> actorId == null
-            // 老 app 登录不带 token：仅兼容开关开启（legacyInstallId 有值）时放行
-            null -> actorId == null && legacyInstallId != null
             else -> false
         }
         if (!ok) throw ApiError(ErrorCode.UNAUTHORIZED, "login requires customer or install token")
-        return installIdOrNull() ?: throw ApiError(ErrorCode.UNAUTHORIZED, "login requires trusted install id")
+        return tokenInstallId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "login requires trusted install id")
     }
 }

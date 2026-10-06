@@ -22,4 +22,10 @@ object RequestHeaders {
     const val WIREP_VERSION = "x-wirep-version"
     /** Cloudflare bot score（1-99，越低越像 bot）。需在 CF Transform Rule 里把 cf.bot_management.score 写入该请求头。 */
     const val CF_BOT_SCORE = "cf-bot-score"
+    /**
+     * dev/调试专用：明文请求（仅 `app.wire-crypto.mode=optional`）把上下文 meta 以一个 JSON header 传入
+     * （key 与加密 body.meta 相同的 header 名，如 `{"x-locale":"zh-CN","x-currency":"USD"}`），
+     * 服务端合并为伪 header（见 WireCryptoFilter）。加密请求不需要它（meta 在加密 body 里）。
+     */
+    const val REQ_META = "x-req-meta"
 }

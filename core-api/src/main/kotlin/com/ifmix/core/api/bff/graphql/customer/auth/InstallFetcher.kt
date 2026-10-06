@@ -11,6 +11,7 @@ import com.ifmix.core.api.infra.attest.AppAttestVerification
 import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ActionContext
+import com.ifmix.core.api.infra.http.ClientPlatform
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
@@ -50,9 +51,32 @@ class InstallFetcher(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @DgsMutation(field = "m_auth_install_create")
-    fun createInstall(dfe: DgsDataFetchingEnvironment, @InputArgument input: Map<String, Any?>?): CreateInstallResult {
+    /**
+     * v6 按平台拆分（覆盖 §5.1「不按平台拆」的旧决策）：两个 action 复用同一套
+     * 限流/验证/绑定流程（[createInstallInternal]），仅平台不同——
+     *  - 自报 `x-client-platform` 必须与 action 一致（mismatch → 400000）：后续按平台演进
+     *    安全防护（iOS App Attest / Android Play Integrity）时，入口即锚定平台，不可谎报；
+     *  - proof.provider 必须与 action 的平台一致（mismatch → 400000）；
+     *  - 入口短窗口/日窗口 key 不含平台段：两个 action 共享同一 IP 配额（防护总量不因拆分放大）。
+     */
+    @DgsMutation(field = "m_auth_install_createIosInstall")
+    fun createIosInstall(dfe: DgsDataFetchingEnvironment, @InputArgument input: Map<String, Any?>?): CreateInstallResult =
+        createInstallInternal(dfe, input, ClientPlatform.IOS, AttestGuard.PROVIDER_IOS)
+
+    @DgsMutation(field = "m_auth_install_createAndroidInstall")
+    fun createAndroidInstall(dfe: DgsDataFetchingEnvironment, @InputArgument input: Map<String, Any?>?): CreateInstallResult =
+        createInstallInternal(dfe, input, ClientPlatform.ANDROID, AttestGuard.PROVIDER_ANDROID)
+
+    private fun createInstallInternal(
+        dfe: DgsDataFetchingEnvironment,
+        input: Map<String, Any?>?,
+        platform: ClientPlatform,
+        expectedProvider: Int,
+    ): CreateInstallResult {
         val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
+        if (ctx.clientPlatform != platform) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "x-client-platform must be ${platform.name.lowercase()} for this action")
+        }
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
 
@@ -74,7 +98,7 @@ class InstallFetcher(
 
         // 2. proof / proofStatus 组合校验（§5.1 表：两者同时非空 → 400000；proofStatus ∉ {null,20} → 400000；输入上限 §5.7）
         val proofStatus = (input?.get("proofStatus") as? Number)?.toInt()
-        val bundle = attestGuard.parseProofInput(input, proofStatus)
+        val bundle = attestGuard.parseProofInput(input, proofStatus, expectedProvider)
 
         // 3. 纯技术验证（不套 mode）→ 套 §4.3 矩阵（ENFORCE+INVALID → 403001；ENFORCE+无 proof/UNAVAILABLE → 403001/503002）
         val verification = attestGuard.verifyProof(ctx, bundle, proofStatus)
@@ -108,9 +132,10 @@ class InstallFetcher(
             throw ApiError(ErrorCode.ATTESTATION_FAILED, "attestation key already bound (key_reused)")
         }
 
-        // §5.9：VALID 且 storeType 交叉不一致 → 只打日志不拒绝（OBSERVE/ENFORCE 同）
-        if (verifiedProof != null && verifiedProof.provider == AttestGuard.PROVIDER_IOS && storeType != null && storeType != 10) {
-            attestGuard.logStoreMismatch(pid, verifiedProof.provider, storeType)
+        // §5.9：VALID 且 storeType 与平台交叉不一致 → 只打日志不拒绝（OBSERVE/ENFORCE 同）
+        if (verifiedProof != null && storeType != null) {
+            val expectedStore = if (verifiedProof.provider == AttestGuard.PROVIDER_IOS) 10 else 20
+            if (storeType != expectedStore) attestGuard.logStoreMismatch(pid, verifiedProof.provider, storeType)
         }
 
         val attestationStatus = when (decision) {
@@ -294,7 +319,8 @@ class InstallFetcher(
         val proofStatus: Int? = null
         @Suppress("UNCHECKED_CAST")
         val proofMap = input["proof"] as? Map<String, Any?>
-        val bundle = attestGuard.parseProofInput(mapOf("proof" to proofMap), proofStatus)
+        // attestExisting 为 iOS 专用（App Attest assertion）；Android 补证在 1b 另行设计
+        val bundle = attestGuard.parseProofInput(mapOf("proof" to proofMap), proofStatus, AttestGuard.PROVIDER_IOS)
         val verification = attestGuard.verifyProof(ctx, bundle, proofStatus)
         when (verification) {
             is AttestGuard.Verification.Valid -> Unit

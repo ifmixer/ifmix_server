@@ -219,9 +219,9 @@ class WireCryptoTest {
     private fun wireFilter(
         keys: String = "1:${Base64.getEncoder().encodeToString(HEX.parseHex(SERVER_PRIV_HEX))}",
         mode: String = "required",
-    ) = WireCryptoFilter(keys, WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, mode)
+    ) = WireCryptoFilter(keys, WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, mode, JsonMapper.builder().build())
 
-    /** 内层 servlet 回显看到的 content-type / body，便于断言解密包装；status 可指定。 */
+    /** 内层 servlet 回显看到的 content-type / 伪 header / body，便于断言解密包装与 meta 注入；status 可指定。 */
     private fun runFilter(filter: WireCryptoFilter, req: MockHttpServletRequest, status: Int = 200): MockHttpServletResponse {
         val res = MockHttpServletResponse()
         val handler = object : HttpServlet() {
@@ -229,7 +229,12 @@ class WireCryptoTest {
                 val r = rq as HttpServletRequest
                 (rs as HttpServletResponse).status = status
                 rs.contentType = "application/json"
-                rs.writer.write("ct=${r.contentType};hdr=${r.getHeader("Content-Type")};body=${String(r.inputStream.readAllBytes())}")
+                val echo = "ct=${r.contentType};hdr=${r.getHeader("Content-Type")}" +
+                    ";locale=${r.getHeader(RequestHeaders.LOCALE)}" +
+                    ";auth=${r.getHeader("Authorization")}" +
+                    ";rid=${r.getHeader(RequestHeaders.REQ_ID)}" +
+                    ";body=${String(r.inputStream.readAllBytes())}"
+                rs.writer.write(echo)
             }
         }
         filter.doFilter(req, res, MockFilterChain(handler))
@@ -249,7 +254,7 @@ class WireCryptoTest {
         assertThat(res.contentType).isEqualTo("application/octet-stream")
         assertThat(res.getHeader(RequestHeaders.WIREP_VERSION)).isEqualTo("2")
         assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
-            .isEqualTo("ct=application/json;hdr=application/json;body=${"{\"q\":1}"}")
+            .isEqualTo("ct=application/json;hdr=application/json;locale=null;auth=null;rid=null;body=${"{\"q\":1}"}")
     }
 
     @Test
@@ -266,7 +271,7 @@ class WireCryptoTest {
 
         // 未配 key：required 模式下 /api/** 请求全部 400003（配置错误大声失败，无明文降级）
         val noKeys = runFilter(
-            WireCryptoFilter("", WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, "required"),
+            WireCryptoFilter("", WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, "required", JsonMapper.builder().build()),
             MockHttpServletRequest("POST", "/customer/core/greq/m_demo_todo_deleteOne").apply {
                 addHeader(RequestHeaders.WIREP_VERSION, "2"); contentType = "application/octet-stream"
                 setContent(TestClient(crypto.publicKey(1)!!, kid = 1).sealRequest("{}".toByteArray(), ts = System.currentTimeMillis()))
@@ -314,7 +319,7 @@ class WireCryptoTest {
                 contentType = "application/json"; setContent("{}".toByteArray())
             },
         )
-        assertThat(plain.contentAsString).isEqualTo("ct=application/json;hdr=application/json;body={}")
+        assertThat(plain.contentAsString).isEqualTo("ct=application/json;hdr=application/json;locale=null;auth=null;rid=null;body={}")
         assertThat(plain.getHeader(RequestHeaders.WIREP_VERSION)).isNull()
 
         // optional 模式：信封外路径（webhook 等）即便 required 也原样放行
@@ -322,7 +327,95 @@ class WireCryptoTest {
             wireFilter(),
             MockHttpServletRequest("POST", "/webhook/r2").apply { contentType = "application/json"; setContent("{}".toByteArray()) },
         )
-        assertThat(outside.contentAsString).isEqualTo("ct=application/json;hdr=application/json;body={}")
+        assertThat(outside.contentAsString).isEqualTo("ct=application/json;hdr=application/json;locale=null;auth=null;rid=null;body={}")
+    }
+
+    /** v2.1 header 进 body：加密 payload 的 meta/authorization 注入为伪 header，meta/authorization 键从内层 body 剥离。 */
+    @Test
+    fun `filter injects meta and authorization from encrypted payload as pseudo headers`() {
+        val client = TestClient(crypto.publicKey(1)!!, kid = 1)
+        val payload = """{"meta":{"x-locale":"zh-CN","x-currency":"USD","x-unknown":"drop-me"},""" +
+            """"authorization":"Bearer tok","query":"","variables":{"a":1}}"""
+        val req = MockHttpServletRequest("POST", "/customer/core/greq/q_demo_todo_listMy").apply {
+            addHeader(RequestHeaders.WIREP_VERSION, "2")
+            contentType = "application/octet-stream"
+            setContent(client.sealRequest(payload.toByteArray(), ts = System.currentTimeMillis()))
+        }
+        val res = runFilter(wireFilter(), req)
+        assertThat(res.status).isEqualTo(200)
+        // locale/auth 来自 body meta；x-unknown 非白名单被忽略；内层 body 只剩 query/variables
+        assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
+            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=Bearer tok;rid=null;body=" +
+                """{"query":"","variables":{"a":1}}""")
+    }
+
+    /** meta 值优先于同名真实 header；白名单外的键（x-req-id）不生效——CF 注入头与 req-id 永远只能来自真实 header。 */
+    @Test
+    fun `meta overrides real header but only within allowlist`() {
+        val client = TestClient(crypto.publicKey(1)!!, kid = 1)
+        val payload = """{"meta":{"x-locale":"zh-CN","x-req-id":"forged"},"query":""}"""
+        val req = MockHttpServletRequest("POST", "/customer/core/greq/q_demo_todo_listMy").apply {
+            addHeader(RequestHeaders.WIREP_VERSION, "2")
+            addHeader(RequestHeaders.LOCALE, "en-US")
+            addHeader(RequestHeaders.REQ_ID, "real-rid")
+            contentType = "application/octet-stream"
+            setContent(client.sealRequest(payload.toByteArray(), ts = System.currentTimeMillis()))
+        }
+        val res = runFilter(wireFilter(), req)
+        assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
+            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=null;rid=real-rid;body=" +
+                """{"query":""}""")
+    }
+
+    /** payload 结构违规（meta 非对象 / 值非字符串 / authorization 非字符串）→ 明文 400003。 */
+    @Test
+    fun `bad meta payload rejected with plain 400003`() {
+        fun run(payload: String): MockHttpServletResponse {
+            val client = TestClient(crypto.publicKey(1)!!, kid = 1)
+            val req = MockHttpServletRequest("POST", "/customer/core/greq/q_demo_todo_listMy").apply {
+                addHeader(RequestHeaders.WIREP_VERSION, "2")
+                contentType = "application/octet-stream"
+                setContent(client.sealRequest(payload.toByteArray(), ts = System.currentTimeMillis()))
+            }
+            return runFilter(wireFilter(), req)
+        }
+        for (payload in listOf(
+            """{"meta":"x","query":""}""",           // meta 非对象
+            """{"meta":{"x-locale":5},"query":""}""", // meta 值非字符串
+            """{"authorization":9,"query":""}""",     // authorization 非字符串
+        )) {
+            val res = run(payload)
+            assertThat(res.status).isEqualTo(400)
+            assertThat(res.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
+        }
+    }
+
+    /** 明文 dev 通道：x-req-meta header 合并为伪 header（meta 优先），非法值 400 400000。 */
+    @Test
+    fun `optional mode merges x-req-meta header into pseudo headers`() {
+        fun plainReq(meta: String? = null, locale: String? = null) =
+            MockHttpServletRequest("POST", "/customer/core/greq/q_demo_todo_listMy").apply {
+                contentType = "application/json"
+                setContent("{}".toByteArray())
+                meta?.let { addHeader(RequestHeaders.REQ_META, it) }
+                locale?.let { addHeader(RequestHeaders.LOCALE, it) }
+            }
+        val merged = runFilter(wireFilter(mode = "optional"), plainReq(meta = """{"x-locale":"zh-CN","x-unknown":"x"}"""))
+        assertThat(merged.contentAsString)
+            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=null;rid=null;body={}")
+
+        // meta 值优先于同名真实 header
+        val override = runFilter(
+            wireFilter(mode = "optional"),
+            plainReq(meta = """{"x-locale":"zh-CN"}""", locale = "en-US"),
+        )
+        assertThat(override.contentAsString)
+            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=null;rid=null;body={}")
+
+        // 非法 x-req-meta → 400 400000
+        val bad = runFilter(wireFilter(mode = "optional"), plainReq(meta = "not-json"))
+        assertThat(bad.status).isEqualTo(400)
+        assertThat(bad.contentAsString).isEqualTo("""{"code":"400000","msg":"invalid x-req-meta: not a JSON object","data":null}""")
     }
 
     /**

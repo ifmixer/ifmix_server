@@ -116,7 +116,7 @@ class AttestGuard(
      * 解析 CreateInstallInput 的 proof / proofStatus（§5.1 组合表 + §5.7 输入上限，400000 路径由调用方前置调用）。
      * 返回 null = 未带 proof（含未启用/设备不支持/旧版本）。
      */
-    fun parseProofInput(input: Map<String, Any?>?, proofStatus: Int?): ProofBundle? {
+    fun parseProofInput(input: Map<String, Any?>?, proofStatus: Int?, expectedProvider: Int): ProofBundle? {
         @Suppress("UNCHECKED_CAST")
         val proof = input?.get("proof") as? Map<String, Any?>
         if (proof != null && proofStatus != null) {
@@ -156,6 +156,11 @@ class AttestGuard(
                 ProofBundle(PROVIDER_ANDROID, null, decodeBase64Flexible(token, "integrityToken"), null)
             }
             else -> throw guardInvalid("unknown provider: $provider")
+        }.also { bundle ->
+            // v6 按平台拆分：action 与 proof.provider 必须一致（createIosInstall 只收 110，createAndroidInstall 只收 120）
+            if (bundle != null && bundle.provider != expectedProvider) {
+                throw guardInvalid("proof provider ${bundle.provider} does not match this endpoint (expected $expectedProvider)")
+            }
         }
     }
 

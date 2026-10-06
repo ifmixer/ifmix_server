@@ -172,8 +172,10 @@ input UpdateInstallInput {
 # installId 一律取自 token 的 iid，不入参、不采信 x-install-id header。
 
 extend type Mutation {
-    "无鉴权；入口 100/60s/IP 短窗口（超限 429000 带 retryAfterSec），验签后按 attested（1000/天）/ unverified（100/天）IP 日窗口（超限 429002 带 retryAfterSec=到 UTC 零点秒数）。生成 installId + 签发 installToken(type=5)，平台证明绑定（§5.3）。"
-    m_auth_install_create(input: CreateInstallInput): CreateInstallResult!
+    "无鉴权；iOS 创建（v6 按平台拆分）。入口限流与 attest 流程同 §5.1；自报 x-client-platform 必须为 ios（mismatch → 400000），proof.provider 必须为 110（mismatch → 400000）。attest 仍可选（不带 proof 走 no-proof，ENFORCE 下由 mode 判定）。"
+    m_auth_install_createIosInstall(input: CreateInstallInput): CreateInstallResult!
+    "无鉴权；Android 创建。与 iOS 共用入口限流与绑定事务（底层复用）；自报 x-client-platform 必须为 android，proof.provider 必须为 120（Play Integrity，1b 实现前 ENFORCE 下 503002 / OBSERVE 放行 NOT_ATTEMPTED）。"
+    m_auth_install_createAndroidInstall(input: CreateInstallInput): CreateInstallResult!
     "需 token（installToken 或 customerToken，取 iid）；仅更新非空字段。"
     m_auth_install_updateOne(input: UpdateInstallInput!): UpdateInstallResult!
     "无鉴权；独立的 100/60s/IP 短窗口。一次性 challenge：纯 HMAC 计算不碰 Redis，服务端接受 300s，对客户端返回 270s。"

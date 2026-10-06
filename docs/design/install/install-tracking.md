@@ -1,5 +1,8 @@
 # 设计文档：Install 设备追踪 + Install↔Customer 关系 + Install Token
 
+> **2026-10-06 legacy 删除**：`legacy-install-id-fallback` 开关、`parseLegacyInstallId`、legacy 限流计数器（anonymous/scan/DR 的 legacy-ip-*）已全部删除（v1.0.6 未发布，无兼容负担）。无可信 token iid 的请求一律 401000；logout「缺 iid 只撤销会话」保留为防御分支。下文 legacy 相关行为描述为历史决策记录。
+
+
 > 状态：强关系与客户端容错已实现并完成本地迁移/前后端联调；V7 最终 NOT NULL 锁定延期到 legacy 可信回填完成后
 > 目标模块：`ifmix_server / core-api`
 > 目标态收敛与跨端修改清单：`docs/design/install/install-customer-hardening.md`
@@ -214,7 +217,7 @@ core_install.id = API installId = JWT iid
 
 2. **复活时能否直接写 `@LogicalDeleted` 字段**：把 deleted_at 置回 null 是「复活」操作，Jimmer 对 `@LogicalDeleted` 字段的直接赋值可能有特殊处理。需编译 + 单测实测确认路径（可能需 update-only save 或原生 update）。
 
-3. **`RequestParser` 取 iid**：新增从已验签 token 取 `iid` claim 的方法（install token 与 customer token 都用 `iid`）。现有 header 版 `parseInstallId`（读 `x-install-id`）**保留给日志等只读用途**，但关系维护/updateInstall **只用 token 版**。
+3. **`RequestParser` 取 iid**：新增从已验签 token 取 `iid` claim 的方法（install token 与 customer token 都用 `iid`）。header 版 `parseInstallId`（读 `x-install-id`）**仅日志用途**；关系维护/updateInstall **只用 token 版**。legacy fallback（`parseLegacyInstallId`）已于 2026-10-06 删除。
 
 4. **`type` claim 校验**：verify 后按接口需要校验 token type（如 updateInstall 允许 5 或 10；customer 接口 requireActorType=CUSTOMER 时 install token 因 act 不匹配自然被拒）。
 
@@ -325,7 +328,7 @@ extend type Mutation {
 > 本节为 attestation 的 install-tracking 侧说明，完整设计（字节契约、判定矩阵、限流、状态机、core-job 任务）引用
 > `docs/design/attest/install-attestation.md`。
 
-- **两层限流**：IP 层=系统防护（阈值大），install 层=防滥用（阈值小）；任一层超限即拒。createInstall：入口 100/60s/IP；验签后日窗口按结果分桶 attested 1000/天/IP、unverified 100/天/IP（UTC 日，两个计数器独立）。下游 createAnonymous / scan / DeepResearch：有 `tokenInstallId` → install 层（small）→ IP 层（large）；legacy 无 iid → 独立 legacy 计数器（旧严格阈值）；fallback 关闭后无 iid → 401000。
+- **两层限流**：IP 层=系统防护（阈值大），install 层=防滥用（阈值小）；任一层超限即拒。（v1.0.6 起 legacy 第三层已删除。）createInstall（v6 拆分后的 createIosInstall / createAndroidInstall，共享同一 IP 配额）：入口 100/60s/IP；验签后日窗口按结果分桶 attested 1000/天/IP、unverified 100/天/IP（UTC 日，两个计数器独立）。下游 createAnonymous / scan / DeepResearch：install 层（small）→ IP 层（large）；无 token iid 的请求在 `mustGetTokenInstallId` 即 401000，到不了限流层（legacy 独立计数器已于 2026-10-06 随 fallback 删除）。
 - **错误码与 Retry-After**：GraphQL 错误 `extensions.retryAfterSec`（429000=短窗口剩余秒、429002=到 UTC 零点秒，均必带；503002 可选）。REST 不动。
 - **开关**：全局 kill switch env `APP_ATTEST_GLOBAL_ENABLED`（默认 false）；challenge secret env `APP_ATTEST_CHALLENGE_SECRET`（`current[,previous]`）；per-project `core_project_server_config.app_attest_config` JSONB（null=关），mode OFF/OBSERVE/ENFORCE（project 级单一 mode）。一期默认关、显式开、先观察后强制。
 - **新表 `core_install_attestation`**（V15，只存 VALID 长期凭证/绑定；失败尝试不入表只进日志）+ `core_install.store_type`（§5.9）。

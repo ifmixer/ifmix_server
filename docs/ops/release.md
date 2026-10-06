@@ -4,7 +4,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 
 | 版本 | tag commit | 日期 | 线上 | 说明 |
 |------|-----------|------|:----:|------|
-| v1.0.6 | 未发布 | — |  | install attestation 一期（1a）+ install 体系 + AI 异步/wire 加密 + 39 个 reqName 四段式改名 / customer-install 并入 auth / RPC URL 定稿（见发布计划与 2026-10-06 增量） |
+| v1.0.6 | 未发布 | — |  | install attestation 一期（1a）+ install 体系 + AI 异步/wire 加密 + operationName/reqName 四段式统一（media→file，V16 表改名）/ customer-install 并入 auth / legacy 兼容删除 / createInstall 按平台拆分（见发布计划与 2026-10-06 增量） |
 | v1.0.3 | `2a3bbf0` | 2026-09-21 | ✅ | 当前线上版本。**不支持 install**（无 `m_install_*`、token 无 `iid`/`type` claim、`install_id` 为客户端 `x-install-id` 原值） |
 | v1.0.2 | `8743e80` | 2026-09-21 |  | R2 objectKey 路径改 `/p/` |
 
@@ -19,8 +19,13 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 5. **旧 `/project/` 格式 objectKey 无历史数据**，StorageAggHandler 拒签下载无需兼容期。
 6. **DeepResearch AI 返回缺 `premium_result` 算失败**：走 key 池重试 N 次（与 scan 同 `attemptCount` 上限），耗尽后任务 FAILED，不允许成功落库 premium=null。详见 DR PG 版设计 §3.1。
 7. **发布允许短暂停机 ≤10min**（V6/V8 迁移要求旧实例先停）。
+8. **legacy 兼容整体删除（2026-10-06，v1.0.6 未发布无兼容负担）**：`app.auth.legacy-install-id-fallback` 开关 + `parseLegacyInstallId` + `ActionContext.legacyInstallId` 回退、legacy 限流计数器（anonymous/scan/DR 的 legacy-ip-* 独立计数）、DateTime 标量 epoch millis 兼容全部删除。无可信 token iid 的请求一律 401000；logout「缺 iid 只撤销会话」保留为防御分支。**发布不再需要 `APP_LEGACY_INSTALL_ID_FALLBACK` env**。
+9. **operationName 与 reqName 四段式统一（2026-10-06）**：39→40 个 GraphQL 顶层 field 全量改名（customer 作用域 CRUD 动词后带 `My`，create 例外；专名动词与 install/session 不加）；persisted query 文本内 operation name == manifest key == 顶层 field；media resource 改 **file**（`m_media_file_presignUpload/Download`，表 `core_media_upload_record` → `core_media_file_record`，V16）。
+10. **createInstall 按平台拆分（2026-10-06，attest 规格 v6）**：`m_auth_install_create` → `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`。底层复用；入口强校验 `x-client-platform` 与 action 一致（400000）、proof.provider 与平台匹配（110/120）；限流 key 不含平台段（共享 IP 配额）。attest 仍可选（不带 proof 走 no-proof，ENFORCE 下由 mode 判定）。Android 1b（PlayIntegrityVerifier）实现前：ENFORCE 下 Android proof → 503002。
 
 ### 发布前必须完成的修复（2026-10-05 code review，P1）
+
+> **2026-10-06 代码核对**：以下各项（除 attest ×3 外）在当前分支均**未落地**——`ClientIpResolver` 仍取第一个 XFF、`WireCrypto` 无低阶点处理痕迹、`STALE_IN_PROGRESS_SEC` 仍为 300、DR 缺 premium_result 仍直接 SUCCESS、RequestLoggingFilter 错误响应 body 未脱敏 token。Changelog「Fixed」段此前表述与代码不符，已改正。**P1 全部仍为发布前必须完成项。**
 
 - [ ] **P1-attest ×3**（AppleReceiptClientImpl 429 归类 / DeviceCheck receipt 双重 base64 / DeviceCheck JWT 缺 `iat` + teamId 预检）——job 暂不调度，**不阻塞本版**，但列入恢复调度前置条件。
 - [ ] **WireCrypto 低阶点黑名单**：当前黑名单常数错误（拦不到真低阶点），安全声明失真，须换真实编码或如实注释。
@@ -29,25 +34,36 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 - [ ] **AI 惰性超时与预算对齐**：`STALE_IN_PROGRESS_SEC=300` < AI 调用 360s < runner 600s，慢而成功的任务被误杀。
 - [ ] **DR 空 premium_result 判失败**（决策 6 落地）。
 
-应修（P2）：RateLimiter INCR/EXPIRE 原子化、bind 关系部分唯一索引、logout 只认可信 iid、webhook 幂等唯一索引、FirebaseAppRegistry 负缓存、AiChatClientFactory 无淘汰缓存、scan 表 customer_id 索引、attestExisting 冲突重查返回值、ActionContextProvider 与 yml 默认值对齐。全量清单见 review 记录；修复用提示词 A–E 派发。
+应修（P2）：RateLimiter INCR/EXPIRE 原子化、bind 关系部分唯一索引、logout 只认可信 iid、webhook 幂等唯一索引、FirebaseAppRegistry 负缓存、AiChatClientFactory 无淘汰缓存、scan 表 customer_id 索引、attestExisting 冲突重查返回值。~~ActionContextProvider 与 yml 默认值对齐~~（随 legacy 删除消解）。
 
 ### 发布步骤（停机 ≤10min）
 
 1. 完成上述修复，全量 `./gradlew :core-api:test :core-job:test` 通过；本地 `:core-api:flywayMigrate` 从零库验证。
 2. **停服**（旧实例停止，≤10min 窗口）。
-3. `./gradlew :core-api:flywayMigrate`（V4–V15/16，以发布时实际为准）。**V6 改 `install_id` 列类型（text→uuid）、V8 改 AI key 表名——迁移后旧代码写入即失败，必须先停机再迁移**（决策 7）。
+3. `./gradlew :core-api:flywayMigrate`（V4–V16）。**V6 改 `install_id` 列类型（text→uuid）、V8 改 AI key 表名——迁移后旧代码写入即失败，必须先停机再迁移**（决策 7）。
 4. 部署新 core-api（增量脚本 `scripts/deploy/sync-core-api.sh` + 健康检查），恢复流量。
 5. core-job 同步部署；三个 attest job **不配 cron**（决策 3）。
 6. env 核对：`AUTH_JWT_PRIVATE_KEY`（缺失启动即失败）、`APP_ATTEST_GLOBAL_ENABLED`（默认 false）、`APP_ATTEST_CHALLENGE_SECRET`。
 7. 灰度：服务端上线（attest 全局关、无 project 配置 → 现网零影响）→ 客户端发布 → `APP_ATTEST_GLOBAL_ENABLED=true` + project 写 `app_attest_config`（mode=OBSERVE）→ 观察指标 → 切 ENFORCE（前置检查见下方 feature/attest 小节）。
 
-## v1.0.6 增量（2026-10-06：RPC 试点与模块结构调整）
+## v1.0.6 增量（2026-10-06：RPC 试点、命名统一与模块结构调整）
 
-三项定稿决策随本版进入发布范围（客户端 breaking，需与客户端发布节奏协同）：
+本组变更全部为客户端 breaking，需与客户端发布节奏协同：
 
-- **39 个 reqName 全量改四段式**（`{q|m}_{namespace}_{resource}_{action}`）：客户端需同步更新 trusted documents 调用名（39 条全量名单即 `persisted-queries/customer/customer.json` 的 key）。
+- **GraphQL operationName 与 reqName 统一四段式**：39 个顶层 field（`@DgsQuery/@DgsMutation`）全量改名（customer 作用域 CRUD 动词后带 `My`，create 例外；专名动词与 install/session 不加）；persisted query 文本内 operation name == manifest key == 顶层 field name。39 条全量名单即 `persisted-queries/customer/customer.json` 的 key。
+- **media resource 改名 file**：`m_media_media_*` → `m_media_file_presignUpload` / `m_media_file_presignDownload`；表 `core_media_upload_record` → `core_media_file_record`（V16，纯 RENAME，已在本地库验证）。
+- **createInstall 按平台拆分**（attest 规格 v6）：`m_auth_install_create` → `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`（决策 10）；客户端 SDK 按 `platform` 选 action，manifest 现 40 条。
+- **legacy 兼容整体删除**（决策 8）：fallback 开关链路 + legacy 限流计数器 + DateTime epoch millis。发布 env 不再需要 `APP_LEGACY_INSTALL_ID_FALLBACK`。
 - **customer/install 并入 auth 模块**：服务端内部结构（`modules/auth/{install,customer}`、`entity/auth/`）+ reqName namespace 变化（`m_auth_install_*`、`m_auth_customer_*`）。
 - **RPC URL 定稿 `POST /customer/core/greq/{reqName}`**：原 `/api/customer/core` 方案废弃；客户端 R0 已实现的 `/api/customer/core` URL 需在联调前同步调整。
+
+### v1.0.6 风险与待办（2026-10-06 梳理）
+
+- **[迁移] V10 checksum 不匹配**：V10 迁移文件在部分环境应用后曾被修改；本地库已按 AGENTS.md 流程 `flywayRepair` + `flywayMigrate`（V16）验证通过。**其他已跑过 V10 的环境（uat/prod）发布前会同样 validate 失败，需先 `flywayRepair`**——确认 V10 的当前内容即为期望内容后再 repair。
+- **[迁移] V17 `SET NOT NULL` 收尾待建**：业务表 `install_id` 列仍 nullable（V6 只做类型转型；「V7 收尾」从未创建，V7 已被删除功能占用）。legacy 回填前提已随 legacy 删除消解，但线上 v1.0.3 存量行可能为 null，需先核对回填可行性再建迁移。
+- **[attest] 剩余人工项**（设计文档 §9/§10）：真机 fixture smoke（§10.1）、TestFlight 冒烟（§9，production verifier 跑通 create + recover）、Apple 端点假设实测（§10.4，core-job 两个 Impl）；core-job 三任务继续停调度（决策 3）。
+- **[attest] Android 1b 未实现**：`createAndroidInstall` 已就位，proof 120 在 ENFORCE 下 503002 / OBSERVE 放行；PlayIntegrityVerifier 与客户端 Play Integrity 接入在 1b（Android 客户端发布前）。
+- **[核对] Changelog「Fixed」段已修正**：2026-10-05 review 的 P1 五项当时并未落地，本清单为准。
 
 ## v1.0.6 增量（`feature/attest`）
 
@@ -66,7 +82,7 @@ install attestation 一期（1a，iOS App Attest）。设计见 `docs/design/att
 相对 v1.0.3 的主要变化，发布前逐项确认：
 
 - **install 体系**：`m_auth_install_create` / `m_auth_install_updateOne`；token 增加 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（V5/V6）。
-- **老 app 兼容**：`app.auth.legacy-install-id-fallback`（默认 `true`）——token 无 `iid` 时 createAnonymous / login / refresh / 写入退回 `x-install-id` header。老 app 全部升级后关闭。
+- ~~**老 app 兼容**：`app.auth.legacy-install-id-fallback`~~ **2026-10-06 已删除**（决策 8）：v1.0.6 未发布，无兼容负担；installId 一律取 token 可信 iid。
 - **扫描计数迁表**：`core_customer.scan_count / deep_research_count` → `core_ai_customer_scan_metrics`（V9，旧列暂留，发布完成后另起迁移删除）。
 - **AI key 池**：轮询 + Redis 分布式冷却；`core_ai_agnes_key` → `core_ai_api_key`（V8）。
 - **错误透出**：线上（`app.expose-errors=false`）5xx 只返回通用文案。

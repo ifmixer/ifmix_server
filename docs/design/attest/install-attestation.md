@@ -1,5 +1,8 @@
 # createInstall 平台证明（App Attest / Play Integrity）— 设计规格 v4
 
+> **2026-10-06 legacy 删除**：legacy fallback 与 legacy 限流计数器已删除；下游限流仅剩 install 层 + IP 层。`createInstall` 的 attest 仍为可选（不生成 key / 不带 proof 也可用）。
+
+
 日期：2026-10-04（v5 修订同日）
 状态：**服务端已实现并合入 main（2026-10-05）**——core-api（infra/attest + modules/install + V15）与 core-job 三任务全部完成、V15 已真库验证；三个 job 执行入口已注释停调（运维决策，恢复调度前置条件见 `docs/ops/release.md` v1.0.6 发布计划）。**剩人工项**：§10.1 真机 fixture、§9 TestFlight 冒烟、§10.4 Apple 端点假设实测（集中在 core-job 两个 Impl）。原实现计划文档（impl-plan）已归档删除（git 历史可查 `docs/superpowers/specs/2026-10-04-install-attestation-impl-plan.md`）。
 范围：服务端 `ifmix_server/core-api` + `core-job`，客户端 `antique/apps/antique` + `antique/apps/shared`
@@ -9,6 +12,13 @@
 ---
 
 ## 0. 修订记录
+
+### v6（2026-10-06：createInstall 按平台拆分 + legacy 删除）
+
+| review 项 | 处理 |
+|---|---|
+| [决策变更] createInstall 按平台拆分 | 覆盖 §5.1「不按平台拆」旧决策：`m_auth_install_create` 拆为 `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`。两平台 attest 流程与安全侧重不同（iOS App Attest 本地验签；Android Play Integrity 依赖 Google 服务端校验 + token 去重），拆分后入口即锚定平台，后续防护可按平台独立演进。底层复用：fetcher 共享同一 private 流程（限流→组合校验→verifyProof→decide→日窗口→consume→事务绑定），`AttestGuard.parseProofInput` 增加 `expectedProvider` 参数（proof.provider 与 action 不匹配 → 400000）。**平台一致性校验**：自报 `x-client-platform` 必须与 action 平台一致（mismatch → 400000，入口先于限流）。**限流 key 不含平台段**：两个 action 共享同一 IP 配额，防护总量不因拆分放大。Android action 在 1b 实现前：proof 120 → NotEvaluated → OBSERVE 放行 NOT_ATTEMPTED / ENFORCE 503002（既有矩阵行为不变）。客户端按 `platform` 选择 action（web 一期按 ios 入口走 no-proof）。 |
+| legacy 删除 | legacy fallback（x-install-id 回退）与 legacy 限流计数器删除（本文件顶部注记）；下游限流仅剩 install 层 + IP 层。 |
 
 ### v5（第五轮 review，2026-10-04，进入实现前）
 
@@ -76,7 +86,7 @@ clientDataHash 字节契约；durable 表只存 VALID；403001 / 503002 拆分�
 
 ### 目标
 
-- `m_auth_install_create` 可要求一次新鲜的、来自真机正版 App 的平台证明：iOS App Attest，Android Play Integrity Standard request。
+- `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`（v6 拆分）可要求一次新鲜的、来自真机正版 App 的平台证明：iOS App Attest，Android Play Integrity Standard request。
 - 服务端自建验证，保存并利用原始平台信号（iOS keyId / 公钥 / receipt / fraud metric；Android 原始 verdict）。
 - iOS：install 绑定 Secure Enclave key；响应丢失或本地凭证丢失时用 assertion 找回，不重复建 install。
 - 单一 createInstall API，按 provider 区分平台证明；以后新平台新增 provider 即可接入。
@@ -137,7 +147,7 @@ Expo 内部： clientDataHash = SHA256(UTF8(challengeStr))                     /
 ```
 1. m_auth_install_createAttestChallenge → { enabled, challenge, expiresInSec: 270 }   // 纯计算，不碰 Redis；服务端接受 300s
 2. 客户端按 §6.4 取得 proof（每把 key 只 attest 一次）
-3. m_auth_install_create(input.proof = { provider: 110, appAttest: { keyId, attestationObject, challenge } })
+3. m_auth_install_createIosInstall(input.proof = { provider: 110, appAttest: { keyId, attestationObject, challenge } })
 4. 服务端（事务外，AttestGuard）：
    a. 校验 challenge 的签名和时效（见上）
    b. WebAuthn4J：x5c 链 → Apple App Attestation Root CA；扩展 1.2.840.113635.100.8.2 == expectedNonce；
@@ -169,7 +179,7 @@ requestHash = base64urlNoPadding(SHA256(UTF8(context)))           // Expo 原样
 
 ```
 1. 客户端：requestIntegrityCheckAsync(requestHash) → integrityToken
-2. m_auth_install_create(input.proof = { provider: 120, playIntegrity: { integrityToken, nonce: nonceStr } })
+2. m_auth_install_createAndroidInstall(input.proof = { provider: 120, playIntegrity: { integrityToken, nonce: nonceStr } })
 3. 服务端（事务外）：
    a. decodeIntegrityToken：网络错误 / 5xx / 429 → UNAVAILABLE；4xx → INVALID
    b. 校验，不满足 → INVALID(reason)：
@@ -537,6 +547,10 @@ input CreateInstallInput {
 }
 
 extend type Mutation {
+    "无鉴权；iOS 创建（v6 拆分）。自报 x-client-platform 必须为 ios、proof.provider 必须为 110（mismatch → 400000）。"
+    m_auth_install_createIosInstall(input: CreateInstallInput): CreateInstallResult!
+    "无鉴权；Android 创建（v6 拆分）。自报 x-client-platform 必须为 android、proof.provider 必须为 120；1b 前 ENFORCE 下 503002。"
+    m_auth_install_createAndroidInstall(input: CreateInstallInput): CreateInstallResult!
     "无鉴权；独立的 100/60s/IP 短窗口。一次性 challenge，服务端接受 300s，对客户端返回 270s。"
     m_auth_install_createAttestChallenge: AttestChallengeResult!
     "无鉴权；独立的 10/60s/IP 短窗口。iOS 用 assertion 证明 key 所有权，重签已绑定 install 的 installToken。返回的 attestationStatus 固定为 10。"
@@ -544,9 +558,9 @@ extend type Mutation {
 }
 ```
 
-不按平台拆 createInstall：各平台业务相同；按平台观测用日志维度（§5.5）。
+~~不按平台拆 createInstall~~ **v6 已推翻**：拆为 `createIosInstall` / `createAndroidInstall`（理由与实现约束见 v6 修订行）。底层流程完全复用，观测维度 = action 名本身（§5.5 的日志天然带 action）。
 
-- 「平台未配置」的判定基于自报的 `x-client-platform` header（§4.3 原则的例外：这里只决定是否让客户端生成 key，不用于安全判定；客户端谎报平台只会让自己拿不到 proof，ENFORCE 下照样被 403001 拒绝）。
+- 「平台未配置」的判定基于自报的 `x-client-platform` header（§4.3 原则的例外：这里只决定是否让客户端生成 key）。**v6 起该 header 同时受入口强校验**：必须与所调 action 的平台一致，否则 400000——「谎报平台」从「拿不到 proof」升级为「请求直接被拒」。
 
 `proof` / `proofStatus` 组合校验（入口完成，先于 Guard）：
 
@@ -943,7 +957,7 @@ UNSUPPORTED
   2. 再合入客户端的 query 和 codegen。
 
   已核实 allowlist 的机制（`TrustedDocumentProvider`）：服务端**按 reqName 取出 allowlist 里存的文本来执行，完全不读请求 body 里的 query**。所以：
-  - 服务端只要把 `m_auth_install_create` 存的文本更新成包含 `attestationStatus` 的版本即可，**不需要 V2 名字**。
+  - 服务端只要把 create action 存的文本更新成包含 `attestationStatus` 的版本即可，**不需要 V2 名字**（v6 后为按平台的两个 create action）。
   - 旧客户端会多收到一个 `attestationStatus` 字段，按 JSON 解析会被忽略，没有影响。
   - 新客户端必须等服务端上线之后再发布，否则拿不到这个字段。这个顺序由发布顺序保证；另外客户端把字段缺失当作 30 处理，作为兜底。
   - 新增的三个 operation 必须先进服务端 allowlist，否则客户端请求会被 403000 拒绝。

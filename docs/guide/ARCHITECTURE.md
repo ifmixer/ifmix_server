@@ -272,7 +272,7 @@ DB (via Jimmer KSqlClient)
 | 33 | AuthIdentity 账号中枢 + Customer/IdpIdentity 关系表 | 账号资料与 project 级用户分离；IdpIdentity↔AuthIdentity 用 M:N 关系表 |
 | 34 | 匿名 Customer 清理迁到 core-job | 批处理任务不占 web 进程，Spring Batch 编排 |
 | 35 | 不建设通用创建幂等 | 重复损害低，通用 key/状态机仍无法保证外部 AI Exactly Once；接受重复，以限流、配额、清理和监控兜底 |
-| 36 | 新 Customer 必须来自 Install（目标态） | createAnonymous/login/refresh 携带 installToken，保证新 customer token 含 iid 并原子维护关系；legacy 仅作迁移兼容 |
+| 36 | 新 Customer 必须来自 Install（目标态） | createAnonymous/login/refresh 携带 installToken，保证新 customer token 含 iid 并原子维护关系（v1.0.6 起 legacy 无 iid 兼容已删除，无可信 iid 一律 401000） |
 
 ## API 约定
 
@@ -286,7 +286,7 @@ DB (via Jimmer KSqlClient)
 | Header | 格式 | 说明 |
 |--------|------|------|
 | `x-project-id` | UUID | 应用 ID（必填） |
-| `x-install-id` | UUID | 可选日志/兼容字段，不是可信身份来源；关系维护和业务归属只认已验签 token 的 `iid` |
+| `x-install-id` | UUID | 仅日志/分析字段（不可信）；关系维护和业务归属只认已验签 token 的 `iid`。legacy fallback 已删除，此 header 不再参与任何逻辑 |
 | `x-locale` | IETF BCP 47 | 用户语言偏好。归一到受支持集，不支持则视为未提供（null）。支持 10 种：`en`, `zh-CN`, `zh-TW`, `ja`, `fr`, `es`, `pt`, `de`, `it`, `nl`（归一规则见下方「locale 归一」） |
 | `x-country` | ISO 3166-1 alpha-2, 大写 | 用户所在国家，如 `US`, `GB`, `JP`, `MY`, `SG`, `CN` |
 | `x-currency` | ISO 4217, 大写 | 用户货币偏好，如 `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD` |

@@ -37,7 +37,7 @@ import java.util.UUID
  * scan / DeepResearch 下游 install 层限流（attest 规格 §4.6「下游接口的 install 层」+ §7「下游两层数值」）：
  * - 有 iid（customer token 的 iid）：install 层（5/min + 100/天）→ IP 层（100/min + 1000/天）；
  *   install 层拒绝不碰 IP 计数器；IP 拒绝 install 已扣不退；scan 与 DR 分别计数。
- * - 无 iid（legacy fallback 期）：legacy 独立计数器（scan 5/min+500/天、DR 3/min+300/天），不占大额 IP 计数器。
+ * - 无 token iid 的请求在 ctx.mustGetTokenInstallId 即 401000（v1.0.6 起 legacy fallback 已删除），到不了限流层。
  * 数值从 RateLimitProperties 读取（默认值 = 规格 §4.6 yaml）。
  */
 class AiFetcherRateLimitTest {
@@ -54,14 +54,10 @@ class AiFetcherRateLimitTest {
     private val scanInstallDayKey = "ratelimit:$pid:scan:install:day:$iid"
     private val scanIpMinKey = "ratelimit:$pid:scan:ip:min:$ip"
     private val scanIpDayKey = "ratelimit:$pid:scan:ip:day:$ip"
-    private val scanLegacyMinKey = "ratelimit:$pid:scan:legacy:ip:min:$ip"
-    private val scanLegacyDayKey = "ratelimit:$pid:scan:legacy:ip:day:$ip"
     private val drInstallMinKey = "ratelimit:$pid:deep-research:install:min:$iid"
     private val drInstallDayKey = "ratelimit:$pid:deep-research:install:day:$iid"
     private val drIpMinKey = "ratelimit:$pid:deep-research:ip:min:$ip"
     private val drIpDayKey = "ratelimit:$pid:deep-research:ip:day:$ip"
-    private val drLegacyMinKey = "ratelimit:$pid:deep-research:legacy:ip:min:$ip"
-    private val drLegacyDayKey = "ratelimit:$pid:deep-research:legacy:ip:day:$ip"
 
     private lateinit var rateLimiter: RateLimiter
     private lateinit var ctxProvider: ActionContextProvider
@@ -108,10 +104,7 @@ class AiFetcherRateLimitTest {
     }
 
     private fun ctxWithoutIid(): ActionContext =
-        ActionContext(projectId = pid, clientIp = ip, tokenInstallId = null, legacyInstallId = null, tokenType = 10, actorId = customerId)
-
-    private fun ctxWithLegacy(): ActionContext =
-        ActionContext(projectId = pid, clientIp = ip, tokenInstallId = null, legacyInstallId = iid, tokenType = 10, actorId = customerId)
+        ActionContext(projectId = pid, clientIp = ip, tokenInstallId = null, tokenType = 10, actorId = customerId)
 
     private fun stubDfe(ctx: ActionContext) {
         whenever(ctxProvider.fromDfe(any(), any(), anyOrNull(), any(), any(), any())).thenReturn(ctx)
@@ -155,31 +148,12 @@ class AiFetcherRateLimitTest {
     }
 
     @Test
-    fun `scan legacy fallback only legacy counters used with strict thresholds`() {
-        stubDfe(ctxWithLegacy())
-        fetcher.newScan(dfe, NewScanInput(images = emptyList(), collected = null))
-        verify(rateLimiter).check(eq(Window.MINUTE), eq(scanLegacyMinKey), eq(5))
-        verify(rateLimiter).check(eq(Window.UTC_DAY), eq(scanLegacyDayKey), eq(500))
-        verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(scanInstallMinKey), any())
-        verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(scanIpMinKey), any())
-    }
-
-    @Test
-    fun `scan legacy minute limited rejects with retryAfterSec`() {
-        stubDfe(ctxWithLegacy())
-        whenever(rateLimiter.check(eq(Window.MINUTE), eq(scanLegacyMinKey), eq(5))).thenReturn(RateLimitResult.Limited(20))
-        val e = assertThrows<ApiError> { fetcher.newScan(dfe, NewScanInput(images = emptyList(), collected = null)) }
-        assertThat(e.retryAfterSec).isEqualTo(20L)
-    }
-
-    @Test
-    fun `scan without token iid uses legacy counters (401 comes from mustGetTokenInstallId in the service layer, e2e covered)`() {
-        // 限流层语义：无 tokenInstallId → legacy 独立计数器；401000 由业务层 mustGetTokenInstallId 抛（本单测 mock 掉 service）
+    fun `scan without token iid rejected 401000 before any counter is touched`() {
+        // v1.0.6 起 legacy fallback 已删除：无 token iid → mustGetTokenInstallId 即 401000，不进限流
         stubDfe(ctxWithoutIid())
-        fetcher.newScan(dfe, NewScanInput(images = emptyList(), collected = null))
-        verify(rateLimiter).check(eq(Window.MINUTE), eq(scanLegacyMinKey), eq(5))
-        verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(scanInstallMinKey), any())
-        verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(scanIpMinKey), any())
+        val e = assertThrows<ApiError> { fetcher.newScan(dfe, NewScanInput(images = emptyList(), collected = null)) }
+        assertThat(e.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
+        verify(rateLimiter, never()).check(any(), any(), any())
     }
 
     // ===== DeepResearch：同结构、独立计数 =====
@@ -197,15 +171,6 @@ class AiFetcherRateLimitTest {
     fun `dr and scan counters are independent per action`() {
         val scanOnly = fetcher.newScan(dfe, NewScanInput(images = emptyList(), collected = null))
         assertThat(scanOnly.scanId).isNotNull
-        verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(drInstallMinKey), any())
-    }
-
-    @Test
-    fun `dr legacy fallback 3 per minute and 300 per day legacy counters`() {
-        stubDfe(ctxWithLegacy())
-        fetcher.runDeepResearch(dfe, com.ifmix.core.api.generated.types.RunDeepResearchInput(scanRecordId = UUID.randomUUID(), images = emptyList(), featureFlags = null))
-        verify(rateLimiter).check(eq(Window.MINUTE), eq(drLegacyMinKey), eq(3))
-        verify(rateLimiter).check(eq(Window.UTC_DAY), eq(drLegacyDayKey), eq(300))
         verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(drInstallMinKey), any())
     }
 

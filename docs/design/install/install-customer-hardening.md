@@ -1,5 +1,8 @@
 # Install↔Customer 强关系与客户端容错修改清单
 
+> **2026-10-06 legacy 删除**：v1.0.6 未发布，`x-install-id` 回退、legacy 限流层、DateTime epoch millis 兼容已全部删除；`install_id` 只写 token 可信 iid。下文涉及 legacy/兼容的表述为历史决策记录。
+
+
 > **状态**：已实现并完成本地 V6、单元测试、真实 persisted-query 与 shared client 联调；未来 V7 NOT NULL 锁定延期
 > **主实现仓库**：`ifmix_server / core-api`
 > **客户端仓库**：`antique / apps/shared + apps/antique`

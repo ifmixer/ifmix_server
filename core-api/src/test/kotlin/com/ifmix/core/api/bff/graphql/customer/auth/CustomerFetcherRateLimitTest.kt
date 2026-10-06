@@ -31,7 +31,7 @@ import java.util.UUID
  * 下游 install 层限流（attest 规格 §4.6「下游接口的 install 层」+ §7「下游的顺序和策略」）：
  * - 有可信 iid（tokenInstallId）：install 层（5/install/UTC 天）→ IP 层（100/60s + 1000/天）；
  *   install 层拒绝不碰 IP 计数器；IP 层拒绝时 install 额度已扣、不退；install 层 key 只含 iid（换 IP 额度保持）。
- * - 无 iid（legacy fallback 期，靠可伪造 x-install-id）：legacy 独立计数器（10/60s 严格阈值），不占新大额 IP 计数器。
+ * - 无 token iid 的请求在 ctx.mustGetTokenInstallId 即 401000（v1.0.6 起 legacy fallback 已删除），到不了限流层。
  * - key 按 projectId 隔离。
  * 数值都从 RateLimitProperties 读取（默认值 = 规格 §4.6 yaml）。
  */
@@ -49,11 +49,9 @@ class CustomerFetcherRateLimitTest {
     private val installDayKey = "ratelimit:$pid:anonymous:install:day:$iid"
     private val ipMinKey = "ratelimit:$pid:anonymous:ip:min:$ip"
     private val ipDayKey = "ratelimit:$pid:anonymous:ip:day:$ip"
-    private val legacyMinKey = "ratelimit:$pid:anonymous:legacy:ip:min:$ip"
 
     private fun ctxWithIid() = ActionContext(projectId = pid, clientIp = ip, tokenInstallId = iid, tokenType = 5, actorId = null)
-    private fun ctxWithLegacyOnly() = ActionContext(projectId = pid, clientIp = ip, tokenInstallId = null, legacyInstallId = iid, actorId = null)
-    private fun ctxWithoutIid() = ActionContext(projectId = pid, clientIp = ip, tokenInstallId = null, legacyInstallId = null, actorId = null)
+    private fun ctxWithoutIid() = ActionContext(projectId = pid, clientIp = ip, tokenInstallId = null, actorId = null)
 
     private fun stubDfe(ctx: ActionContext) {
         whenever(ctxProvider.fromDfe(any(), any(), anyOrNull(), any(), any(), any())).thenReturn(ctx)
@@ -117,33 +115,12 @@ class CustomerFetcherRateLimitTest {
     }
 
     @Test
-    fun `without any trusted iid to 401000 before any counter is touched legacy fallback closed`() {
-        // mustGetTokenInstallId 的 installIdOrNull 回退 legacyInstallId；无 iid 且 legacy fallback 关 → 401000（现有语义）
-        val noLegacy = ActionContext(projectId = pid, clientIp = ip, tokenInstallId = null, legacyInstallId = null, actorId = null)
-        stubDfe(noLegacy)
+    fun `without any trusted iid to 401000 before any counter is touched`() {
+        // v1.0.6 起 legacy fallback 已删除：无 token iid → mustGetTokenInstallId 即 401000
+        stubDfe(ctxWithoutIid())
         val e = assertThrows<ApiError> { fetcher.createAnonymousCustomer(dfe) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
         verify(rateLimiter, never()).check(any(), any(), any())
-    }
-
-    @Test
-    fun `legacy fallback period no token iid but legacy install id uses legacy counter only`() {
-        // legacyInstallId 有值（可伪造 x-install-id）：mustGetTokenInstallId 经 installIdOrNull 通过，
-        // tokenInstallId==null → 走 legacy 独立计数器（10/60s 严格阈值），不占新大额 IP 计数器
-        stubDfe(ctxWithLegacyOnly())
-        fetcher.createAnonymousCustomer(dfe)
-        verify(rateLimiter).check(eq(Window.MINUTE), eq(legacyMinKey), eq(10))
-        verify(rateLimiter, never()).check(eq(Window.UTC_DAY), eq(installDayKey), any())
-        verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(ipMinKey), any())
-    }
-
-    @Test
-    fun `legacy counter limited rejects with retryAfterSec`() {
-        stubDfe(ctxWithLegacyOnly())
-        whenever(rateLimiter.check(eq(Window.MINUTE), eq(legacyMinKey), eq(10))).thenReturn(RateLimitResult.Limited(15))
-        val e = assertThrows<ApiError> { fetcher.createAnonymousCustomer(dfe) }
-        assertThat(e.errorCode).isEqualTo(ErrorCode.RATE_LIMITED)
-        assertThat(e.retryAfterSec).isEqualTo(15L)
     }
 
     @Test

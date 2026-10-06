@@ -10,15 +10,12 @@ import com.netflix.graphql.dgs.context.DgsContext
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.internal.DgsWebMvcRequestData
 import graphql.schema.GraphQLObjectType
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import org.springframework.web.context.request.ServletRequestAttributes
 
 @Component
 class ActionContextProvider(
     private val parser: RequestParser,
-    /** 老版本 app 兼容：token 无 iid 时退回 x-install-id header。老 app 升级完后关掉（APP_LEGACY_INSTALL_ID_FALLBACK=false）。 */
-    @param:Value("\${app.auth.legacy-install-id-fallback:false}") private val legacyInstallIdFallback: Boolean,
 ) {
 
     /**
@@ -66,7 +63,6 @@ class ActionContextProvider(
             installId = parser.parseInstallId(servletRequest),
             tokenInstallId = parser.parseTokenInstallId(servletRequest),
             tokenType = parser.parseTokenType(servletRequest),
-            legacyInstallId = if (legacyInstallIdFallback) parser.parseLegacyInstallId(servletRequest) else null,
             botScore = parser.parseBotScore(servletRequest),
             requestId = com.ifmix.core.api.infra.http.LogContext.requestId(servletRequest),
             appVersion = parser.parseAppVersion(servletRequest),

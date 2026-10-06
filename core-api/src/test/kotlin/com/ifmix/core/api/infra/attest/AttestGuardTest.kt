@@ -232,30 +232,46 @@ class AttestGuardTest {
     @Test
     fun proof_and_proofStatus_together___400000() {
         val input = mapOf("proof" to iosProofMap(validChallenge()))
-        assertThrows<ApiError> { guard.parseProofInput(input, 20) }
+        assertThrows<ApiError> { guard.parseProofInput(input, 20, AttestGuard.PROVIDER_IOS) }
     }
 
     @Test
     fun invalid_proofStatus_value___400000() {
-        assertThrows<ApiError> { guard.parseProofInput(null, 30) }
+        assertThrows<ApiError> { guard.parseProofInput(null, 30, AttestGuard.PROVIDER_IOS) }
     }
 
     @Test
     fun proofStatus_20_without_proof_is_accepted() {
-        assertThat(guard.parseProofInput(null, 20)).isNull()
+        assertThat(guard.parseProofInput(null, 20, AttestGuard.PROVIDER_IOS)).isNull()
         assertThat(guard.isProofDeclaredUnavailable(20)).isTrue
     }
 
     @Test
+    fun proof_provider_must_match_expected_provider_of_the_action() {
+        // v6 按平台拆分：createIosInstall 只收 110，createAndroidInstall 只收 120
+        assertThrows<ApiError> { guard.parseProofInput(androidProofInput(), null, AttestGuard.PROVIDER_IOS) }
+        assertThrows<ApiError> { guard.parseProofInput(iosProofInput(), null, AttestGuard.PROVIDER_ANDROID) }
+        assertThat(guard.parseProofInput(androidProofInput(), null, AttestGuard.PROVIDER_ANDROID)).isNotNull
+    }
+
+    private fun iosProofInput(): Map<String, Any?> =
+        mapOf("proof" to mapOf("provider" to 110, "appAttest" to mapOf("keyId" to "k", "attestationObject" to b64(), "challenge" to validChallenge())))
+
+    private fun androidProofInput(): Map<String, Any?> =
+        mapOf("proof" to mapOf("provider" to 120, "playIntegrity" to mapOf("integrityToken" to b64(), "nonce" to "nonce")))
+
+    private fun b64(): String = java.util.Base64.getEncoder().encodeToString(byteArrayOf(1))
+
+    @Test
     fun unknown_provider___400000() {
         val input = mapOf("proof" to mapOf("provider" to 999))
-        assertThrows<ApiError> { guard.parseProofInput(input, null) }
+        assertThrows<ApiError> { guard.parseProofInput(input, null, AttestGuard.PROVIDER_IOS) }
     }
 
     @Test
     fun provider_110_without_appAttest_sub_object___400000() {
         val input = mapOf("proof" to mapOf("provider" to 110, "playIntegrity" to mapOf("integrityToken" to "x", "nonce" to "y")))
-        assertThrows<ApiError> { guard.parseProofInput(input, null) }
+        assertThrows<ApiError> { guard.parseProofInput(input, null, AttestGuard.PROVIDER_IOS) }
     }
 
     @Test
@@ -264,7 +280,7 @@ class AttestGuardTest {
             "provider" to 110,
             "appAttest" to mapOf("keyId" to "k".repeat(65), "attestationObject" to "QUJD", "challenge" to "c"),
         ))
-        assertThrows<ApiError> { guard.parseProofInput(input, null) }
+        assertThrows<ApiError> { guard.parseProofInput(input, null, AttestGuard.PROVIDER_IOS) }
     }
 
     @Test
@@ -275,7 +291,7 @@ class AttestGuardTest {
             "provider" to 110,
             "appAttest" to mapOf("keyId" to keyId, "attestationObject" to att, "challenge" to "c"),
         ))
-        val b = guard.parseProofInput(input, null)!!
+        val b = guard.parseProofInput(input, null, AttestGuard.PROVIDER_IOS)!!
         assertThat(b.subject).isEqualTo(keyId)
         assertThat(b.bytes).containsExactly(1, 2, 3)
         assertThat(b.challenge).isEqualTo("c")
@@ -344,6 +360,7 @@ class AttestGuardTest {
     private fun iosBundle(challenge: String) = guard.parseProofInput(
         mapOf("proof" to iosProofMap(challenge)),
         null,
+        AttestGuard.PROVIDER_IOS,
     )
 
     private fun iosProofMap(challenge: String) = mapOf(
@@ -364,5 +381,6 @@ class AttestGuardTest {
             ),
         )),
         null,
+        AttestGuard.PROVIDER_ANDROID,
     )
 }

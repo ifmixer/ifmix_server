@@ -40,7 +40,7 @@
 | install | `core_install_customer_relation` | project | InstallCustomerRelation |
 | install | `core_install_attestation` | project | InstallAttestation |
 
-> `install_id`（`InstallIdProps`，entity/common）：客户端安装标识，由 `x-install-id` header 上报，服务端仅记录（可伪造，不用于鉴权），用于行为分析。已铺到 `core_ai_scan_record` / `core_ai_scan_collection` / `core_cs_feedback` / `core_cs_support_request`（均可空）。
+> `install_id`（`InstallIdProps`，entity/common）：客户端安装标识。v1.0.6 起**只写 token 的可信 `iid`**；`x-install-id` header 仅日志用，不再落任何表。存量列 nullable（`SET NOT NULL` 收尾迁移待另建），新写入非空由应用层保证。已铺到 `core_ai_scan_record` / `core_ai_scan_collection` / `core_cs_feedback` / `core_cs_support_request`（均可空）。
 
 > `app_version` / `ota_version`（`ClientVersionProps`，entity/common）：客户端版本快照，由 `x-app-version` / `x-ota-version` header 上报，原样透传、可空，仅用于按版本聚合分析/回归定位。`ota_version` 形如 `runtimeVersion-buildNumber-otaSeq`（如 `1-23-3`）。已铺到 `core_cs_feedback` / `core_cs_support_request`。
 

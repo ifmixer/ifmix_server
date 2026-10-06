@@ -107,7 +107,7 @@ class InstallFetcherAttestTest {
     /** VALID 路径：parseProofInput→bundle、verifyProof→Valid、decide→VERIFIED。Guard 参数全匹配。 */
     private fun stubCreateValid() {
         stubTxCreate()
-        whenever(attestGuard.parseProofInput(anyOrNull(), anyOrNull())).thenReturn(ProofBundle(110, "key1", byteArrayOf(1), "ch"))
+        whenever(attestGuard.parseProofInput(anyOrNull(), anyOrNull(), anyOrNull())).thenReturn(ProofBundle(110, "key1", byteArrayOf(1), "ch"))
         whenever(attestGuard.verifyProof(any(), anyOrNull(), anyOrNull())).thenReturn(validVerification())
         whenever(attestGuard.decideCreateInstall(any(), anyOrNull())).thenReturn(AttestGuard.CreateInstallDecision.VERIFIED)
     }
@@ -115,7 +115,7 @@ class InstallFetcherAttestTest {
     /** 无 proof 路径：NoProof + NOT_ATTEMPTED。 */
     private fun stubCreateNoProof() {
         stubTxCreate()
-        whenever(attestGuard.parseProofInput(anyOrNull(), anyOrNull())).thenReturn(null)
+        whenever(attestGuard.parseProofInput(anyOrNull(), anyOrNull(), anyOrNull())).thenReturn(null)
         whenever(attestGuard.verifyProof(any(), anyOrNull(), anyOrNull())).thenReturn(Verification.NoProof)
         whenever(attestGuard.decideCreateInstall(any(), anyOrNull())).thenReturn(AttestGuard.CreateInstallDecision.NOT_ATTEMPTED)
     }
@@ -123,9 +123,36 @@ class InstallFetcherAttestTest {
     // ===== createInstall =====
 
     @Test
+    fun `platform header must match action ios action rejects android and missing platform`() {
+        val androidCtx = baseCtx().copy(clientPlatform = ClientPlatform.ANDROID)
+        whenever(ctxProvider.fromDfe(any(), any(), anyOrNull(), any(), any(), any())).thenReturn(androidCtx)
+        val e = assertThrows<ApiError> { fetcher.createIosInstall(dfe, null) }
+        assertThat(e.errorCode).isEqualTo(ErrorCode.INVALID_REQUEST)
+        verify(rateLimiter, never()).check(any(), any(), any())
+
+        val noPlatformCtx = baseCtx().copy(clientPlatform = null)
+        whenever(ctxProvider.fromDfe(any(), any(), anyOrNull(), any(), any(), any())).thenReturn(noPlatformCtx)
+        val e2 = assertThrows<ApiError> { fetcher.createIosInstall(dfe, null) }
+        assertThat(e2.errorCode).isEqualTo(ErrorCode.INVALID_REQUEST)
+    }
+
+    @Test
+    fun `proof provider mismatch from guard surfaces as 400000 and install is not created`() {
+        whenever(ctxProvider.fromDfe(any(), any(), anyOrNull(), any(), any(), any())).thenReturn(baseCtx())
+        // provider 与 action 不一致的拒绝在真 AttestGuard.parseProofInput（AttestGuardTest 覆盖）；此处验证 fetcher 不吞错
+        whenever(attestGuard.parseProofInput(anyOrNull(), anyOrNull(), anyOrNull()))
+            .thenThrow(ApiError(ErrorCode.INVALID_REQUEST, "proof provider mismatch"))
+        val e = assertThrows<ApiError> { fetcher.createIosInstall(dfe, mapOf("proof" to emptyMap<String, Any>())) }
+        assertThat(e.errorCode).isEqualTo(ErrorCode.INVALID_REQUEST)
+        verify(installFacade, never()).createInstallWithProof(any(), anyOrNull(), anyOrNull(), anyOrNull())
+    }
+
+
+
+    @Test
     fun `entry minute window limited to 429000 with retryAfterSec`() {
         whenever(rateLimiter.check(eq(Window.MINUTE), eq(entryKey), eq(100))).thenReturn(RateLimitResult.Limited(12))
-        val e = assertThrows<ApiError> { fetcher.createInstall(dfe, null) }
+        val e = assertThrows<ApiError> { fetcher.createIosInstall(dfe, null) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.RATE_LIMITED)
         assertThat(e.retryAfterSec).isEqualTo(12L)
         verify(rateLimiter, never()).check(eq(Window.UTC_DAY), any(), any())
@@ -134,7 +161,7 @@ class InstallFetcherAttestTest {
     @Test
     fun `VALID request uses attested day counter and maps to status 10`() {
         stubCreateValid()
-        val res = fetcher.createInstall(dfe, mapOf("proof" to emptyMap<String, Any>()))
+        val res = fetcher.createIosInstall(dfe, mapOf("proof" to emptyMap<String, Any>()))
         verify(rateLimiter).check(eq(Window.UTC_DAY), eq(attestedDayKey), eq(1000))
         verify(rateLimiter, never()).check(eq(Window.UTC_DAY), eq(unverifiedDayKey), eq(100))
         assertThat(res.attestationStatus).isEqualTo(10)
@@ -143,7 +170,7 @@ class InstallFetcherAttestTest {
     @Test
     fun `no-proof request uses unverified day counter and maps to status 30`() {
         stubCreateNoProof()
-        val res = fetcher.createInstall(dfe, null)
+        val res = fetcher.createIosInstall(dfe, null)
         verify(rateLimiter).check(eq(Window.UTC_DAY), eq(unverifiedDayKey), eq(100))
         assertThat(res.attestationStatus).isEqualTo(30)
         verify(installFacade).createInstallWithProof(any(), anyOrNull(), eq(null), eq(null))
@@ -152,21 +179,21 @@ class InstallFetcherAttestTest {
     @Test
     fun `OBSERVE INVALID maps to status 20 and counts into unverified bucket`() {
         stubTxCreate()
-        whenever(attestGuard.parseProofInput(anyOrNull(), anyOrNull())).thenReturn(ProofBundle(110, "bad", byteArrayOf(1), "ch"))
+        whenever(attestGuard.parseProofInput(anyOrNull(), anyOrNull(), anyOrNull())).thenReturn(ProofBundle(110, "bad", byteArrayOf(1), "ch"))
         whenever(attestGuard.verifyProof(any(), anyOrNull(), anyOrNull())).thenReturn(invalidVerification())
         whenever(attestGuard.decideCreateInstall(any(), anyOrNull())).thenReturn(AttestGuard.CreateInstallDecision.NOT_PERSISTED)
-        val res = fetcher.createInstall(dfe, mapOf("proof" to emptyMap<String, Any>()))
+        val res = fetcher.createIosInstall(dfe, mapOf("proof" to emptyMap<String, Any>()))
         verify(rateLimiter).check(eq(Window.UTC_DAY), eq(unverifiedDayKey), eq(100))
         assertThat(res.attestationStatus).isEqualTo(20)
     }
 
     @Test
     fun `ENFORCE stage rejection does not touch day counters`() {
-        whenever(attestGuard.parseProofInput(anyOrNull(), anyOrNull())).thenReturn(ProofBundle(110, "k", byteArrayOf(1), "ch"))
+        whenever(attestGuard.parseProofInput(anyOrNull(), anyOrNull(), anyOrNull())).thenReturn(ProofBundle(110, "k", byteArrayOf(1), "ch"))
         whenever(attestGuard.verifyProof(any(), anyOrNull(), anyOrNull())).thenReturn(invalidVerification())
         whenever(attestGuard.decideCreateInstall(any(), anyOrNull()))
             .thenThrow(AttestGuard.GuardError(ApiError(ErrorCode.ATTESTATION_FAILED, "attestation failed")))
-        assertThrows<AttestGuard.GuardError> { fetcher.createInstall(dfe, mapOf("proof" to emptyMap<String, Any>())) }
+        assertThrows<AttestGuard.GuardError> { fetcher.createIosInstall(dfe, mapOf("proof" to emptyMap<String, Any>())) }
         verify(rateLimiter, never()).check(eq(Window.UTC_DAY), any(), any())
         verify(installFacade, never()).createInstallWithProof(any(), anyOrNull(), anyOrNull(), anyOrNull())
     }
@@ -175,7 +202,7 @@ class InstallFetcherAttestTest {
     fun `attested day counter limited to 429002 with retryAfterSec to UTC midnight`() {
         stubCreateValid()
         whenever(rateLimiter.check(eq(Window.UTC_DAY), eq(attestedDayKey), eq(1000))).thenReturn(RateLimitResult.Limited(43_200))
-        val e = assertThrows<ApiError> { fetcher.createInstall(dfe, null) }
+        val e = assertThrows<ApiError> { fetcher.createIosInstall(dfe, null) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.INSTALL_DAILY_LIMITED)
         assertThat(e.retryAfterSec).isEqualTo(43_200L)
     }
@@ -184,7 +211,7 @@ class InstallFetcherAttestTest {
     fun `day counters are independent - VALID is not blocked by a full unverified bucket`() {
         stubCreateValid()
         whenever(rateLimiter.check(eq(Window.UTC_DAY), eq(unverifiedDayKey), eq(100))).thenReturn(RateLimitResult.Limited(60))
-        val res = fetcher.createInstall(dfe, mapOf("proof" to emptyMap<String, Any>()))
+        val res = fetcher.createIosInstall(dfe, mapOf("proof" to emptyMap<String, Any>()))
         assertThat(res.attestationStatus).isEqualTo(10)
         verify(rateLimiter).check(eq(Window.UTC_DAY), eq(attestedDayKey), eq(1000))
     }
@@ -194,7 +221,7 @@ class InstallFetcherAttestTest {
         stubCreateNoProof()
         whenever(installFacade.createInstallWithProof(any(), anyOrNull(), anyOrNull(), anyOrNull()))
             .thenThrow(ApiError(ErrorCode.ATTESTATION_FAILED, "key_reused"))
-        assertThrows<ApiError> { fetcher.createInstall(dfe, null) }
+        assertThrows<ApiError> { fetcher.createIosInstall(dfe, null) }
         // 日额度已扣且不退（无 refund 机制，§4.6）：unverified 桶被扣，attested 桶从未触碰
         verify(rateLimiter, never()).check(eq(Window.UTC_DAY), eq(attestedDayKey), eq(1000))
     }
@@ -206,7 +233,7 @@ class InstallFetcherAttestTest {
         stubCreateNoProof()
         whenever(installFacade.createInstallWithProof(any(), anyOrNull(), anyOrNull(), anyOrNull()))
             .thenThrow(org.springframework.dao.DataIntegrityViolationException("duplicate key"))
-        val ex = assertThrows<ApiError> { fetcher.createInstall(dfe, null) }
+        val ex = assertThrows<ApiError> { fetcher.createIosInstall(dfe, null) }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.ATTESTATION_FAILED)
     }
 
@@ -214,24 +241,24 @@ class InstallFetcherAttestTest {
     fun `redis degraded windows allow the request through`() {
         whenever(rateLimiter.check(any(), any(), any())).thenReturn(RateLimitResult.Degraded)
         stubCreateNoProof()
-        val res = fetcher.createInstall(dfe, null)
+        val res = fetcher.createIosInstall(dfe, null)
         assertThat(res.attestationStatus).isEqualTo(30)
     }
 
     @Test
     fun `proof and proofStatus together to 400000 and nothing consumed`() {
-        whenever(attestGuard.parseProofInput(any(), anyOrNull()))
+        whenever(attestGuard.parseProofInput(any(), anyOrNull(), anyOrNull()))
             .thenThrow(ApiError(ErrorCode.INVALID_REQUEST, "proof and proofStatus are mutually exclusive"))
-        assertThrows<ApiError> { fetcher.createInstall(dfe, mapOf("proof" to emptyMap<String, Any>(), "proofStatus" to 20)) }
+        assertThrows<ApiError> { fetcher.createIosInstall(dfe, mapOf("proof" to emptyMap<String, Any>(), "proofStatus" to 20)) }
         verify(rateLimiter, never()).check(eq(Window.UTC_DAY), any(), any())
         verify(attestGuard, never()).consume(any())
     }
 
     @Test
     fun `illegal proofStatus to 400000`() {
-        whenever(attestGuard.parseProofInput(any(), eq(30)))
+        whenever(attestGuard.parseProofInput(any(), eq(30), anyOrNull()))
             .thenThrow(ApiError(ErrorCode.INVALID_REQUEST, "invalid proofStatus"))
-        assertThrows<ApiError> { fetcher.createInstall(dfe, mapOf("proofStatus" to 30)) }
+        assertThrows<ApiError> { fetcher.createIosInstall(dfe, mapOf("proofStatus" to 30)) }
         verify(rateLimiter, never()).check(eq(Window.UTC_DAY), any(), any())
     }
 
@@ -239,7 +266,7 @@ class InstallFetcherAttestTest {
     fun `replay at consume stage to 403001, day counter already deducted and not refunded`() {
         stubCreateValid()
         whenever(attestGuard.consume(any())).thenThrow(AttestGuard.GuardError(ApiError(ErrorCode.ATTESTATION_FAILED, "replay")))
-        val e = assertThrows<AttestGuard.GuardError> { fetcher.createInstall(dfe, mapOf("proof" to emptyMap<String, Any>())) }
+        val e = assertThrows<AttestGuard.GuardError> { fetcher.createIosInstall(dfe, mapOf("proof" to emptyMap<String, Any>())) }
         assertThat(e.apiError.errorCode).isEqualTo(ErrorCode.ATTESTATION_FAILED)
         verify(rateLimiter).check(eq(Window.UTC_DAY), eq(attestedDayKey), eq(1000))
         verify(installFacade, never()).createInstallWithProof(any(), anyOrNull(), anyOrNull(), anyOrNull())
@@ -248,7 +275,7 @@ class InstallFetcherAttestTest {
     @Test
     fun `storeType 20 passes to handler and VALID provider 110 mismatch logs store_mismatch`() {
         stubCreateValid()
-        fetcher.createInstall(dfe, mapOf("storeType" to 20))
+        fetcher.createIosInstall(dfe, mapOf("storeType" to 20))
         verify(installFacade).createInstallWithProof(any(), anyOrNull(), eq(20), anyOrNull())
         verify(attestGuard).logStoreMismatch(eq(pid), eq(110), eq(20))
     }
@@ -256,7 +283,7 @@ class InstallFetcherAttestTest {
     @Test
     fun `storeType null maps to null and no mismatch log`() {
         stubCreateNoProof()
-        fetcher.createInstall(dfe, null)
+        fetcher.createIosInstall(dfe, null)
         verify(installFacade).createInstallWithProof(any(), anyOrNull(), eq(null), eq(null))
         verify(attestGuard, never()).logStoreMismatch(any(), any(), any())
     }
@@ -375,7 +402,7 @@ class InstallFetcherAttestTest {
     }
 
     private fun stubValidAttest() {
-        whenever(attestGuard.parseProofInput(any(), anyOrNull())).thenReturn(ProofBundle(110, "key1", byteArrayOf(1), "ch"))
+        whenever(attestGuard.parseProofInput(any(), anyOrNull(), anyOrNull())).thenReturn(ProofBundle(110, "key1", byteArrayOf(1), "ch"))
         whenever(attestGuard.verifyProof(any(), anyOrNull(), anyOrNull())).thenReturn(validVerification())
         whenever(attestGuard.isAttestationEnabled(any())).thenReturn(true)
         whenever(installFacade.findAttestationBySubject(any(), any(), any())).thenReturn(null)
@@ -445,7 +472,7 @@ class InstallFetcherAttestTest {
     @Test
     fun `attestExisting INVALID proof to 20 even under ENFORCE`() {
         stubInstallToken()
-        whenever(attestGuard.parseProofInput(any(), anyOrNull())).thenReturn(ProofBundle(110, "k", byteArrayOf(1), "ch"))
+        whenever(attestGuard.parseProofInput(any(), anyOrNull(), anyOrNull())).thenReturn(ProofBundle(110, "k", byteArrayOf(1), "ch"))
         whenever(attestGuard.verifyProof(any(), anyOrNull(), anyOrNull())).thenReturn(invalidVerification())
         whenever(attestGuard.isAttestationEnabled(any())).thenReturn(true)
         val res = fetcher.attestExisting(dfe, attestInput())
@@ -495,7 +522,7 @@ class InstallFetcherAttestTest {
     @Test
     fun `attestExisting UNAVAILABLE to 503002`() {
         stubInstallToken()
-        whenever(attestGuard.parseProofInput(any(), anyOrNull())).thenReturn(ProofBundle(110, "k", byteArrayOf(1), "ch"))
+        whenever(attestGuard.parseProofInput(any(), anyOrNull(), anyOrNull())).thenReturn(ProofBundle(110, "k", byteArrayOf(1), "ch"))
         whenever(attestGuard.verifyProof(any(), anyOrNull(), anyOrNull()))
             .thenReturn(Verification.Unavailable(AttestGuard.Reason.PERMITS_EXHAUSTED))
         whenever(attestGuard.isAttestationEnabled(any())).thenReturn(true)

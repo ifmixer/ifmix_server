@@ -40,7 +40,7 @@ docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一
 |------|------|------|
 | install | [install-tracking](docs/design/install/install-tracking.md)（✅ 已实现） | install 表、install↔customer 关系、install token（type=5/iid）、绑定判定矩阵 |
 | install | [install-customer-hardening](docs/design/install/install-customer-hardening.md)（✅ 已实现） | 强关系与客户端容错跨端修改清单（含错误码收敛） |
-| attest | [install-attestation](docs/design/attest/install-attestation.md)（✅ 服务端已实现，剩真机 fixture / TestFlight 冒烟 / Apple 端点实测） | App Attest 一期 1a：challenge/attestation/assertion、限流、core-job 回填、灰度切 ENFORCE；Android (Play Integrity) 为 1b |
+| attest | [install-attestation](docs/design/attest/install-attestation.md)（✅ 服务端已实现（v6：createInstall 按平台拆分），剩真机 fixture / TestFlight 冒烟 / Apple 端点实测；P1 五项核对未落地见 release.md） | App Attest 一期 1a：challenge/attestation/assertion、限流、core-job 回填、灰度切 ENFORCE；createInstall 拆 createIosInstall/createAndroidInstall（底层复用，x-client-platform 与 provider 入口强校验）；Android (Play Integrity) 为 1b |
 | ai | [api-key-pool](docs/design/ai/api-key-pool.md)（✅ 已实现） | key 池轮询/冷却/降级 + `core_ai_api_key` 表结构 + provider 通用化 |
 | ai | [api-key-disable-and-probe-skip](docs/design/ai/api-key-disable-and-probe-skip.md)（✅ 已实现） | 401/403 永久禁用、pick 全冷却跳窗口（key 池演进） |
 | ai | [deep-research-async](docs/design/ai/deep-research-async.md)（✅ 已实现） | DR 异步化 + PG premium_result 存储 + 历史版本 + latest 权威指针 |

@@ -119,7 +119,7 @@ app:
 
   # 限流阈值（install attestation 规格 §4.6）：每个 action 显式配置，**重启生效**（不做热更新，
   # 不能当即时 kill switch；紧急降额走一次重启/发布）。key 统一格式 ratelimit:{projectId}:{action}:...，
-  # 按 projectId 隔离。IP 层=系统防护（大阈值）；legacy=无 tokenInstallId 的旧客户端严格阈值（独立计数器）；
+  # 按 projectId 隔离。IP 层=系统防护（大阈值）；install 层=防滥用（小阈值）；
   # install 层=防滥用（小阈值，attest 接线任务使用）。
   ratelimit:
     install:
@@ -134,20 +134,15 @@ app:
       ip-minute: 10           # m_auth_install_attest
       install-day: 3          # 每 install 每 UTC 日新 key 额度
     anonymous:
-      legacy-ip-minute: 10    # m_auth_customer_createAnonymous：旧客户端严格阈值
       ip-minute: 100
       ip-day: 1000
       install-day: 5
     scan:
-      legacy-ip-minute: 5     # m_ai_scan_createOne：旧客户端严格阈值
-      legacy-ip-day: 500
       ip-minute: 100
       ip-day: 1000
       install-minute: 5
       install-day: 100
     deep-research:
-      legacy-ip-minute: 3     # m_ai_deepResearch_run：旧客户端严格阈值
-      legacy-ip-day: 300
       ip-minute: 100
       ip-day: 1000
       install-minute: 5
@@ -166,8 +161,6 @@ app:
     # 验签并发信号量（§3.1：Redis 故障期防验签把进程打满；拿不到许可 → UNAVAILABLE，OBSERVE 放行 / ENFORCE 503002）
     verify-permits: ${APP_ATTEST_VERIFY_PERMITS:32}
     # 老版本 app 兼容：token 无 iid 时退回 x-install-id header（不可信，不签进 token）。
-    # 老 app 全部升级（会调 m_auth_install_create 拿 installToken）后置 false。
-    legacy-install-id-fallback: ${APP_LEGACY_INSTALL_ID_FALLBACK:true}
     google:
       jwks-uri: ${AUTH_GOOGLE_JWKS_URI:https://accounts.google.com/.well-known/openid-configuration}
     apple:

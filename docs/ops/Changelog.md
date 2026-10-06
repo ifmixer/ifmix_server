@@ -23,12 +23,12 @@
 - **refresh token 生成改 `SecureRandom`**（原 `Random` 可预测）；`AUTH_JWT_PRIVATE_KEY` 缺失启动即失败（原静默临时密钥）。
 - 旧同步 scan 路径（`m_ai_runAiScan`）废弃，统一走异步任务。
 
-### Fixed（2026-10-05 review 修复，发布前落地，见 release.md 检查清单）
-- WireCrypto 低阶点黑名单常数错误（安全声明失真）。
-- ClientIpResolver 取可信 IP（CF-Connecting-IP/代理链），封堵伪造 XFF 绕过 IP 限流。
-- 请求日志对 refreshToken / authCode / webhook token 脱敏。
-- AI 惰性超时窗口与 runner 预算对齐（原 300s < 360s < 600s 误杀慢任务）。
-- DeepResearch 缺 `premium_result` 判失败并重试，不再"成功"落空报告。
+### Fixed（2026-10-05 review 修复计划——2026-10-06 代码核对：以下各项均未落地，发布前必须完成，见 release.md P1 清单）
+- [ ] WireCrypto 低阶点黑名单常数错误（安全声明失真）。
+- [ ] ClientIpResolver 取可信 IP（CF-Connecting-IP/代理链），封堵伪造 XFF 绕过 IP 限流。
+- [ ] 请求日志对 refreshToken / authCode / webhook token 脱敏（错误响应 body 截断输出，token 明文可进日志）。
+- [ ] AI 惰性超时窗口与 runner 预算对齐（现仍 300s < 360s < 600s，慢任务被误杀）。
+- [ ] DeepResearch 缺 `premium_result` 判失败并重试（现为"AI 正常返回即 SUCCESS"，可落空报告）。
 
 ### 2026-10-06 增补（RPC 迁移与模块结构调整，客户端 breaking）
 
@@ -36,6 +36,10 @@
 - **GraphQL operationName 同步改四段式**（客户端 breaking）：`@DgsQuery/@DgsMutation` field 名同日全量改名，规则同 reqName 并叠加 `My`——customer 作用域 CRUD 动作动词后带 `My`（`getMyById / listMy / updateMyOne / deleteMyMany`），`create` 例外不加（`m_demo_todo_createOne`），专名动词（me/login/verify/run/getStatus/getDefault/add/attest/recover 等）与 install/session 作用域不加。例：`q_ai_findMyScanById → q_ai_scan_getMyById`、`q_auth_me → q_auth_session_me`、`m_media_presignUpload → m_media_file_presignUpload`。greq path 末段与 persisted query manifest（`customer.json`）随之更新，前端 client-sdk 已对齐。
 - **customer/install 并入 auth 模块**：服务端内部结构调整（`modules/auth/{install,customer}`、`entity/auth/`、fetcher 并入 `bff/graphql/customer/auth/`），随之相关 reqName 的 namespace 由 install/customer 改为 auth（`m_auth_install_*`、`m_auth_customer_*`）。
 - **RPC URL 定稿**：`POST /customer/core/greq/{reqName}`（与 GraphQL persisted query 同路径；gql raw 仍为 `/customer/core/gql`）；原 proposal 的 `POST /api/customer/core/{reqName}` 方案废弃，不再新增 `/api/` 前缀路径。
+- **media resource 改名 file**：`m_media_media_presignUpload/Download` → `m_media_file_presignUpload/Download`；表 `core_media_upload_record` → `core_media_file_record`（V16，纯 RENAME）。persisted query 文本内的 operation name 同步改为与 manifest key 一致（原 PascalCase 废弃）。
+- **legacy 兼容整体删除**：`app.auth.legacy-install-id-fallback`（x-install-id header 回退）、`parseLegacyInstallId`、legacy 限流计数器（anonymous/scan/DR 独立严格阈值）、DateTime 标量 epoch millis 兼容。无可信 token iid 一律 401000；发布 env 不再需要 `APP_LEGACY_INSTALL_ID_FALLBACK`。
+- **createInstall 按平台拆分**（attest 规格 v6）：`m_auth_install_create` → `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`；入口强校验 `x-client-platform` 与 action 一致（400000）、proof.provider 与平台匹配（110/120）；底层限流/验证/绑定复用；attest 仍可选。Android 1b 前其 proof 在 ENFORCE 下 503002。
+- **wire v2.1：header 进 body**（客户端 breaking）：加密请求的上下文 meta（`x-project-id` / `x-client-platform` / `x-locale` / `x-currency` / `x-country` / `x-app-version` / `x-ota-version`）与 `Authorization` 收进加密 body（`{meta, authorization, query, variables}`），header 上不再出现 token。`x-wirep-version` / `Content-Type` / `x-req-id` / CF 注入头保持 header 不变；服务端在 `WireCryptoFilter` 解密后把 meta/authorization 合并为伪 header（白名单键 + 8KB 上限，业务无感），meta 结构违规按 400003 拒绝。dev/调试双通道：明文请求（`app.wire-crypto.mode=optional` 仅 local/dev）meta 走单个 `x-req-meta` JSON header + 标准 `Authorization` header，required 模式下 `x-req-meta` 不生效。详见 wire 设计 §9。
 
 ### DB 迁移
 V4（scan 计数器）→ V5/V6（install）→ V7（deletion）→ V8（key 表改名）→ V9（metrics）→ V10–V13（异步 + 通知）→ V14（project server config）→ V15（attestation）。**V6/V8 要求停机窗口内先迁移后发代码**（旧实例迁移后写入即失败）。
