@@ -74,9 +74,11 @@ S1–S6 未完成的先完成；已完成的把 §2 的 2/3/4 三处修订补进
 
 ### M2 install + customer + auth 身份链路（8 actions）⚠️ 风险最高
 
+> 实施注（2026-10-06）：install 与 customer 控制器已并入 `bff/api/customer/auth/` 包（action 名 `m_auth_install_*` / `m_auth_customer_createAnonymous`，resource/action 段不变只改 module 段；详见 rpc-rollout-client.md §1.2）；session 各 action 名以 §1.2 表为准。
+
 3 个 subagent 上限用满：install / customer+auth 两个 WP 并行 + 第三个做共享测试基建（错误码矩阵）。
 
-- **ActionSpec 对照是本阶段核心**：`m_install_*` 全部为 install-token/bootstrap 语义（`fromDfe` 实参逐个核对，特别是 createInstall 的匿名允许、refresh 的 `requireActorType=null`——access token 过期不拦截 refresh，refreshToken 在 input）；`m_auth_login` 的 `mustGetLoginInstallId` 语义进 controller 断言；`q_auth_session_me` = CUSTOMER。
+- **ActionSpec 对照是本阶段核心**：`m_auth_install_*` 全部为 install-token/bootstrap 语义（`fromDfe` 实参逐个核对，特别是 createInstall 的匿名允许、refresh 的 `requireActorType=null`——access token 过期不拦截 refresh，refreshToken 在 input）；`m_auth_session_login` 的 `mustGetLoginInstallId` 语义进 controller 断言；`q_auth_session_me` = CUSTOMER。
 - 语义红线：IP 限流（customer 创建）、install/customer 绑定、token iid、账号合并行为不得改变；refresh 的 401003、install 的 403001/403002/409001/404001 错误码逐一保留。
 - 全局事务：login/refresh/logout/createAnonymous/createInstall/updateInstall 保留现有 `GlobalTxRunner` 边界（对照各 fetcher）。
 - 验收：身份链路合约测试 + 与客户端 R2 联调（含明文降级下引导链可用）→ **gate 2**。

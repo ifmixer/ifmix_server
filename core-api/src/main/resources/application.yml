@@ -102,23 +102,23 @@ app:
   # install 层=防滥用（小阈值，attest 接线任务使用）。
   ratelimit:
     install:
-      ip-minute: 100          # m_install_createInstall 入口短窗口（所有请求，验签前）
+      ip-minute: 100          # m_auth_install_create 入口短窗口（所有请求，验签前）
       unverified-ip-day: 100  # createInstall 日窗口：未验证桶（无 proof / INVALID / UNAVAILABLE，OBSERVE 放行）
       attested-ip-day: 1000   # createInstall 日窗口：VALID 已验证桶
     attest-challenge:
-      ip-minute: 100          # m_install_createAttestChallenge：纯 HMAC 计算，与 createInstall 入口对齐
+      ip-minute: 100          # m_auth_install_createAttestChallenge：纯 HMAC 计算，与 createInstall 入口对齐
     recover-install:
-      ip-minute: 10           # m_install_recoverInstall
+      ip-minute: 10           # m_auth_install_recover
     attest-existing:
-      ip-minute: 10           # m_install_attestExisting
+      ip-minute: 10           # m_auth_install_attest
       install-day: 3          # 每 install 每 UTC 日新 key 额度
     anonymous:
-      legacy-ip-minute: 10    # m_customer_createAnonymousCustomer：旧客户端严格阈值
+      legacy-ip-minute: 10    # m_auth_customer_createAnonymous：旧客户端严格阈值
       ip-minute: 100
       ip-day: 1000
       install-day: 5
     scan:
-      legacy-ip-minute: 5     # m_ai_createScan：旧客户端严格阈值
+      legacy-ip-minute: 5     # m_ai_scan_createOne：旧客户端严格阈值
       legacy-ip-day: 500
       ip-minute: 100
       ip-day: 1000
@@ -145,7 +145,7 @@ app:
     # 验签并发信号量（§3.1：Redis 故障期防验签把进程打满；拿不到许可 → UNAVAILABLE，OBSERVE 放行 / ENFORCE 503002）
     verify-permits: ${APP_ATTEST_VERIFY_PERMITS:32}
     # 老版本 app 兼容：token 无 iid 时退回 x-install-id header（不可信，不签进 token）。
-    # 老 app 全部升级（会调 m_install_createInstall 拿 installToken）后置 false。
+    # 老 app 全部升级（会调 m_auth_install_create 拿 installToken）后置 false。
     legacy-install-id-fallback: ${APP_LEGACY_INSTALL_ID_FALLBACK:true}
     google:
       jwks-uri: ${AUTH_GOOGLE_JWKS_URI:https://accounts.google.com/.well-known/openid-configuration}
