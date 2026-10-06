@@ -1,0 +1,167 @@
+package com.ifmix.core.api.bff.api.customer.media
+
+import com.ifmix.core.api.dto.storage.PresignDownloadResult
+import com.ifmix.core.api.dto.storage.PresignUploadInput
+import com.ifmix.core.api.dto.storage.PresignUploadResult
+import com.ifmix.core.api.infra.auth.AuthJwtService
+import com.ifmix.core.api.infra.auth.VerifiedToken
+import com.ifmix.core.api.infra.http.ActionContext
+import com.ifmix.core.api.infra.http.ActionContextFactory
+import com.ifmix.core.api.infra.http.ApiError
+import com.ifmix.core.api.infra.http.ApiRequestBody
+import com.ifmix.core.api.infra.http.ErrorCode
+import com.ifmix.core.api.infra.http.LogContext
+import com.ifmix.core.api.infra.http.RequestMeta
+import com.ifmix.core.api.modules.media.StorageFacade
+import com.ifmix.core.api.entity.common.ActorTypes
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
+import org.mockito.kotlin.whenever
+import org.springframework.mock.web.MockHttpServletRequest
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
+import java.util.UUID
+import kotlin.reflect.full.declaredMemberFunctions
+
+/**
+ * [MediaController] 单测：仿 DemoControllerTest 模式（真实 [ActionContextFactory] + mock JWT +
+ * MockHttpServletRequest；facade mock）。无 GlobalTxRunner——presign 两 action 原本就不包事务。
+ */
+class MediaControllerTest {
+
+    private val projectId = "ifmix-app"
+    private val reqId = "req-media-1"
+
+    private val jwt = mock<AuthJwtService>()
+    private val facade = mock<StorageFacade>()
+
+    private lateinit var objectMapper: ObjectMapper
+    private lateinit var controller: MediaController
+
+    @BeforeEach
+    fun setUp() {
+        objectMapper = JsonMapper.builder().build()
+        val ctxFactory = ActionContextFactory(jwt, strict = true)
+        whenever(jwt.verify(any())).thenReturn(
+            VerifiedToken(
+                actorId = UUID.randomUUID().toString(),
+                projectId = projectId,
+                actorType = ActorTypes.CUSTOMER,
+                tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER,
+            ),
+        )
+        controller = MediaController(ctxFactory, facade, objectMapper)
+    }
+
+    private fun validMeta() = RequestMeta(reqId = reqId, projectId = projectId, accessToken = "SECRET-customer")
+
+    private fun body(input: Map<String, Any?>): ApiRequestBody =
+        ApiRequestBody(validMeta(), objectMapper.convertValue(input, tools.jackson.databind.node.ObjectNode::class.java))
+
+    private fun request() = MockHttpServletRequest().apply { LogContext.start(this) }
+
+    // ===== 每个 action 一条成功用例 =====
+
+    @Test
+    fun `presignUpload success returns envelope with reqId echo and no tx`() {
+        val mediaId = UUID.randomUUID()
+        whenever(facade.presignUpload(any(), any())).thenReturn(
+            PresignUploadResult(mediaId = mediaId, uploadUrl = "https://u", imageKey = "image/p/x", downloadUrl = "https://d"),
+        )
+        val resp = controller.presignUpload(request(), body(mapOf("prefix" to "antique_scan", "contentType" to 10)))
+
+        assertEquals("200000", resp.body!!.code)
+        assertEquals(mediaId, resp.body!!.data?.mediaId)
+        assertEquals("https://u", resp.body!!.data?.uploadUrl)
+        assertEquals("image/p/x", resp.body!!.data?.imageKey)
+        assertEquals(reqId, resp.body!!.reqId, "Envelope.reqId must echo meta.reqId on success")
+        val captor = argumentCaptor<PresignUploadInput>()
+        verify(facade).presignUpload(any(), captor.capture())
+        assertEquals("antique_scan", captor.firstValue.prefix)
+        assertEquals(10, captor.firstValue.contentType)
+        LogContext.clear()
+    }
+
+    @Test
+    fun `presignDownload success with optional durationSeconds defaulting null`() {
+        whenever(facade.presignDownload(any(), any())).thenReturn(PresignDownloadResult(url = "https://signed"))
+        val resp = controller.presignDownload(request(), body(mapOf("imageKey" to "image/p/x/k.jpg")))
+
+        assertEquals("200000", resp.body!!.code)
+        assertEquals("https://signed", resp.body!!.data?.url)
+        assertEquals(reqId, resp.body!!.reqId)
+        LogContext.clear()
+    }
+
+    // ===== 关键错误用例 =====
+
+    @Test
+    fun `presignUpload missing required field fails with 400 semantic`() {
+        val ex = assertThrows(Exception::class.java) {
+            controller.presignUpload(request(), ApiRequestBody(validMeta(), null))
+        }
+        // Jackson 3：prefix/contentType 必填缺失 → InvalidNullException（Spring 边界映射 400000）
+        assertTrue(
+            ex is tools.jackson.core.JacksonException || ex.message?.contains("Invalid null") == true,
+            "got: ${ex::class.qualifiedName} ${ex.message}",
+        )
+        LogContext.clear()
+    }
+
+    @Test
+    fun `facade ApiError propagates unchanged`() {
+        whenever(facade.presignDownload(any(), any()))
+            .thenThrow(ApiError(ErrorCode.INVALID_REQUEST, "invalid objectKey"))
+        val ex = assertThrows(ApiError::class.java) {
+            controller.presignDownload(request(), body(mapOf("imageKey" to "bad")))
+        }
+        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
+        assertEquals("400000", ex.errorCode.externalCode)
+        LogContext.clear()
+    }
+
+    @Test
+    fun `unauthenticated request rejected by ActionContextFactory`() {
+        val meta = RequestMeta(reqId = reqId, projectId = projectId) // 无 token
+        val ex = assertThrows(ApiError::class.java) {
+            controller.presignUpload(
+                request(),
+                ApiRequestBody(meta, objectMapper.createObjectNode()),
+            )
+        }
+        assertEquals(ErrorCode.UNAUTHORIZED, ex.errorCode)
+        verifyNoInteractions(facade)
+        LogContext.clear()
+    }
+
+    // ===== 命名一致性护栏 =====
+
+    @Test
+    fun `routes one-to-one with MediaSpecs and mutation prefix matches isMutation`() {
+        val specs = setOf(MediaSpecs.PRESIGN_UPLOAD, MediaSpecs.PRESIGN_DOWNLOAD)
+        assertEquals(2, specs.size)
+        specs.forEach { spec ->
+            assertEquals(spec.isMutation, spec.reqName.startsWith("m_"))
+            assertEquals("media", spec.reqName.split("_")[1])
+        }
+
+        val postings = MediaController::class.declaredMemberFunctions
+            .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
+        assertEquals(2, postings.size)
+        val pathOf = postings.associate { f ->
+            val path = f.annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
+            val specConst = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
+            path to specs.single { it.reqName == specConst }
+        }
+        assertEquals(specs.map { it.reqName }.toSet(), pathOf.values.map { it.reqName }.toSet())
+    }
+}

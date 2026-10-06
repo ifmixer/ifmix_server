@@ -3,8 +3,8 @@ package com.ifmix.core.api.modules.media.handler
 import com.ifmix.core.api.dto.storage.PresignDownloadResult
 import com.ifmix.core.api.dto.storage.PresignUploadResult
 import com.ifmix.core.api.dto.common.ContentTypes
-import com.ifmix.core.api.generated.types.PresignDownloadInput
-import com.ifmix.core.api.generated.types.PresignUploadInput
+import com.ifmix.core.api.dto.storage.PresignDownloadInput
+import com.ifmix.core.api.dto.storage.PresignUploadInput
 import com.ifmix.core.api.infra.codec.toBase58
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.db.UuidV7

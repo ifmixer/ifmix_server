@@ -2,8 +2,8 @@ package com.ifmix.core.api.modules.media
 
 import com.ifmix.core.api.dto.storage.PresignDownloadResult
 import com.ifmix.core.api.dto.storage.PresignUploadResult
-import com.ifmix.core.api.generated.types.PresignDownloadInput
-import com.ifmix.core.api.generated.types.PresignUploadInput
+import com.ifmix.core.api.dto.storage.PresignDownloadInput
+import com.ifmix.core.api.dto.storage.PresignUploadInput
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.media.handler.StorageAggHandler
