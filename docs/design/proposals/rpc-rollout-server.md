@@ -14,8 +14,10 @@ demo 试点（S1–S6）：客户端已验收；服务端若未完成，**先按
 ## 1. 契约速查（最新定稿，覆盖 pilot 文档的过时处）
 
 ```
-URL:      POST /api/customer/core/{actionName}
-          actionName = {q|m}_{module}_{resource}_{action}（四段下划线；总表见 rpc-rollout-client.md §1）
+URL:      POST /customer/core/greq/{reqName}
+          reqName = {q|m}_{namespace}_{resource}_{action}（四段下划线；namespace 目前=module，resource 可为聚合根；
+          总表见 rpc-rollout-client.md §1。2026-10-06 定稿：greq 路径即 RPC 最终路径，原 /api/customer/core 方案废弃；
+          过渡期 GraphQL persisted query 与 RPC controller 在同一路径下共存，分发细节落地时细化）
 请求体:   {"meta": {...}, "input": {...}}（wire v3 加密时 octet-stream；meta 字段见 pilot §0.1）
 响应体:   {"reqId": "...", "code": "200000", "msg": "success", "data": {...}}   ← reqId 为本次新增
           reqId = 回显 meta.reqId（缺省用服务端生成值）；HTTP status = code 前三位
@@ -55,9 +57,9 @@ KSP 生成失败/生成代码不可读时允许该处回退手写，但必须在
 
 ### 3.3 Controller / ActionSpec 迁移规则（与 pilot 相同，三处强调）
 
-1. Controller 模板 = `DemoController`：`@RequestMapping("/api/customer/core")` + 每 action `@PostMapping("/{actionName}")` + `ActionContextFactory.fromApi` + mutation 包 `GlobalTxRunner` + `Envelope.ok(data).copy(reqId=...)`；不 import repo/handler。
-2. **ActionSpec 的唯一依据是现有 DataFetcher 的 `fromDfe(...)` 实参**：迁移某 action 时，逐字段把该 fetcher 里 `ctxProvider.fromDfe(dfe, requireAppId=…, requireActorType=…, requireLocale=…)` 的实参搬进 `ActionSpec`（映射：requireActorType=ACTOR_CUSTOMER → CUSTOMER；null → NONE 或 INSTALL_OR_CUSTOMER 按 token 语义），并在该模块测试里加一张「actionName ↔ fromDfe 实参」对照断言。**禁止凭感觉填**。
-3. **命名一致性测试**（每模块）：反射扫描该模块全部 ActionSpec——path 段 `m_` ⇔ `isMutation=true`；module 段 = 所属模块；resource/action 在 rpc-rollout-client.md §1 表内。
+1. Controller 模板 = `DemoController`：`@RequestMapping("/customer/core/greq")`（与 GraphQL persisted query 共用路径，过渡期共存、分发细节落地时细化）+ 每 action `@PostMapping("/{reqName}")` + `ActionContextFactory.fromApi` + mutation 包 `GlobalTxRunner` + `Envelope.ok(data).copy(reqId=...)`；不 import repo/handler。
+2. **ActionSpec 的唯一依据是现有 DataFetcher 的 `fromDfe(...)` 实参**：迁移某 action 时，逐字段把该 fetcher 里 `ctxProvider.fromDfe(dfe, requireAppId=…, requireActorType=…, requireLocale=…)` 的实参搬进 `ActionSpec`（映射：requireActorType=ACTOR_CUSTOMER → CUSTOMER；null → NONE 或 INSTALL_OR_CUSTOMER 按 token 语义），并在该模块测试里加一张「reqName ↔ fromDfe 实参」对照断言。**禁止凭感觉填**。
+3. **命名一致性测试**（每模块）：反射扫描该模块全部 ActionSpec——path 段 `m_` ⇔ `isMutation=true`；namespace 段 = 所属模块；resource/action 在 rpc-rollout-client.md §1 表内。
 
 ## 4. 阶段计划（与客户端 R0–R5 对齐）
 
@@ -74,9 +76,11 @@ S1–S6 未完成的先完成；已完成的把 §2 的 2/3/4 三处修订补进
 
 ### M2 install + customer + auth 身份链路（8 actions）⚠️ 风险最高
 
+> 2026-10-06：install/customer 模块代码已并入 auth（`modules/auth/{install,customer}`、`entity/auth/`）；相关 reqName namespace 从 install/customer 改为 auth（`m_auth_install_*`、`m_auth_customer_*`，见 rpc-rollout-client.md §1.2）。Controller 包按并入后的 auth 模块组织。
+
 3 个 subagent 上限用满：install / customer+auth 两个 WP 并行 + 第三个做共享测试基建（错误码矩阵）。
 
-- **ActionSpec 对照是本阶段核心**：`m_install_*` 全部为 install-token/bootstrap 语义（`fromDfe` 实参逐个核对，特别是 createInstall 的匿名允许、refresh 的 `requireActorType=null`——access token 过期不拦截 refresh，refreshToken 在 input）；`m_auth_login` 的 `mustGetLoginInstallId` 语义进 controller 断言；`q_auth_session_me` = CUSTOMER。
+- **ActionSpec 对照是本阶段核心**：`m_auth_install_*` 全部为 install-token/bootstrap 语义（`fromDfe` 实参逐个核对，特别是 createInstall 的匿名允许、refresh 的 `requireActorType=null`——access token 过期不拦截 refresh，refreshToken 在 input）；`m_auth_session_login` 的 `mustGetLoginInstallId` 语义进 controller 断言；`q_auth_session_me` = CUSTOMER；`m_auth_customer_createAnonymous` 走 customer+auth WP。
 - 语义红线：IP 限流（customer 创建）、install/customer 绑定、token iid、账号合并行为不得改变；refresh 的 401003、install 的 403001/403002/409001/404001 错误码逐一保留。
 - 全局事务：login/refresh/logout/createAnonymous/createInstall/updateInstall 保留现有 `GlobalTxRunner` 边界（对照各 fetcher）。
 - 验收：身份链路合约测试 + 与客户端 R2 联调（含明文降级下引导链可用）→ **gate 2**。
@@ -92,13 +96,13 @@ S1–S6 未完成的先完成；已完成的把 §2 的 2/3/4 三处修订补进
 
 ### M4 OpenAPI 全量契约 + 清理
 
-1. springdoc：全部 action 唯一 operationId（= actionName）、request/response schema、meta/错误描述；启用 `/core/api-docs/json`；snapshot 测试断言 39 个 actionName 全在且无重复。
+1. springdoc：全部 action 唯一 operationId（= reqName）、request/response schema、meta/错误描述；启用 `/core/api-docs/json`；snapshot 测试断言 39 个 reqName 全在且无重复。
 2. 清理：`app.auth.legacy-install-id-fallback` 开关与 `legacyInstallId` 路径移除（RPC 无此信源；确认老 GraphQL 路径无生产流量后执行——若未到 M5，此项推迟到 M5 一并做）。
 3. **gate 4 = 客户端 R4 完成评审**。
 
 ### M5 删 GraphQL（最终 gate，与客户端 R5 同步）
 
-照 `graphql-to-http-rpc-openapi.md` 原阶段 7 清单执行：删 `bff/graphql/**`、`infra/graphql/**`、`resources/schema/**`、`resources/graphql/persisted-queries/**`、DGS 依赖与 codegen、GraphiQlHttpStatusFilter、trusted-document 测试；确认源码无 `com.netflix.graphql`/`generated.types`/`/greq/`；此时把 RequestParser/ActionContextProvider 一并删除，`ActionContextFactory` 内复制来的 token 校验逻辑就位为唯一实现；更新 AGENTS.md / ARCHITECTURE.md / CODING_GUIDE.md / 本目录各文档状态。**最终 review 前不动手**。
+照 `graphql-to-http-rpc-openapi.md` 原阶段 7 清单执行：删 `bff/graphql/**`、`infra/graphql/**`、`resources/schema/**`、`resources/graphql/persisted-queries/**`、DGS 依赖与 codegen、GraphiQlHttpStatusFilter、trusted-document 测试；确认源码无 `com.netflix.graphql`/`generated.types`（`/customer/core/greq/{reqName}` 路径由 RPC controller 承接，trusted-document 基建删除）；此时把 RequestParser/ActionContextProvider 一并删除，`ActionContextFactory` 内复制来的 token 校验逻辑就位为唯一实现；更新 AGENTS.md / ARCHITECTURE.md / CODING_GUIDE.md / 本目录各文档状态。**最终 review 前不动手**。
 
 ## 5. 并行与提交纪律
 

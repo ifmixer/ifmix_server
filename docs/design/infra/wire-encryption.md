@@ -98,7 +98,7 @@ flags bit0 = 1 → payload = gzip(原文)；bit1–7 保留，必须为 0
 - 请求解密后包装为明文 JSON 请求：`Content-Type`、`Content-Length` 还原。
 - 缓存内层响应，`seal` 后写回，保留 status。
 - 时钟偏差 > 5min：`wire.clock.skew` warn，不拒绝（已决策改为拒绝 + 独立错误码防误降级，见 §9，待实施）。
-- 解密失败：**明文** 400 + `{"code":"400003","msg":"bad encrypted payload","data":null}`，`wire.decrypt.failed` warn（带 kid）。成功日志也带 kid，用于轮换时观察旧 kid 流量。
+- 解密失败：**明文** 400 + 统一 GraphQL 错误形状（`{"errors":[{"message":"bad encrypted payload","extensions":{"code":"400003","errorName":"WIRE_DECRYPT_FAILED"}}]}`，见 ARCHITECTURE「API 约定」），`wire.decrypt.failed` warn（带 kid）。成功日志也带 kid，用于轮换时观察旧 kid 流量。
 - 错误码：`ErrorCode.WIRE_DECRYPT_FAILED("400003")`；头常量：`RequestHeaders.PROTO_VERSION`。
 
 ### 配置

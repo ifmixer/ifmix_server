@@ -17,13 +17,13 @@ import com.ifmix.core.api.modules.auth.repo.AuthIdentityRepository
 import com.ifmix.core.api.modules.auth.repo.AuthIdentityIdpRelationRepository
 import com.ifmix.core.api.modules.auth.repo.IdpIdentityRepository
 import com.ifmix.core.api.modules.auth.repo.IdpRepository
-import com.ifmix.core.api.modules.customer.repo.CustomerRepository
-import com.ifmix.core.api.modules.customer.handler.CustomerMergeHandler
+import com.ifmix.core.api.modules.auth.customer.repo.CustomerRepository
+import com.ifmix.core.api.modules.auth.customer.handler.CustomerMergeHandler
 import com.ifmix.core.api.dto.payment.SubscriptionState
 import com.ifmix.core.api.entity.common.Tiers
 import com.ifmix.core.api.entity.common.IdpType
 import com.ifmix.core.api.entity.common.IdpTypes
-import com.ifmix.core.api.entity.customer.DeletionReasons
+import com.ifmix.core.api.entity.auth.customer.DeletionReasons
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
@@ -97,7 +97,7 @@ class AuthAggHandler(
     private val refreshTokenRepo: RefreshTokenRepository,
     private val customerRepo: CustomerRepository,
     private val mergeHandler: CustomerMergeHandler,
-    private val installFacade: com.ifmix.core.api.modules.install.InstallFacade,
+    private val installFacade: com.ifmix.core.api.modules.auth.install.InstallFacade,
     private val events: ApplicationEventPublisher,
     @Value("\${app.auth.access-ttl-sec:900}")
     private val accessTtlSec: Long,
@@ -369,7 +369,7 @@ class AuthAggHandler(
         installFacade.unbindAllForCustomer(mc.action, actorId)
         // 逻辑删除 + 记录原因分类/说明（幂等：已删除时 no-op，仍返回 accepted）
         // reason 说明文本来自客户端提交的原始输入；当前 mutation 无入参，暂存 null，
-        // 将来 m_auth_deleteAccount 增加 reason 入参时在此透传。
+        // 将来 m_auth_account_deleteOne 增加 reason 入参时在此透传。
         customerRepo.requestDeletion(mc, projectId, actorId, DeletionReasons.USER_REQUESTED, reason = null)
         // 吊销全部 refresh token：注销后 refresh 链即刻失效（已签发 access token 至多存活至其过期）
         refreshTokenRepo.revokeAllByActor(mc, projectId, actorId, AuthJwtService.ACTOR_CUSTOMER)

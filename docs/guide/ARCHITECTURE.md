@@ -1,6 +1,6 @@
 # ifmix_server 架构文档
 
-> 最后更新: 2026-09-03
+> 最后更新: 2026-10-06
 
 ## 项目概述
 
@@ -29,7 +29,8 @@
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  BFF — GraphQL (DGS DataFetcher) + REST                              │
-│  POST /customer/core/greq/{reqName}  (主 API · persisted query)      │
+│  POST /customer/core/greq/{reqName}  (主 API · persisted query；     │
+│                                       RPC 迁移后同路径承接 RPC)      │
 │  POST /customer/core/gql            (raw query · GraphiQL/本地探索)   │
 │  POST /webhooks/iap/*     (Apple/Google 回调)                        │
 │  GET  /.well-known/jwks                                              │
@@ -88,8 +89,7 @@ Repo         →  持有 CrudRepoTemplate（companion object）
 
 | 模块 | 功能 |
 |------|------|
-| auth | IDP 登录(Apple/Google)、AuthIdentity 账号中枢、AuthIdentity↔IdpIdentity 绑定(M:N 关系表)、Refresh Token 轮转、Access Token(EdDSA) |
-| customer | Customer CRUD、匿名先行 / 登录转正 / 跨设备合并 |
+| auth | IDP 登录(Apple/Google)、AuthIdentity 账号中枢、AuthIdentity↔IdpIdentity 绑定(M:N 关系表)、Refresh Token 轮转、Access Token(EdDSA)；**install 与 customer 模块已并入**（2026-10-06，代码位于 `modules/auth/{install,customer}`）：install 生命周期 / App Attestation、Customer CRUD、匿名先行 / 登录转正 / 跨设备合并 |
 | ai | 古物扫描、AI 识别(Spring AI 多模态)、Key 轮换+模型 fallback、收藏管理 |
 | demo | Todo 清单 CRUD、嵌入 items、游标分页、FilterGroup 示例 |
 | pay | Apple/Google 购买验证、订阅管理、Webhook(JWS 验签)、Tier 映射 |
@@ -108,9 +108,8 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 ├── bff/
 │   ├── graphql/customer/       # DGS DataFetcher
 │   │   ├── ai/                 # AiFetcher + DataLoaders
-│   │   ├── auth/               # AuthFetcher
+│   │   ├── auth/               # AuthFetcher + InstallFetcher + CustomerFetcher（install/customer 并入 auth）
 │   │   ├── cs/                 # CsFetcher
-│   │   ├── customer/           # CustomerFetcher
 │   │   ├── demo/               # DemoFetcher + TodoItemsResolver
 │   │   ├── pay/                # PayFetcher
 │   │   └── media/              # MediaFetcher
@@ -119,8 +118,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 ├── entity/                      # Jimmer interface entity (直出 GraphQL)
 │   ├── common/                 # 基类 + 跨模块枚举: BaseEntity, BaseProjectEntity, UUIDProps, MutableProps, SoftDeletableProps, ProjectScopedProps, CustomerOwnedProps, Platforms, Tiers
 │   ├── ai/                     # ScanRecord, ScanCollection, ScanCollectionItem, ScanDeepResearch, AiApiKey, ImageRef
-│   ├── auth/                   # Idp, IdpIdentity, AuthIdentity, AuthIdentityIdpRelation, ProjectToIdpRelation, RefreshToken
-│   ├── customer/               # Customer
+│   ├── auth/                   # Idp, IdpIdentity, AuthIdentity, AuthIdentityIdpRelation, ProjectToIdpRelation, RefreshToken, Customer（2026-10-06 并入）
 │   ├── pay/                    # Subscription, StoreNotification
 │   ├── demo/                   # Todo, TodoItem, TodoRecommend
 │   ├── project/                    # ProjectConfigRevision, ProjectInfo, ConfigTypes
@@ -133,11 +131,9 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   │   ├── repo/               # IdpRepository, IdpIdentityRepository, AuthIdentityRepository, AuthIdentityIdpRelationRepository, ProjectToIdpRelationRepository, RefreshTokenRepository
 │   │   ├── AuthConfig.kt, ProviderVerifier.kt
 │   │   ├── AuthLoggedInEvent.kt
-│   │   └── MergeOnLoginListener.kt
-│   ├── customer/
-│   │   ├── CustomerFacade.kt
-│   │   ├── handler/            # CustomerMergeHandler
-│   │   └── repo/CustomerRepository.kt
+│   │   ├── MergeOnLoginListener.kt
+│   │   ├── install/            # 2026-10-06 并入：install 生命周期 / App Attestation（Facade + handler/repo）
+│   │   └── customer/           # 2026-10-06 并入：CustomerFacade、CustomerMergeHandler、CustomerRepository
 │   ├── ai/
 │   │   ├── AiFacade.kt, ScanCollectionFacade.kt
 │   │   ├── handler/ScanAggHandler.kt, ScanCollectionAggHandler.kt
@@ -174,7 +170,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   ├── codec/                  # Base58 (UUID ↔ 22-char URL-safe)
 │   ├── graphql/                # ActionContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
 │   │                           # trusted/ (GReq persisted query: ReqNamePathInterceptor, GReqRouterConfig, TrustedDocumentProvider)
-│   ├── http/                   # ActionContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
+│   ├── http/                   # ActionContext, RequestContext, ApiError, ErrorCode, GraphQlErrorBody, Interceptors
 │   ├── auth/                   # AuthInterceptor, AuthJwtService, AuthJwtKeys, Hashing
 │   ├── redis/                  # CacheAside, RedisConfig
 │   ├── ratelimit/              # RateLimiter, TierResolver, RateLimitConfig
@@ -196,7 +192,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
   - 均需 `x-project-id` header
 - **GraphiQL**: `/apidocs/core/customer/gql`
 - **HTTP 状态码**: 有 error 时按 `errors[0].extensions.code` 前 3 位设 HTTP status（`GraphQlHttpStatusFilter`）；无 errors → 200。详见 [Trusted Documents](../testing/GRAPHQL_TRUSTED_DOCUMENTS.md#http-状态码映射)
-- **Action 命名**: `${q|m}_${module}_${action}`（如 `q_demo_findTodos`, `m_auth_login`）；同时作为 GReq 的 reqName（path 末段）
+- **reqName 四段命名**: `{q|m}_{namespace}_{resource}_{action}`（2026-10-06 定稿：namespace 目前=module，resource 可为聚合根；如 `q_ai_scan_list`、`m_auth_session_login`）；同时作为 GReq 的 reqName（path 末段）。RPC 迁移定稿后 `POST /customer/core/greq/{reqName}` 即 RPC 最终路径（原 `/api/customer/core` 方案废弃，见 [RPC 迁移计划](../design/proposals/graphql-to-http-rpc-openapi.md)）
 - **DateTime**: ISO-8601 UTC 字符串（输入接受 ISO 或 epoch millis）
 - **input 全链路透传**: Fetcher→Facade→Handler 直传 input 对象
 - **Update 语义**: set/unset 防 null vs undefined 歧义
@@ -283,7 +279,7 @@ DB (via Jimmer KSqlClient)
 - GraphQL: `/customer/core/gql`（`x-project-id` 必填）
 - Webhook: `POST /webhooks/iap/*`（JWS 验签）
 - JWKS: `GET /.well-known/jwks`
-- REST 响应: `Envelope<T>` (`{code, msg, data}`)
+- 错误响应全站统一 GraphQL 形状：`{"errors":[{message, extensions:{code, errorName, retryAfterSec?, details?}}]}`，HTTP status = code 前三位。业务错误经 GraphQLExceptionHandler 进 `errors[].extensions`；引擎外的边缘错误（wire 解密失败、404、malformed body、未捕获 500 等）由 GlobalExceptionHandler / WireCryptoFilter 输出同形状（`GraphQlErrorBody`）——客户端全站只读 `errors[0].extensions.code` 一个解码点。批量操作的部分 item 失败在 data 内建模 per-item 结果，不占 `errors[]`（errors 留给协议/执行层，带 path）。
 
 ### 请求头
 
@@ -385,3 +381,4 @@ DB (via Jimmer KSqlClient)
 | 2026-09-02 | 三模块拆分（core-common / core-api / core-job） |
 | 2026-09-02 | 身份模型重构：AuthIdentity 账号中枢 + Customer + M:N 关系表 |
 | 2026-09-02 | Flyway 改手动 flywayMigrate task；匿名清理迁入 core-job |
+| 2026-10-06 | customer/install 模块代码并入 auth（modules/auth/{install,customer}、entity/auth/）；reqName 改四段式 `{q|m}_{namespace}_{resource}_{action}`；RPC URL 定稿 `/customer/core/greq/{reqName}` |

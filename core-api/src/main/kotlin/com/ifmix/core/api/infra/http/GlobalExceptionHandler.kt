@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.servlet.resource.NoResourceFoundException
 import org.springframework.web.servlet.NoHandlerFoundException
 
-/** 统一异常处理：把异常映射为信封响应。 */
+/** 统一异常处理：把异常映射为 GraphQL 形状的错误响应（[GraphQlErrorBody]）。 */
 @RestControllerAdvice
 class GlobalExceptionHandler(
     @param:Value("\${app.expose-errors:true}") private val exposeErrors: Boolean,
@@ -19,7 +19,7 @@ class GlobalExceptionHandler(
     private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(ApiError::class)
-    fun handleApiError(ex: ApiError, request: jakarta.servlet.http.HttpServletRequest? = null): ResponseEntity<*> {
+    fun handleApiError(ex: ApiError, request: jakarta.servlet.http.HttpServletRequest? = null): ResponseEntity<GraphQlErrorBody> {
         val code = ex.errorCode
         // 集中分级记日志：5xx 服务端故障记 error(带 stack)；限流/第三方验证失败记 warn；
         // 其余纯客户端错误(400/401/404/403)记 debug，避免正常拒绝刷 warn。
@@ -36,41 +36,43 @@ class GlobalExceptionHandler(
         val msg = code.clientMessage(ex.message, exposeErrors)
         // 线上 5xx 连 details 一起隐藏（details 同样可能带内部信息）
         val details = if (exposeErrors || !code.status.is5xxServerError) ex.details else null
-        val body = if (details != null) Envelope.errorWithDetails(code.externalCode, msg, details)
-            else Envelope.error(code.externalCode, msg)
+        val extra = buildMap {
+            if (ex.retryAfterSec != null) put("retryAfterSec", ex.retryAfterSec)
+            if (details != null) put("details", details)
+        }
+        val body = GraphQlErrorBody.error(code.externalCode, code.name, msg, extra)
         val resp = ResponseEntity.status(code.status)
         if (code == ErrorCode.AI_UNAVAILABLE) resp.header("Retry-After", "60")
         return resp.body(body)
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<Envelope<Nothing>> {
+    fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<GraphQlErrorBody> {
         val msg = ex.bindingResult.fieldErrors
             .map { "${it.field}: ${it.defaultMessage}" }
             .sorted()
             .joinToString("; ")
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(Envelope.error(ErrorCode.INVALID_REQUEST.externalCode, msg.ifEmpty { "invalid request" }))
+        return errorStatus(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_REQUEST, msg.ifEmpty { "invalid request" })
     }
 
     @ExceptionHandler(HttpMessageNotReadableException::class)
-    fun handleUnreadable(ex: HttpMessageNotReadableException): ResponseEntity<Envelope<Nothing>> =
-        ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(Envelope.error(ErrorCode.INVALID_REQUEST.externalCode, "malformed request body"))
+    fun handleUnreadable(ex: HttpMessageNotReadableException): ResponseEntity<GraphQlErrorBody> =
+        errorStatus(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_REQUEST, "malformed request body")
 
     /** 404：路径无映射 / 静态资源不存在。返回 404，warn 记录（不打 stack）。 */
     @ExceptionHandler(NoResourceFoundException::class, NoHandlerFoundException::class)
-    fun handleNotFound(ex: Exception): ResponseEntity<Envelope<Nothing>> {
+    fun handleNotFound(ex: Exception): ResponseEntity<GraphQlErrorBody> {
         log.warn("No handler for request. msg={}", ex.message)
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(Envelope.error(ErrorCode.NOT_FOUND.externalCode, "not found"))
+        return errorStatus(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, "not found")
     }
 
     @ExceptionHandler(Exception::class)
-    fun handleGeneric(ex: Exception, request: jakarta.servlet.http.HttpServletRequest? = null): ResponseEntity<Envelope<Nothing>> {
+    fun handleGeneric(ex: Exception, request: jakarta.servlet.http.HttpServletRequest? = null): ResponseEntity<GraphQlErrorBody> {
         log.atError().setCause(ex).addKeyValue("headers", HeaderDump.of(request)).log("Unhandled exception")
         val msg = if (exposeErrors) (ex.message ?: "error") else GENERIC_SERVER_ERROR_MESSAGE
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(Envelope.error(ErrorCode.INTERNAL.externalCode, msg))
+        return errorStatus(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL, msg)
     }
+
+    private fun errorStatus(status: HttpStatus, code: ErrorCode, msg: String): ResponseEntity<GraphQlErrorBody> =
+        ResponseEntity.status(status).body(GraphQlErrorBody.error(code.externalCode, code.name, msg))
 }

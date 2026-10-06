@@ -4,11 +4,11 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import com.ifmix.core.api.dto.notification.NotificationContent
 import com.ifmix.core.api.dto.notification.NotificationRequest
-import com.ifmix.core.api.modules.install.InstallNotificationTarget
+import com.ifmix.core.api.modules.auth.install.InstallNotificationTarget
 import com.ifmix.core.api.modules.notification.channel.PushDestinationKind
 import assertk.assertions.isNull
 import com.ifmix.core.api.infra.http.ActionContext
-import com.ifmix.core.api.modules.install.InstallFacade
+import com.ifmix.core.api.modules.auth.install.InstallFacade
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq

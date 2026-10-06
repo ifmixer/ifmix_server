@@ -156,7 +156,7 @@ tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
         "DateTime" to "java.time.Instant",
         "JSON" to "kotlin.Any",
         // Entity output types → Domain Model data classes
-        "Customer" to "com.ifmix.core.api.entity.customer.Customer",
+        "Customer" to "com.ifmix.core.api.entity.auth.customer.Customer",
         "Todo" to "com.ifmix.core.api.entity.demo.Todo",
         "TodoItem" to "com.ifmix.core.api.entity.demo.TodoItem",
         "ScanRecord" to "com.ifmix.core.api.entity.ai.ScanRecord",

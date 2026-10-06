@@ -7,12 +7,14 @@
 
 **命名修订（2026-10-06）**：客户端把「rpc」概念统一改为「api」——URL 段 `/rpc/customer/core/` 改为 `/api/customer/core/`；内部符号 `rpcOp` 改 `apiOp`、`RpcMeta`/`RpcOpts` 改 `ApiMeta`/`ApiOpts`、`rpcDemo.ts` 改 `apiDemo.ts`、`rpc.test.ts` 改 `api.test.ts`、`client.rpc.test.ts` 改 `client.api.test.ts`、client 方法 `*Rpc` 改 `*Api`；package.json exports `./rpc` 改 `./api`、`./rpcDemo` 改 `./apiDemo`。服务端 controller 包路径 `bff/rpc/customer` 改 `bff/api/customer`（rollout/pilot/proposal 已同步）。外部文档文件名（rpc-pilot-*.md / graphql-to-http-rpc-openapi.md）不改。
 
-**阶段状态**：R0 客户端侧 done（2026-10-06：8 个 reqName 四段新命名 + URL 迁到 `/api/customer/core/{actionName}`，全量 17 suite / 168 tests 绿）；R0 联调 E2E **挂起**（服务端 S4 demo controller/路由未落地、localhost:3001 未起、服务端 DemoSpecs.kt 仍旧名）—— 等 gate 1。R1 pending · R2 pending · R3 pending · R4 pending · R5 pending
+**URL 修订（2026-10-06 定稿，覆盖上一条中的 URL 段）**：RPC 最终 URL 定为 `POST /customer/core/greq/{reqName}`（与 GraphQL persisted query 共用路径；gql raw 仍是 `/customer/core/gql`）；原 `/api/customer/core/{reqName}` 方案废弃，不再使用 `/api/` 前缀路径。⚠️ **R0 已按 `/api/customer/core` 实现的客户端 URL 必须在下次联调（gate 1）前同步改为 `/customer/core/greq`**——内部符号（apiOp/ApiMeta 等「api」命名）不受影响，只改 URL 常量与测试断言；此外 §1.1 有 2 行 reqName 在四段式定稿中再次改名（见 §1.1 注）。
+
+**阶段状态**：R0 客户端侧 done（2026-10-06：8 个 reqName 四段新命名 + URL 迁到 `/api/customer/core/{reqName}`，全量 17 suite / 168 tests 绿）——**注：URL 二次变更待客户端跟进**（定稿为 `/customer/core/greq/{reqName}`，且 §1.1 两行 reqName 再改名，见文件头 URL 修订）；R0 联调 E2E **挂起**（服务端 S4 demo controller/路由未落地、localhost:3001 未起、服务端 DemoSpecs.kt 仍旧名）—— 等 gate 1。R1 pending · R2 pending · R3 pending · R4 pending · R5 pending
 
 ## 0. 现状与总览
 
 - demo 8 个 action 客户端已走 RPC（`api.ts`/`apiDemo.ts`/`client.ts` `todo*Api` 方法），但用的是**旧命名**（`m_demo_createTodo`），本计划 R0 统一改为四段新命名。
-- URL 已定稿：`POST /api/customer/core/{actionName}`，`actionName = {q|m}_{module}_{resource}_{action}`（proposal §一；module=resource 重叠允许，如 `m_install_install_*`）。
+- URL 已定稿（2026-10-06）：`POST /customer/core/greq/{reqName}`，`reqName = {q|m}_{namespace}_{resource}_{action}` 四段式（proposal §一；namespace 目前=module，resource 可为聚合根）。重叠允许仅剩 `m_media_media_*`；install/customer 因模块并入 auth，namespace 为 auth，不再重叠（`m_auth_install_*` / `m_auth_customer_*`）。
 - 迁移模式与 pilot 完全一致：每 action 一条 `apiOp` 封装 + `client.ts` 加 `*Api` 方法（走 `guarded()`）+ 手写类型 + mock fetch 测试；gql 版本保留到 R5。
 - 服务端按模块出规格文档（Controller/DTO/测试），**action 名以本文件 §1 的表为单一真相**；两端冲突以本表为准并回改文档。
 
@@ -20,18 +22,22 @@
 
 ### 1.1 demo（R0 改名，客户端已实现）
 
-| 旧名（已实现） | 新名 |
+> **2026-10-06 四段式定稿再修订**：下表 2 行在 R0 已实现的四段名基础上再次改名——`m_demo_todo_updateOne` → `m_demo_todo_updateById`、`m_demo_todo_updateItems` → `m_demo_todoItem_updateMany`（resource 可为聚合根 todoItem）。客户端 `apiDemo.ts` 内这 2 个 reqName 字符串需同步调整。
+
+| 旧名（GraphQL，已实现） | 新名（2026-10-06 定稿） |
 |---|---|
 | q_demo_findTodoById | `q_demo_todo_getById` |
 | q_demo_findTodosByIds | `q_demo_todo_getByIds` |
 | q_demo_findTodos | `q_demo_todo_list` |
 | m_demo_createTodo | `m_demo_todo_createOne` |
-| m_demo_updateTodo | `m_demo_todo_updateOne` |
-| m_demo_batchUpdateTodoItems | `m_demo_todo_updateItems` |
+| m_demo_updateTodo | `m_demo_todo_updateById` |
+| m_demo_batchUpdateTodoItems | `m_demo_todoItem_updateMany` |
 | m_demo_deleteTodo | `m_demo_todo_deleteOne` |
 | m_demo_deleteTodoByIds | `m_demo_todo_deleteMany` |
 
 ### 1.2 其余 31 个 action（按 R1–R3 阶段迁移）
+
+> 2026-10-06：install/customer 模块代码并入 auth（服务端 `modules/auth/{install,customer}`），相关 reqName 的 namespace 从 install/customer 改为 auth——下表 R2 的 install 6 行与 customer 1 行均为 `m_auth_*` 形态。
 
 | 阶段 | 旧名（GraphQL） | 新名 |
 |---|---|---|
@@ -41,12 +47,12 @@
 | R1 | m_cs_createSupportRequest | `m_cs_supportRequest_createOne` |
 | R1 | q_cs_mySupportRequests | `q_cs_supportRequest_list` |
 | R1 | q_cs_mySupportRequestById | `q_cs_supportRequest_getById` |
-| R2 | m_customer_createAnonymousCustomer | `m_customer_customer_createAnonymous` |
-| R2 | m_install_createInstall | `m_install_install_create` |
-| R2 | m_install_updateInstall | `m_install_install_updateOne` |
-| R2 | m_install_attestExisting | `m_install_install_attest` |
-| R2 | m_install_recoverInstall | `m_install_install_recover` |
-| R2 | m_install_createAttestChallenge | `m_install_install_createAttestChallenge` |
+| R2 | m_customer_createAnonymousCustomer | `m_auth_customer_createAnonymous` |
+| R2 | m_install_createInstall | `m_auth_install_create` |
+| R2 | m_install_updateInstall | `m_auth_install_updateOne` |
+| R2 | m_install_attestExisting | `m_auth_install_attest` |
+| R2 | m_install_recoverInstall | `m_auth_install_recover` |
+| R2 | m_install_createAttestChallenge | `m_auth_install_createAttestChallenge` |
 | R2 | m_auth_login | `m_auth_session_login` |
 | R2 | m_auth_logout | `m_auth_session_logout` |
 | R2 | m_auth_refreshToken | `m_auth_session_refresh` |
@@ -67,7 +73,7 @@
 | R3 | m_ai_removeCollectionItems | `m_ai_collectionItem_removeMany` |
 | R3 | q_ai_findCollectionItemsByCursor | `q_ai_collectionItem_list` |
 
-动词表约束：`getById / getByIds / list / createOne / createMany / updateOne / updateMany / deleteOne / deleteMany`，具体操作允许专名（`presignUpload / presignDownload / attest / recover / refresh / login / logout / me / createAnonymous / run / getStatus / getDefault / add / verify / updateItems`）；不兼容形状变更加 `V2` 后缀。
+动词表约束：`getById / getByIds / list / createOne / createMany / updateOne / updateById / updateMany / deleteOne / deleteMany`（`updateById` 为单条按 id 部分更新，如 `m_demo_todo_updateById`；批量子资源更新归入 `updateMany`，如 `m_demo_todoItem_updateMany`），具体操作允许专名（`presignUpload / presignDownload / attest / recover / refresh / login / logout / me / createAnonymous / run / getStatus / getDefault / add / verify`）；不兼容形状变更加 `V2` 后缀。
 
 ## 2. 阶段计划
 
@@ -90,7 +96,7 @@
 ⚠️ 本阶段动会话管线，规则最严格：
 
 1. **`raw` 层切换**：`client.ts` 内 `raw.anonymous` / `raw.refresh` / login / logout / me / deleteAccount 的内部实现从 gqlOp 换为 apiOp（新名见 §1.2），**对 session.ts 的输入输出契约一个字段都不许变**（`toTokens` 输入形状不变）。gql 版封装保留但不再被 raw 层调用（标记 `@deprecated 试点后删除`）。
-2. 补 `makeInstallApiOpts`（pilot 裁定 2 预留的 authorization 参数已就位）：`m_install_*` 与 anonymous 创建走 install-token 模式。
+2. 补 `makeInstallApiOpts`（pilot 裁定 2 预留的 authorization 参数已就位）：`m_auth_install_*` 与 anonymous 创建（`m_auth_customer_createAnonymous`）走 install-token 模式。
 3. attest 三件套（createAttestChallenge / createInstall / attestExisting / recover）：走 `installCoordinator`/`installProof` 既有状态机，仅换传输；proof 子树照旧走 `redactForLog` 脱敏。
 4. 测试重点：冷启动匿名引导链（createInstall → createAnonymous → 业务请求）、401002 refresh 重试、401003 → resetToAnonymous、install token 恢复链（recover/attestExisting 的 403001/403002/409001/404001 错误码语义与 gql 版逐一对齐）。
 5. E2E：真机/模拟器走完整身份引导 + 登录 + refresh + logout + deleteAccount。**gate 2：身份链路联调报告**（这是风险最高的阶段，必须实测降级：key 未配时引导链全程明文可用）。
@@ -104,7 +110,7 @@
 
 ### R4 OpenAPI 契约与 codegen 切换
 
-1. 服务端全量 OpenAPI 就绪（springdoc，operationId = actionName）后：客户端 payload 类型从手写切换为 OpenAPI codegen 生成（生成物放 `src/api/api/generated/`；`apiXxx.ts` 的封装函数与 `client.ts` 方法保留，仅替换类型来源）。
+1. 服务端全量 OpenAPI 就绪（springdoc，operationId = reqName）后：客户端 payload 类型从手写切换为 OpenAPI codegen 生成（生成物放 `src/api/api/generated/`；`apiXxx.ts` 的封装函数与 `client.ts` 方法保留，仅替换类型来源）。
 2. 加 OpenAPI snapshot 测试：action 名表 §1 逐一存在于 schema。
 3. 删除 persisted-queries manifest 生成流程（`gen:persisted-queries`）与 gql codegen（`gen:gql`）——**gqlOp 运行时代码仍在，R5 才删**。
 4. app 层接线收尾：`getUserTz/getDeviceModel/getOsVersion` 接入（Intl 时区 + 设备信息），wire 指标全量上报。

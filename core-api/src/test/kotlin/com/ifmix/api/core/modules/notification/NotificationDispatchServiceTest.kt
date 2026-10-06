@@ -3,7 +3,7 @@ package com.ifmix.core.api.modules.notification
 import com.ifmix.core.api.dto.notification.NotificationContent
 import com.ifmix.core.api.dto.notification.NotificationRequest
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
-import com.ifmix.core.api.modules.install.InstallFacade
+import com.ifmix.core.api.modules.auth.install.InstallFacade
 import com.ifmix.core.api.modules.notification.channel.PushChannel
 import com.ifmix.core.api.modules.notification.channel.PushDestination
 import com.ifmix.core.api.modules.notification.channel.PushDestinationKind

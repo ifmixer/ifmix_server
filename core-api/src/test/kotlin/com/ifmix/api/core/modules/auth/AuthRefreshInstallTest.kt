@@ -12,9 +12,9 @@ import com.ifmix.core.api.modules.auth.repo.IdpIdentityRepository
 import com.ifmix.core.api.modules.auth.repo.IdpRepository
 import com.ifmix.core.api.modules.auth.repo.ProjectToIdpRelationRepository
 import com.ifmix.core.api.modules.auth.repo.RefreshTokenRepository
-import com.ifmix.core.api.modules.customer.handler.CustomerMergeHandler
-import com.ifmix.core.api.modules.customer.repo.CustomerRepository
-import com.ifmix.core.api.modules.install.InstallFacade
+import com.ifmix.core.api.modules.auth.customer.handler.CustomerMergeHandler
+import com.ifmix.core.api.modules.auth.customer.repo.CustomerRepository
+import com.ifmix.core.api.modules.auth.install.InstallFacade
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -33,7 +33,7 @@ class AuthRefreshInstallTest {
         val jwt = mock<AuthJwtService>()
         val refreshTokenRepo = mock<RefreshTokenRepository>()
         val customerRepo = mock<CustomerRepository>()
-        val customer = mock<com.ifmix.core.api.entity.customer.Customer>()
+        val customer = mock<com.ifmix.core.api.entity.auth.customer.Customer>()
         val oldToken = mock<RefreshToken>()
         val projectId = "antique"
         val actorId = UUID.randomUUID()
@@ -91,7 +91,7 @@ class AuthRefreshInstallTest {
         val refreshTokenRepo = mock<RefreshTokenRepository>()
         val customerRepo = mock<CustomerRepository>()
         val installFacade = mock<InstallFacade>()
-        val customer = mock<com.ifmix.core.api.entity.customer.Customer>()
+        val customer = mock<com.ifmix.core.api.entity.auth.customer.Customer>()
         val oldToken = mock<RefreshToken>()
         val projectId = "antique"
         val actorId = UUID.randomUUID()

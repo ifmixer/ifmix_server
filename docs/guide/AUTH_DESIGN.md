@@ -12,6 +12,14 @@ RefreshToken (project 级, auth_refreshtoken) — Refresh Token（actorType + ac
 ProjectToIdpRelation (project 级)               — Project 启用了哪些 IDP
 ```
 
+## 模块归属（2026-10-06：install/customer 并入 auth）
+
+customer 与 install 两个模块的**代码已并入 auth 模块**：
+
+- `modules/install` → `modules/auth/install`，`modules/customer` → `modules/auth/customer`；entity 同理进 `entity/auth/`（含 Customer）。
+- DataFetcher 并入 `bff/graphql/customer/auth/`。
+- 相关 reqName 的 namespace 从 install/customer 统一改为 **auth**：`m_auth_install_*`（install 生命周期 / attestation）、`m_auth_customer_*`（如 createAnonymous）、`m_auth_session_*`（login/logout/refresh/me）、`m_auth_account_*`（deleteAccount）。四段式命名总表见 `docs/design/proposals/rpc-rollout-client.md` §1。
+
 ### 为什么是这套分层
 
 - **`IdpIdentity` 全局、跨 project**：同一第三方 sub 在不同 project 复用同一行。

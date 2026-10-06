@@ -23,7 +23,7 @@ class AuthFetcher(
     private val ctxProvider: ActionContextProvider,
 ) {
 
-    @DgsQuery(field = "q_auth_me")
+    @DgsQuery(field = "q_auth_session_me")
     fun me(dfe: DgsDataFetchingEnvironment): MeResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val res = authService.me(ctx)
@@ -35,7 +35,7 @@ class AuthFetcher(
         )
     }
 
-    @DgsMutation(field = "m_auth_login")
+    @DgsMutation(field = "m_auth_session_login")
     fun login(dfe: DgsDataFetchingEnvironment, @InputArgument input: IdpLoginInput): LoginResult {
         // login 不要求 customer actor；允许两类上下文：当前 customer token（保留 promote/merge）或 installToken（无现有 session）。
         // 两者都必须携带可信 iid；manager/无 token/无 iid 拒绝（在进入事务前）。
@@ -47,7 +47,7 @@ class AuthFetcher(
         return res.toResult()
     }
 
-    @DgsMutation(field = "m_auth_refreshToken")
+    @DgsMutation(field = "m_auth_session_refresh")
     fun refresh(dfe: DgsDataFetchingEnvironment, @InputArgument input: RefreshInput): RefreshResult {
         // refresh 凭证是 body 的 refreshToken；Authorization 携带 accessToken 提供可信 iid，
         // 可能是 customerToken（type=10，含 actor）或 installToken（type=5，无 actor），两者都支持。
@@ -64,7 +64,7 @@ class AuthFetcher(
         )
     }
 
-    @DgsMutation(field = "m_auth_logout")
+    @DgsMutation(field = "m_auth_session_logout")
     fun logout(dfe: DgsDataFetchingEnvironment, @InputArgument input: LogoutInput): ActionResult {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx ->
@@ -73,7 +73,7 @@ class AuthFetcher(
         return ActionResult(success = true)
     }
 
-    @DgsMutation(field = "m_auth_deleteAccount")
+    @DgsMutation(field = "m_auth_account_deleteOne")
     fun deleteAccount(dfe: DgsDataFetchingEnvironment): ActionResult {
         val ctx = ctxProvider.fromDfe(dfe)
         // 软删 customer + 解绑 install + 吊销 token 须在同一事务内原子生效

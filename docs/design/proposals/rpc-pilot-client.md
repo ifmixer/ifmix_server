@@ -7,12 +7,12 @@
 
 ## 0. 一页纸摘要
 
-把 `graphql.ts` 里的 `sendMaybeEncrypted` 抽成协议无关的 `transport.ts`（gqlOp 改为调用它，行为不变），新增 `rpcOp`：`POST {baseUrl}/customer/core/rpc/{reqName}`，请求体 `{meta, input}`，响应 `Envelope{code, msg, data}`（HTTP status = code 前三位）。凭证走 `meta.accessToken`（RPC 请求**不再带** Authorization header）。然后给 demo 的 8 个 action 加 RPC 封装（`guarded()` 刷新重试语义与 gql 版一致）。
+把 `graphql.ts` 里的 `sendMaybeEncrypted` 抽成协议无关的 `transport.ts`（gqlOp 改为调用它，行为不变），新增 `rpcOp`：`POST {baseUrl}/customer/core/greq/{reqName}`（2026-10-06 URL 定稿，与 GraphQL persisted query 同路径），请求体 `{meta, input}`，响应 `Envelope{code, msg, data}`（HTTP status = code 前三位）。凭证走 `meta.accessToken`（RPC 请求**不再带** Authorization header）。然后给 demo 的 8 个 action 加 RPC 封装（`guarded()` 刷新重试语义与 gql 版一致）。
 
 ## 0.1 协议契约速查（与 proposal §一 一致）
 
 ```
-URL:      POST {baseUrl}/customer/core/rpc/{reqName}    （如 m_demo_createTodo）
+URL:      POST {baseUrl}/customer/core/greq/{reqName}   （如 m_demo_todo_createOne；2026-10-06 定稿，与 GraphQL persisted query 同路径）
 请求体:   {"meta": {...}, "input": {...}}               （加密时 wire v3 封装，明文时 JSON）
 meta 字段: reqId, projectId, accessToken(纯 token，无 Bearer), locale, currency, country,
           userTz(IANA 名，可选), appVersion, otaVersion, clientPlatform('ios'|'android'|'web'),
@@ -101,7 +101,7 @@ export async function rpcOp<T>(reqName: string, input: unknown, opts: RpcOpts): 
 1. `const reqId = opts.meta.reqId ?? newReqId()`；headers = `{ 'Content-Type': 'application/json', 'x-req-id': reqId, ...opts.headers }`。
 2. `const meta = { ...opts.meta, reqId }`（reqId 强制回填，meta 与 header 同值）。
 3. `const body = JSON.stringify({ meta, input })`。
-4. `const { res, text } = await sendMaybeEncrypted(fetchImpl, url, headers, body, reqName, opts.wire && !wireUnsupported ? opts.wire : undefined, opts.onWireMetrics)`——`url = `${opts.baseUrl}/customer/core/rpc/${reqName}``；`fetchImpl = opts.fetch ?? fetch`；wire 降级开关**直接用 transport.ts 里那个**（与 gqlOp 共享进程级状态，不新建）。
+4. `const { res, text } = await sendMaybeEncrypted(fetchImpl, url, headers, body, reqName, opts.wire && !wireUnsupported ? opts.wire : undefined, opts.onWireMetrics)`——`url = `${opts.baseUrl}/customer/core/greq/${reqName}``；`fetchImpl = opts.fetch ?? fetch`；wire 降级开关**直接用 transport.ts 里那个**（与 gqlOp 共享进程级状态，不新建）。
 5. `JSON.parse(text)` 失败 → `throw new ApiError(ApiCode.SERVICE_UNAVAILABLE, `non-JSON response (status ${res.status})`)`（对齐 graphql.ts:740-747）。
 6. 信封错误：`if (typeof json.code === 'string' && !json.code.startsWith('2')) throw new ApiError(json.code, json.msg ?? json.code, { retryAfter: retryAfterFrom(res) })`（对齐 graphql.ts:752-756；retryAfterSec 的 extensions 通道是 GraphQL 专属，RPC 走 Retry-After 头，服务端已配套输出）。
 7. `if (!res.ok) throw new ApiError(ApiCode.INTERNAL, `HTTP ${res.status}`)`。
@@ -110,7 +110,7 @@ export async function rpcOp<T>(reqName: string, input: unknown, opts: RpcOpts): 
 
 ### 3.2 新建 `rpc.test.ts`（mock fetch 注入，风格同 client.test.ts）
 
-1. 成功路径：`rpcOp('q_demo_findTodoById', {id:'...'}, {baseUrl, meta:{projectId:'a', accessToken:'t'}})` → 断言 URL、`x-req-id` header 存在、body `{meta:{reqId 与 header 同值, projectId:'a', accessToken:'t'}, input:{id}}`、返回 `json.data`。
+1. 成功路径：`rpcOp('q_demo_todo_getById', {id:'...'}, {baseUrl, meta:{projectId:'a', accessToken:'t'}})` → 断言 URL、`x-req-id` header 存在、body `{meta:{reqId 与 header 同值, projectId:'a', accessToken:'t'}, input:{id}}`、返回 `json.data`。
 2. 信封错误：响应 `{code:'429000', msg:'rate limited'}` + HTTP 429 + `Retry-After: 30` → `ApiError.code==='429000'`、`isRateLimited===true`、`retryAfter===30`。
 3. 非 JSON 响应 → SERVICE_UNAVAILABLE。
 4. meta.reqId 缺省自动生成、显式传入时与 header 同值。
@@ -192,21 +192,21 @@ export interface RpcFindOptions { filter?: unknown; cursor?: string; sortBy?: st
 8 个函数（每行一个，模式统一）：
 
 ```ts
-export const rpcFindTodoById     = (input: { id: string }, o: RpcOpts) => rpcOp<RpcTodo>('q_demo_findTodoById', input, o);
-export const rpcFindTodos        = (input: { findOptions?: RpcFindOptions }, o: RpcOpts) => rpcOp<RpcTodoPage>('q_demo_findTodos', input, o);
-export const rpcFindTodosByIds   = (input: { ids: string[] }, o: RpcOpts) => rpcOp<RpcTodo[]>('q_demo_findTodosByIds', input, o);
-export const rpcCreateTodo       = (input: RpcCreateTodoInput, o: RpcOpts) => rpcOp<{ todo: RpcTodo }>('m_demo_createTodo', input, o);
-export const rpcUpdateTodo       = (input: RpcUpdateTodoInput, o: RpcOpts) => rpcOp<{ success: boolean; todo: RpcTodo | null }>('m_demo_updateTodo', input, o);
-export const rpcBatchUpdateTodoItems = (input: RpcUpdateTodoItemsInput, o: RpcOpts) => rpcOp<{ success: boolean }>('m_demo_batchUpdateTodoItems', input, o);
-export const rpcDeleteTodo       = (input: { id: string }, o: RpcOpts) => rpcOp<RpcActionResult>('m_demo_deleteTodo', input, o);
-export const rpcDeleteTodoByIds  = (input: { ids: string[] }, o: RpcOpts) => rpcOp<RpcActionResult>('m_demo_deleteTodoByIds', input, o);
+export const rpcFindTodoById     = (input: { id: string }, o: RpcOpts) => rpcOp<RpcTodo>('q_demo_todo_getById', input, o);
+export const rpcFindTodos        = (input: { findOptions?: RpcFindOptions }, o: RpcOpts) => rpcOp<RpcTodoPage>('q_demo_todo_list', input, o);
+export const rpcFindTodosByIds   = (input: { ids: string[] }, o: RpcOpts) => rpcOp<RpcTodo[]>('q_demo_todo_getByIds', input, o);
+export const rpcCreateTodo       = (input: RpcCreateTodoInput, o: RpcOpts) => rpcOp<{ todo: RpcTodo }>('m_demo_todo_createOne', input, o);
+export const rpcUpdateTodo       = (input: RpcUpdateTodoInput, o: RpcOpts) => rpcOp<{ success: boolean; todo: RpcTodo | null }>('m_demo_todo_updateById', input, o);
+export const rpcBatchUpdateTodoItems = (input: RpcUpdateTodoItemsInput, o: RpcOpts) => rpcOp<{ success: boolean }>('m_demo_todoItem_updateMany', input, o);
+export const rpcDeleteTodo       = (input: { id: string }, o: RpcOpts) => rpcOp<RpcActionResult>('m_demo_todo_deleteOne', input, o);
+export const rpcDeleteTodoByIds  = (input: { ids: string[] }, o: RpcOpts) => rpcOp<RpcActionResult>('m_demo_todo_deleteMany', input, o);
 ```
 
 **注意与 GraphQL 版的返回差异（这是协议变化，不是 bug）**：q_demo_findTodoById GraphQL 版对未找到抛错，RPC 版服务端返回 HTTP 404 + code 404000 → rpcOp 抛 `ApiError`（`isSessionInvalid` 为 false，不会误伤会话状态）；deleteTodo 的 GraphQL `ActionResult.success` 在 RPC 中同样恒 true，失败走错误信封。
 
 ### 4.3 新建 `client.rpc.test.ts`（mock fetch 注入 + testUtils 的 memoryInstallStore/memoryTokenStore）
 
-1. 头部与 body 断言（镜像 client.test.ts:51-102 用例 1）：`api.todoCreateOneRpc(...)` → URL `${BASE}/customer/core/rpc/m_demo_createTodo`；**`Authorization` header 必须为 null**；`x-req-id` 存在；body.meta 含 projectId/clientPlatform('ios')/locale/currency/country/appVersion/otaVersion/accessToken('access-1')，body.input 与传入对象逐字段相等。
+1. 头部与 body 断言（镜像 client.test.ts:51-102 用例 1）：`api.todoCreateOneRpc(...)` → URL `${BASE}/customer/core/greq/m_demo_todo_createOne`；**`Authorization` header 必须为 null**；`x-req-id` 存在；body.meta 含 projectId/clientPlatform('ios')/locale/currency/country/appVersion/otaVersion/accessToken('access-1')，body.input 与传入对象逐字段相等。
 2. install-only 模式：无 customer token 时 meta.accessToken === 'install-token-1'。
 3. 401002 → `guarded` 触发 refresh：mock 第一次返回 401 信封 `{code:'401002'}`，`m_auth_refreshToken`（gql 路径，mock 返回新 token）成功后重试 RPC 成功——断言 refresh 被调一次、最终拿到数据。
 4. 分页：todoFindByCursorRpc 返回 `{items:[...], pageInfo:{nextCursor:null, hasMore:false}}` 原样解包。

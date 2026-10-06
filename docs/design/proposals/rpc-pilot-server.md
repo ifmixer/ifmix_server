@@ -7,13 +7,16 @@
 
 ## 0. 一页纸摘要
 
-为 `POST /api/customer/core/{actionName}` 建立协议无关的 RPC 基础设施（ActionSpec / RequestMeta / ActionContextFactory），迁移 demo 的 8 个 action。请求信封 `{meta, input}`、响应 `Envelope{code, msg, data}`、HTTP status = code 前三位。**`ActionContextFactory` 自包含**：直接消费 `meta.accessToken`（`AuthJwtService.verify`），不与 GraphQL 解析路径（RequestParser/ActionContextProvider）共享任何包装或适配代码。业务层（DemoFacade/Handler/Repository）**零改动**，DTO 转换全部在 BFF 层（generated types → 协议 DTO 的解耦留给阶段 2）。
+为 `POST /customer/core/greq/{reqName}` 建立协议无关的 RPC 基础设施（ActionSpec / RequestMeta / ActionContextFactory），迁移 demo 的 8 个 action。请求信封 `{meta, input}`、响应 `Envelope{code, msg, data}`、HTTP status = code 前三位。**`ActionContextFactory` 自包含**：直接消费 `meta.accessToken`（`AuthJwtService.verify`），不与 GraphQL 解析路径（RequestParser/ActionContextProvider）共享任何包装或适配代码。业务层（DemoFacade/Handler/Repository）**零改动**，DTO 转换全部在 BFF 层（generated types → 协议 DTO 的解耦留给阶段 2）。
 
 ## 0.1 协议契约速查（与 proposal §一 一致，实现时逐条对齐）
 
 ```
-URL:      POST /api/customer/core/{actionName}
-          actionName = {q|m}_{module}_{resource}_{action}，如 q_demo_todo_getById（命名规范见 proposal §一）
+URL:      POST /customer/core/greq/{reqName}
+          reqName = {q|m}_{namespace}_{resource}_{action}，如 q_demo_todo_getById
+          （四段式，namespace 目前=module；总表见 rpc-rollout-client.md §1；规范见 proposal §一。
+           2026-10-06 定稿：greq 路径即 RPC 最终路径，与 GraphQL persisted query 共用——
+           allowlist 内 GraphQL persisted query 与 RPC controller 共存，分发细节落地时细化）
 请求体:   {"meta": {...RequestMeta...}, "input": {...该 action 的输入对象...}}
           wire v3 加密时 body 是 octet-stream，WireCryptoFilter 解密后 controller 看到明文 JSON
 响应体:   {"code": "200000", "msg": "success", "data": {...}}
@@ -146,7 +149,7 @@ class ActionContextFactory(
 8. **clientIp / botScore**：取自**真实 request**（`ClientIpResolver.resolve(request)`、`request.getHeader(RequestHeaders.CF_BOT_SCORE)` 按现有 parseBotScore 规则 1..99）——这两个是边缘注入信号，永不走 meta。
 9. **requestId**：`meta.reqId?.takeIf { it.isNotBlank() } ?: LogContext.requestId(request)`（客户端 header 与 meta 同值，两者任一即可）。
 10. **meta 独有三字段**：`userTz` / `deviceModel` / `osVersion` = 对应 meta 值 `trim()?.takeIf { it.isNotEmpty() }`，无任何格式校验。
-11. **固定值**：`installId = null`、`legacyInstallId = null`（RPC 协议没有这两个不可信信源）、`actionName = spec.reqName`、`isMutation = spec.isMutation`、`preferReader = !spec.isMutation`。
+11. **固定值**：`installId = null`、`legacyInstallId = null`（RPC 协议没有这两个不可信信源）、`reqName = spec.reqName`、`isMutation = spec.isMutation`、`preferReader = !spec.isMutation`。
 12. **收尾**（与 ActionContextProvider.fromDfe:78-79 相同的两行）：`ActionContextHolder.set(ctx)` + `LogContext.bind(ctx, request)`。
 
 ### 3.6 修改 `ActionContext.kt`（追加，不改既有字段）
@@ -179,7 +182,7 @@ ex.retryAfterSec?.let { resp.header("Retry-After", it.toString()) }
    - install token 合法 → actor=null 且 tokenInstallId/tokenType 正确进 ctx。
    - projectId 缺失（requireProjectId=true）→ `INVALID_REQUEST`；格式非法 → `INVALID_REQUEST`。
    - locale/currency/country 软校验：strict=true 时 currency 非法抛、locale 不支持集返回 null。
-   - userTz/deviceModel/osVersion 进 ctx；installId/legacyInstallId 恒 null；actionName/isMutation/preferReader 正确。
+   - userTz/deviceModel/osVersion 进 ctx；installId/legacyInstallId 恒 null；reqName/isMutation/preferReader 正确。
    - requestId：meta.reqId 优先；缺失时回落 header `x-req-id`（用 LogContext 现有行为）。
 2. `GlobalExceptionHandlerRetryTest`：retryAfterSec=120 的 ApiError → 响应含 `Retry-After: 120`；无 retryAfterSec 的错误不含该头。
 
@@ -329,7 +332,7 @@ fun findTodos(ctx: ActionContext, findOptions: dto.common.CommonFindOptions?): P
 
 ```kotlin
 @RestController
-@RequestMapping("/api/customer/core", produces = [MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping("/customer/core/greq", produces = [MediaType.APPLICATION_JSON_VALUE])
 class DemoController(
     private val ctxFactory: ActionContextFactory,
     private val facade: DemoFacade,
@@ -339,7 +342,9 @@ class DemoController(
 )
 ```
 
-8 个 endpoint，全部 `@PostMapping("/{actionName}", consumes = [MediaType.APPLICATION_JSON_VALUE])`，方法体统一模式：
+> **URL 与分发（2026-10-06 定稿）**：RPC 与 GraphQL persisted query 共用 `/customer/core/greq/{reqName}`。过渡期同一前缀下两类 handler 共存（allowlist 内 persisted query 走 GraphQL 引擎，RPC ActionSpec 命中的走 controller）；`reqName` 已全量改四段式，allowlist key 与 RPC 路径同名，分发（路由优先级 / 排除规则）在落地时细化。
+
+8 个 endpoint，全部 `@PostMapping("/{reqName}", consumes = [MediaType.APPLICATION_JSON_VALUE])`，方法体统一模式：
 
 ```kotlin
 val ctx = ctxFactory.fromApi(request, Specs.XXX, body.meta)
@@ -349,20 +354,20 @@ val input = objectMapper.convertValue(body.input ?: EmptyNode.instance, FindTodo
 return ResponseEntity.ok(Envelope.ok(resultDto))
 ```
 
-逐 endpoint 规格（actionName → spec → 行为；语义与 DemoFetcher.kt 逐行对齐；actionName 按四段命名规范 `{q|m}_{module}_{resource}_{action}`）：
+逐 endpoint 规格（reqName → spec → 行为；语义与 DemoFetcher.kt 逐行对齐；reqName 按四段命名规范 `{q|m}_{namespace}_{resource}_{action}`）：
 
-| actionName | ActionSpec | 实现 |
+| reqName | ActionSpec | 实现 |
 |---|---|---|
 | `q_demo_todo_getById` | query/CUSTOMER | `queryService.findTodoById(ctx, input.id)`；null → 抛 `ApiError(NOT_FOUND, "Todo not found: ${input.id}")`（对齐 DemoFetcher.kt:26 的 IllegalArgumentException 语义，但改用 NOT_FOUND 使 HTTP 404） |
 | `q_demo_todo_getByIds` | query/CUSTOMER | `queryService.findTodosByIds(ctx, input.ids)` → `Envelope.ok(List<TodoDto>)` |
 | `q_demo_todo_list` | query/CUSTOMER | `queryService.findTodos(ctx, input.findOptions)` → `Envelope.ok(Page<TodoDto>)` |
 | `m_demo_todo_createOne` | mutation/CUSTOMER | `globalTx.withTx(ctx) { facade.create(it, DemoRpcMappers.toGenerated(input)) }` → `CreateTodoResultDto(todo = queryService 组装的完整视图)`（复用 findTodosByIds 的组装逻辑，只传单元素列表） |
-| `m_demo_todo_updateOne` | mutation/CUSTOMER | `globalTx.withTx(ctx) { facade.partialUpdate(it, toGenerated(input)) }`；然后**用原 ctx（非 txCtx）** `queryService.findTodoById(ctx, input.id)`（对齐 DemoFetcher.kt:57 写后读）→ `UpdateTodoResultDto(success = true, todo = ...)` |
-| `m_demo_todo_updateItems` | mutation/CUSTOMER | `globalTx.withTx(ctx) { facade.batchUpdateItems(it, toGenerated(input)) }` → `UpdateTodoItemsResultDto(success = true)` |
+| `m_demo_todo_updateById` | mutation/CUSTOMER | `globalTx.withTx(ctx) { facade.partialUpdate(it, toGenerated(input)) }`；然后**用原 ctx（非 txCtx）** `queryService.findTodoById(ctx, input.id)`（对齐 DemoFetcher.kt:57 写后读）→ `UpdateTodoResultDto(success = true, todo = ...)` |
+| `m_demo_todoItem_updateMany` | mutation/CUSTOMER | `globalTx.withTx(ctx) { facade.batchUpdateItems(it, toGenerated(input)) }` → `UpdateTodoItemsResultDto(success = true)` |
 | `m_demo_todo_deleteOne` | mutation/CUSTOMER | `globalTx.withTx(ctx) { facade.deleteById(it, input.id) }` → `ActionResult(success = true)` |
 | `m_demo_todo_deleteMany` | mutation/CUSTOMER | `globalTx.withTx(ctx) { facade.deleteByIds(it, input.ids) }` → `ActionResult(success = true, modifiedCount = count)` |
 
-Spec 常量集中定义为 `DemoSpecs` object（8 个 `ActionSpec`，actionName 与上表一致，全部 CUSTOMER + requireProjectId=true）。
+Spec 常量集中定义为 `DemoSpecs` object（8 个 `ActionSpec`，reqName 与上表一致，全部 CUSTOMER + requireProjectId=true）。
 
 ### 5.3 S4 单元测试（`src/test/kotlin/com/ifmix/core/api/bff/api/customer/demo/`）
 
@@ -380,7 +385,7 @@ Spec 常量集中定义为 `DemoSpecs` object（8 个 `ActionSpec`，actionName 
 ## 6. WP-S5：合约测试补全 + 回归
 
 1. 补 controller 级「HTTP status = code 前三位」矩阵测试：401000/401002/403000/404000/429000(带 Retry-After)/500000 各一例（mock 抛 ApiError 即可，不必真走业务）。
-2. **命名一致性测试（proposal §一 护栏，新 URL 规则配套）**：反射扫描 `DemoSpecs` 全部 ActionSpec 与 `@PostMapping` 路由——path 以 `m_` 开头 ⇔ `isMutation=true`；module 段 = `demo`；resource 段 = `todo`；action 动词在标准动词表内（getById/getByIds/list/createOne/updateOne/updateItems/deleteOne/deleteMany）。
+2. **命名一致性测试（proposal §一 护栏，新 URL 规则配套）**：反射扫描 `DemoSpecs` 全部 ActionSpec 与 `@PostMapping` 路由——path 以 `m_` 开头 ⇔ `isMutation=true`；namespace 段 = `demo`；resource 段 = `todo` / `todoItem`；action 动词在标准动词表内（getById/getByIds/list/createOne/updateOne/updateById/updateMany/deleteOne/deleteMany）。
 3. 加密路径用例：mockMvc 或 wrapper 级验证 `x-wirep-version: 3` + octet-stream 请求 → controller 收到明文（复用 wire 固定向量）。
 4. 全量回归：`:core-api:test` 全绿 + 既有 GraphQL fetcher 测试全绿。
 

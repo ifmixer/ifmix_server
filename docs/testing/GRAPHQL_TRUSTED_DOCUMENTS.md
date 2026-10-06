@@ -11,7 +11,7 @@
 | **GReq**（persisted query） | `POST /customer/core/greq/{reqName}` | 生产主入口，前端只走这里 | `{"query":"","variables":{...}}` |
 | **GQL**（raw query） | `POST /customer/core/gql` | GraphiQL / 本地 API 探索，**保留不动** | `{"query":"...","variables":{...}}` |
 
-- **GReq**：reqName 在 path 末段，服务端按 reqName 从 allowlist 取预注册 query 执行。前置层（CF/nginx）看到的是 `/customer/core/greq/q_ai_findMyScanById` 这样的具体路径，可直接分流。
+- **GReq**：reqName 在 path 末段，服务端按 reqName 从 allowlist 取预注册 query 执行。前置层（CF/nginx）看到的是 `/customer/core/greq/q_ai_scan_getById` 这样的具体路径，可直接分流。
 - **GQL**：原始 raw query 入口，机制与行为完全不变；`allow-raw-query=false`（uat/prod）时仍拒绝 raw query。
 
 > `x-api-name` header **已废弃删除**，不再支持、不做兼容（未上线）。
@@ -22,9 +22,9 @@
 
 - **method**：`POST`
 - **path**：`/customer/core/greq/{reqName}`
-  - `{reqName}` 为整体单段，格式约定 `${q|m}_${module}_${action}[Vn]`，全局唯一，是 allowlist 的 key
-  - 例：`/customer/core/greq/q_ai_findMyScanById`、`/customer/core/greq/m_cs_submitFeedback`
-  - 不必等于 GraphQL 顶层 field name（允许组合/投影变体，如 `q_demo_findTodoAndCustomer`、`q_ai_findMyScanByIdV2`）
+  - `{reqName}` 为整体单段，格式约定 `${q|m}_${namespace}_${resource}_${action}[Vn]`（2026-10-06 四段式定稿：namespace 目前=module，resource 可为聚合根），全局唯一，是 allowlist 的 key
+  - 例：`/customer/core/greq/q_ai_scan_getById`、`/customer/core/greq/m_cs_feedback_createOne`
+  - 不必等于 GraphQL 顶层 field name（允许组合/投影变体，如 `q_ai_scan_getByIdV2`）
   - **不展开**成 `/query/module/action` 多段——reqName 作为单个末段透传
 - **body**：`{"query":"","variables":{...}}`
   - `query:""` 仅为**通过 Spring GraphQL HTTP transport 的「query 字段必须存在」校验**的占位，客户端 wire 上**没有真实 query**
@@ -95,12 +95,12 @@ graphql:
 
 ```json
 {
-  "q_auth_me": "query q_auth_me { q_auth_me { user { id email } tier } }",
-  "m_cs_submitFeedback": "mutation m_cs_submitFeedback($input: SubmitFeedbackInput!) { m_cs_submitFeedback(input: $input) { id } }"
+  "q_auth_session_me": "query q_auth_session_me { q_auth_me { user { id email } tier } }",
+  "m_cs_feedback_createOne": "mutation m_cs_feedback_createOne($input: SubmitFeedbackInput!) { m_cs_submitFeedback(input: $input) { id } }"
 }
 ```
 
-key = reqName，value = 完整 query 文本。**由前端 build 时从 `graphql.ts` 的 query const 提取生成并提交进本 repo**。
+key = reqName（2026-10-06 起四段式；39 个存量 reqName 已全量改名，总表见 `docs/design/proposals/rpc-rollout-client.md` §1），value = 完整 query 文本（其内引用的 GraphQL 顶层 field 名不变）。**由前端 build 时从 `graphql.ts` 的 query const 提取生成并提交进本 repo**。
 
 ## 前端改动（待做）
 
@@ -115,7 +115,7 @@ key = reqName，value = 完整 query 文本。**由前端 build 时从 `graphql.
 5. manifest 完整性校验（前端所有 op 都进 manifest，防遗漏导致 uat 404）。
 6. 清理与 `graphql.ts` 漂移的孤儿 `graphql/*.graphql` 文件。
 
-> reqName 需可安全放入 URL path 段。当前约定格式 `${q|m}_${module}_${action}[Vn]` 只含 `[A-Za-z0-9_]`，无需额外 URL 编码。
+> reqName 需可安全放入 URL path 段。当前约定格式 `${q|m}_${namespace}_${resource}_${action}[Vn]`（四段式）只含 `[A-Za-z0-9_]`，无需额外 URL 编码。
 
 ## 前置层分流（CF / nginx）
 

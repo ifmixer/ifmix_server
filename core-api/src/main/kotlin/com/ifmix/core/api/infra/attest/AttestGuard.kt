@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
  * - [consume]：一次性消费 challenge（AttestReplayGuard.markUsed(SHA256(challengeStr), 360s)；
  *   REPLAY → 403001(replay)，DEGRADED → 放行 + 节流 ERROR `attest.redis_degraded`（guard 内打））。
  *
- * 不写业务表；绑定在 [com.ifmix.core.api.modules.install.handler.InstallAggHandler] 事务内完成（§5.3）。
+ * 不写业务表；绑定在 [com.ifmix.core.api.modules.auth.install.handler.InstallAggHandler] 事务内完成（§5.3）。
  *
  * 配置与开关（§4.1，env 接线在此）：
  * - 全局 kill switch：env `APP_ATTEST_GLOBAL_ENABLED`（默认 false）。OFF / project 未配置 → [Verification.Disabled]

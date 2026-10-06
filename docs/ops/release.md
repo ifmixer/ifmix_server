@@ -4,7 +4,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 
 | 版本 | tag commit | 日期 | 线上 | 说明 |
 |------|-----------|------|:----:|------|
-| v1.0.6 | 未发布 | — |  | install attestation 一期（1a）+ install 体系 + AI 异步/wire 加密等（见发布计划） |
+| v1.0.6 | 未发布 | — |  | install attestation 一期（1a）+ install 体系 + AI 异步/wire 加密 + 39 个 reqName 四段式改名 / customer-install 并入 auth / RPC URL 定稿（见发布计划与 2026-10-06 增量） |
 | v1.0.3 | `2a3bbf0` | 2026-09-21 | ✅ | 当前线上版本。**不支持 install**（无 `m_install_*`、token 无 `iid`/`type` claim、`install_id` 为客户端 `x-install-id` 原值） |
 | v1.0.2 | `8743e80` | 2026-09-21 |  | R2 objectKey 路径改 `/p/` |
 
@@ -40,6 +40,14 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 5. core-job 同步部署；三个 attest job **不配 cron**（决策 3）。
 6. env 核对：`AUTH_JWT_PRIVATE_KEY`（缺失启动即失败）、`APP_ATTEST_GLOBAL_ENABLED`（默认 false）、`APP_ATTEST_CHALLENGE_SECRET`。
 7. 灰度：服务端上线（attest 全局关、无 project 配置 → 现网零影响）→ 客户端发布 → `APP_ATTEST_GLOBAL_ENABLED=true` + project 写 `app_attest_config`（mode=OBSERVE）→ 观察指标 → 切 ENFORCE（前置检查见下方 feature/attest 小节）。
+
+## v1.0.6 增量（2026-10-06：RPC 试点与模块结构调整）
+
+三项定稿决策随本版进入发布范围（客户端 breaking，需与客户端发布节奏协同）：
+
+- **39 个 reqName 全量改四段式**（`{q|m}_{namespace}_{resource}_{action}`）：客户端需同步更新 trusted documents 调用名；新名总表见 `docs/design/proposals/rpc-rollout-client.md` §1。
+- **customer/install 并入 auth 模块**：服务端内部结构（`modules/auth/{install,customer}`、`entity/auth/`）+ reqName namespace 变化（`m_auth_install_*`、`m_auth_customer_*`）。
+- **RPC URL 定稿 `POST /customer/core/greq/{reqName}`**：原 `/api/customer/core` 方案废弃；客户端 R0 已实现的 `/api/customer/core` URL 需在联调前同步调整。
 
 ## v1.0.6 增量（`feature/attest`）
 

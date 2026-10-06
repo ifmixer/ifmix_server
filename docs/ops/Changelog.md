@@ -16,6 +16,7 @@
 - **`m_customer_deleteAccount`**（V7）：软删 + 解绑全部 install 关系 + 吊销全部 refresh token，事务内原子生效；`DeletionReasons` 码表。
 
 ### Changed
+- **错误响应统一为 GraphQL 形状**：`Envelope{code,msg,data}` 移除，GraphQL 引擎之外的错误（wire 解密失败 400003、404、malformed body、未捕获 500 等）也输出 `{"errors":[{message, extensions:{code, errorName, retryAfterSec?, details?}}]}`，HTTP status = code 前三位不变；客户端全站只读 `errors[0].extensions.code`。wire v2 解密失败体随之变更（v2 未发布，无兼容负担）。
 - **refresh 契约明确**：`m_auth_refreshToken` 的 Authorization 携带 **customer access token（type=10）**；过期后 refresh 返回 `TOKEN_EXPIRED`，客户端应自动登出（有意设计）。refresh token 暂不校验 `expires_at`（接入第三方登录前，见 `docs/guide/AUTH_DESIGN.md`）。
 - **错误透出收紧**：线上（`app.expose-errors=false`）5xx 只返回通用文案，`details`/内部异常信息不再透出。
 - **日志 JSON 化**（logstash 一行一条）：MDC 上下文（rid/pid/iid/cid/ip/bot/plat/av/ov/loc/cur/cty）为顶层字段；请求日志含 req/res 摘要；线上看日志需 `jq`。
@@ -29,6 +30,12 @@
 - 请求日志对 refreshToken / authCode / webhook token 脱敏。
 - AI 惰性超时窗口与 runner 预算对齐（原 300s < 360s < 600s 误杀慢任务）。
 - DeepResearch 缺 `premium_result` 判失败并重试，不再"成功"落空报告。
+
+### 2026-10-06 增补（RPC 迁移与模块结构调整，客户端 breaking）
+
+- **39 个 reqName 全量改四段式**（客户端 breaking）：格式 `{q|m}_{namespace}_{resource}_{action}`（namespace 目前=module，resource 可为聚合根，不兼容形状变更加 V2 后缀）。客户端需同步更新 trusted documents 调用名；新名总表见 `docs/design/proposals/rpc-rollout-client.md` §1。
+- **customer/install 并入 auth 模块**：服务端内部结构调整（`modules/auth/{install,customer}`、`entity/auth/`、fetcher 并入 `bff/graphql/customer/auth/`），随之相关 reqName 的 namespace 由 install/customer 改为 auth（`m_auth_install_*`、`m_auth_customer_*`）。
+- **RPC URL 定稿**：`POST /customer/core/greq/{reqName}`（与 GraphQL persisted query 同路径；gql raw 仍为 `/customer/core/gql`）；原 proposal 的 `POST /api/customer/core/{reqName}` 方案废弃，不再新增 `/api/` 前缀路径。
 
 ### DB 迁移
 V4（scan 计数器）→ V5/V6（install）→ V7（deletion）→ V8（key 表改名）→ V9（metrics）→ V10–V13（异步 + 通知）→ V14（project server config）→ V15（attestation）。**V6/V8 要求停机窗口内先迁移后发代码**（旧实例迁移后写入即失败）。

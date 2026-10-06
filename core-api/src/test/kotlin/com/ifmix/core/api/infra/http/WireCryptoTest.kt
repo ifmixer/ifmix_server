@@ -141,7 +141,9 @@ class WireCryptoTest {
 
     // ---- filter ----
 
-    private fun v2Filter() = WireCryptoFilter("1:${Base64.getEncoder().encodeToString(HF.parseHex(SERVER_PRIV_HEX))}")
+    private val mapper = tools.jackson.databind.json.JsonMapper.builder().build()
+
+    private fun v2Filter() = WireCryptoFilter("1:${Base64.getEncoder().encodeToString(HF.parseHex(SERVER_PRIV_HEX))}", mapper)
 
     /** 内层 servlet 回显看到的 content-type / body，便于断言解密包装；status 可指定。 */
     private fun runFilter(filter: WireCryptoFilter, req: MockHttpServletRequest, status: Int = 200): MockHttpServletResponse {
@@ -180,16 +182,16 @@ class WireCryptoTest {
             addHeader(RequestHeaders.PROTO_VERSION, "2"); contentType = "application/octet-stream"; setContent(ByteArray(80))
         })
         assertThat(bad.status).isEqualTo(400)
-        assertThat(bad.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
+        assertThat(bad.contentAsString).isEqualTo("""{"errors":[{"message":"bad encrypted payload","extensions":{"code":"400003","errorName":"WIRE_DECRYPT_FAILED"}}]}""")
         assertThat(bad.getHeader(RequestHeaders.PROTO_VERSION)).isNull()
 
         // 未配 key：合法 v2 请求同样 400003（isEnabled=false → 客户端降级明文）
-        val noKeys = runFilter(WireCryptoFilter(""), MockHttpServletRequest("POST", "/x").apply {
+        val noKeys = runFilter(WireCryptoFilter("", mapper), MockHttpServletRequest("POST", "/x").apply {
             addHeader(RequestHeaders.PROTO_VERSION, "2"); contentType = "application/octet-stream"
             setContent(TestClient(crypto.publicKey(1)!!, kid = 1).sealRequest("{}".toByteArray(), ts = System.currentTimeMillis()))
         })
         assertThat(noKeys.status).isEqualTo(400)
-        assertThat(noKeys.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
+        assertThat(noKeys.contentAsString).isEqualTo("""{"errors":[{"message":"bad encrypted payload","extensions":{"code":"400003","errorName":"WIRE_DECRYPT_FAILED"}}]}""")
 
         val plain = runFilter(v2Filter(), MockHttpServletRequest("POST", "/x").apply { contentType = "application/json"; setContent("{}".toByteArray()) })
         assertThat(plain.contentAsString).isEqualTo("ct=application/json;hdr=application/json;body={}")
@@ -212,7 +214,7 @@ class WireCryptoTest {
             addHeader(RequestHeaders.PROTO_VERSION, "2"); contentType = "application/octet-stream"
         })
         assertThat(res.status).isEqualTo(400)
-        assertThat(res.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
+        assertThat(res.contentAsString).isEqualTo("""{"errors":[{"message":"bad encrypted payload","extensions":{"code":"400003","errorName":"WIRE_DECRYPT_FAILED"}}]}""")
         assertThat(res.getHeader(RequestHeaders.PROTO_VERSION)).isNull()
     }
 

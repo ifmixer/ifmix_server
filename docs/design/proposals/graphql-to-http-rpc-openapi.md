@@ -4,13 +4,13 @@
 >
 > **2026-10-06 讨论定稿**：去 GraphQL 的决策依据、请求信封 `{meta, input}` 与命名（§一）、header 留守原则与限流职责边界（§一）、与 wire v3 的合并执行顺序（§六）。
 >
-> **试点实施**：demo 模块作为首个迁移对象，实现任务已拆分给前后端 agent——服务端见 [rpc-pilot-server](rpc-pilot-server.md)、客户端见 [rpc-pilot-client](rpc-pilot-client.md)（试点通过 review 前不迁移其他模块、不删 GraphQL）。URL 决策：不带 resourceId，统一 `POST /api/customer/core/{actionName}`；DTO 分界规则见 §一「DTO 与转换」。
+> **试点实施**：demo 模块作为首个迁移对象，实现任务已拆分给前后端 agent——服务端见 [rpc-pilot-server](rpc-pilot-server.md)、客户端见 [rpc-pilot-client](rpc-pilot-client.md)（试点通过 review 前不迁移其他模块、不删 GraphQL）。URL 决策（2026-10-06 定稿）：不带 resourceId，统一 `POST /customer/core/greq/{reqName}`（与 GraphQL persisted query 同路径；原 `/api/customer/core` 方案废弃）；DTO 分界规则见 §一「DTO 与转换」。
 >
 > **全量迁移**：demo 之后的客户端迁移计划见 [rpc-rollout-client](rpc-rollout-client.md)（R0–R5 阶段、39 个 action 新名总表、四个 review gate；action 命名四段规范 `{q|m}_{module}_{resource}_{action}` 的单一真相表在该文件 §1）。
 
 **目标：** 在移动端上线前，将 `core-api` 的 34 个 DGS GraphQL action 迁移为 HTTP RPC，并以 OpenAPI/Swagger 作为唯一移动端 API 契约。
 
-**架构：** 使用 `POST /api/customer/core/{reqName}`，保留现有 `q_`/`m_` reqName。Controller 负责路由、按 action 校验 header、构造 `ActionContext`、开启必要事务和包装 `Envelope`；复杂读取由 `XxxQueryService` 批量查询并聚合；现有 Facade → Handler → Repository 分层继续保留。
+**架构：** 使用 `POST /customer/core/greq/{reqName}`，reqName 采用四段式（39 个存量已全量改名，见 §一）。Controller 负责路由、按 action 校验 header、构造 `ActionContext`、开启必要事务和包装 `Envelope`；复杂读取由 `XxxQueryService` 批量查询并聚合；现有 Facade → Handler → Repository 分层继续保留。
 
 **技术栈：** Kotlin / Spring MVC / springdoc-openapi / Jimmer DTO + Fetcher / PostgreSQL / Redis / JUnit 5。
 
@@ -26,17 +26,17 @@
 
 ### API 契约
 
-- 所有移动端 action 使用 `POST /api/customer/core/{actionName}`（2026-10-06 修订：`/api/` 提前，CF/WAF 按 `/api/customer/*` 一条规则覆盖）。
-- **actionName 四段结构 `{q|m}_{module}_{resource}_{action}`**（2026-10-06 定稿）：`q/m` 表读/写意图，`module` 为业务模块，`resource` 为资源名，`action` 为标准动词（`getById / getByIds / list / createOne / createMany / updateOne / updateMany / deleteOne / deleteMany`，特殊子资源操作用具体名词如 `updateItems`；不兼容形状变更加 `V2` 后缀）。示例：`q_demo_todo_getById`、`m_demo_todo_createOne`。
-  - **前缀是权限的表达，不是权限的来源**：路径客户端可见可填，裁决仍由 ActionSpec（actor 要求）+ 业务所有权校验承担；`{module, resource} × {read, write}` 前缀矩阵的价值在 manager 表面的粗粒度授权、审计与边缘规则。
-  - **一致性由测试锁死**：路由表扫描——path 以 `m_` 开头 ⇔ `ActionSpec.isMutation=true`；module 段与 controller 所属模块一致。
-- **URL 不带 resourceId**（2026-10-06 定稿）：边缘/WAF 规则是模式级的，action 粒度由 actionName 承载，具体资源 ID 是攻击者可轮换的高基数字段、对边缘决策无价值；且 ID 属业务载荷，应留在加密 body 内。路径统一一种形状，ActionSpec 路由/测试/OpenAPI 均单套处理。
-- reqName 保持现状，例如 `q_ai_findMyScans`、`m_auth_login`，减少前后端重命名成本。
+- 所有移动端 action 使用 `POST /customer/core/greq/{reqName}`（2026-10-06 定稿：greq 路径就是 RPC 的最终路径，与 GraphQL persisted query 共用，gql raw 仍是 `/customer/core/gql`；**原 proposal 定的 `/api/customer/core/{reqName}` 方案废弃**，不再新增 `/api/` 前缀路径）。过渡期同一 reqName 先以 GraphQL persisted query 形式服务，迁移后切换为 RPC controller 形式，URL 不变；分发细节在 rpc-pilot-server 落地时定。
+- **reqName 四段结构 `{q|m}_{namespace}_{resource}_{action}`**（2026-10-06 定稿）：`q/m` 表读/写意图，`namespace` 目前 = module（业务模块），`resource` 可为聚合根（如 todo / todoItem），`action` 为标准动词（`getById / getByIds / list / createOne / createMany / updateOne / updateById / updateMany / deleteOne / deleteMany`，特殊操作允许专名如 `presignUpload / attest / run`；不兼容形状变更加 `V2` 后缀，如 `m_demo_todoItem_updateByIdV2`）。示例：`q_demo_todo_getById`、`m_demo_todo_createOne`。
+  - **前缀是权限的表达，不是权限的来源**：路径客户端可见可填，裁决仍由 ActionSpec（actor 要求）+ 业务所有权校验承担；`{namespace, resource} × {read, write}` 前缀矩阵的价值在 manager 表面的粗粒度授权、审计与边缘规则。
+  - **一致性由测试锁死**：路由表扫描——path 以 `m_` 开头 ⇔ `ActionSpec.isMutation=true`；namespace 段与 controller 所属模块一致。
+- **URL 不带 resourceId**（2026-10-06 定稿）：边缘/WAF 规则是模式级的，action 粒度由 reqName 承载，具体资源 ID 是攻击者可轮换的高基数字段、对边缘决策无价值；且 ID 属业务载荷，应留在加密 body 内。路径统一一种形状，ActionSpec 路由/测试/OpenAPI 均单套处理。
+- reqName 全量四段式（2026-10-06 起）：39 个存量 reqName 不再"保持现状"，全部改为四段式命名（新名总表见 [rpc-rollout-client](rpc-rollout-client.md) §1）。
 - 成功和失败统一返回 `Envelope<T> = { code, msg, data }`。
 - HTTP status 必须等于 `code` 前三位；成功为 `200000` / HTTP 200。
 - 不再返回 GraphQL 的 `data + errors`、partial error 或 `errors[0]`。
 - Swagger 的 `operationId` 使用 reqName，前端从 OpenAPI 生成客户端。
-- URL 的 `customer` 受众段保留：token type 已含 manager(20)，将来管理端 API 用 `/manager/api/…` 独立命名空间，CF 规则与源站路由可按受众切分。
+- URL 的 `customer` 受众段保留：token type 已含 manager(20)，将来管理端 API 类比 customer 段用独立 `/manager` 前缀命名空间（具体路径形态待定，不再预设 `/manager/api/…`），CF 规则与源站路由可按受众切分。
 
 ### 请求信封与 meta（2026-10-06 定稿）
 
@@ -59,7 +59,7 @@
 明确**不进 meta** 的：
 
 - `installId`：服务端从 token 的 `iid` claim 解出（RequestParser 现状），客户端声称的身份不是身份；服务端解出后自打日志。
-- `refreshToken`：维持现状走 `m_auth_refreshToken` / `m_auth_logout` 的业务 input——全 API 只有两个 action 消费它，放进 meta 等于每次请求多带一份长期凭证，徒增暴露面。
+- `refreshToken`：维持现状走 `m_auth_session_refresh` / `m_auth_session_logout` 的业务 input——全 API 只有两个 action 消费它，放进 meta 等于每次请求多带一份长期凭证，徒增暴露面。
 - `ts`：wire v3 明文头部已有 `ts_ms`（仅遥测）。
 - 签名/校验和：AEAD 已保证完整性。
 
@@ -193,7 +193,7 @@ XxxController
 工作内容：
 
 - 在 `bff/api/customer/{module}/` 新增 Controller。
-- 每个方法使用原 reqName 路径和 OpenAPI operationId。
+- 每个方法使用四段式 reqName 路径和 OpenAPI operationId。
 - Mutation 保留当前 `GlobalTxRunner` 边界。
 - 新增 `DemoQueryService`，用 Jimmer 关联或 batch-by-ids 替代 Todo DataLoader。
 - 为每个 action 增加 MockMvc/WebTestClient 合约测试，校验 HTTP status、Envelope、header 和 response JSON。
@@ -202,7 +202,7 @@ XxxController
 
 ### 阶段 4：迁移身份与支付链路
 
-迁移模块：install、customer、auth、pay。
+迁移模块：install、customer、auth、pay（install/customer 代码已并入 auth 模块：`modules/auth/{install,customer}`，相关 reqName namespace 为 auth——`m_auth_install_*`、`m_auth_customer_*`、`m_auth_session_*`）。
 
 重点：
 
@@ -252,7 +252,7 @@ XxxController
 
 同时：
 
-- 确认源码中不存在 `com.netflix.graphql`、`generated.types`、`/greq/`。
+- 确认源码中不存在 `com.netflix.graphql`、`generated.types`；`/customer/core/greq/{reqName}` 路径由 RPC controller 承接（原 `infra/graphql/trusted/` 的 GReq 路由与 trusted-document 基建随本阶段删除）。
 - 更新 `AGENTS.md`、`docs/guide/ARCHITECTURE.md`、`docs/guide/CODING_GUIDE.md` 和 trusted-document 文档索引。
 - 运行 GitNexus `detect-changes --scope all`，检查结果不得为 partial/truncated。
 
@@ -269,7 +269,7 @@ XxxController
 
 最终验收：
 
-- 34 个 action 均可通过 `/api/customer/core/{reqName}` 调用。
+- 34 个 action 均可通过 `/customer/core/greq/{reqName}` 调用。
 - Swagger/OpenAPI 完整列出所有 action、header、request、Envelope response 和错误状态。
 - HTTP status 与六位 code 前三位一致。
 - 业务层无 GraphQL generated type。
