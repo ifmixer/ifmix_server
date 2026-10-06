@@ -7,13 +7,14 @@
 相对 v1.0.3 的全部变更（feature/install + feature/attest 已合入 main）。发布步骤与决策记录见 `docs/ops/release.md`「v1.0.6 发布计划」。
 
 ### Added
-- **install 体系**（V5/V6）：`m_install_createInstall` / `m_install_updateInstall`；JWT 新增 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（一 install 一 active customer）。老 app 兼容：`app.auth.legacy-install-id-fallback`（默认 true，token 无 iid 时退回 `x-install-id` header，仅读不写关系）。
+- **install 体系**（V5/V6）：`m_install_createInstall` / `m_install_updateInstall`；JWT 新增 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（一 install 一 active customer）。
 - **install attestation 一期**（iOS App Attest，V15，默认关）：createInstall 可带 proof；新增 `m_install_createAttestChallenge` / `m_install_recoverInstall` / `m_install_attestExisting`；错误码 403001/403002/409001/404001/429002/503002，429 必带 retryAfterSec。新 env：`APP_ATTEST_GLOBAL_ENABLED`、`APP_ATTEST_CHALLENGE_SECRET`。
 - **AI 扫描 / DeepResearch 异步化**（V10–V13）：mutation 秒回 task id，前端轮询状态，完成后 FCM push（`NotificationRequest` / per-project FirebaseAppRegistry / push feature flag）。配额改 `core_ai_customer_scan_metrics` 台账（V4/V9，成功才扣、CAS 原子）；`core_customer` 旧计数列暂留（后续迁移删除）。
 - **AI key 池**（V8）：`core_ai_agnes_key` → `core_ai_api_key`，多 key 轮询 + Redis 分布式冷却 + 禁用/probe-skip。
-- **wire 加密 v2**：X25519+HKDF+AES-256-GCM 请求/响应加密，>4KB 响应 gzip；明文 v1 永远放行（降级保留）。ts 偏差仅 warn（客户端时钟偏差不可控，强制时效暂缓——见 wire 设计 §9 决策修订）。
+- **wire 加密 v2（强制，无明文降级）**：X25519+HKDF+AES-256-GCM 请求/响应加密，版本头 `x-wirep-version: 2`，>4KB 响应 gzip；`/api/**` 明文请求 400004、解密失败 400003（无版本协商）。ts 偏差仅 warn（客户端时钟偏差不可控，强制时效暂缓——见 wire 设计 §9 决策修订）。请求 body 全局上限 5MB（`WIRE_MAX_REQUEST_BYTES`，超限 400000）。
 - **多维限流**：createInstall 入口 100/60s/IP + 验签后 IP 日窗口；createAnonymous / scan / DeepResearch install 层限流；阈值全部 `app.ratelimit.*` 配置、重启生效。
 - **`m_customer_deleteAccount`**（V7）：软删 + 解绑全部 install 关系 + 吊销全部 refresh token，事务内原子生效；`DeletionReasons` 码表。
+- **HTTP RPC + OpenAPI（breaking，feature/graphql-to-rpc）**：GraphQL(DGS) 引擎与 persisted documents 删除，全部 action 迁移为 `POST /api/customer/core/{actionName}`（四段 actionName `{q|m}_{module}_{resource}_{action}`，客户端从 OpenAPI 生成）。请求信封 `{"meta","input"}`（meta=typed `RequestMeta`，凭证暂在 `meta.accessToken`，定稿三段信封顶层 `authorization` 后两端锁步切换）；响应 `Envelope{reqId,code,msg,data}`，HTTP status = code 前三位；错误不再有 partial error。dev 调试通道（local profile）：`Authorization` header + `x-req-meta` header 作 meta 底座（`DevRpcHeaderAdapter`），Swagger UI Authorize 支持。`legacy-install-id-fallback` 随老 app 兼容决策移除（线上无老 app）。
 
 ### Changed
 - **refresh 契约明确**：`m_auth_refreshToken` 的 Authorization 携带 **customer access token（type=10）**；过期后 refresh 返回 `TOKEN_EXPIRED`，客户端应自动登出（有意设计）。refresh token 暂不校验 `expires_at`（接入第三方登录前，见 `docs/guide/AUTH_DESIGN.md`）。

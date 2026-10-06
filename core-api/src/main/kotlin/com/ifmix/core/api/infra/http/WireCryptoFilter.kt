@@ -34,6 +34,8 @@ import kotlin.math.abs
  * - `optional`（仅 local/dev 调试）：明文请求原样放行，加密请求照常处理。
  *
  * 挂在最外层（[RequestLoggingFilter] +5 之外）：内层 filter / 日志 / 业务看到的都是明文，业务零改动。
+ * - 请求 body 全局上限 `app.wire-crypto.max-request-bytes`（默认 5MB）：Content-Length 预检，明文/密文统一拦截
+ *   （meta 等 body 内字段不再单独限长；无 Content-Length 的 chunked 请求不预检，密文侧由解密后大小兜底）。
  * - 设备时钟偏差 > 5min 只 warn 不拒绝（ts 仅用于观测，不做防重放）。
  * - 成功：缓存内层响应 → seal 后写回；status 保留，`x-wirep-version: 2` + `application/octet-stream`。
  *   内层抛到容器的错误页不是 octet-stream，客户端按网关错误处理（见 wire 设计 §5）。
@@ -44,7 +46,11 @@ class WireCryptoFilter(
     @Value("\${app.wire-crypto.keys:}") keysSpec: String,
     @Value("\${app.wire-crypto.max-decompressed-bytes:1048576}") maxDecompressedBytes: Int,
     @Value("\${app.wire-crypto.mode:required}") mode: String,
+    /** 请求 body 全局上限（Content-Length 预检；明文/密文、meta 大小一并兜住，超限 400000）。 */
+    @Value("\${app.wire-crypto.max-request-bytes:5242880}") maxRequestBytes: Long,
 ) : OncePerRequestFilter() {
+
+    private val maxRequestBodyBytes = maxRequestBytes
 
     private val log = LoggerFactory.getLogger(WireCryptoFilter::class.java)
     private val crypto = WireCrypto.parse(keysSpec, maxDecompressedBytes)
@@ -55,6 +61,12 @@ class WireCryptoFilter(
         !request.requestURI.startsWith(API_PATH_PREFIX)
 
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
+        val contentLength = request.contentLengthLong
+        if (contentLength > maxRequestBodyBytes) {
+            log.warn("wire.body.too-large path={} bytes={} limit={}", request.requestURI, contentLength, maxRequestBodyBytes)
+            reject(response, ErrorCode.INVALID_REQUEST, "request body too large")
+            return
+        }
         val headerVersion = request.getHeader(RequestHeaders.WIREP_VERSION)
         val encrypted = request.contentType?.startsWith(MediaType.APPLICATION_OCTET_STREAM_VALUE) == true
         if (encrypted || required) {

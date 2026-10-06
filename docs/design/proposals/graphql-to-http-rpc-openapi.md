@@ -2,7 +2,7 @@
 
 > **状态：已实施（2026-10-06）** —— demo 试点 + M1/M2/M3 全量迁移 + wire 强制加密（版本 2）+ GraphQL 引擎删除全部完成；`:core-api:test` 全绿。执行时遵守 `AGENTS.md` 分层与 GitNexus 规则。
 >
-> **2026-10-06 讨论定稿**：去 GraphQL 的决策依据、请求信封 `{meta, input}` 与命名（§一）、header 留守原则与限流职责边界（§一）、与 wire v3 的合并执行顺序（§六）。
+> **2026-10-06 讨论定稿**：去 GraphQL 的决策依据、请求信封 `{meta, input}` 与命名（§一）、header 留守原则与限流职责边界（§一）、与 wire v3 的合并执行顺序（§六）、去 GraphQL 复议——保留 RPC 不回迁（§一）。
 >
 > **试点实施**：demo 模块作为首个迁移对象，实现任务已拆分给前后端 agent——服务端见 [rpc-pilot-server](rpc-pilot-server.md)、客户端见 [rpc-pilot-client](rpc-pilot-client.md)（试点通过 review 前不迁移其他模块、不删 GraphQL）。URL 决策：不带 resourceId，统一 `POST /rpc/customer/core/{actionName}`；DTO 分界规则见 §一「DTO 与转换」。
 >
@@ -23,6 +23,17 @@
 - Persisted documents（trusted documents）模式下客户端未使用字段级灵活性，GraphQL 事实上已是"每个 query 一个固定 RPC"，只是外面套了一层执行引擎（schema 解析、validation、DataLoader 调度、DGS codegen、trusted-document manifest 流程），全部在为用不到的灵活性付费。
 - 迁移不是新增聚合成本：DataLoader 本来就是手写的（如 Todo DataLoader），GraphQL 只提供自动 dispatch。迁移把它变成"手写 batch + 显式组装"，净复杂度下降，且消除 N+1 的隐蔽失效风险。
 - 多服务器网关聚合场景目前不存在（`core-job` 走共享 PG 协作，无服务间 API）。GraphQL federation 的价值区间是"多后端服务 + 多团队 + 多种客户端"，若未来真的出现多服务，按规模递进处理且不影响客户端 RPC 契约：路径分流（CF/nginx）→ 服务端手写聚合（与 `XxxQueryService` 同一模式）→ 真到几十服务多团队再评估 federation（放在 RPC 后面，客户端契约不变）。
+
+### 去 GraphQL 复议：保留 RPC，不回迁（2026-10-06 二次讨论）
+
+迁移完成后复议「保留 Swagger(RPC) 还是 GraphQL」，结论：**不回迁**。此前认为 GraphQL 的四点好处逐条核销：
+
+1. **派生字段（display_price / email·phone mask 等）**：解法等价，载体不同。GraphQL 靠 field resolver（天然只见父对象，跨源取数要挂 DataLoader，N+1 与缓存均为隐式）；RPC 靠**共享 Res 类型的 companion factory / 值类型**（mask 落点见 rpc-rollout-server §3.2 `PhoneRes.of(raw, ctx)`；`PriceRes.of(value, currency)` 同理）。复用的载体是共享 Kotlin 类型而非 schema——`PriceRes` 嵌进多少个 response，改一处规则就多少处生效。且该类转换是观众相关的**服务端展示决策**，服务端单落点优于各客户端 resolver 各自实现。API 层取数往下传、缓存决策显式化（`cacheRead/cachePopulate`）是 RPC 侧的额外收益。
+2. **类型复用**：两边等价。「DB 多列 → 对象」的转换工作量两边一样，GraphQL 只是把它藏进 entity 直出 + resolver，并未消除；手写 companion factory + Konvert（机械搬运）+ Jimmer DTO 投影（纯投影零手写）已在落地，净剩的只有组装逻辑本身——那部分 GraphQL 也免不了。
+3. **未来公开 Open API**：GraphQL 唯一真有优势的场景（第三方自行组合查询 + 工具生态）。但公开 API 与本协议形态（wire 加密信封、token 对中间层不可见）是两个世界，真到那天必然是**独立 surface**（独立鉴权/限流/部署），到时在 Facade 上加一层 GraphQL 是增量——业务层本次迁移已刻意做到协议无关（Facade/Handler/Repo 不知 RPC 存在）。不为假想需求改现在的移动端协议。
+4. **GraphQL 的真实意义**：其全部核心价值（客户端按需取字段、任意深度图组装、字段级 deprecation）只在「需求不可预测的多样化客户端」下兑现——第三方生态、多团队多端、视图高频变化的后台。本项目是单一一方移动端 + 固定屏幕，服务端完全可预测数据需求；trusted documents 下「服务端加字段免发版」也不成立（改 persisted document 照样发版）。价值没有买家，成本已付过一年。
+
+后续指向：OpenAPI snapshot 测试与 schema 必填性收紧（rpc-rollout-server M4）才是 R4 客户端 codegen 的前置。
 
 ### API 契约
 
@@ -50,7 +61,7 @@
 |---|---|
 | `reqId` | 客户端自供、缺省服务端补 UUID（对齐现有 `x-req-id` 语义）；与 CF 自动注入的 `cf-ray` 互补——后者边缘可见，负责 CF↔源站日志关联，服务端日志两者都打 |
 | `projectId` | 客户端声明操作哪个 project，服务端校验访问权 |
-| `accessToken` | 唯一凭证字段，纯 token 字符串（不带 `Bearer` 前缀）；type claim 自描述 install(5)/customer(10)/manager(20)，沿用现有单 token 模型（拆 install/customer 两个字段会与 type claim 形成双信源，且覆盖不了第三种类型）。**2026-10-06 二次讨论：拟移出 meta、独立凭证槽位（见下节「凭证与 meta 分离」），定稿前本行仍为现状** |
+| `accessToken` | 唯一凭证字段，纯 token 字符串（不带 `Bearer` 前缀）；type claim 自描述 install(5)/customer(10)/manager(20)，沿用现有单 token 模型（拆 install/customer 两个字段会与 type claim 形成双信源，且覆盖不了第三种类型）。**2026-10-06 定稿：移出 meta、三段信封顶层 `authorization`（见下节），两端锁步迁移完成后本行删除** |
 | `locale` / `currency` / `country` | 用户偏好；平铺，不加前缀不嵌套（typed 对象本身就是命名空间）。`meta.country` 是用户设置，与 CF 从 IP 推导的 `cf-ipcountry`（header）并存不冗余 |
 | `userTz` | 可选，IANA 时区名（如 `Asia/Shanghai`），不用 float offset（丢 DST 规则且 offset 不唯一定位时区）；无具体服务端消费方（如通知按本地时间发送）前可不实现 |
 | `appVersion` / `otaVersion` / `clientPlatform` / `deviceModel` / `osVersion` | 遥测/诊断；服务端逻辑与分析以这些结构化字段为权威信源，UA 头只作边缘 advisory，不解析 UA 字符串 |
@@ -70,11 +81,22 @@
 
 meta 字段对未来的边缘网关**不可见，且这是设计使然**（wire 私钥永不下发中间层）：需要解密前做的决策走 header advisory，可信决策一律在服务端解密后做；将来网关若确需某 meta 字段做路由/降级，按 header 留守原则加明文 advisory 头副本。
 
-### 凭证与 meta 分离（2026-10-06 二次讨论：方向定稿，细节待定稿；dev 态输入适配已先行实施）
+### 凭证与 meta 分离（2026-10-06 定稿：三段信封顶层 `authorization`；dev 态输入适配已先行实施）
 
 **动机**：凭证与请求属性是两个概念。meta.accessToken 拆出后，meta 不含任何敏感信息、可整段进日志（不再依赖脱敏黑名单）；HTTP 语义上 Authorization 本来就是凭证的标准位置。
 
-- **方向**：`RequestMeta` 去掉 `accessToken`；请求信封改三段 `{"meta": {...}, "input": {...}, "authorization": "<裸 token>"}`（**字段名待定稿**）。token 仍走 type claim 自描述（install/customer/manager 同一槽位）。
+- **方向（字段名已定稿）**：`RequestMeta` 去掉 `accessToken`；请求信封改三段
+  `{"meta": {...}, "input": {...}, "authorization": "<token 或 Bearer <token>>"}`。
+  键名定 `authorization`（非 `accessToken`）：它是凭证槽位、有意映射 HTTP Authorization 语义，值接受
+  完整 header 值（`Bearer ` 前缀可选，服务端统一剥）；token 本身的精确名词留给实现层。选它还因为
+  graphql 分支（wire v2.1）已用同名同语义落地并验证，两端/两分支契约零对齐成本。token 仍走 type claim
+  自描述（install/customer/manager 同一槽位）。
+- **meta 从此不含任何凭证**：meta 整段可进日志（脱敏黑名单不再需要）；业务层禁止绕过 ActionContext 读凭证。
+- 实施为独立 commit、两端锁步（客户端把 token 装配从 meta.accessToken 切到 body.authorization；
+  dev 通道 `DevRpcHeaderAdapter` 只需把凭证信源从 `Authorization` header 扩为 body.authorization 优先）。
+- 参考实现记录（原 `docs/plans/2026-10-06-wire-meta-into-body.md`，graphql 分支 wire v2.1）已删除：
+  其 filter 层伪 header 方案不移植——RPC 业务层直接读 typed meta，业务层零改动目标天然达成；
+  `authorization` 键名与 dev 双通道语义由本节与 wire-encryption.md §9 承接。
 - **dev 态输入适配（Swagger/curl 调试，✅ 2026-10-06 已实施）**：local/dev profile 注册合并逻辑——`Authorization` header（剥 Bearer 前缀）与 `x-req-meta`（JSON 字符串，不含凭证）作底、body 字段级优先，单点实现；prod 不注册。Swagger 侧用标准 securityScheme（Authorize 一次全局生效）。实现：`DevRpcHeaderAdapter`（`infra/http/`，`@Profile("local")`，挂在 `ActionContextFactory.fromRpc` 单点，合并后的 meta 随 `ctx.meta` 透传；`x-req-meta` 内 accessToken 字段一律忽略——契约上该 header 不含凭证）+ `DevRpcOpenApiConfig`（两个 apiKey-in-header securityScheme `DevAuthorization`/`DevReqMeta` 在同一 SecurityRequirement 内 AND，Authorize 后每请求自动带两个 header；`persist-authorization` 已开）。header 缺失/空白时行为与现网完全一致；`x-req-meta` 非法 JSON 直接 400000（dev fail-fast）。测试：`DevRpcHeaderAdapterTest`。定稿后该适配器只需把凭证信源指向新槽位（`Authorization` header 已就位，信封段到位后 `body.authorization` 优先）。
 - **prod 不认 Authorization header**：token 进 header 即进边缘/访问日志，破坏 wire「凭证对中间层不可见」的设计（header 留守原则 §「Authorization 不为 WAF 留守」仍然成立；prod 无 `DevRpcHeaderAdapter` bean，`Authorization`/`x-req-meta` header 不被识别）。Swagger 之外的调试走明文 body 直填槽位。
 - **浏览器未来**：HttpOnly cookie + CSRF（JS 全程不接触 token，防 XSS 窃取；代价是 CSRF 成为攻击面、且 cookie 对边缘可见）或直接用 SDK wire 信封（client-sdk 零原生依赖、web 可跑）——独立会话协议设计，另行评审，不在本节范围。

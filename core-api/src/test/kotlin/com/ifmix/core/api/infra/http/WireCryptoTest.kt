@@ -285,6 +285,20 @@ class WireCryptoTest {
         assertThat(plain.status).isEqualTo(400)
         assertThat(plain.contentAsString).isEqualTo("""{"code":"400004","msg":"wire encryption required","data":null}""")
 
+        // 请求 body 全局上限：Content-Length 超限 → 400 400000（明文/密文统一，读取 body 之前拦截）
+        val tooLarge = runFilter(
+            WireCryptoFilter(
+                "1:${Base64.getEncoder().encodeToString(HEX.parseHex(SERVER_PRIV_HEX))}",
+                WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, "required", 64L,
+            ),
+            MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_deleteOne").apply {
+                addHeader(RequestHeaders.WIREP_VERSION, "2"); contentType = "application/octet-stream"
+                setContent(ByteArray(100))
+            },
+        )
+        assertThat(tooLarge.status).isEqualTo(400)
+        assertThat(tooLarge.contentAsString).isEqualTo("""{"code":"400000","msg":"request body too large","data":null}""")
+
         // required 模式：x-wirep-version 版本不符 → 400 400004（无版本协商）
         val wrongVer = runFilter(
             wireFilter(),

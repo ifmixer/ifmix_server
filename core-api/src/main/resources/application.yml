@@ -67,6 +67,8 @@ app:
     mode: required
     keys: ${WIRE_CRYPTO_KEYS:}
     max-decompressed-bytes: ${WIRE_MAX_DECOMPRESSED_BYTES:1048576}
+    # 请求 body 全局上限（Content-Length 预检，明文/密文统一，超限 400000；meta 等字段不单独限长）。
+    max-request-bytes: ${WIRE_MAX_REQUEST_BYTES:5242880}
   storage:
     # 连接/密钥（endpoint/access-key/secret-key）由各环境自行配置（local 写死、prod 环境变量）。
     # buckets 按需由环境覆盖 app.storage.buckets.<id>（默认空 map，主配置不留 {} 占位——
