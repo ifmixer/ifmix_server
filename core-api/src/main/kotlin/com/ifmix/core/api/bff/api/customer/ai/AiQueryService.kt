@@ -1,6 +1,6 @@
 package com.ifmix.core.api.bff.api.customer.ai
 
-import com.ifmix.core.api.dto.ai.AiApiMappers
+import com.ifmix.core.api.dto.ai.AiKonvertMappersImpl
 import com.ifmix.core.api.dto.ai.DeepResearchStatusRes
 import com.ifmix.core.api.dto.ai.ListCollectionItemsInput
 import com.ifmix.core.api.dto.ai.ListItemsReq
@@ -48,12 +48,13 @@ class AiQueryService(
 
     /** 已加载的 ScanRecord → 详情视图（m_ai_scan_updateOne 写后读复用；latestDeepResearch 按权威指针加载）。 */
     fun toDetailRes(ctx: ActionContext, record: ScanRecord): ScanRecordRes =
-        AiApiMappers.toDetailRes(record, findLatestDeepResearch(ctx, record))
+        AiKonvertMappersImpl.toDetailRes(record)
+            .copy(latestDeepResearch = findLatestDeepResearch(ctx, record))
 
     /** 分页列表：1 次分页查询即完成（列表视图无关联字段，basicResult 不加载）。 */
     fun findScans(ctx: ActionContext, findOptions: CommonFindOptions?): Page<ScanRecordListRes> {
         val page = aiService.findMyScans(ctx, findOptions)
-        return Page(page.items.map(AiApiMappers::toListRes), page.pageInfo)
+        return Page(page.items.map(AiKonvertMappersImpl::toListRes), page.pageInfo)
     }
 
     /** 轮询状态（含惰性超时 CAS，controller 包事务）。 */
@@ -98,10 +99,12 @@ class AiQueryService(
                 val record = recordById[item.scanRecordId] ?: return@mapNotNull null
                 ScanCollectionItemRes(
                     id = item.id,
-                    scanRecord = AiApiMappers.toLiteRes(
-                        record,
-                        record.latestDeepResearchId?.let { latestById[it] }?.let(AiApiMappers::deepResearchToDto),
-                    ),
+                    scanRecord = AiKonvertMappersImpl.toLiteRes(record)
+                        .copy(
+                            latestDeepResearch = record.latestDeepResearchId
+                                ?.let { latestById[it] }
+                                ?.let(AiKonvertMappersImpl::toRes),
+                        ),
                     createdAt = item.createdAt.toString(),
                 )
             },
@@ -114,6 +117,6 @@ class AiQueryService(
         val drId = record.latestDeepResearchId ?: return null
         return aiService.findDeepResearchByIds(ctx, listOf(drId))
             .firstOrNull()
-            ?.let(AiApiMappers::deepResearchToDto)
+            ?.let(AiKonvertMappersImpl::toRes)
     }
 }
