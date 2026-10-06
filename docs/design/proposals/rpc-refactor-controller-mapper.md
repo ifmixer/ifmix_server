@@ -86,7 +86,7 @@ fun <T> ok(reqId: String?, data: T): Envelope<T> = Envelope("200000", "success",
 
 前置确认：customer/install 并入 auth 的重构（`81ee3d4` 一线）已落地；若该重构仍有后续改动未合，本项挂起等它。
 
-1. 现状三处手抄同一模式：install 层 → IP 层 →（legacy fallback）→ 业务，拒绝 429000 + retryAfterSec、install 层拒绝不碰 IP 计数器、被拒不退款。位置：`AuthApiController`（合并后）/ `InstallApiController` / `AiController.rateLimitByAction` + `DownstreamLimits`。
+1. 现状三处手抄同一模式：install 层 → IP 层 →（legacy fallback）→ 业务，拒绝 429000 + retryAfterSec、install 层拒绝不碰 IP 计数器、被拒不退款。位置：`CustomerController`（createAnonymous）/ `InstallApiController` / `AiController.rateLimitByAction` + `DownstreamLimits`。（注：原写 AuthApiController，auth 合并后限流实际落在 CustomerController。）
 2. 提取共享组件（建议 `infra/ratelimit/` 下，如 `ActionRateLimit`），接口按语义命名（如 `checkInstallThenIp(ctx, action, limits)`），阈值来源仍为 `RateLimitProperties`。
 3. **语义红线：逐行平移**——Redis key 格式（含 `legacy:` 段、projectId/action 隔离）一个字符都不能变（存量计数器不能失效）；「install 层拒绝不退 IP 额度」「无可信 iid 走 legacy 独立计数器」两条语义原样；错误码 429000/429002 与 retryAfterSec 逐一保留。
 4. 迁移后三个 controller 的限流调用点全部走共享组件，各自现有限流测试（AiRateLimitTest 等）保持全绿（key/断言不改）。

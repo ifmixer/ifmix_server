@@ -9,11 +9,11 @@ import java.util.UUID
  * 操作上下文 — per-action。
  *
  * 两种构造来源：
- *  - GraphQL 请求：由 [com.ifmix.core.api.infra.graphql.ActionContextProvider.fromDfe] 从
- *    HttpServletRequest 解析 header/token（并按需校验、失败即抛）后构造，持有已解析的值。
+ *  - RPC 请求：由 [ActionContextFactory.fromRpc] 消费 `{"meta": …, "input": …}` 信封与 HTTP header
+ *    解析/校验（失败即抛 ApiError）后构造，持有已解析的值。
  *  - webhook / 内部调用：直接构造并塞入 projectId/actorId（无 HTTP 请求）。
  *
- * 只持有「已解析成功的值」，不含错误状态——token 过期/无效等在 fromDfe 解析+校验时即时抛 ApiError。
+ * 只持有「已解析成功的值」，不含错误状态——token 过期/无效等在 fromRpc 解析+校验时即时抛 ApiError。
  */
 data class ActionContext(
     val projectId: String? = null,
@@ -36,11 +36,6 @@ data class ActionContext(
     val tokenInstallId: UUID? = null,
     /** token 的 type claim：5=install / 10=customer / 20=manager。无 token 时 null。 */
     val tokenType: Int? = null,
-    /**
-     * 老版本 app 兼容（app.auth.legacy-install-id-fallback=true 时才有值）：token 无 iid 时退回 x-install-id header。
-     * 不可信（客户端可伪造），只用于写入/关系维护，绝不签进 token 的 iid。等老 app 升级完关掉开关即恒为 null。
-     */
-    val legacyInstallId: UUID? = null,
     /** 请求 id（客户端 x-req-id 原值，或服务端生成的 UUID；客户端 x-req-id 或服务端生成，响应头 x-req-id 返回）。 */
     val requestId: String? = null,
     /** Cloudflare bot score（cf-bot-score header，1-99，越低越像 bot）。仅记录用途。 */
@@ -90,7 +85,7 @@ data class ActionContext(
     fun logFields(): Map<String, Any?> = linkedMapOf(
         "rid" to requestId,
         "pid" to projectId,
-        "iid" to installIdOrNull(),
+        "iid" to tokenInstallId,
         "cid" to actorId,
         "ip" to clientIp,
         "bot" to botScore,
@@ -105,19 +100,15 @@ data class ActionContext(
         "os" to osVersion,
     )
 
-    fun mustGetProjectId() = projectId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-project-id is required")
+    fun mustGetProjectId() = projectId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "projectId is required")
     fun mustGetActorId() = actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
 
     /**
-     * 可信 installId（token iid）。Customer 业务写入统一走此，绝不用可伪造的 x-install-id。
+     * 可信 installId（token iid）。Customer 业务写入统一走此。
      * createAnonymous / refresh 也走此：只要求携带有效可信 iid（token 类型不限——install token 或
-     * 含 iid 的 customer token 皆可），无有效 iid → UNAUTHORIZED。
-     * 无有效 token iid → UNAUTHORIZED（缺少可信 install 上下文，拒绝写入）。
+     * 含 iid 的 customer token 皆可），无有效 iid → UNAUTHORIZED（缺少可信 install 上下文，拒绝写入）。
      */
-    fun mustGetTokenInstallId() = installIdOrNull() ?: throw ApiError(ErrorCode.UNAUTHORIZED, "trusted install id required")
-
-    /** token iid 优先；无则（仅兼容开关开启时）退回 header 的 [legacyInstallId]。 */
-    fun installIdOrNull(): UUID? = tokenInstallId ?: legacyInstallId
+    fun mustGetTokenInstallId() = tokenInstallId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "trusted install id required")
 
     /**
      * login 入口：必须携带 iid，允许两类上下文——
@@ -129,11 +120,9 @@ data class ActionContext(
         val ok = when (tokenType) {
             AuthJwtService.TOKEN_TYPE_CUSTOMER -> actorId != null
             AuthJwtService.TOKEN_TYPE_INSTALL -> actorId == null
-            // 老 app 登录不带 token：仅兼容开关开启（legacyInstallId 有值）时放行
-            null -> actorId == null && legacyInstallId != null
             else -> false
         }
         if (!ok) throw ApiError(ErrorCode.UNAUTHORIZED, "login requires customer or install token")
-        return installIdOrNull() ?: throw ApiError(ErrorCode.UNAUTHORIZED, "login requires trusted install id")
+        return tokenInstallId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "login requires trusted install id")
     }
 }

@@ -33,7 +33,7 @@ wire 的作用是封死绕过 attest 的动态路径。纪律：**服务端永�
 - **非目标**：
   - 防 root/越狱设备上 Frida hook 加密前数据（客户端加密的天花板）。
   - 防语义级重放（同一业务操作重复提交）：归幂等设计（docs/design/infra/idempotency.md）与敏感操作的一次性服务端凭据（§9）。字节级重放另见 §9 的 ts 时效决策（2026-10-05 修订：暂缓实施，维持 warn）。
-  - 隐藏 `Authorization` header：v2.1 规划 header 进 body 收掉这个尾巴（§9）。
+  - 隐藏 `Authorization` header：已由 RPC meta 承接（§9，2026-10-06 落地）。
   - 强制 v2：服务端继续接受明文 v1；何时拒绝 v1 另行决定。
 - 加密不替代服务端鉴权 / 限流 / App Check（App Check 由另一份规格负责）。
 
@@ -266,15 +266,15 @@ HTTPS 管传输（网络第三方）、wire 管设备持有者（HTTPS 终结后
 - 平台强制（iOS ATS / Android cleartext）与 CF 架构均按 HTTPS 建立；TLS 开销在 CF 终结 + 硬件 AES
   下微不足道，无可换的收益。
 
-### 已规划：v2.1 header 进 body（收掉 token 在 header 的尾巴）
+### 已实现：敏感字段由 RPC meta 承接（原 v2.1 header 进 body 规划，2026-10-06 落地）
 
-- **线协议不动**（ver=2 字节格式不变）：仅改加密前的 JSON 载荷为
-  `{"meta": {…敏感头…}, "query": "", "variables": {…}}`；老客户端继续走 header，服务端并存读取。
-- 服务端：`DecryptedRequest` 解密后从 body meta 供应 `getHeader("Authorization")` 等，
-  AuthInterceptor / RequestParser 无感知。
-- 永远留在 body 外的信封标记：`x-proto-version` / `Content-Type`（服务端要先看到它才知道要解密——鸡生蛋）
+- 原规划由 RPC 协议直接承接：请求信封 `{"meta": {…}, "input": {…}}`，token 在 `meta.accessToken`；
+  meta 字段定义与 header 留守原则见 `docs/design/proposals/graphql-to-http-rpc-openapi.md` §一。
+- GraphQL 引擎已随迁移删除，`variables` 时代的中间方案不再适用。
+- 永远留在 body 外的信封标记：`x-wirep-version` / `Content-Type`（服务端要先看到它才知道要解密——鸡生蛋）
   与 CF 注入头（`cf-bot-score`、真实 IP——限流依赖）。
-- 收益定位：对网络第三方无增益（HTTPS 已藏 header）；对设备持有者是收尾（token 本是其自有会话凭证）。
+- dev 态调试：local profile 注册 `DevRpcHeaderAdapter`（`Authorization` header + `x-req-meta` 作底、
+  body 字段级优先）；prod 不认 Authorization header（token 对中间层不可见）。
 
 ### 决策修订（2026-10-05）：ts 强制时效暂缓实施
 

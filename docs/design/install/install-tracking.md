@@ -7,6 +7,8 @@
 
 ---
 
+
+> **2026-10-06 迁移注记**：customer/install 已并入 auth 模块——`modules/install/` → `modules/auth/install/`、`modules/customer/` → `modules/auth/customer/`、`entity/install/`、`entity/customer/` → `entity/auth/` 下同名子包、`dto/*` → `dto/auth/`；controller 位于 `bff/api/customer/auth/`；`infra/auth/RequestParser.kt` 已随 GraphQL 删除收敛（token 解析唯一入口 `infra/http/ActionContextFactory.kt`）。本文中的路径为迁移前的历史记录，按此对照。
 ## 1. 目标
 
 为 FCM 推送与运营分群保存设备（install）信息，并建立 install 与 customer 的绑定关系。相较最初任务书，本设计做了一个**核心安全升级**：

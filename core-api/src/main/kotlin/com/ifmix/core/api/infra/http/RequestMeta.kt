@@ -12,7 +12,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 data class RequestMeta(
     /** 请求 id；缺失时由服务端 x-req-id header 通道（LogContext）补齐。 */
     val reqId: String? = null,
-    /** 项目 slug（= GraphQL 的 x-project-id）。 */
+    /** 项目 slug（= token aud claim）。 */
     val projectId: String? = null,
     /** 纯 access token，无 Bearer 前缀（带前缀属协议错误，直接拒绝）。 */
     val accessToken: String? = null,

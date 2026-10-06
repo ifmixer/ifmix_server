@@ -147,9 +147,6 @@ app:
     global-enabled: false
     # 验签并发信号量（§3.1：Redis 故障期防验签把进程打满；拿不到许可 → UNAVAILABLE，OBSERVE 放行 / ENFORCE 503002）
     verify-permits: ${APP_ATTEST_VERIFY_PERMITS:32}
-    # 老版本 app 兼容：token 无 iid 时退回 x-install-id header（不可信，不签进 token）。
-    # 老 app 全部升级（会调 m_auth_install_create 拿 installToken）后置 false。
-    legacy-install-id-fallback: ${APP_LEGACY_INSTALL_ID_FALLBACK:true}
     google:
       jwks-uri: ${AUTH_GOOGLE_JWKS_URI:https://accounts.google.com/.well-known/openid-configuration}
     apple:

@@ -3,42 +3,23 @@
 ## Context 三层模型
 
 ```
-RequestContext      HTTP 请求级    构造于: AuthInterceptor / Header 解析
-    ↓
-ActionContext       Action 级      构造于: DataFetcher (ctxProvider.fromDfe)
+RequestMeta         客户端自供     请求信封 body.meta（未认证的原料，可整段进日志——凭证除外）
+    ↓  ActionContextFactory.fromRpc（token/aud/meta 校验，失败即抛 ApiError）
+ActionContext       Action 级      构造于: ActionContextFactory.fromRpc（服务端核对后的产物）
     ↓
 ModuleCtx           模块调用级     构造于: Facade (ModuleCtxFactory.forProject)
 ```
 
-> Action = GraphQL operation 里的**单个 top-level field 的一次解析/执行**（不是整个 GraphQL operation 文档）。一个请求含多个 top-level field 时，每个 field 各一个 ActionContext。
-
-### RequestContext
-
-从 HTTP 请求头解析的纯请求信息。
-
-```kotlin
-data class RequestContext(
-    val projectId: UUID?,
-    val customerId: UUID?,   // 主体归一：actorType==customer 时 = actorId；null = 匿名/未认证
-    val actorType: Int?,     // 10=customer / 20=manager
-    val anonymous: Boolean,  // token ano claim
-    val locale: String?, val currency: String?, val country: String?,
-    val clientPlatform: ClientPlatform?, val clientIp: String?,
-)
-```
+> Action = 一个 RPC endpoint 的一次执行（actionName 四段 `{q|m}_{module}_{resource}_{action}`）。
+> meta（客户端声称）与 ActionContext（服务端核对）是两个安全层次：身份字段（installId 等）不进 meta，
+> 业务代码只读 ActionContext。
 
 ### ActionContext
 
-```kotlin
-data class ActionContext(
-    val req: RequestContext,
-    val actionName: String? = null,
-    val isMutation: Boolean = false,
-    val preferReader: Boolean = !isMutation,
-    val globalTxSql: KSqlClient? = null,
-    val inGlobalTx: Boolean = false,
-)
-```
+协议无关的操作上下文（完整字段见 `infra/http/ActionContext.kt`）：身份（actorId/actorType/anonymous/tokenInstallId/
+tokenType）、偏好（locale/currency/country/clientPlatform）、遥测（appVersion/otaVersion/userTz/deviceModel/osVersion）、
+边缘信号（clientIp/botScore）、操作元信息（actionName/isMutation/preferReader）与事务通道（globalTxSql/inGlobalTx）。
+常用断言：`mustGetProjectId()` / `mustGetActorId()` / `mustGetTokenInstallId()` / `mustGetLoginInstallId()`。
 
 ### ModuleCtx
 
@@ -75,14 +56,14 @@ class ModuleCtxFactory(private val router: ClusterRouter) {
 
 ## 事务管理
 
-### GlobalTxRunner（DataFetcher 层）
+### GlobalTxRunner（Controller 层）
 
 ```kotlin
-@DgsMutation(field = "m_demo_createTodo")
-fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoResult {
-    val ctx = ctxProvider.fromDfe(dfe)
-    val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input) }
-    return CreateTodoResult(todo = todo)
+@PostMapping(CREATE_TODO, consumes = [MediaType.APPLICATION_JSON_VALUE])
+fun createTodo(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateTodoInput>): ResponseEntity<Envelope<TodoRes>> {
+    val ctx = ctxFactory.fromRpc(request, CREATE_TODO, isMutation = true, body = body)
+    val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, body.requireInput()) }
+    return ResponseEntity.ok(Envelope.ok(ctx.requestId, TodoRes.of(todo)))
 }
 ```
 
@@ -108,29 +89,42 @@ globalTx.withTx(ctx) { txCtx -> facade.save(txCtx, entity) }
 
 ## 分层编码示例
 
-### DataFetcher
+### Controller
 
 ```kotlin
-@DgsComponent
-class DemoFetcher(
+@RestController
+@RequestMapping("/api/customer/core", produces = [MediaType.APPLICATION_JSON_VALUE])
+class DemoController(
+    private val ctxFactory: ActionContextFactory,
     private val demoService: DemoFacade,
+    private val queryService: DemoQueryService,
     private val globalTx: GlobalTxRunner,
-    private val ctxProvider: ActionContextProvider,
 ) {
-    @DgsQuery(field = "q_demo_findTodoById")
-    fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo {
-        val ctx = ctxProvider.fromDfe(dfe)
-        return demoService.findById(ctx, id) ?: throw IllegalArgumentException("not found")
+    companion object {
+        const val FIND_TODO_BY_ID = "q_demo_todo_getById"
+        const val CREATE_TODO = "m_demo_todo_createOne"
     }
 
-    @DgsMutation(field = "m_demo_createTodo")
-    fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoResult {
-        val ctx = ctxProvider.fromDfe(dfe)
-        val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input) }
-        return CreateTodoResult(todo = todo)
+    @Operation(operationId = FIND_TODO_BY_ID)
+    @PostMapping(FIND_TODO_BY_ID, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun findTodoById(request: HttpServletRequest, @RequestBody body: ApiRequestBody<FindTodoByIdInput>): ResponseEntity<Envelope<TodoRes>> {
+        val ctx = ctxFactory.fromRpc(request, FIND_TODO_BY_ID, isMutation = false, body = body)
+        return queryService.findTodoById(ctx, body.requireInput().id)
+            ?.let { ResponseEntity.ok(Envelope.ok(ctx.requestId, it)) }
+            ?: throw ApiError(ErrorCode.NOT_FOUND, "Todo not found")
+    }
+
+    @PostMapping(CREATE_TODO, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun createTodo(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateTodoInput>): ResponseEntity<Envelope<CreateTodoRes>> {
+        val ctx = ctxFactory.fromRpc(request, CREATE_TODO, isMutation = true, body = body)
+        val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, body.requireInput()) }
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, CreateTodoRes(queryService.findTodoById(ctx, todo.id)!!)))
     }
 }
 ```
+
+（input 泛型由 endpoint 签名声明、Spring 边界反序列化；`@Operation(operationId=)` 与 `@PostMapping`、
+`fromRpc` 三处引用同一 companion 常量。复杂读取聚合走 `XxxQueryService`（只调 Facade）。）
 
 ### Facade
 
@@ -187,17 +181,18 @@ class TodoRepository {
 }
 ```
 
-### DataLoader（关联字段）
+### QueryService 聚合（替代 DataLoader）
+
+批量加载一律「收集 IDs → 一次批量查 → Map 组装」，禁循环 findById；结果按输入 ID 顺序重排：
 
 ```kotlin
-@DgsDataLoader(name = "todoItems", caching = false)
-class TodoItemsDataLoader(
-    private val demoFacade: DemoFacade,  // 通过 Facade，不直接注入 repo
-) : MappedBatchLoader<UUID, List<TodoItem>> {
-    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, List<TodoItem>>> {
-        val actionCtx = ActionContextHolder.current()
-        val items = demoFacade.findItemsByTodoIds(actionCtx, ids)
-        return CompletableFuture.completedFuture(items.groupBy { it.todoId })
+@Service
+class DemoQueryService(private val facade: DemoFacade) {   // 只调 Facade，禁 import repo/handler
+    fun findTodosByIds(ctx: ActionContext, ids: List<UUID>): List<TodoRes> {
+        val todos = facade.findByIds(ctx, ids)
+        val items = facade.findItemsByTodoIds(ctx, todos.map { it.id }).groupBy { it.todoId }
+        val counts = facade.countItemsByTodoIds(ctx, todos.map { it.id })   // Map<UUID, TodoItemCounts>，缺 key 补 0
+        return todos.map { TodoRes.of(it, items[it.id].orEmpty(), counts[it.id]) }
     }
 }
 ```
@@ -257,8 +252,7 @@ Query → reader, Mutation → writer（通过 GlobalTxRunner）。
 
 异常日志**集中在两个异常入口**记录，业务代码抛 `ApiError` 时无需各自打 log：
 
-- GraphQL 路径：`GraphQLExceptionHandler`（DGS `DataFetcherExceptionResolver`）
-- REST/Webhook 路径：`GlobalExceptionHandler`（`@RestControllerAdvice`）
+- RPC/Webhook 路径：`GlobalExceptionHandler`（`@RestControllerAdvice`）
 
 分级规则（按 `ErrorCode.status`）：
 
@@ -267,12 +261,12 @@ Query → reader, Mutation → writer（通过 GlobalTxRunner）。
 | 5xx（INTERNAL / AI_UNAVAILABLE） | `error`（带 stack） | 服务端故障 |
 | RATE_LIMITED / QUOTA_EXCEEDED / AUTH_PROVIDER_FAILED | `warn` | 限流命中、第三方验证失败 |
 | 其余 4xx（400/401/403/404/TOKEN_EXPIRED…） | `debug` | 正常客户端拒绝，避免刷 warn |
-| 非 `ApiError` 未预期异常 | `error`（带 stack） | 视为程序 bug；GraphQL 侧记录后返回 null 走默认处理 |
+| 非 `ApiError` 未预期异常 | `error`（带 stack） | 视为程序 bug |
 
 其他约定：
 
 - **静默降级点必须打 log**：吞掉外部故障 / 兜底返回 null 的分支（如 Redis `INCR` 返回 null 降级放行、webhook 载荷解析失败）记 `warn`，便于排查。
-- **header 格式软校验（线上宽松模式）**：`RequestParser` 在 `strict=false`（线上）时，遇到 `x-locale`/`x-country`/`x-currency` 格式非法，会 `warn` 一条 `bad header format ignored: {header}={raw} ({reason})` 并当作未提供；`strict=true`（测试/开发默认）时直接抛 `ApiError`。version header（`x-app-version` 等）不参与格式校验，原样透传。见 `docs/guide/ARCHITECTURE.md`「格式软校验」。
+- **meta 字段格式软校验（线上宽松模式）**：`ActionContextFactory` 在 `strict=false`（线上）时，遇到 `meta.locale`/`meta.currency`/`meta.country`/`meta.clientPlatform` 格式非法，会 `warn` 并当作未提供；`strict=true`（测试/开发默认）时直接抛 `ApiError`。见 `docs/guide/ARCHITECTURE.md`「格式软校验」。
 - **不要给正常路径打 log**：合法默认值（`?: false`）、用户输入校验失败（无效 UUID/日期/token）属正常流程，打 log 只是噪音。
 - logger 声明：`private val log = LoggerFactory.getLogger(X::class.java)`；占位符 `log.warn("... {}", arg)`，只有 `error` 带异常对象打 stack。
 

@@ -27,6 +27,9 @@ import com.ifmix.core.api.entity.auth.customer.DeletionReasons
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
+import com.ifmix.core.api.modules.auth.LoginReq
+import com.ifmix.core.api.modules.auth.LogoutReq
+import com.ifmix.core.api.modules.auth.RefreshReq
 import java.time.Instant
 import java.util.UUID
 
@@ -36,11 +39,6 @@ import java.util.UUID
 
 data class UserDto(val id: UUID, val email: String?)
 
-data class LoginReq(
-    val idpId: UUID,
-    val credential: String,
-)
-
 data class LoginRes(
     val accessToken: String,
     val refreshToken: String,
@@ -49,7 +47,6 @@ data class LoginRes(
     val user: UserDto,
 )
 
-data class RefreshReq(val refreshToken: String)
 data class RefreshRes(
     val accessToken: String,
     val refreshToken: String,
@@ -57,7 +54,6 @@ data class RefreshRes(
     val expiresIn: Long,
 )
 
-data class LogoutReq(val refreshToken: String)
 data class LogoutRes(val ok: Boolean)
 
 data class CreateAnonymousRes(
@@ -308,7 +304,7 @@ class AuthAggHandler(
         }
         // 老 customer token 没有 iid，也从未建立 install 关系：兼容退出，只撤销 refresh token。
         // 新 token 有 iid 时正常解绑当前 install↔customer 关系。
-        val iid = mc.action.installIdOrNull()
+        val iid = mc.action.tokenInstallId
         if (iid != null) {
             val customerId = mc.action.actorId
                 ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")

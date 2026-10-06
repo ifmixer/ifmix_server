@@ -1,5 +1,6 @@
 package com.ifmix.core.api.modules.demo.repo
 
+import com.ifmix.core.api.modules.demo.TodoItemCounts
 import com.ifmix.core.api.entity.demo.TodoItem
 import com.ifmix.core.api.entity.demo.todoId
 import com.ifmix.core.api.entity.demo.projectId
@@ -79,9 +80,3 @@ class TodoItemRepository {
         }.execute()
     }
 }
-
-data class TodoItemCounts(
-    val itemCount: Int,
-    val pendingCount: Int,
-    val finishCount: Int,
-)

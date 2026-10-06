@@ -13,7 +13,7 @@ import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.modules.demo.DemoFacade
-import com.ifmix.core.api.modules.demo.repo.TodoItemCounts
+import com.ifmix.core.api.modules.demo.TodoItemCounts
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue

@@ -3,7 +3,6 @@ package com.ifmix.core.api.infra.http
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import com.ifmix.core.api.infra.auth.RequestParser
 import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import org.slf4j.LoggerFactory
 import org.springframework.core.Ordered
@@ -22,7 +21,7 @@ import org.springframework.web.util.ContentCachingResponseWrapper
 // 最外层：日志里的 httpStatus 即客户端实际收到的值（错误 status 由 GlobalExceptionHandler 直接输出）。
 // 也让 reqId/MDC 尽早建立，内层 filter 的日志同样带 rid。
 @Order(Ordered.HIGHEST_PRECEDENCE + 5)
-class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFilter() {
+class RequestLoggingFilter : OncePerRequestFilter() {
 
     private val log = LoggerFactory.getLogger(RequestLoggingFilter::class.java)
 
@@ -105,9 +104,9 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
     }
 
     /**
-     * 汇总重要请求头 + clientIp + userId 用于排查。只输出存在的值，避免噪音；
+     * 汇总重要请求头 + clientIp 用于排查。只输出存在的值，避免噪音；
      * Authorization 脱敏（只标存在与 scheme，绝不打 token 明文）。
-     * userId 取自 AuthInterceptor 解析后存入 request attribute 的 RequestContext.actorId。
+     * RPC 路径 token 在加密 body 的 meta 里，对中间层不可见——此处看不到 actor，userId 不再输出。
      */
     private fun importantHeaders(request: HttpServletRequest): String {
         val parts = mutableListOf<String>()
@@ -118,9 +117,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             val scheme = it.substringBefore(' ', it).take(16)
             parts.add("Authorization=$scheme ***")
         }
-        // clientIp / userId 取自 RequestParser（token 幂等缓存，与 fromDfe 共享同一 request 缓存）
-        parts.add("clientIp=${parser.parseClientIp(request)}")
-        parser.peekActorId(request)?.let { parts.add("userId=$it") }
+        parts.add("clientIp=${ClientIpResolver.resolve(request)}")
         return parts.joinToString(" ")
     }
 

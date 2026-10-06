@@ -4,9 +4,7 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
-import com.ifmix.core.api.infra.auth.RequestParser
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.mock
 import org.springframework.mock.web.MockFilterChain
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
@@ -18,7 +16,7 @@ import org.springframework.mock.web.MockHttpServletResponse
  */
 class RequestLoggingFilterTest {
 
-    private val logging = RequestLoggingFilter(mock<RequestParser>())
+    private val logging = RequestLoggingFilter()
     private val body = """{"errors":[{"message":"x","extensions":{"code":"503000"}}]}"""
 
     private fun run(path: String): MockHttpServletResponse {

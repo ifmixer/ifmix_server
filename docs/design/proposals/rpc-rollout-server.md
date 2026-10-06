@@ -19,7 +19,7 @@ URL:      POST /api/customer/core/{actionName}
 请求体:   {"meta": {...}, "input": {...}}（wire v3 加密时 octet-stream；meta 字段见 pilot §0.1）
 响应体:   {"reqId": "...", "code": "200000", "msg": "success", "data": {...}}   ← reqId 为本次新增
           reqId = 回显 meta.reqId（缺省用服务端生成值）；HTTP status = code 前三位
-header:   Content-Type / x-wirep-version: 3 / User-Agent / CF 注入头 / x-req-id（继续回显，客户端日志依赖）
+header:   Content-Type / x-wirep-version: 2 / User-Agent / CF 注入头 / x-req-id（继续回显，客户端日志依赖）
 AAD:      wire v3 请求 AAD = ver(1)‖kid(1)‖enc(32)‖flags(1) = 35 字节（文档笔误已修正；若按 36B 起草过，丢弃重写）
 mapper:   手写 companion factory + Res 字段无默认值（§3.2；敏感字段 mask 用值类型，同节）
 ```
@@ -124,7 +124,7 @@ S1–S6 未完成的先完成；已完成的把 §2 的 2/3/4 三处修订补进
 
 - pay：`m_pay_iap_verify` 验签路径与事务不变；402000 保留。
 - ai 语义红线（照 pilot §2 精神）：createScan/runDeepResearch 的「AI 调用在事务外、结果写入事务内」拆分不变（AI 在 Handler 层，本迁移不动 Handler）；updateScan 写后读从 writer；collection item 列表先分页再批量组装、禁循环 findById——`AiQueryService` 按 DemoQueryService 模式新建；列表视图不读 JSONB 大字段。
-- 配额/限流错误码 429000/429001/503000 逐一保留（retryAfterSec 必带 → Retry-After 头自动生效）。
+- 错误码 429000/429001/503000 逐一保留。retryAfterSec：429000（限流窗口）/503000（固定 60s）必带 → Retry-After 头自动生效；429001 为终身累计配额（只增不减、无重置窗口），不带 Retry-After（2026-10-06 修订：ScanQuotaConfig 无重置语义，伪造窗口会误导客户端）。
 - 验收：AI 成功/部分成功/不可用/配额/限流/事务拆分测试全绿 + 与客户端 R3 联调 → **gate 3**。
 
 ### M4 OpenAPI 全量契约 + 清理

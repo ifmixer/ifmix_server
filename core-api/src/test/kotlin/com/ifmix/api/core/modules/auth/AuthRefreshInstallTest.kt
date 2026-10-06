@@ -1,6 +1,8 @@
 package com.ifmix.core.api.modules.auth.handler
 
 import com.ifmix.core.api.entity.auth.RefreshToken
+import com.ifmix.core.api.modules.auth.LogoutReq
+import com.ifmix.core.api.modules.auth.RefreshReq
 import com.ifmix.core.api.entity.common.ActorTypes
 import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.db.ModuleCtx

@@ -45,7 +45,7 @@ import kotlin.reflect.full.declaredMemberFunctions
  * [CustomerController] 单测：限流部分整体承接原 CustomerFetcherRateLimitTest（attest 规格 §4.6 + §7）：
  * - 有可信 iid（tokenInstallId）：install 层（5/install/UTC 天）→ IP 层（100/60s + 1000/天）；
  *   install 层拒绝不碰 IP 计数器；IP 层拒绝时 install 额度已扣、不退；install 层 key 只含 iid。
- * - 无 token iid → 401000（进事务前、任何计数器之前；RPC 路径 legacyInstallId 恒为 null）。
+ * - 无 token iid → 401000（进事务前、任何计数器之前）。
  * - key 按 projectId 隔离；数值都从 RateLimitProperties 读取。
  * ctxFactory 为真实 [ActionContextFactory]（JWT mock 返回 install token / customer token）。
  */

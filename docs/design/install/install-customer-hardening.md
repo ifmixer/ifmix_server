@@ -11,6 +11,8 @@
 
 ---
 
+
+> **2026-10-06 迁移注记**：customer/install 已并入 auth 模块——`modules/install/` → `modules/auth/install/`、`modules/customer/` → `modules/auth/customer/`、`entity/install/`、`entity/customer/` → `entity/auth/` 下同名子包、`dto/*` → `dto/auth/`；controller 位于 `bff/api/customer/auth/`；`infra/auth/RequestParser.kt` 已随 GraphQL 删除收敛（token 解析唯一入口 `infra/http/ActionContextFactory.kt`）。本文中的路径为迁移前的历史记录，按此对照。
 ## 1. 目标
 
 在不建设通用创建幂等的前提下，建立以下目标不变量：

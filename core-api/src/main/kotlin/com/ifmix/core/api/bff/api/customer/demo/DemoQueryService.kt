@@ -7,7 +7,7 @@ import com.ifmix.core.api.entity.demo.Todo
 import com.ifmix.core.api.entity.demo.TodoItem
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.demo.DemoFacade
-import com.ifmix.core.api.modules.demo.repo.TodoItemCounts
+import com.ifmix.core.api.modules.demo.TodoItemCounts
 import org.springframework.stereotype.Service
 import java.util.UUID
 

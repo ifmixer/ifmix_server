@@ -6,6 +6,8 @@
 - 相关前端：`/Users/jason/ai/myprojects/antique`（需同步改造，前端 agent review）
 - 关联：复用 `../ai/deep-research-async.md` 的异步化基建；并对其做一处连带修正（§8）
 
+
+> **2026-10-06 迁移注记**：customer/install 已并入 auth 模块——`modules/install/` → `modules/auth/install/`、`modules/customer/` → `modules/auth/customer/`、`entity/install/`、`entity/customer/` → `entity/auth/` 下同名子包、`dto/*` → `dto/auth/`；controller 位于 `bff/api/customer/auth/`；`infra/auth/RequestParser.kt` 已随 GraphQL 删除收敛（token 解析唯一入口 `infra/http/ActionContextFactory.kt`）。本文中的路径为迁移前的历史记录，按此对照。
 ## 1. 背景与目标
 
 1. **scan 同步调用易超时**：`m_ai_createScan` 当前同步跑 AI（事务外）再落库，AI 耗时可能触发网关超时。→ **异步化**：mutation 立即创建 IN_PROGRESS 记录返回 scanId，后台跑 AI，前端轮询（复用 DeepResearch 模式）。

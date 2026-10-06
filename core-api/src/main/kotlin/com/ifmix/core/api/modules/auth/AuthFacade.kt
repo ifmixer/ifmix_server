@@ -5,12 +5,9 @@ import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.auth.handler.AuthAggHandler
 import com.ifmix.core.api.modules.auth.handler.CreateAnonymousRes
 import com.ifmix.core.api.modules.auth.handler.DeleteAccountRes
-import com.ifmix.core.api.modules.auth.handler.LoginReq
 import com.ifmix.core.api.modules.auth.handler.LoginRes
-import com.ifmix.core.api.modules.auth.handler.LogoutReq
 import com.ifmix.core.api.modules.auth.handler.LogoutRes
 import com.ifmix.core.api.modules.auth.handler.MeRes
-import com.ifmix.core.api.modules.auth.handler.RefreshReq
 import com.ifmix.core.api.modules.auth.handler.RefreshRes
 import org.springframework.stereotype.Service
 

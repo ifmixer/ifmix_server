@@ -1,7 +1,7 @@
 package com.ifmix.core.api.infra.http
 
 /**
- * 端点对主体的要求（[ActionContextFactory] 按 §3.4 表直接解释，不映射到 RequestParser 参数）：
+ * 端点对主体的要求（[ActionContextFactory] 按 pilot-server §3.4 表直接解释）：
  * - [NONE]：不要求登录；带了 token 也照校验（过期/无效仍报错），但校验通过与否不要求有 actor。
  * - [INSTALL_OR_CUSTOMER]：install token（type=5）或 customer 皆可。
  * - [CUSTOMER]：必须 customer 身份（install token → UNAUTHORIZED，manager token → FORBIDDEN）。

@@ -4,7 +4,6 @@ import com.ifmix.core.api.dto.common.ActionResult
 import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.dto.demo.CreateTodoInput
 import com.ifmix.core.api.dto.demo.CreateTodoRes
-import com.ifmix.core.api.dto.demo.DemoApiMappers
 import com.ifmix.core.api.dto.demo.FindTodoByIdInput
 import com.ifmix.core.api.dto.demo.FindTodosByIdsInput
 import com.ifmix.core.api.dto.demo.FindTodosInput

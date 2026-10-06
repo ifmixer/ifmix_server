@@ -6,6 +6,8 @@
 - 相关前端：`/Users/jason/ai/myprojects/antique`
 - 依赖：`../notification/scan-async-notification-push.md`（notification 模块、FCM、授权流程、深链协议均在此定义，本文档只描述 DeepResearch 的增量差异，不重述）
 
+
+> **2026-10-06 迁移注记**：customer/install 已并入 auth 模块——`modules/install/` → `modules/auth/install/`、`modules/customer/` → `modules/auth/customer/`、`entity/install/`、`entity/customer/` → `entity/auth/` 下同名子包、`dto/*` → `dto/auth/`；controller 位于 `bff/api/customer/auth/`；`infra/auth/RequestParser.kt` 已随 GraphQL 删除收敛（token 解析唯一入口 `infra/http/ActionContextFactory.kt`）。本文中的路径为迁移前的历史记录，按此对照。
 ## 1. 背景与目标
 
 DeepResearch 已异步化（创建 IN_PROGRESS → 后台跑 AI → CAS 回写），但完成后无主动通知。本次给它加 push，模式**完全对齐 scan result**：发起时检查通知授权（无则弹窗提示、拒绝改设置）、设置页开关、后台完成发 push（文本+图片，点击打开 scan 结果页）。

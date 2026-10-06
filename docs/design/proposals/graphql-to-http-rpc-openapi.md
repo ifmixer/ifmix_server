@@ -70,15 +70,15 @@
 
 meta 字段对未来的边缘网关**不可见，且这是设计使然**（wire 私钥永不下发中间层）：需要解密前做的决策走 header advisory，可信决策一律在服务端解密后做；将来网关若确需某 meta 字段做路由/降级，按 header 留守原则加明文 advisory 头副本。
 
-### 凭证与 meta 分离（2026-10-06 二次讨论：方向定稿，细节待定稿）
+### 凭证与 meta 分离（2026-10-06 二次讨论：方向定稿，细节待定稿；dev 态输入适配已先行实施）
 
 **动机**：凭证与请求属性是两个概念。meta.accessToken 拆出后，meta 不含任何敏感信息、可整段进日志（不再依赖脱敏黑名单）；HTTP 语义上 Authorization 本来就是凭证的标准位置。
 
 - **方向**：`RequestMeta` 去掉 `accessToken`；请求信封改三段 `{"meta": {...}, "input": {...}, "authorization": "<裸 token>"}`（**字段名待定稿**）。token 仍走 type claim 自描述（install/customer/manager 同一槽位）。
-- **dev 态输入适配（Swagger/curl 调试）**：local/dev profile 注册合并逻辑——`Authorization` header（剥 Bearer 前缀）与 `x-req-meta`（JSON 字符串，不含凭证）作底、body 字段级优先，单点实现；prod 不注册。Swagger 侧用标准 securityScheme（Authorize 一次全局生效）。
-- **prod 不认 Authorization header**：token 进 header 即进边缘/访问日志，破坏 wire「凭证对中间层不可见」的设计（header 留守原则 §「Authorization 不为 WAF 留守」仍然成立）。Swagger 之外的调试走明文 body 直填槽位。
+- **dev 态输入适配（Swagger/curl 调试，✅ 2026-10-06 已实施）**：local/dev profile 注册合并逻辑——`Authorization` header（剥 Bearer 前缀）与 `x-req-meta`（JSON 字符串，不含凭证）作底、body 字段级优先，单点实现；prod 不注册。Swagger 侧用标准 securityScheme（Authorize 一次全局生效）。实现：`DevRpcHeaderAdapter`（`infra/http/`，`@Profile("local")`，挂在 `ActionContextFactory.fromRpc` 单点，合并后的 meta 随 `ctx.meta` 透传；`x-req-meta` 内 accessToken 字段一律忽略——契约上该 header 不含凭证）+ `DevRpcOpenApiConfig`（两个 apiKey-in-header securityScheme `DevAuthorization`/`DevReqMeta` 在同一 SecurityRequirement 内 AND，Authorize 后每请求自动带两个 header；`persist-authorization` 已开）。header 缺失/空白时行为与现网完全一致；`x-req-meta` 非法 JSON 直接 400000（dev fail-fast）。测试：`DevRpcHeaderAdapterTest`。定稿后该适配器只需把凭证信源指向新槽位（`Authorization` header 已就位，信封段到位后 `body.authorization` 优先）。
+- **prod 不认 Authorization header**：token 进 header 即进边缘/访问日志，破坏 wire「凭证对中间层不可见」的设计（header 留守原则 §「Authorization 不为 WAF 留守」仍然成立；prod 无 `DevRpcHeaderAdapter` bean，`Authorization`/`x-req-meta` header 不被识别）。Swagger 之外的调试走明文 body 直填槽位。
 - **浏览器未来**：HttpOnly cookie + CSRF（JS 全程不接触 token，防 XSS 窃取；代价是 CSRF 成为攻击面、且 cookie 对边缘可见）或直接用 SDK wire 信封（client-sdk 零原生依赖、web 可跑）——独立会话协议设计，另行评审，不在本节范围。
-- **连锁**：定稿后两端同步——server `RequestMeta`/`ActionContextFactory`/dev 适配器 + proposal 本节与 header 留守原则的 Authorization 表述；client `ApiMeta` 去 accessToken、token 装配走新槽位、README/AGENTS「凭证只在 meta.accessToken」表述；wire/信封相关测试。实施为独立 commit。
+- **连锁**：定稿后两端同步——server `RequestMeta`/`ActionContextFactory`/dev 适配器（dev 适配已先行落地，见上）+ proposal 本节与 header 留守原则的 Authorization 表述；client `ApiMeta` 去 accessToken、token 装配走新槽位、README/AGENTS「凭证只在 meta.accessToken」表述；wire/信封相关测试。实施为独立 commit。
 
 ### header 留守原则与限流职责边界（2026-10-06 定稿）
 

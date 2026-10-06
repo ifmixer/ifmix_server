@@ -26,6 +26,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.mock.web.MockHttpServletRequest
+import kotlin.reflect.full.declaredMemberFunctions
 import tools.jackson.databind.json.JsonMapper
 import java.time.Instant
 import java.util.UUID
@@ -196,4 +197,46 @@ class AuthApiControllerTest {
         verify(globalTx).withTx<Any>(any(), any())
         LogContext.clear()
     }
+
+    // ===== 命名一致性护栏（实施单 §1.3：四段格式 + module 段 + action 在 rpc-rollout-client §1 表内）=====
+
+    @Test
+    fun `routes match controller companion constants and rollout table`() {
+        // rpc-rollout-client.md §1 R2 名单一真相：5 个 action 全覆盖
+        val expected = mapOf(
+            AuthApiController.REQNAME_LOGIN to "m",
+            AuthApiController.REQNAME_REFRESH to "m",
+            AuthApiController.REQNAME_LOGOUT to "m",
+            AuthApiController.REQNAME_ME to "q",
+            AuthApiController.REQNAME_DELETE_ACCOUNT to "m",
+        )
+        val postings = AuthApiController::class.declaredMemberFunctions
+            .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
+        assertEquals(expected.keys.size, postings.size, "every endpoint has exactly one @PostMapping")
+        val paths = mutableSetOf<String>()
+        for (f in postings) {
+            val path = f.annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
+            paths.add(path)
+            // path / operationId / companion 常量三处同源
+            val op = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single()
+            assertEquals(path, op.operationId, "operationId = path for $path")
+            assertEquals(path, companionConstant(path), "companion constant exists for $path")
+            // 四段格式 + module 段 + q/m 前缀
+            val segs = path.split("_")
+            assertEquals(4, segs.size, "four-segment format: $path")
+            assertEquals(expected[path], segs[0], "q/m prefix: $path")
+            assertEquals("auth", segs[1], "module segment: $path")
+        }
+        assertEquals(expected.keys, paths)
+    }
+
+    private fun companionConstant(path: String): String? =
+        // Kotlin const val 在 companion 声明时编译为外层类的 static 字段
+        AuthApiController::class.java.declaredFields
+            .filter { java.lang.reflect.Modifier.isStatic(it.modifiers) && it.type == String::class.java }
+            .mapNotNull { f ->
+                f.isAccessible = true
+                (f.get(null) as? String)?.takeIf { it == path }
+            }
+            .firstOrNull()
 }

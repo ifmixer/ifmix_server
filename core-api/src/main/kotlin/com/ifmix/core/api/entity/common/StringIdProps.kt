@@ -4,7 +4,7 @@ import org.babyfish.jimmer.sql.Id
 import org.babyfish.jimmer.sql.MappedSuperclass
 
 /**
- * String 主键（slug 即主键）。创建后不可变，格式受控（见 RequestParser.parseProjectId）。
+ * String 主键（slug 即主键）。创建后不可变，格式受控（project slug：小写字母开头，小写字母/数字/连字符，3-30 字符）。
  */
 @MappedSuperclass
 interface StringIdProps {

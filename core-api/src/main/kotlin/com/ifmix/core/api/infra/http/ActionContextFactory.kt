@@ -3,7 +3,7 @@ package com.ifmix.core.api.infra.http
 import com.ifmix.core.api.entity.common.ActorTypes
 import com.ifmix.core.api.infra.auth.Actor
 import com.ifmix.core.api.infra.auth.AuthJwtService
-import com.ifmix.core.api.infra.auth.RequestParser
+import com.ifmix.core.api.infra.auth.Locales
 import com.ifmix.core.api.infra.auth.TokenExpiredException
 import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import jakarta.servlet.http.HttpServletRequest
@@ -14,12 +14,13 @@ import java.util.UUID
 
 /**
  * RPC 路径唯一解析入口：从 RPC 请求（meta + 真实 request）自包含地构造 [ActionContext]。
+ * token 校验、meta 字段校验/归一全部在此（自含实现，无 header 时代适配层）。
  *
- * token 校验逻辑复制自 [com.ifmix.core.api.infra.auth.RequestParser.parseActor]（不共享、不包装请求，
- * 直接吃 [RequestMeta]）；重复部分在阶段 7 删 GraphQL 时随 RequestParser 一并收敛。
+ * dev 态（local profile）：meta 在此处经 [DevRpcHeaderAdapter] 与 `Authorization` / `x-req-meta`
+ * header 单点合并（header 作底、body 字段级优先，proposal「凭证与 meta 分离」§dev 态输入适配）；
+ * prod 不注册适配器，meta 只来自 body。
  *
- * 校验失败即抛 [ApiError]，语义与 GraphQL 路径对齐。
- *
+ * 校验失败即抛 [ApiError]。
  * 日志纪律：meta.accessToken 原文绝不进任何日志/异常 message（各条 message 为固定文案）。
  */
 @Component
@@ -27,6 +28,8 @@ class ActionContextFactory(
     private val jwt: AuthJwtService,
     @param:Value("\${app.header-validation.strict:true}")
     private val strict: Boolean = true,
+    /** 仅 local profile 注册；prod 无 bean 时为 null，fromRpc 行为不变。 */
+    private val devHeaderAdapter: DevRpcHeaderAdapter? = null,
 ) {
     private val log = LoggerFactory.getLogger(ActionContextFactory::class.java)
 
@@ -45,7 +48,7 @@ class ActionContextFactory(
         requireActorType: ActorRequirement = ActorRequirement.CUSTOMER,
         requireProjectId: Boolean = true,
     ): ActionContext {
-        val m = body?.meta ?: RequestMeta()
+        val m = devHeaderAdapter?.merge(request, body?.meta) ?: (body?.meta ?: RequestMeta())
 
         // 前缀 ⇔ 读写一致性（取代原反射一致性测试的「path ⇔ isMutation」断言，实施单 §1.2-1）。
         val effectiveMutation = isMutation ?: reqName.startsWith("m_")
@@ -88,8 +91,8 @@ class ActionContextFactory(
                     if (requireActorType == ActorRequirement.CUSTOMER)
                         throw ApiError(ErrorCode.UNAUTHORIZED, "customer authentication required")
                 } else {
-                    // customer token 也携带 iid claim（对齐 GraphQL RequestParser.parseTokenInstallId：
-                    // install/customer 两类 token 都提取，否则 RPC 下 mustGetTokenInstallId 恒 401000）。
+                    // customer token 也携带 iid claim（type=5 与 type=10 的 token 都带 iid claim：
+                    // 不提取则 RPC 下 mustGetTokenInstallId 恒 401000）。
                     tokenInstallId = verified.installId?.let { tryUuid(it) }
                     val actorId = verified.actorId?.let { tryUuid(it) }
                         ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: missing or invalid subject")
@@ -99,9 +102,8 @@ class ActionContextFactory(
                         anonymous = verified.anonymous,
                         sessionId = verified.sessionId,
                     )
-                    // customer token 也可能携带 iid claim（同 RequestParser.parseTokenInstallId 语义：
-                    // type=5 与 type=10 都取）。scan/DR 的 install 层限流与 mustGetTokenInstallId 依赖它。
-                    tokenInstallId = verified.installId?.let { tryUuid(it) }
+                    // customer token 也可能携带 iid claim（同上，type=5 与 type=10 都取）。
+                    // scan/DR 的 install 层限流与 mustGetTokenInstallId 依赖它。
                     if (requireActorType == ActorRequirement.CUSTOMER && verified.actorType == ActorTypes.MANAGER)
                         throw ApiError(ErrorCode.FORBIDDEN, "actor type not allowed for this endpoint")
                 }
@@ -117,7 +119,7 @@ class ActionContextFactory(
 
         // ===== locale / currency / country（格式软校验，strict 控制严格程度）=====
         // locale：归一到受支持集，不在支持集/无法识别 → null（不抛错，线上语义）。
-        val locale = m.locale?.takeIf { it.isNotBlank() }?.let { RequestParser.normalizeLocale(it) }
+        val locale = m.locale?.takeIf { it.isNotBlank() }?.let { Locales.normalizeLocale(it) }
         val currency = m.currency?.takeIf { it.isNotBlank() }?.let { raw ->
             val up = raw.uppercase()
             if (up.matches(CURRENCY_RE)) up else onBadFormat("currency", raw, "invalid format")
@@ -171,7 +173,6 @@ class ActionContextFactory(
             installId = null,            // RPC 协议没有不可信 x-install-id 信源
             tokenInstallId = tokenInstallId,
             tokenType = tokenType,
-            legacyInstallId = null,      // RPC 协议没有该信源
             requestId = requestId,
             botScore = botScore,
             appVersion = appVersion,
@@ -190,7 +191,7 @@ class ActionContextFactory(
     }
 
     /**
-     * 格式软校验失败的统一处理（与 RequestParser 同名语义）：strict 抛错；否则打 WARN 并返回 null（当作未提供）。
+     * 格式软校验失败的统一处理：strict 抛错；否则打 WARN 并返回 null（当作未提供）。
      * value 只可能是 locale/currency/country/clientPlatform 这类非敏感字段（token 绝不进日志）。
      */
     private fun onBadFormat(field: String, value: String, reason: String): Nothing? {
@@ -200,14 +201,14 @@ class ActionContextFactory(
     }
 
     companion object {
-        /** project slug 主键（复制自 RequestParser）：小写字母开头，小写字母/数字/连字符，3-30 字符。 */
+        /** project slug 主键：小写字母开头，小写字母/数字/连字符，3-30 字符。创建后不可变。 */
         private val PROJECT_ID_RE = Regex("^[a-z][a-z0-9-]{2,29}$")
-        /** ISO 4217（大写后校验，复制自 RequestParser）。 */
+        /** ISO 4217（大写后校验）。 */
         private val CURRENCY_RE = Regex("^[A-Z]{3}$")
-        /** ISO 3166-1 alpha-2（大写后校验，复制自 RequestParser）。 */
+        /** ISO 3166-1 alpha-2（大写后校验）。 */
         private val COUNTRY_RE = Regex("^[A-Z]{2}$")
 
-        /** 同 RequestParser.tryUuid：非 UUID 格式 → null（不抛）。 */
+        /** 非 UUID 格式 → null（不抛）。 */
         private fun tryUuid(s: String): UUID? = try { UUID.fromString(s) } catch (_: Exception) { null }
     }
 }

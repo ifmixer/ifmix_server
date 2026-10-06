@@ -3,7 +3,7 @@ package com.ifmix.core.api.dto.demo
 import com.ifmix.core.api.entity.demo.Todo
 import com.ifmix.core.api.entity.demo.TodoItem
 import com.ifmix.core.api.entity.demo.TodoRecommend
-import com.ifmix.core.api.modules.demo.repo.TodoItemCounts
+import com.ifmix.core.api.modules.demo.TodoItemCounts
 
 /**
  * demo 模块出参视图 mapper（纯 object，无 Spring 依赖）。

@@ -6,7 +6,7 @@
 
 三个 Gradle 模块：
 - `core-common` — 纯 Kotlin 库（无 Spring）：`UuidV7`、`ClusterProperties` 等共享类。
-- `core-api` — 主 Spring Boot Web 服务（GraphQL + REST + Webhook），业务全部在此；不依赖另两者。
+- `core-api` — 主 Spring Boot Web 服务（HTTP RPC + Webhook），业务全部在此；不依赖另两者。
 - `core-job` — Spring Boot 非 web（Spring Batch）：匿名 Customer 清理等批处理；依赖 `core-common`。
 
 跨模块只通过同一 PostgreSQL 协作（逻辑外键 UUID），不互相编译依赖。
@@ -15,7 +15,6 @@
 
 - Kotlin 2.3.10 / JDK 25 (Virtual Threads)
 - Spring Boot 4.1.0 / Jimmer 0.11.5 (KSP) / PostgreSQL / Redis
-- GraphQL: Netflix DGS 12.x (DGS codegen 8.6.0)
 - Jackson 3 (`tools.jackson`) / Spring AI 2.0 / EdDSA JWT
 - Gradle 9.6.1
 
@@ -32,7 +31,7 @@ docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一
 | [发布记录](docs/ops/release.md) | 发布版本号、线上版本、未发布变更与发布计划 |
 | [Changelog](docs/ops/Changelog.md) | 面向客户端/数据库的变更时间线 |
 | [部署](docs/ops/DEPLOY.md) | 部署方式、增量发布、systemd、env 管理 |
-| [E2E 测试](docs/testing/E2E_TESTING.md) / [Trusted Documents](docs/testing/GRAPHQL_TRUSTED_DOCUMENTS.md) | 测试约定、persisted query 契约 |
+| [E2E 测试](docs/testing/E2E_TESTING.md) | 测试约定（Trusted Documents 已随 GraphQL 删除，git 历史可查） |
 
 ### 设计文档（docs/design/，按模块分目录）
 
@@ -62,7 +61,7 @@ docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一
 
 | 层 | 包路径 | 注解 | 职责 |
 |----|--------|------|------|
-| DataFetcher | `bff/graphql/customer/` | `@DgsComponent` | GraphQL 路由、GlobalTxRunner 包事务 |
+| Controller | `bff/api/customer/{module}/` | `@RestController` | RPC 路由（actionName = @PostMapping/`@Operation(operationId)`/`fromRpc` 三处同源常量）、GlobalTxRunner 包事务；读取聚合走 `XxxQueryService` |
 | Facade | `modules/*/XxxFacade.kt` | `@Service` | 构造 ModuleCtx + 转发 |
 | Handler | `modules/*/handler/` | `@Component` | 纯业务逻辑，接收 ModuleCtx |
 | Repository | `modules/*/repo/` | `@Repository` | 纯数据访问、CrudRepoTemplate 组合 |
@@ -71,14 +70,14 @@ docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一
 
 ### 禁止跨级
 
-- DataFetcher 不能 import handler/repo
+- Controller 不能 import handler/repo
 - Facade 不能 import repo
 - Handler 不能 import facade（可注入其他模块 Facade）
-- DataLoader/Resolver 通过 Facade 调用，不直接注入 repo
+- QueryService 聚合只经 Facade 批量查询，不直接注入 repo；禁循环 findById
 
 ### 关键约定
 
-- GraphQL input 全链路透传（不逐字段粘贴）
+- RPC input 全链路透传（不逐字段粘贴）
 - `@Service`/`@Component` 直注册，不在 Config 里 `@Bean`
 - CrudRepoTemplate 分两类：全局 / App 级
 - 单条操作返回 Boolean，batch 返回 Int

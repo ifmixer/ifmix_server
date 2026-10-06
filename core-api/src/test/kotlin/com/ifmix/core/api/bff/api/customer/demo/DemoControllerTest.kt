@@ -1,6 +1,7 @@
 package com.ifmix.core.api.bff.api.customer.demo
 
 import com.ifmix.core.api.dto.common.Page
+import com.ifmix.core.api.dto.common.requireValidSortDirection
 import com.ifmix.core.api.dto.common.PageInfo
 import com.ifmix.core.api.dto.demo.TodoRes
 import com.ifmix.core.api.dto.demo.TodoItemRes
@@ -286,7 +287,16 @@ class DemoControllerTest {
         }
         assertEquals(ErrorCode.INVALID_REQUEST, opEx.errorCode)
 
-        for (e in listOf(unsetEx, opEx)) {
+        // c) 非法 sortDirection（requireValidSortDirection 纯校验）
+        val sortEx = run {
+            try {
+                com.ifmix.core.api.dto.common.CommonFindOptions(sortDirection = "asc").requireValidSortDirection()
+                throw AssertionError("expected ApiError")
+            } catch (e: ApiError) { e }
+        }
+        assertEquals(ErrorCode.INVALID_REQUEST, sortEx.errorCode)
+
+        for (e in listOf(unsetEx, opEx, sortEx)) {
             val resp = handler.handleApiError(e, request())
             assertEquals(HttpStatus.BAD_REQUEST, resp.statusCode)
             assertEquals("400000", (resp.body as com.ifmix.core.api.infra.http.Envelope<*>).code)

@@ -13,7 +13,7 @@
 | 语言 | Kotlin | 2.3.10 |
 | 运行时 | JDK 25 (Virtual Threads) | — |
 | 框架 | Spring Boot | 4.1.0 |
-| API | GraphQL (Netflix DGS) | 12.0.1 |
+| API | HTTP RPC（`POST /api/customer/core/{actionName}` + springdoc OpenAPI） | — |
 | ORM | Jimmer (KSP) | 0.11.5 |
 | 数据库 | PostgreSQL (读写分离) | — |
 | 缓存 | Redis + CacheAside | — |
@@ -22,15 +22,13 @@
 | 认证 | EdDSA(Ed25519) JWT + IDP OAuth2 | — |
 | 构建 | Gradle 9.6.1 + KSP | — |
 | 序列化 | Jackson 3 (tools.jackson) | — |
-| GraphQL codegen | DGS codegen 8.6.0 | schema → input/payload/enum |
 
 ## 分层架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  BFF — GraphQL (DGS DataFetcher) + REST                              │
-│  POST /customer/core/greq/{reqName}  (主 API · persisted query)      │
-│  POST /customer/core/gql            (raw query · GraphiQL/本地探索)   │
+│  BFF — HTTP RPC Controller + REST                                    │
+│  POST /api/customer/core/{actionName}  (主 API · {meta, input} 信封) │
 │  POST /webhooks/iap/*     (Apple/Google 回调)                        │
 │  GET  /.well-known/jwks                                              │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -44,7 +42,7 @@
 │  纯数据访问 · CrudRepoTemplate 组合 · 接收 ModuleCtx                │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Model (entity/)                                                      │
-│  Jimmer interface + @MappedSuperclass · KSP 生成扩展属性 · 直出 GQL  │
+│  Jimmer interface + @MappedSuperclass · KSP 生成扩展属性             │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Infra (infra/)                                                      │
 │  Jimmer/CacheAside/GlobalTxRunner/Auth/RateLimit/Storage             │
@@ -61,7 +59,7 @@
 | 模块 | 类型 | 职责 | 依赖 |
 |------|------|------|------|
 | `core-common` | 纯 Kotlin 库（无 Spring） | 跨模块共享：`UuidV7`、`ClusterProperties` 等 | — |
-| `core-api` | Spring Boot Web 服务 | 主 API（GraphQL + REST + Webhook），业务全部在此 | 不依赖另两者 |
+| `core-api` | Spring Boot Web 服务 | 主 API（HTTP RPC + Webhook），业务全部在此 | 不依赖另两者 |
 | `core-job` | Spring Boot（非 web，Spring Batch） | 定时/批处理任务：匿名 customer 清理等 | `core-common` |
 
 > `core-api` 与 `core-job` 各自是独立可启动的 Spring Boot 应用，共享同一 PostgreSQL；跨模块只通过数据库（逻辑外键 UUID）协作，不互相编译依赖。
@@ -70,17 +68,17 @@
 ### 分层约束
 
 ```
-DataFetcher  →  只注入 Facade + GlobalTxRunner + ActionContextProvider
+Controller   →  只注入 Facade + GlobalTxRunner + ActionContextFactory（query 聚合经 XxxQueryService）
 Facade       →  只注入 AggHandler + ModuleCtxFactory + 其他模块 Facade（跨模块）
 Handler      →  只注入 Repo + CacheAside + 同模块 infra service
 Repo         →  持有 CrudRepoTemplate（companion object）
 ```
 
 **禁止跨级：**
-- DataFetcher 不能 import handler/repo 包
+- Controller 不能 import handler/repo 包
 - Facade 不能 import repo 包
 - Handler 不能 import facade 包（可注入其他模块的 Facade）
-- DataLoader/Resolver 通过 Facade 调用，不直接注入 repo
+- QueryService 聚合只经 Facade 批量查询，不直接注入 repo；聚合禁循环 findById
 
 > 详细编码示例和 Context 模型见 [编码指南](CODING_GUIDE.md)
 
@@ -97,6 +95,8 @@ Repo         →  持有 CrudRepoTemplate（companion object）
 | media | 预签名上传/下载 |
 | project | ProjectConfig 版本管理、ProjectInfo |
 
+> customer / install 已并入 auth 模块（`modules/auth/customer/`、`modules/auth/install/`，2026-10-06），
+> 表中的 customer 行为其子模块；install（install token / attestation / install↔customer 关系）同在 auth 下。
 > 匿名 Customer 清理等批处理任务在 **core-job**（Spring Batch），不在 core-api。
 > 认证详细设计见 [AUTH_DESIGN.md](AUTH_DESIGN.md)
 
@@ -106,43 +106,40 @@ Repo         →  持有 CrudRepoTemplate（companion object）
 core-api/src/main/kotlin/com/ifmix/core/api/
 ├── CoreApplication.kt
 ├── bff/
-│   ├── graphql/customer/       # DGS DataFetcher
-│   │   ├── ai/                 # AiFetcher + DataLoaders
-│   │   ├── auth/               # AuthFetcher
-│   │   ├── cs/                 # CsFetcher
-│   │   ├── customer/           # CustomerFetcher
-│   │   ├── demo/               # DemoFetcher + TodoItemsResolver
-│   │   ├── pay/                # PayFetcher
-│   │   └── media/              # MediaFetcher
+│   ├── api/customer/           # RPC Controller（@RestController，POST /api/customer/core/{actionName}）
+│   │   ├── ai/                 # AiController + AiQueryService（列表聚合）
+│   │   ├── auth/               # AuthApiController / CustomerController / InstallApiController
+│   │   ├── cs/                 # CsController
+│   │   ├── demo/               # DemoController + DemoQueryService
+│   │   ├── media/              # MediaController
+│   │   └── pay/                # PayController
 │   ├── webhooks/               # WebhookController (Apple/Google IAP REST)
 │   └── wellknown/              # JwksController
-├── entity/                      # Jimmer interface entity (直出 GraphQL)
+├── entity/                      # Jimmer interface entity
 │   ├── common/                 # 基类 + 跨模块枚举: BaseEntity, BaseProjectEntity, UUIDProps, MutableProps, SoftDeletableProps, ProjectScopedProps, CustomerOwnedProps, Platforms, Tiers
 │   ├── ai/                     # ScanRecord, ScanCollection, ScanCollectionItem, ScanDeepResearch, AiApiKey, ImageRef
 │   ├── auth/                   # Idp, IdpIdentity, AuthIdentity, AuthIdentityIdpRelation, ProjectToIdpRelation, RefreshToken
-│   ├── customer/               # Customer
+│   │   ├── customer/           # Customer, DeletionReasons
+│   │   └── install/            # Install, InstallAttestation, InstallCustomerRelation
 │   ├── pay/                    # Subscription, StoreNotification
 │   ├── demo/                   # Todo, TodoItem, TodoRecommend
-│   ├── project/                    # ProjectConfigRevision, ProjectInfo, ConfigTypes
+│   ├── project/                # ProjectConfigRevision, ProjectInfo, ConfigTypes
 │   ├── cs/                     # Feedback
 │   └── media/                  # UploadRecord
 ├── modules/
-│   ├── auth/
-│   │   ├── AuthFacade.kt
+│   ├── auth/                   # 认证/身份中枢（customer、install 并入此模块，2026-10-06）
+│   │   ├── AuthFacade.kt, AuthConfig.kt, ProviderVerifier.kt, AuthLoggedInEvent.kt, MergeOnLoginListener.kt
+│   │   ├── AuthRequests.kt     # LoginReq/RefreshReq/LogoutReq（Facade 层请求记录）
 │   │   ├── handler/AuthAggHandler.kt
-│   │   ├── repo/               # IdpRepository, IdpIdentityRepository, AuthIdentityRepository, AuthIdentityIdpRelationRepository, ProjectToIdpRelationRepository, RefreshTokenRepository
-│   │   ├── AuthConfig.kt, ProviderVerifier.kt
-│   │   ├── AuthLoggedInEvent.kt
-│   │   └── MergeOnLoginListener.kt
-│   ├── customer/
-│   │   ├── CustomerFacade.kt
-│   │   ├── handler/            # CustomerMergeHandler
-│   │   └── repo/CustomerRepository.kt
+│   │   ├── repo/               # Idp/IdpIdentity/AuthIdentity/AuthIdentityIdpRelation/ProjectToIdpRelation/RefreshToken 共 6 个 repo
+│   │   ├── customer/           # CustomerFacade + handler/CustomerMergeHandler + repo/CustomerRepository
+│   │   └── install/            # InstallFacade + handler/InstallAggHandler + repo/（Install/InstallAttestation/InstallCustomerRelation）
 │   ├── ai/
 │   │   ├── AiFacade.kt, ScanCollectionFacade.kt
 │   │   ├── handler/ScanAggHandler.kt, ScanCollectionAggHandler.kt
 │   │   ├── repo/
 │   │   └── service/            # AI infra（SpringAiScanRunner, AiApiKeyStore, AiChatClientFactory）
+│   ├── notification/           # FCM push 基座（scan/DR 完成通知）
 │   ├── pay/
 │   │   ├── PayFacade.kt
 │   │   ├── handler/PayAggHandler.kt, PayWebhookHandler.kt
@@ -163,7 +160,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │       ├── DemoFacade.kt
 │       ├── handler/TodoAggHandler.kt
 │       └── repo/
-├── dto/                         # 共享 DTO (Page, ActionResult, CursorQueryInput)
+├── dto/                         # 协议 DTO：common（Page/ActionResult/CommonFindOptions/FilterGroup）+ 各模块 wire input/res（ai/auth/cs/demo/payment/storage/notification）
 ├── infra/
 │   ├── db/                     # ModuleCtx, ModuleCtxFactory, ClusterRouter, ClusterSqlPair, UuidV7
 │   ├── tx/                     # TxRunner, GlobalTxRunner, TxPropagation
@@ -172,43 +169,41 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   │                           # ActionContextHolder
 │   ├── repo/                   # CrudRepoTemplate, ProjectCrudRepoTemplate, FilterGroupResolver
 │   ├── codec/                  # Base58 (UUID ↔ 22-char URL-safe)
-│   ├── graphql/                # ActionContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
-│   │                           # trusted/ (GReq persisted query: ReqNamePathInterceptor, GReqRouterConfig, TrustedDocumentProvider)
-│   ├── http/                   # ActionContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
-│   ├── auth/                   # AuthInterceptor, AuthJwtService, AuthJwtKeys, Hashing
+│   ├── http/                   # RPC 协议层：ActionContext + ActionContextFactory, RequestMeta, ApiRequestBody, Envelope,
+│   │                           # GlobalExceptionHandler, ClientPlatform/ClientIpResolver, LogContext, RequestLoggingFilter,
+│   │                           # wire 加密（WireCrypto/WireCryptoFilter）、DevRpcHeaderAdapter（local profile）
+│   ├── auth/                   # AuthJwtService, AuthJwtKeys, Actor, Locales（locale 归一）, EmailNormalize, Hashing
 │   ├── redis/                  # CacheAside, RedisConfig
-│   ├── ratelimit/              # RateLimiter, TierResolver, RateLimitConfig
+│   ├── ratelimit/              # RateLimiter, TierResolver, RateLimitConfig, ScanQuotaConfig
 │   ├── storage/                # ObjectStorage (interface), S3ObjectStorage, StorageConfig
 │   └── config/                 # WebConfig, JacksonConfig, TransactionConfig
 └── resources/
-    ├── schema/common/          # GraphQL 公共 scalars + CommonFindOptions
-    ├── schema/customer/        # GraphQL Customer schema (auth, ai, demo, pay, media, cs)
-    ├── db/migration/           # Flyway V1-V5（手动：./gradlew :core-api:flywayMigrate）
+    ├── db/migration/           # Flyway V1-V6+（手动：./gradlew :core-api:flywayMigrate）
     ├── prompts/                # AI scan prompts
-    └── application.yml + application-local.yml
-```
+    └── application.yml + application-local.yml + application-prod.yml
+``````
 
-## GraphQL 设计
+## RPC API 设计
 
-- **Endpoint**:
-  - `POST /customer/core/greq/{reqName}`（主 API，persisted query；reqName 在 path 末段决定执行哪个预注册 query，供 CF/nginx 按具体路径分流。详见 [Trusted Documents](../testing/GRAPHQL_TRUSTED_DOCUMENTS.md)）
-  - `POST /customer/core/gql`（raw query 入口，供 GraphiQL/本地探索）
-  - 均需 `x-project-id` header
-- **GraphiQL**: `/apidocs/core/customer/gql`
-- **HTTP 状态码**: 有 error 时按 `errors[0].extensions.code` 前 3 位设 HTTP status（`GraphQlHttpStatusFilter`）；无 errors → 200。详见 [Trusted Documents](../testing/GRAPHQL_TRUSTED_DOCUMENTS.md#http-状态码映射)
-- **Action 命名**: `${q|m}_${module}_${action}`（如 `q_demo_findTodos`, `m_auth_login`）；同时作为 GReq 的 reqName（path 末段）
-- **DateTime**: ISO-8601 UTC 字符串（输入接受 ISO 或 epoch millis）
-- **input 全链路透传**: Fetcher→Facade→Handler 直传 input 对象
+> 协议唯一真相源：[proposals/graphql-to-http-rpc-openapi.md](../design/proposals/graphql-to-http-rpc-openapi.md) §一。
+> GraphQL 引擎已删除（2026-10-06），历史设计看 git。
+
+- **Endpoint**: `POST /api/customer/core/{actionName}`，全部 action 统一一种 URL 形状（不带 resourceId，ID 在加密 body 内）
+- **actionName 四段结构**: `{q|m}_{module}_{resource}_{action}`（如 `q_demo_todo_getById`、`m_pay_iap_verify`）；
+  `q/m` 表读/写意图，`action` 用标准动词（getById / getByIds / list / createOne / updateOne / …）。
+  同一字符串即 OpenAPI 的 `operationId`（客户端从 OpenAPI 生成）
+- **请求信封**: `{"meta": {...RequestMeta...}, "input": {...该 action 的输入...}}`；
+  wire 加密时 body 是 octet-stream，WireCryptoFilter 解密后 controller 看到明文 JSON
+- **响应**: `Envelope<T> = { reqId, code, msg, data }`；HTTP status = code 前三位（200000→200、429000→429）
+- **凭证**: `meta.accessToken` 纯 token（type claim 自描述 install/customer/manager）；不进 HTTP header（对中间层不可见）
+- **身份**: installId 等身份字段不出现在 meta，服务端从 token 的 `iid` claim 解出进 ActionContext
+- **ActionContext**: 由 `ActionContextFactory.fromRpc` 单点构造（token 校验、aud 校验、meta 字段校验/归一），
+  业务代码只读 ActionContext，不读原始 meta（除透传型遥测字段 `ctx.meta.xxx`）
+- **DateTime**: ISO-8601 UTC 字符串；**枚举**: Int 全链路透传
 - **Update 语义**: set/unset 防 null vs undefined 歧义
-- **Mutation 返回**: `XxxResult { success, xxx? }`
-- **DataLoader**: caching=false，通过 Facade 调用
-- **CommonFindOptions**: 通用列表查询（filter + cursor + sortBy + sortDirection + limit）
-
-### DGS Codegen
-
-- 从 `.graphqls` 生成 Kotlin input/payload/enum types
-- output types 通过 `typeMapping` 映射到 Jimmer entity（entity 直出）
-- 生成代码包: `com.ifmix.core.api.generated`
+- **Mutation**: 包 `GlobalTxRunner`；AI 外部 IO 在事务外
+- **聚合**: XxxQueryService 先分页根 → IDs 批量查 → Map 组装，禁循环 findById
+- **限流**: 边缘限 IP（header 信号），服务端限身份/项目（ActionContext 锚点）；429000/429002 必带 retryAfterSec → Retry-After 头
 
 ## 缓存分层
 
@@ -241,22 +236,22 @@ DB (via Jimmer KSqlClient)
 
 | # | 决策 | 理由 |
 |---|------|------|
-| 1 | GraphQL (DGS) 替代 REST | 移动端按需取字段、DataLoader 解决 N+1 |
-| 2 | Jimmer 替代 jOOQ | Interface entity + KSP + Draft DSL + 直出 GraphQL |
-| 3 | GlobalTxRunner 在 DataFetcher 层 | 显式事务边界，整个 mutation field 一个事务 |
+| 1 | HTTP RPC 替代 GraphQL (DGS) | persisted document 下字段级灵活性未被使用，RPC 免除引擎开销（2026-10-06，详见 proposal §一） |
+| 2 | Jimmer 替代 jOOQ | Interface entity + KSP + Draft DSL |
+| 3 | GlobalTxRunner 在 Controller 层 | 显式事务边界，整个 mutation action 一个事务 |
 | 4 | Facade 只构造 mc + 转发 | 不做 cache/tx，保持 thin |
 | 5 | CrudRepoTemplate 分两类 | `CrudRepoTemplate`(全局) + `ProjectCrudRepoTemplate`(强制 projectId)，类型安全 |
 | 6 | Template 单条返回 Boolean，batch 返回 Int | 语义清晰 |
 | 7 | Template 必须提供 batch 方法 | findByIds/existsByIds/batchSave/deleteByIds |
-| 8 | Entity 直出 GraphQL | 零 DTO 转换 |
-| 9 | DataLoader caching=false | 防 mutation 间脏读 |
-| 10 | DataLoader/Resolver 通过 Facade | 不直接注入 repo |
-| 11 | GraphQL input 全链路透传 | Fetcher→Facade→Handler 直传 input 对象 |
+| 8 | 固定 Res DTO（无 include DSL） | 手写 companion factory + 出参无默认值；聚合批量组装 |
+| 9 | hand-written batch 替代 DataLoader | 显式组装，消除 N+1 隐蔽失效风险 |
+| 10 | QueryService 聚合只经 Facade | 不直接注入 repo；批量结果按输入顺序重排 |
+| 11 | RPC input 全链路透传 | Controller→Facade→Handler 直传 input 对象 |
 | 12 | JSONB 值对象 = data class + @Serialized | toDomain() 放同文件 |
 | 13 | set/unset Update 语义 | 防 null vs undefined 歧义 |
 | 14 | AuthInterceptor 非阻塞 | 支持匿名+认证混合接口 |
-| 15 | 枚举全链路 Int 透传 | GraphQL 不用 enum，灰度安全 |
-| 16 | DateTime 统一 ISO-8601 字符串 | GraphQL 输出 + JSONB 存储一致 |
+| 15 | 枚举全链路 Int 透传 | 灰度安全 |
+| 16 | DateTime 统一 ISO-8601 字符串 | RPC 输出 + JSONB 存储一致 |
 | 17 | IDP 模型替代 AuthTenant | 去掉 tenant 层，简化为 IDP + relation |
 | 18 | 跨模块用逻辑外键 UUID | 不用 Jimmer `@ManyToOne`，保持模块独立 |
 | 19 | BaseEntity / BaseProjectEntity 基类 | 减少样板：`id + createdAt + updatedAt`（+ projectId） |
@@ -280,29 +275,29 @@ DB (via Jimmer KSqlClient)
 
 ## API 约定
 
-- GraphQL: `/customer/core/gql`（`x-project-id` 必填）
+- RPC: `POST /api/customer/core/{actionName}`（`{meta, input}` 信封；wire 加密时 `x-wirep-version: 2` + octet-stream）
 - Webhook: `POST /webhooks/iap/*`（JWS 验签）
 - JWKS: `GET /.well-known/jwks`
-- REST 响应: `Envelope<T>` (`{code, msg, data}`)
+- 响应: `Envelope<T>` (`{reqId, code, msg, data}`)
 
-### 请求头
+### meta 字段（请求信封）
 
-| Header | 格式 | 说明 |
-|--------|------|------|
-| `x-project-id` | UUID | 应用 ID（必填） |
-| `x-install-id` | UUID | 可选日志/兼容字段，不是可信身份来源；关系维护和业务归属只认已验签 token 的 `iid` |
-| `x-locale` | IETF BCP 47 | 用户语言偏好。归一到受支持集，不支持则视为未提供（null）。支持 10 种：`en`, `zh-CN`, `zh-TW`, `ja`, `fr`, `es`, `pt`, `de`, `it`, `nl`（归一规则见下方「locale 归一」） |
-| `x-country` | ISO 3166-1 alpha-2, 大写 | 用户所在国家，如 `US`, `GB`, `JP`, `MY`, `SG`, `CN` |
-| `x-currency` | ISO 4217, 大写 | 用户货币偏好，如 `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD` |
-| `x-client-platform` | `ios` \| `android` | 客户端平台 |
-| `x-app-version` | 字符串 | App 版本号，如 `1.2.3`；原样透传，不校验格式 |
-| `x-ota-version` | 字符串 | 热更新版本号，形如 `${runtimeVersion}-${buildNumber}-${otaSeq}`，如 `1-23-3`；原样透传，不校验格式 |
-| `x-js-version` | 字符串 | JS Bundle 版本号 |
+| 字段 | 格式 | 说明 |
+|------|------|------|
+| `reqId` | 字符串 | 客户端自供请求 id，缺省服务端补 UUID；响应 Envelope.reqId 回显 |
+| `projectId` | slug | 项目标识（token aud 校验 + 访问权），小写字母开头 3-30 字符 |
+| `accessToken` | 字符串 | 纯 token，无 `Bearer` 前缀；type claim 自描述 install(5)/customer(10)/manager(20) |
+| `locale` / `currency` / `country` | BCP 47 / ISO 4217 / ISO 3166-1 | 用户偏好，平铺（归一规则见下「locale 归一」） |
+| `userTz` | IANA 时区名 | 可选（如 `Asia/Shanghai`） |
+| `appVersion` / `otaVersion` / `clientPlatform` / `deviceModel` / `osVersion` | 字符串 | 遥测/诊断；服务端日志与分析以这些结构化字段为权威信源 |
+
+边缘注入信号（真实 IP、`cf-ray`、`cf-bot-score`）与信封标记（`Content-Type`、`x-wirep-version`）留在 header，
+业务语义字段一律进 meta——详见 proposal §一「header 留守原则」。
 
 #### 格式软校验（严格 / 宽松）
 
-`x-locale` / `x-country` / `x-currency`
-带了值但**格式非法**时的处理由 `app.header-validation.strict` 开关决定（`RequestParser`）：
+`locale` / `country` / `currency` 带了值但**格式非法**时的处理由 `app.header-validation.strict` 开关决定
+（`ActionContextFactory`）：
 
 | 环境 | `strict` | 行为 |
 |------|----------|------|
@@ -310,12 +305,13 @@ DB (via Jimmer KSqlClient)
 | 线上 | `false` | 打 `warn` log 并当作未提供（`null`），请求照常处理 |
 
 线上通过环境变量 `APP_HEADER_VALIDATION_STRICT=false` 切换。
-注意：此开关只作用于「带了值但格式非法」的软校验；`required` 缺失、`x-project-id`、token 等硬校验**任何环境都抛**，不受影响。
-`x-locale` 特例：合法 BCP 47 但不在支持集（如 `ko`/`ru`）**任何环境都返回 `null` 不抛**（不算格式 bug，见下方「locale 归一」）；只有无法解析出 language subtag 的畸形输入才走上表软校验。
+注意：此开关只作用于「带了值但格式非法」的软校验；`projectId` 缺失、token 等硬校验**任何环境都抛**，不受影响。
+`locale` 特例：合法 BCP 47 但不在支持集（如 `ko`/`ru`）**任何环境都返回 `null` 不抛**（不算格式 bug，见下方「locale 归一」）。
 
 #### locale 归一
 
-`x-locale` 在 `RequestParser.parseLocale` 入口归一到受支持集，落库/透传的一律是规范值或 `null`（不支持不抛错，视为未提供，由下游各自兜底）。以后加语言只改 `RequestParser.normalizeLocale`。
+`meta.locale` 在 `ActionContextFactory.fromRpc` 入口经 `Locales.normalizeLocale` 归一到受支持集，
+落库/透传的一律是规范值或 `null`（不支持不抛错，视为未提供，由下游各自兜底）。以后加语言只改 `Locales`。
 
 支持集（10 种）：`en`, `zh-CN`, `zh-TW`, `ja`, `fr`, `es`, `pt`, `de`, `it`, `nl`
 
@@ -326,7 +322,8 @@ DB (via Jimmer KSqlClient)
 - 其它合法但不支持的语言（`ko`/`ru`/…）→ `null`（任何环境都不抛，视为未提供）
 - 无法解析出 language subtag 的畸形输入（如 `!!bad`）→ 走「格式软校验」：`strict` 抛、线上 WARN
 
-> 内部用 `normalizeLocaleResult` 区分 `Ok` / `Unsupported`（合法但不支持）/ `Malformed`（畸形）；旧的 `normalizeLocale` 保留为薄封装（只关心是否命中支持集时用）。
+> 内部用 `Locales.normalizeLocaleResult` 区分 `Ok` / `Unsupported`（合法但不支持）/ `Malformed`（畸形）；
+> `Locales.normalizeLocale` 是只关心是否命中支持集的薄封装。
 
 ## 环境变量
 
@@ -350,7 +347,7 @@ DB (via Jimmer KSqlClient)
 | [编码指南](CODING_GUIDE.md) | Context 模型、事务管理、分层示例代码、Entity 设计、CrudRepoTemplate |
 | [认证设计](AUTH_DESIGN.md) | IDP 模型、AuthIdentity、登录判定表、idpType |
 | [数据库约定](DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup、游标分页 |
-| [GraphQL Trusted Documents](../testing/GRAPHQL_TRUSTED_DOCUMENTS.md) | persisted query allowlist、GReq path 契约（/customer/core/greq/{reqName}）、PreparsedDocumentProvider |
+| ~~GraphQL Trusted Documents~~ | 已随 GraphQL 引擎删除（2026-10-06），git 历史可查 |
 
 ## 构建与测试
 
@@ -385,3 +382,4 @@ DB (via Jimmer KSqlClient)
 | 2026-09-02 | 三模块拆分（core-common / core-api / core-job） |
 | 2026-09-02 | 身份模型重构：AuthIdentity 账号中枢 + Customer + M:N 关系表 |
 | 2026-09-02 | Flyway 改手动 flywayMigrate task；匿名清理迁入 core-job |
+| 2026-10-06 | GraphQL(DGS) → HTTP RPC + OpenAPI（{meta,input} 信封 / Envelope.reqId / wire 强制加密 v2）；customer/install 并入 auth 模块 |

@@ -23,7 +23,7 @@ data class TodoRecommendRes(
     val recItems: List<TodoRecItemRes>?,
 )
 data class TodoRecItemRes(
-    val recId: java.util.UUID, val title: String? = null, val priority: Int,
+    val recId: java.util.UUID, val title: String?, val priority: Int,
     val createdAt: String, val updatedAt: String?,
 )
 data class CreateTodoRes(val todo: TodoRes)

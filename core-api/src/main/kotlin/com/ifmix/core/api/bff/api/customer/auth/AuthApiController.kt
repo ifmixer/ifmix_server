@@ -16,9 +16,9 @@ import com.ifmix.core.api.infra.http.NoInput
 import com.ifmix.core.api.infra.http.requireInput
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.auth.AuthFacade
-import com.ifmix.core.api.modules.auth.handler.LoginReq
-import com.ifmix.core.api.modules.auth.handler.LogoutReq
-import com.ifmix.core.api.modules.auth.handler.RefreshReq
+import com.ifmix.core.api.modules.auth.LoginReq
+import com.ifmix.core.api.modules.auth.LogoutReq
+import com.ifmix.core.api.modules.auth.RefreshReq
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest

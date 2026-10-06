@@ -7,9 +7,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 /**
  * Web MVC 配置。
  *
- * 不再注册 token/header 解析拦截器——请求解析与校验已下沉到 GraphQL 层
- * [com.ifmix.core.api.infra.graphql.ActionContextProvider.fromDfe]（经 RequestParser），
- * 失败即抛 ApiError → 统一 GraphQL 错误格式。
+ * 不注册 token/header 解析拦截器——RPC 请求的解析与校验在 [com.ifmix.core.api.infra.http.ActionContextFactory.fromRpc]
+ * 内完成（失败即抛 ApiError → GlobalExceptionHandler 统一信封格式）。
  */
 @Configuration
 class WebConfig : WebMvcConfigurer {

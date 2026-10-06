@@ -18,7 +18,7 @@ URL:      POST /rpc/customer/core/{actionName}
           wire v3 加密时 body 是 octet-stream，WireCryptoFilter 解密后 controller 看到明文 JSON
 响应体:   {"code": "200000", "msg": "success", "data": {...}}
           HTTP status = code 前三位（200000→200、429000→429…），成功固定 200000/200
-header 留守: Content-Type / x-wirep-version: 3（加密时）/ User-Agent / CF 注入头 / x-req-id（客户端同时发 header 与 meta.reqId，同值——日志与错误响应回显依赖 header 通道）
+header 留守: Content-Type / x-wirep-version: 2（加密时）/ User-Agent / CF 注入头 / x-req-id（客户端同时发 header 与 meta.reqId，同值——日志与错误响应回显依赖 header 通道）
 凭证:     meta.accessToken = 纯 token 字符串（无 Bearer 前缀）；ActionContextFactory 直接 jwt.verify，
           不经过 header、不做虚拟 header 包装
 错误:     解密失败 → 明文 {"code":"400003",...} + HTTP 400（wire filter 已有）；业务错误 → ApiError → GlobalExceptionHandler → Envelope
@@ -49,7 +49,7 @@ header 留守: Content-Type / x-wirep-version: 3（加密时）/ User-Agent / CF
 **执行依据**：`docs/design/infra/wire-v3-plan-server.md`（任务清单与验收以它为准，全部执行）。本节只补充改名相关决策：
 
 1. `RequestHeaders.PROTO_VERSION` 的值改为 `x-wirep-version`（常量名可保留 PROTO_VERSION 或改 WIREP_VERSION，二选一后全仓统一）。
-2. `WireCryptoFilter` 按 `x-wirep-version: 3` 识别加密请求；**不保留旧名/旧 v2 解析路径**（v2 从未上线）。
+2. `WireCryptoFilter` 按 `x-wirep-version: 2` 识别加密请求；**不保留旧名/旧 v2 解析路径**（v2 从未上线）。
 3. 同步 `wire-encryption.md` 与 `wire-v3-plan-server.md` 内所有 `x-proto-version` 引用 → `x-wirep-version`；`wire-encryption.md` §9 v2.1 小节改写为：「由 RPC 协议承接，meta 定义见 proposals/graphql-to-http-rpc-openapi.md §一」。
 4. 客户端已实现 `x-wirep-version`（若联调发现客户端发的是旧名，属客户端分支未同步，报告用户，**不要**做服务端兼容）。
 
@@ -388,7 +388,7 @@ Spec 常量集中定义为 `DemoSpecs` object（8 个 `ActionSpec`，actionName 
 
 1. 补 controller 级「HTTP status = code 前三位」矩阵测试：401000/401002/403000/404000/429000(带 Retry-After)/500000 各一例（mock 抛 ApiError 即可，不必真走业务）。
 2. **命名一致性测试（proposal §一 护栏，新 URL 规则配套）**：反射扫描 `DemoSpecs` 全部 ActionSpec 与 `@PostMapping` 路由——path 以 `m_` 开头 ⇔ `isMutation=true`；module 段 = `demo`；resource 段 = `todo`；action 动词在标准动词表内（getById/getByIds/list/createOne/updateOne/updateItems/deleteOne/deleteMany）。
-3. 加密路径用例：mockMvc 或 wrapper 级验证 `x-wirep-version: 3` + octet-stream 请求 → controller 收到明文（复用 wire 固定向量）。
+3. 加密路径用例：mockMvc 或 wrapper 级验证 `x-wirep-version: 2` + octet-stream 请求 → controller 收到明文（复用 wire 固定向量）。
 4. 全量回归：`:core-api:test` 全绿 + 既有 GraphQL fetcher 测试全绿。
 
 ## 7. WP-S6：联调 E2E + 收尾（串行，最后执行）
