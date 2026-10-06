@@ -1,0 +1,18 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoQueryService.kt
+  h_b17efd5c751f9f 4,66-74
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/DemoKonvertMappers.kt
+  h_b17efd5c751f9f 6-8,11,13-19,21-22,24-25,27-28,30,32-40
+core-api/src/test/kotlin/com/ifmix/core/api/dto/demo/DemoKonvertMappersTest.kt
+  h_b17efd5c751f9f 1-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11e5debffd6904362393512d666a58976a5a6998",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
