@@ -20,6 +20,8 @@
 
 ## 1. action 名总表（单一真相）
 
+> **2026-10-06 GraphQL operationName 同步改名（本表左列成为历史）**：`@DgsQuery/@DgsMutation` 的 field 名（schema 顶层 field）也统一为四段式，规则同 reqName，叠加 `My` 规则——customer 作用域 CRUD 动作在动词后插 `My`（`getMyById / listMy / updateMyOne / deleteMyMany`…），`create` 天然作用于自己不加 `My`，专名动词（me/login/verify/run/getStatus/getDefault/add/attest/recover 等）与 install/session 设备/会话作用域不加。因此 GraphQL 侧 `q_ai_findMyScanById` → `q_ai_scan_getMyById`、`m_demo_createTodo` → `m_demo_todo_createOne`，与右列 reqName 仅差 `My`（reqName 已按 R0 定稿实现，不回改）。gqlOp 走的 `/greq/` path 末段 = GraphQL field name，trusted documents manifest（server `customer.json`）已同步重新生成，两端测试绿。
+
 ### 1.1 demo（R0 改名，客户端已实现）
 
 > **2026-10-06 四段式定稿再修订**：下表 2 行在 R0 已实现的四段名基础上再次改名——`m_demo_todo_updateOne` → `m_demo_todo_updateById`、`m_demo_todo_updateItems` → `m_demo_todoItem_updateMany`（resource 可为聚合根 todoItem）。客户端 `apiDemo.ts` 内这 2 个 reqName 字符串需同步调整。

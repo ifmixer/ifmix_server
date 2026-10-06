@@ -369,7 +369,7 @@ class AuthAggHandler(
         installFacade.unbindAllForCustomer(mc.action, actorId)
         // 逻辑删除 + 记录原因分类/说明（幂等：已删除时 no-op，仍返回 accepted）
         // reason 说明文本来自客户端提交的原始输入；当前 mutation 无入参，暂存 null，
-        // 将来 m_auth_account_deleteOne 增加 reason 入参时在此透传。
+        // 将来 m_auth_account_deleteMyOne 增加 reason 入参时在此透传。
         customerRepo.requestDeletion(mc, projectId, actorId, DeletionReasons.USER_REQUESTED, reason = null)
         // 吊销全部 refresh token：注销后 refresh 链即刻失效（已签发 access token 至多存活至其过期）
         refreshTokenRepo.revokeAllByActor(mc, projectId, actorId, AuthJwtService.ACTOR_CUSTOMER)

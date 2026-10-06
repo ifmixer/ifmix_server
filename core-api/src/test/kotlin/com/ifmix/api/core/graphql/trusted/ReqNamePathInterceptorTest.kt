@@ -19,17 +19,17 @@ class ReqNamePathInterceptorTest {
 
     @Test
     fun `extracts reqName from greq path`() {
-        assertThat(extract("/customer/core/greq/q_ai_findMyScanById")).isEqualTo("q_ai_findMyScanById")
+        assertThat(extract("/customer/core/greq/q_ai_scan_getMyById")).isEqualTo("q_ai_scan_getMyById")
     }
 
     @Test
     fun `trailing slash tolerated`() {
-        assertThat(extract("/customer/core/greq/q_auth_me/")).isEqualTo("q_auth_me")
+        assertThat(extract("/customer/core/greq/q_auth_session_me/")).isEqualTo("q_auth_session_me")
     }
 
     @Test
     fun `only first segment after greq is taken`() {
-        assertThat(extract("/customer/core/greq/q_auth_me/extra")).isEqualTo("q_auth_me")
+        assertThat(extract("/customer/core/greq/q_auth_session_me/extra")).isEqualTo("q_auth_session_me")
     }
 
     @Test

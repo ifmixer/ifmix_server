@@ -6,7 +6,7 @@ Provider 无关的通用 key 池逻辑；Agnes 只是当前唯一 provider（`pr
 
 ## 背景与现状
 
-AI 扫描（`m_ai_createScan` / `m_ai_runDeepResearch`）通过 `SpringAiScanRunner` 调用 AI API，key 池来自 `core_ai_api_key` 表（`enabled=true AND provider=10`，量级 ~3000，`rate_limit` 均为 -1）。
+AI 扫描（`m_ai_scan_createOne` / `m_ai_deepResearch_run`）通过 `SpringAiScanRunner` 调用 AI API，key 池来自 `core_ai_api_key` 表（`enabled=true AND provider=10`，量级 ~3000，`rate_limit` 均为 -1）。
 
 当前选 key 流程（2026-10 重构后）：
 

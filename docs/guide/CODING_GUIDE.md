@@ -78,7 +78,7 @@ class ModuleCtxFactory(private val router: ClusterRouter) {
 ### GlobalTxRunner（DataFetcher 层）
 
 ```kotlin
-@DgsMutation(field = "m_demo_createTodo")
+@DgsMutation(field = "m_demo_todo_createOne")
 fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoResult {
     val ctx = ctxProvider.fromDfe(dfe)
     val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input) }
@@ -117,13 +117,13 @@ class DemoFetcher(
     private val globalTx: GlobalTxRunner,
     private val ctxProvider: ActionContextProvider,
 ) {
-    @DgsQuery(field = "q_demo_findTodoById")
+    @DgsQuery(field = "q_demo_todo_getMyById")
     fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): Todo {
         val ctx = ctxProvider.fromDfe(dfe)
         return demoService.findById(ctx, id) ?: throw IllegalArgumentException("not found")
     }
 
-    @DgsMutation(field = "m_demo_createTodo")
+    @DgsMutation(field = "m_demo_todo_createOne")
     fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input) }

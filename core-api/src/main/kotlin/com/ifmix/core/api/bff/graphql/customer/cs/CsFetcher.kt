@@ -33,14 +33,14 @@ class CsFetcher(
     private val ctxProvider: ActionContextProvider,
 ) {
 
-    @DgsMutation(field = "m_cs_submitFeedback")
+    @DgsMutation(field = "m_cs_feedback_createOne")
     fun submitFeedback(dfe: DgsDataFetchingEnvironment, @InputArgument input: SubmitFeedbackInput): SubmitFeedbackResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val id = globalTx.withTx(ctx) { txCtx -> csService.submit(txCtx, input.toReq()) }
         return SubmitFeedbackResult(id = id)
     }
 
-    @DgsMutation(field = "m_cs_createSupportRequest")
+    @DgsMutation(field = "m_cs_supportRequest_createOne")
     fun createSupportRequest(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateSupportRequestInput): CreateSupportRequestResult {
         // 需登录：ctxProvider 默认 requireActorType=customer，未登录/非 customer 直接抛。
         val ctx = ctxProvider.fromDfe(dfe)
@@ -48,13 +48,13 @@ class CsFetcher(
         return CreateSupportRequestResult(id = id)
     }
 
-    @DgsQuery(field = "q_cs_mySupportRequestById")
+    @DgsQuery(field = "q_cs_supportRequest_getMyById")
     fun mySupportRequestById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): SupportRequest {
         val ctx = ctxProvider.fromDfe(dfe)
         return csService.findMySupportRequestById(ctx, id)
     }
 
-    @DgsQuery(field = "q_cs_mySupportRequests")
+    @DgsQuery(field = "q_cs_supportRequest_listMy")
     fun mySupportRequests(dfe: DgsDataFetchingEnvironment, @InputArgument input: ListSupportRequestsInput?): Page<SupportRequest> {
         val ctx = ctxProvider.fromDfe(dfe)
         val req = input?.let { ListSupportRequestsReq(cursor = it.cursor, limit = it.limit) }

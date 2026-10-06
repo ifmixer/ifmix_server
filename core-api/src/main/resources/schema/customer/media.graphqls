@@ -22,6 +22,6 @@ type PresignDownloadResult {
 }
 
 extend type Mutation {
-    m_media_presignUpload(input: PresignUploadInput!): PresignUploadResult!
-    m_media_presignDownload(input: PresignDownloadInput!): PresignDownloadResult!
+    m_media_media_presignUpload(input: PresignUploadInput!): PresignUploadResult!
+    m_media_media_presignDownload(input: PresignDownloadInput!): PresignDownloadResult!
 }

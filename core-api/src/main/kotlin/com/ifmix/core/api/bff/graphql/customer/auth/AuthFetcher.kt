@@ -73,7 +73,7 @@ class AuthFetcher(
         return ActionResult(success = true)
     }
 
-    @DgsMutation(field = "m_auth_account_deleteOne")
+    @DgsMutation(field = "m_auth_account_deleteMyOne")
     fun deleteAccount(dfe: DgsDataFetchingEnvironment): ActionResult {
         val ctx = ctxProvider.fromDfe(dfe)
         // 软删 customer + 解绑 install + 吊销 token 须在同一事务内原子生效

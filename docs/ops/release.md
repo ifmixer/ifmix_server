@@ -53,7 +53,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 
 install attestation 一期（1a，iOS App Attest）。设计见 `docs/design/attest/install-attestation.md`（注意 §0 v5 修订表）。相对 `feature/install` 的主要变化：
 
-- **attestation（默认关）**：`m_install_createInstall` 新增 `proof` / `proofStatus` / `storeType` 入参 + `attestationStatus` 返回（10/20/30）；新增 3 个 mutation `m_install_createAttestChallenge` / `m_install_recoverInstall` / `m_install_attestExisting`（存量补证）。判定矩阵 / 错误码（403001/403002/409001/404001/429002/503002）/ retryAfterSec extensions（429000/429002 必带）见规格 §4.3/§4.4。
+- **attestation（默认关）**：`m_auth_install_create` 新增 `proof` / `proofStatus` / `storeType` 入参 + `attestationStatus` 返回（10/20/30）；新增 3 个 mutation `m_auth_install_createAttestChallenge` / `m_auth_install_recover` / `m_auth_install_attest`（存量补证）。判定矩阵 / 错误码（403001/403002/409001/404001/429002/503002）/ retryAfterSec extensions（429000/429002 必带）见规格 §4.3/§4.4。
 - **限流阈值调整**：createInstall 入口 10/60s → **100/60s/IP**，验签后新增 IP 日窗口（attested 1000/天、unverified 100/天，UTC 日分桶）；下游 createAnonymous / scan / DeepResearch 增加 install 层限流（防滥用，小阈值）+ 上调 IP 层（系统防护，100/min + 1000/天），legacy 请求走独立旧严格阈值计数器；阈值全部 `app.ratelimit.*` 配置、**重启生效**（紧急降额需重启/发布，非即时 kill switch）。上线前需按规格 §4.6 核对 AI key 池容量。
 - **新 env 两个**：`APP_ATTEST_GLOBAL_ENABLED`（默认 false，全局 kill switch）、`APP_ATTEST_CHALLENGE_SECRET`（`current[,previous]`，32 字节 base64；全局开关开时缺失 = 配置无效 fail-closed → 503002 + 节流日志 `attest.config_invalid`）。
 - **DB 迁移 V14/V15**：`core_project_server_config.app_attest_config`（JSONB）；`core_install.store_type`（INT NULL）；新表 `core_install_attestation`（含 `attestation_object` 回填列）。先 `flywayMigrate` 再发新代码。
@@ -65,7 +65,7 @@ install attestation 一期（1a，iOS App Attest）。设计见 `docs/design/att
 
 相对 v1.0.3 的主要变化，发布前逐项确认：
 
-- **install 体系**：`m_install_createInstall` / `m_install_updateInstall`；token 增加 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（V5/V6）。
+- **install 体系**：`m_auth_install_create` / `m_auth_install_updateOne`；token 增加 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（V5/V6）。
 - **老 app 兼容**：`app.auth.legacy-install-id-fallback`（默认 `true`）——token 无 `iid` 时 createAnonymous / login / refresh / 写入退回 `x-install-id` header。老 app 全部升级后关闭。
 - **扫描计数迁表**：`core_customer.scan_count / deep_research_count` → `core_ai_customer_scan_metrics`（V9，旧列暂留，发布完成后另起迁移删除）。
 - **AI key 池**：轮询 + Redis 分布式冷却；`core_ai_agnes_key` → `core_ai_api_key`（V8）。

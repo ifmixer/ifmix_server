@@ -8,7 +8,7 @@
 
 ## 1. 背景与目标
 
-1. **scan 同步调用易超时**：`m_ai_createScan` 当前同步跑 AI（事务外）再落库，AI 耗时可能触发网关超时。→ **异步化**：mutation 立即创建 IN_PROGRESS 记录返回 scanId，后台跑 AI，前端轮询（复用 DeepResearch 模式）。
+1. **scan 同步调用易超时**：`m_ai_scan_createOne` 当前同步跑 AI（事务外）再落库，AI 耗时可能触发网关超时。→ **异步化**：mutation 立即创建 IN_PROGRESS 记录返回 scanId，后台跑 AI，前端轮询（复用 DeepResearch 模式）。
 2. **完成后主动通知用户**：scan 完成发 push（文本+图片），点击打开 scan 结果页。
 3. **通知能力通用化**：push 以后 DeepResearch 也要用，SMS/email 未来也要——做成独立 `notification` 模块（简称 noti），push 为首个 channel。
 
@@ -55,7 +55,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 ```
 前端 createScan
-  → mutation m_ai_createScan（立即返回, <1s）
+  → mutation m_ai_scan_createOne（立即返回, <1s）
       [同一事务]
       1. stale cleanup：清理本 customer 超 5min 的 IN_PROGRESS scan（CAS 20→40 TIMEOUT，
          CAS 成功才释放其 pending）——见 §4.6
@@ -69,10 +69,10 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
       b. AI 正常返回（任何业务 status）→ [单短事务]:
            CAS 20→30 + 写 basicResult + pending -= 1 + scan_count += 1（额度转移，CAS 赢家才动）
          事务成功后（事务外）→ notificationFacade 发 push（异常只记 WARN）
-  → 前端轮询 q_ai_getScanStatus(scanId)
+  → 前端轮询 q_ai_scan_getStatus(scanId)
       - IN_PROGRESS：updated_at 超 5 min → [单短事务] CAS 20→40 TIMEOUT + pending -= 1；否则继续
       - FAILED：返回 status + errorCode
-      - SUCCESS：→ q_ai_findMyScanById(scanId) 取权威 ScanRecord（含 basicResult）→ SQLite 覆盖
+      - SUCCESS：→ q_ai_scan_getMyById(scanId) 取权威 ScanRecord（含 basicResult）→ SQLite 覆盖
 ```
 
 ### 4.3 复用 DeepResearch / scan 特有
@@ -156,8 +156,8 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 ### 4.6 僵死 pending 清理（无 sweeper，前端 agent #2/#3）
 
 无后台定时任务。pending 预留不能永久占额，用两条惰性路径收敛：
-- **查询端**：`q_ai_getScanStatus` 见 IN_PROGRESS 且 `updated_at < now−5min` → CAS 20→40(TIMEOUT) + 释放 pending，重读返回终态。
-- **创建端**：`m_ai_createScan` 预留前，先清理本 customer 超 5min 的 IN_PROGRESS（逐条 CAS 20→40 TIMEOUT，CAS 成功才释放对应 pending），再做本次额度判断 + 预留。
+- **查询端**：`q_ai_scan_getStatus` 见 IN_PROGRESS 且 `updated_at < now−5min` → CAS 20→40(TIMEOUT) + 释放 pending，重读返回终态。
+- **创建端**：`m_ai_scan_createOne` 预留前，先清理本 customer 超 5min 的 IN_PROGRESS（逐条 CAS 20→40 TIMEOUT，CAS 成功才释放对应 pending），再做本次额度判断 + 预留。
 
 **5min 的语义**：不是强制取消正在跑的 AI，而是"查询/下次创建**观察到**超时后，把任务持久化为 FAILED 的终止期限"。后台 AI 即使超时后才返回，也因 **CAS 20→30 失败而放弃**：不覆盖 FAILED、不写 basicResult、不动配额、不发 push。
 
@@ -245,7 +245,7 @@ scan 和未来 DeepResearch 都只调 `notificationFacade.sendToInstall(Notifica
 
 | 层 | 文件 | 改动 |
 |----|------|------|
-| Schema | `schema/customer/ai.graphqls` | `m_ai_createScan` 返回改 `{ scanId, status, errorCode }`；加 `q_ai_getScanStatus(scanId): ScanStatus`；updateInstall input 加 `scanResultNotiEnabled` |
+| Schema | `schema/customer/ai.graphqls` | `m_ai_scan_createOne` 返回改 `{ scanId, status, errorCode }`；加 `q_ai_scan_getStatus(scanId): ScanStatus`；updateInstall input 加 `scanResultNotiEnabled` |
 | DataFetcher | `bff/graphql/customer/ai/AiFetcher.kt` | `newScan` 改为建记录+预检+提交后启动后台任务+submit 失败处理；加 `getScanStatus` |
 | Service | **新增** `modules/ai/ScanTaskService.kt` | scan 后台任务编排（类比 DeepResearchTaskService）：AI→CAS 回写→扣配额→发 push |
 | Handler | `modules/ai/handler/ScanAggHandler.kt` | 建 IN_PROGRESS 记录（预检）；成功回写 CAS+basicResult+配额；惰性超时 CAS；组装 scan NotificationContent |
@@ -275,17 +275,17 @@ app:
 ## 10. GraphQL 交付清单（Trusted Documents）
 
 **服务端**：
-- `schema/customer/ai.graphqls`：`m_ai_createScan` 返回 `{scanId status errorCode}`；加 `q_ai_getScanStatus` + `ScanStatus` type。
+- `schema/customer/ai.graphqls`：`m_ai_scan_createOne` 返回 `{scanId status errorCode}`；加 `q_ai_scan_getStatus` + `ScanStatus` type。
 - updateInstall schema 加 `scanResultNotiEnabled`。
-- `customer.json`：更新 `m_ai_createScan`（回包选 `scanId status errorCode`）、加 `q_ai_getScanStatus`、更新 updateInstall；DGS codegen。
+- `customer.json`：更新 `m_ai_scan_createOne`（回包选 `scanId status errorCode`）、加 `q_ai_scan_getStatus`、更新 updateInstall；DGS codegen。
 
 **前端（antique）**：
-- `_API_ENTRIES`：更新 `m_ai_createScan`（返回值变）、加 `q_ai_getScanStatus`、更新 updateInstall。
+- `_API_ENTRIES`：更新 `m_ai_scan_createOne`（返回值变）、加 `q_ai_scan_getStatus`、更新 updateInstall。
 - 重新生成 schema 类型 + persisted-query，与服务端 1:1。
 
 ## 11. 前端改造要点（供前端 agent review）
 
-- `runScanFlow`：从「createScan 直接拿 ScanRecord」改为「createScan 拿 scanId → 轮询 q_ai_getScanStatus → SUCCESS 后 q_ai_findMyScanById 取权威记录 → SQLite 覆盖」。复用已有 DeepResearch 轮询/恢复基建（pending 列 + resume + 回前台恢复），scan 加对应 `pendingScanId`。
+- `runScanFlow`：从「createScan 直接拿 ScanRecord」改为「createScan 拿 scanId → 轮询 q_ai_scan_getStatus → SUCCESS 后 q_ai_scan_getMyById 取权威记录 → SQLite 覆盖」。复用已有 DeepResearch 轮询/恢复基建（pending 列 + resume + 回前台恢复），scan 加对应 `pendingScanId`。
 - mutation 返回 status=40(TASK_SUBMISSION_FAILED) 的早检查（同 DeepResearch）。
 - **push 接收 + 深链（§6.2）**：解析 `data.link` → 严格匹配 `/p/{projectId}/scan-result/{scanId}` → 校验 projectId → 映射到 Expo Router 实际路由 `/result/{scanId}`；非法/不符不导航。勿直接 `router.push` 逻辑深链。
 - **授权 + 开关（§7）**：发起 scan 提示 + 请求授权；授权成功执行"取 token→上报→订阅 topic→开关 true"完整注册；拒绝 → 开关 false；设置页重开按系统授权状态处理。

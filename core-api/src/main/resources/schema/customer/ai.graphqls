@@ -237,24 +237,24 @@ type RemoveScanCollectionItemsResult {
 # ==================== Query ====================
 
 extend type Query {
-    q_ai_findMyScanById(id: UUID!): ScanRecord!
+    q_ai_scan_getMyById(id: UUID!): ScanRecord!
     "通用动态过滤查询（支持 AND/OR 嵌套条件）"
-    q_ai_findMyScans(findOptions: CommonFindOptions): ScanRecordListViewPage!
-    q_ai_getScanStatus(scanId: UUID!): ScanStatus!
-    "按 deepResearchId 轮询任务状态（仅返回状态，不含结果内容；SUCCESS 后前端另调 q_ai_findMyScanById 取权威结果指针）"
-    q_ai_getDeepResearchStatus(deepResearchId: UUID!): DeepResearchStatus!
-    q_ai_getDefaultCollection: ScanCollection!
-    q_ai_findCollectionItemsByCursor(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
+    q_ai_scan_listMy(findOptions: CommonFindOptions): ScanRecordListViewPage!
+    q_ai_scan_getStatus(scanId: UUID!): ScanStatus!
+    "按 deepResearchId 轮询任务状态（仅返回状态，不含结果内容；SUCCESS 后前端另调 q_ai_scan_getMyById 取权威结果指针）"
+    q_ai_deepResearch_getStatus(deepResearchId: UUID!): DeepResearchStatus!
+    q_ai_collection_getDefault: ScanCollection!
+    q_ai_collectionItem_listMy(input: ListScanCollectionItemsInput): ScanCollectionItemPage!
 }
 
 # ==================== Mutation ====================
 
 extend type Mutation {
-    m_ai_createScan(input: NewScanInput!): NewScanResult!
-    m_ai_runDeepResearch(input: RunDeepResearchInput!): RunDeepResearchResult!
-    m_ai_updateScan(input: UpdateScanInput!): UpdateScanResult!
-    m_ai_batchUpdateScan(input: BatchUpdateScanInput!): BatchUpdateScanResult!
-    m_ai_deleteScan(id: UUID!): DeleteScanResult!
-    m_ai_addCollectionItem(input: AddScanCollectionItemInput!): AddScanCollectionItemResult!
-    m_ai_removeCollectionItems(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsResult!
+    m_ai_scan_createOne(input: NewScanInput!): NewScanResult!
+    m_ai_deepResearch_run(input: RunDeepResearchInput!): RunDeepResearchResult!
+    m_ai_scan_updateMyOne(input: UpdateScanInput!): UpdateScanResult!
+    m_ai_scan_updateMyMany(input: BatchUpdateScanInput!): BatchUpdateScanResult!
+    m_ai_scan_deleteMyOne(id: UUID!): DeleteScanResult!
+    m_ai_collectionItem_add(input: AddScanCollectionItemInput!): AddScanCollectionItemResult!
+    m_ai_collectionItem_removeMyMany(input: RemoveScanCollectionItemsInput!): RemoveScanCollectionItemsResult!
 }

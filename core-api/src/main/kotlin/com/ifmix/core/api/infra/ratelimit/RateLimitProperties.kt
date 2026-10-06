@@ -13,19 +13,19 @@ import org.springframework.boot.context.properties.ConfigurationProperties
  */
 @ConfigurationProperties(prefix = "app.ratelimit")
 data class RateLimitProperties(
-    /** m_install_createInstall：入口短窗口 + 日窗口（按验证结果分桶 attested/unverified）。 */
+    /** m_auth_install_create：入口短窗口 + 日窗口（按验证结果分桶 attested/unverified）。 */
     val install: Install = Install(),
-    /** m_install_createAttestChallenge：纯 HMAC 计算，与 createInstall 入口对齐（避免 CGNAT 瓶颈）。 */
+    /** m_auth_install_createAttestChallenge：纯 HMAC 计算，与 createInstall 入口对齐（避免 CGNAT 瓶颈）。 */
     val attestChallenge: AttestChallenge = AttestChallenge(),
-    /** m_install_recoverInstall。 */
+    /** m_auth_install_recover。 */
     val recoverInstall: RecoverInstall = RecoverInstall(),
-    /** m_install_attestExisting：存量补证。 */
+    /** m_auth_install_attest：存量补证。 */
     val attestExisting: AttestExisting = AttestExisting(),
-    /** m_customer_createAnonymousCustomer。 */
+    /** m_auth_customer_createAnonymous。 */
     val anonymous: Anonymous = Anonymous(),
-    /** m_ai_createScan。 */
+    /** m_ai_scan_createOne。 */
     val scan: Scan = Scan(),
-    /** m_ai_runDeepResearch。 */
+    /** m_ai_deepResearch_run。 */
     val deepResearch: DeepResearch = DeepResearch(),
 ) {
     /** install: ip-minute=入口短窗口；unverified/attested-ip-day=验签后日窗口两个独立计数器。 */

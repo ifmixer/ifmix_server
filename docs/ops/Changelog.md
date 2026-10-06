@@ -7,16 +7,16 @@
 相对 v1.0.3 的全部变更（feature/install + feature/attest 已合入 main）。发布步骤与决策记录见 `docs/ops/release.md`「v1.0.6 发布计划」。
 
 ### Added
-- **install 体系**（V5/V6）：`m_install_createInstall` / `m_install_updateInstall`；JWT 新增 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（一 install 一 active customer）。老 app 兼容：`app.auth.legacy-install-id-fallback`（默认 true，token 无 iid 时退回 `x-install-id` header，仅读不写关系）。
-- **install attestation 一期**（iOS App Attest，V15，默认关）：createInstall 可带 proof；新增 `m_install_createAttestChallenge` / `m_install_recoverInstall` / `m_install_attestExisting`；错误码 403001/403002/409001/404001/429002/503002，429 必带 retryAfterSec。新 env：`APP_ATTEST_GLOBAL_ENABLED`、`APP_ATTEST_CHALLENGE_SECRET`。
+- **install 体系**（V5/V6）：`m_auth_install_create` / `m_auth_install_updateOne`；JWT 新增 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（一 install 一 active customer）。老 app 兼容：`app.auth.legacy-install-id-fallback`（默认 true，token 无 iid 时退回 `x-install-id` header，仅读不写关系）。
+- **install attestation 一期**（iOS App Attest，V15，默认关）：createInstall 可带 proof；新增 `m_auth_install_createAttestChallenge` / `m_auth_install_recover` / `m_auth_install_attest`；错误码 403001/403002/409001/404001/429002/503002，429 必带 retryAfterSec。新 env：`APP_ATTEST_GLOBAL_ENABLED`、`APP_ATTEST_CHALLENGE_SECRET`。
 - **AI 扫描 / DeepResearch 异步化**（V10–V13）：mutation 秒回 task id，前端轮询状态，完成后 FCM push（`NotificationRequest` / per-project FirebaseAppRegistry / push feature flag）。配额改 `core_ai_customer_scan_metrics` 台账（V4/V9，成功才扣、CAS 原子）；`core_customer` 旧计数列暂留（后续迁移删除）。
 - **AI key 池**（V8）：`core_ai_agnes_key` → `core_ai_api_key`，多 key 轮询 + Redis 分布式冷却 + 禁用/probe-skip。
 - **wire 加密 v2**：X25519+HKDF+AES-256-GCM 请求/响应加密，>4KB 响应 gzip；明文 v1 永远放行（降级保留）。ts 偏差仅 warn（客户端时钟偏差不可控，强制时效暂缓——见 wire 设计 §9 决策修订）。
 - **多维限流**：createInstall 入口 100/60s/IP + 验签后 IP 日窗口；createAnonymous / scan / DeepResearch install 层限流；阈值全部 `app.ratelimit.*` 配置、重启生效。
-- **`m_customer_deleteAccount`**（V7）：软删 + 解绑全部 install 关系 + 吊销全部 refresh token，事务内原子生效；`DeletionReasons` 码表。
+- **`m_auth_account_deleteMyOne`**（V7）：软删 + 解绑全部 install 关系 + 吊销全部 refresh token，事务内原子生效；`DeletionReasons` 码表。
 
 ### Changed
-- **refresh 契约明确**：`m_auth_refreshToken` 的 Authorization 携带 **customer access token（type=10）**；过期后 refresh 返回 `TOKEN_EXPIRED`，客户端应自动登出（有意设计）。refresh token 暂不校验 `expires_at`（接入第三方登录前，见 `docs/guide/AUTH_DESIGN.md`）。
+- **refresh 契约明确**：`m_auth_session_refresh` 的 Authorization 携带 **customer access token（type=10）**；过期后 refresh 返回 `TOKEN_EXPIRED`，客户端应自动登出（有意设计）。refresh token 暂不校验 `expires_at`（接入第三方登录前，见 `docs/guide/AUTH_DESIGN.md`）。
 - **错误透出收紧**：线上（`app.expose-errors=false`）5xx 只返回通用文案，`details`/内部异常信息不再透出。
 - **日志 JSON 化**（logstash 一行一条）：MDC 上下文（rid/pid/iid/cid/ip/bot/plat/av/ov/loc/cur/cty）为顶层字段；请求日志含 req/res 摘要；线上看日志需 `jq`。
 - **对象存储下载校验收紧**：objectKey 必须内嵌 projectId+actorId 且与 token 身份一致（封顶 24h）。旧 `/project/` 格式 key 无历史数据，无兼容期。
@@ -33,6 +33,7 @@
 ### 2026-10-06 增补（RPC 迁移与模块结构调整，客户端 breaking）
 
 - **39 个 reqName 全量改四段式**（客户端 breaking）：格式 `{q|m}_{namespace}_{resource}_{action}`（namespace 目前=module，resource 可为聚合根，不兼容形状变更加 V2 后缀）。客户端需同步更新 trusted documents 调用名；新名总表见 `docs/design/proposals/rpc-rollout-client.md` §1。
+- **GraphQL operationName 同步改四段式**（客户端 breaking）：`@DgsQuery/@DgsMutation` field 名同日全量改名，规则同 reqName 并叠加 `My`——customer 作用域 CRUD 动作动词后带 `My`（`getMyById / listMy / updateMyOne / deleteMyMany`），`create` 例外不加（`m_demo_todo_createOne`），专名动词（me/login/verify/run/getStatus/getDefault/add/attest/recover 等）与 install/session 作用域不加。例：`q_ai_findMyScanById → q_ai_scan_getMyById`、`q_auth_me → q_auth_session_me`、`m_media_presignUpload → m_media_media_presignUpload`。greq path 末段与 persisted query manifest（`customer.json`）随之更新，前端 client-sdk 已对齐；规则定稿见 proposal §一。
 - **customer/install 并入 auth 模块**：服务端内部结构调整（`modules/auth/{install,customer}`、`entity/auth/`、fetcher 并入 `bff/graphql/customer/auth/`），随之相关 reqName 的 namespace 由 install/customer 改为 auth（`m_auth_install_*`、`m_auth_customer_*`）。
 - **RPC URL 定稿**：`POST /customer/core/greq/{reqName}`（与 GraphQL persisted query 同路径；gql raw 仍为 `/customer/core/gql`）；原 proposal 的 `POST /api/customer/core/{reqName}` 方案废弃，不再新增 `/api/` 前缀路径。
 
@@ -109,19 +110,19 @@ V4（scan 计数器）→ V5/V6（install）→ V7（deletion）→ V8（key 表
 
 ### Added
 - **用户支持工单（意见反馈 / 联系我们）**（Flyway `V10`，表 `cs_support_request`）：
-  - `m_cs_createSupportRequest` — 创建工单，`status` 固定 `10=OPEN`，各回复/关闭时间戳为 `null`，客户端不可指定；
+  - `m_cs_supportRequest_createOne` — 创建工单，`status` 固定 `10=OPEN`，各回复/关闭时间戳为 `null`，客户端不可指定；
     身份/`installId`/`locale` 由 header 推导。必填 `title`/`message`/`category`（默认 0）。
-  - `q_cs_mySupportRequests` / `q_cs_mySupportRequestById` — 查询本人工单（需 customer token，含匿名 customer；owner-scoped，非本人一律 `NOT_FOUND`）。
+  - `q_cs_supportRequest_listMy` / `q_cs_supportRequest_getMyById` — 查询本人工单（需 customer token，含匿名 customer；owner-scoped，非本人一律 `NOT_FOUND`）。
   - 码表：`SupportRequestStatuses`（10/20/30/40/50）、`SupportRequestCategories`（0/10/20/30/40/50/100，允许未登记值）。
   - agent 侧流转/回复接口暂未实现，`status` 与各回复时间戳字段已预留。
 - **通用 Media 对象**：`MediaInput` / `MediaRef`（`key` + `type` + `category`，`type` 见 `MediaTypes` 码表），
   Kotlin `entity/common/MediaRef` 以 JSONB 存储（如 `cs_support_request.attachments`）。
 - **installId 通用化**（`InstallIdProps`）：`x-install-id` header 解析进 `OperationContext.installId`；
   铺到 `ai_scan_record` / `ai_scan_collection` / `cs_feedback` / `cs_support_request`（Flyway `V10` 加 `install_id` 列，可空）。仅记录用于分析，不用于鉴权。
-- **scan 批量更新** `m_ai_batchUpdateScan`（当前主要用于批量设置 `collected`）：owner-scoped（按 `appId + customerId + id IN (...)`），返回 `updatedCount`；非本人 id 不计入。
+- **scan 批量更新** `m_ai_scan_updateMyMany`（当前主要用于批量设置 `collected`）：owner-scoped（按 `appId + customerId + id IN (...)`），返回 `updatedCount`；非本人 id 不计入。
 - **scan 创建支持 `collected` 参数**：`NewScanInput.collected`（可空，默认 false），客户端「自动收藏」开关开启时传 `true`。
 
 ### Changed
 - **DeepResearch 成功判定**：仅当 AI 请求成功 **且** `basic_result.scan_status.status ∈ {SUCCESS, PARTIAL}` 才写回 scan 结果；
-  失败（`INSUFFICIENT_IMAGE` / `NON_PHYSICAL_SUBJECT` / 缺失）不覆盖结果，`m_ai_runDeepResearch` 返回 `success=false` + `status` + `scanStatus` 供客户端提示修正。
+  失败（`INSUFFICIENT_IMAGE` / `NON_PHYSICAL_SUBJECT` / 缺失）不覆盖结果，`m_ai_deepResearch_run` 返回 `success=false` + `status` + `scanStatus` 供客户端提示修正。
 - **scan / DeepResearch 图片必带 category**：缺省兜底为主图；`ImageCategories.UNSPECIFIED` 更名为 `MAIN`（码值仍为 0，无数据迁移）；`NewScanImageInput` 新增 `category`。

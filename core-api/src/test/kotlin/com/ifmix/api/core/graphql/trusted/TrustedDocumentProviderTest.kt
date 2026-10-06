@@ -39,8 +39,8 @@ class TrustedDocumentProviderTest {
 
     @Test
     fun `hit returns cached document`() {
-        val provider = TrustedDocumentProvider(storeWith("q_auth_me"), allowRawQuery = false)
-        val entry = provider.getDocumentAsync(input("q_auth_me"), fallback).get()
+        val provider = TrustedDocumentProvider(storeWith("q_auth_session_me"), allowRawQuery = false)
+        val entry = provider.getDocumentAsync(input("q_auth_session_me"), fallback).get()
         assertThat(entry.hasErrors()).isFalse()
         assertThat(entry.document).isNotNull()
     }
@@ -48,7 +48,7 @@ class TrustedDocumentProviderTest {
     @Test
     fun `unknown reqName is rejected regardless of allowRawQuery`() {
         for (allowRaw in listOf(true, false)) {
-            val provider = TrustedDocumentProvider(storeWith("q_auth_me"), allowRawQuery = allowRaw)
+            val provider = TrustedDocumentProvider(storeWith("q_auth_session_me"), allowRawQuery = allowRaw)
             val entry = provider.getDocumentAsync(input("q_bogus"), fallback).get()
             assertThat(entry.hasErrors()).`as`("allowRawQuery=$allowRaw").isTrue()
             assertThat(entry.errors[0].message).contains("unknown req-name")
@@ -57,7 +57,7 @@ class TrustedDocumentProviderTest {
 
     @Test
     fun `no reqName rejected when raw query not allowed`() {
-        val provider = TrustedDocumentProvider(storeWith("q_auth_me"), allowRawQuery = false)
+        val provider = TrustedDocumentProvider(storeWith("q_auth_session_me"), allowRawQuery = false)
         val entry = provider.getDocumentAsync(input(null), fallback).get()
         assertThat(entry.hasErrors()).isTrue()
         assertThat(entry.errors[0].message).contains("persisted query reqName is required")
@@ -65,7 +65,7 @@ class TrustedDocumentProviderTest {
 
     @Test
     fun `no reqName falls back to raw query when allowed`() {
-        val provider = TrustedDocumentProvider(storeWith("q_auth_me"), allowRawQuery = true)
+        val provider = TrustedDocumentProvider(storeWith("q_auth_session_me"), allowRawQuery = true)
         val entry = provider.getDocumentAsync(input(null, rawQuery = "{__typename}"), fallback).get()
         assertThat(entry.hasErrors()).isFalse()
         assertThat(entry.document).isNotNull()

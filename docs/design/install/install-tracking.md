@@ -122,20 +122,20 @@ core_install.id = API installId = JWT iid
 
 新模块 `install`（`bff/graphql/customer/install/` + `modules/install/`）。
 
-### 4.1 `m_install_createInstall`
+### 4.1 `m_auth_install_create`
 - **无鉴权**（`requireActorType = null`）。
 - 限流（install attestation 一期调整，见 §4.7）：**入口短窗口 100 / 60s / IP**；验签后的**日窗口**按验证结果分桶——VALID `1000 / 天 / IP`（attested），未验证 `100 / 天 / IP`（unverified，UTC 日）。错误带 `extensions.retryAfterSec`（429000=短窗口剩余秒、429002=到 UTC 零点秒）。
 - 入参：`deviceInfo`（JSON，可空）；`platform / appVersion / otaVersion / locale / country / currency` **从 header 取**（`RequestParser` 已有 parseXxx），不放 GraphQL 入参。新增（attest 一期）：`proof`（`InstallProofInput`，平台证明，是否必填由服务端 mode 决定）、`proofStatus`（缺省=未启用 / 20=UNAVAILABLE，未带 proof 时客户端自报临时故障）、`storeType`（10=APP_STORE / 20=GOOGLE_PLAY，write-once 仅统计，缺省 NULL）。
 - 逻辑：入口短窗口 → proof/proofStatus 组合校验 → `AttestGuard.verifyProof`（纯技术验证）→ `decideCreateInstall`（套 §4.3 判定矩阵，ENFORCE+INVALID→403001）→ 日窗口（attested/unverified 分桶）→ 一次性消费 challenge（Redis SET NX，replay→403001）→ 事务内绑定（§4.7.2）。
 - 返回：`{ installId, installToken, attestationStatus }`（10=VERIFIED_PERSISTED / 20=NOT_PERSISTED / 30=NOT_ATTEMPTED，只有 10 能让客户端进入 REGISTERED）。
 
-### 4.1.1 `m_install_createAttestChallenge` / `m_install_recoverInstall` / `m_install_attestExisting`（attest 一期新增）
-- `m_install_createAttestChallenge`：无鉴权，独立短窗口 100/60s/IP，**纯 HMAC 计算不碰 Redis**。返回 `{ enabled, challenge, expiresInSec: 270 }`；enabled=false（全局开关关 / project 未配置 / mode=OFF / 报 header 的平台未配置）时 challenge=null，客户端不生成 key 直接 no-proof。
-- `m_install_recoverInstall`：无鉴权，短窗口 10/60s/IP。iOS 用 assertion 证明 key 所有权，找回已绑定 install（重签 installToken，attestationStatus 固定 10）。与 mode / 全局开关无关（只要 ios 配置存在且 challenge secret 可用）。
-- `m_install_attestExisting`：存量 install 补证（只接受 installToken type=5/无 actor/带 iid，否则 401000）。短窗口 10/60s/IP + 新 key 3/日/install；服务端未启用→30，INVALID→20，幂等命中当前 install ACTIVE→10（不占额度、不消费 challenge），他 install→409001，BLOCKED/RETIRED→403002，install 行不存在→404001。
+### 4.1.1 `m_auth_install_createAttestChallenge` / `m_auth_install_recover` / `m_auth_install_attest`（attest 一期新增）
+- `m_auth_install_createAttestChallenge`：无鉴权，独立短窗口 100/60s/IP，**纯 HMAC 计算不碰 Redis**。返回 `{ enabled, challenge, expiresInSec: 270 }`；enabled=false（全局开关关 / project 未配置 / mode=OFF / 报 header 的平台未配置）时 challenge=null，客户端不生成 key 直接 no-proof。
+- `m_auth_install_recover`：无鉴权，短窗口 10/60s/IP。iOS 用 assertion 证明 key 所有权，找回已绑定 install（重签 installToken，attestationStatus 固定 10）。与 mode / 全局开关无关（只要 ios 配置存在且 challenge secret 可用）。
+- `m_auth_install_attest`：存量 install 补证（只接受 installToken type=5/无 actor/带 iid，否则 401000）。短窗口 10/60s/IP + 新 key 3/日/install；服务端未启用→30，INVALID→20，幂等命中当前 install ACTIVE→10（不占额度、不消费 challenge），他 install→409001，BLOCKED/RETIRED→403002，install 行不存在→404001。
 - 详细判定矩阵、错误码、限流 key 格式、字节契约：设计规格 `docs/design/attest/install-attestation.md`（§3/§4/§5/§6.7，注意 §0 v5 修订表）。
 
-### 4.2 `m_install_updateInstall`
+### 4.2 `m_auth_install_updateOne`
 - **需 token**：从 token 取出 `iid`（installToken 或 customerToken 皆可）。取不出 iid → UNAUTHORIZED。
 - 入参：`firebaseInstallId`（可空）、`fcmToken`（可空）、`deviceInfo`（JSON，可空）。`platform / appVersion / otaVersion / locale / country / currency` 同样**从 header 取**。
 - 逻辑：按 `(project_id, iid)` 更新，**仅更新非空字段**（header 缺失/入参为 null 的字段不覆盖已有值）。
@@ -308,15 +308,15 @@ input UpdateInstallInput {
 
 extend type Mutation {
     "无鉴权；入口 100/60s/IP 短窗口（超限 429000 带 retryAfterSec），验签后按 attested（1000/天）/ unverified（100/天）IP 日窗口（超限 429002 带 retryAfterSec=到 UTC 零点秒数）。生成 installId + 签发 installToken(type=5)，平台证明绑定。"
-    m_install_createInstall(input: CreateInstallInput): CreateInstallResult!
+    m_auth_install_create(input: CreateInstallInput): CreateInstallResult!
     "需 token（installToken 或 customerToken，取 iid）；仅更新非空字段。"
-    m_install_updateInstall(input: UpdateInstallInput!): UpdateInstallResult!
+    m_auth_install_updateOne(input: UpdateInstallInput!): UpdateInstallResult!
     "无鉴权；独立的 100/60s/IP 短窗口。一次性 challenge：纯 HMAC 计算不碰 Redis，服务端接受 300s，对客户端返回 270s。"
-    m_install_createAttestChallenge: AttestChallengeResult!
+    m_auth_install_createAttestChallenge: AttestChallengeResult!
     "无鉴权；独立的 10/60s/IP 短窗口。iOS 用 assertion 证明 key 所有权，重签已绑定 install 的 installToken。返回的 attestationStatus 固定为 10；与 mode/全局开关无关。"
-    m_install_recoverInstall(input: RecoverInstallInput!): CreateInstallResult!
+    m_auth_install_recover(input: RecoverInstallInput!): CreateInstallResult!
     "只接受 installToken（type=5、无 actor、带 iid，否则 401000）。把 App Attest key 绑定到当前 install（存量补证）。限流：10/60s/IP + 3/install/UTC 日（新 key，超限 429002 带 retryAfterSec）。"
-    m_install_attestExisting(input: AttestExistingInput!): AttestExistingResult!
+    m_auth_install_attest(input: AttestExistingInput!): AttestExistingResult!
 }
 ```
 

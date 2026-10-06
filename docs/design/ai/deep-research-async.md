@@ -8,7 +8,7 @@
 
 ## 1. 背景与目标
 
-当前 `m_ai_runDeepResearch` 是**同步三步**：事务内更新图片 → 事务外跑 AI（1–3 min）→ 事务内写回，且按 `scanRecordId` 唯一键 upsert（覆盖旧结果）。要解决两个问题：
+当前 `m_ai_deepResearch_run` 是**同步三步**：事务内更新图片 → 事务外跑 AI（1–3 min）→ 事务内写回，且按 `scanRecordId` 唯一键 upsert（覆盖旧结果）。要解决两个问题：
 
 1. **同步调用易被网关超时**：AI 调用常 >1 min、偶达 3 min，HTTP 长挂起易触发网关超时。→ **异步化**：mutation 立即创建记录并返回，后台跑 AI，前端轮询状态。
 2. **覆盖式更新丢历史**：当前覆盖旧结果。→ **每次新建记录**，保留全部历史版本用于分析。
@@ -67,7 +67,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 ```
 前端 run deepResearch
-  → mutation m_ai_runDeepResearch （立即返回, <1s）
+  → mutation m_ai_deepResearch_run （立即返回, <1s）
       1. 事务内：更新 scan 的 images（owner-scoped 校验归属）
       2. 事务内：配额预检（used >= limit → QUOTA_EXCEEDED 回滚）
       3. 事务内：创建 ScanDeepResearch 记录 status=20, premium_result=null
@@ -84,11 +84,11 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
            · 否则（旧任务晚完成）：仅置 SUCCESS 存历史，不动 scan_record pointer，不扣配额
   → 前端（方案 B，§7）
       mutation → deepResearchId
-      轮询 q_ai_getDeepResearchStatus(deepResearchId) 每隔几秒（仅返回状态）
+      轮询 q_ai_deepResearch_getStatus(deepResearchId) 每隔几秒（仅返回状态）
         - IN_PROGRESS：updated_at 超 5 min → CAS 置 FAILED(TIMEOUT)，返回 FAILED；否则继续轮询
         - FAILED：返回 status + error_code + scanStatus（供补拍提示）
         - SUCCESS：
-            → q_ai_findMyScanById(scanRecordId) 取权威 ScanRecord + latestDeepResearch{ premiumResult }
+            → q_ai_scan_getMyById(scanRecordId) 取权威 ScanRecord + latestDeepResearch{ premiumResult }
             → 以 API ScanRecord 为基础（basicResult + premiumResult 均来自 API）
             → SQLite 单事务覆盖本地
 ```
@@ -228,7 +228,7 @@ WHERE d.scan_record_id = r.id;
 
 ## 5. GraphQL Schema 变更（`schema/customer/ai.graphqls`）
 
-### 5.1 Mutation `m_ai_runDeepResearch` 返回值
+### 5.1 Mutation `m_ai_deepResearch_run` 返回值
 
 ```graphql
 type RunDeepResearchResult {
@@ -241,14 +241,14 @@ type RunDeepResearchResult {
 }
 ```
 
-> executor 提交失败时 mutation 直接返回 `{ deepResearchId, status: 40, errorCode: "TASK_SUBMISSION_FAILED" }`，前端无需再调 `q_ai_getDeepResearchStatus` 即可拿到错误码（§7 的早检查据此构造 `DeepResearchTaskError`）。
+> executor 提交失败时 mutation 直接返回 `{ deepResearchId, status: 40, errorCode: "TASK_SUBMISSION_FAILED" }`，前端无需再调 `q_ai_deepResearch_getStatus` 即可拿到错误码（§7 的早检查据此构造 `DeepResearchTaskError`）。
 
 ### 5.2 新增轮询 Query（仅返回状态）
 
 ```graphql
 extend type Query {
   "按 deepResearchId 轮询任务状态"
-  q_ai_getDeepResearchStatus(deepResearchId: UUID!): DeepResearchStatus!
+  q_ai_deepResearch_getStatus(deepResearchId: UUID!): DeepResearchStatus!
 }
 
 type DeepResearchStatus {
@@ -282,23 +282,23 @@ type ScanDeepResearch {
 ```
 
 - `ScanRecord.deepResearch`（旧字段，按 scanRecordId 查）→ 改为 `latestDeepResearch`，按 `latest_deep_research_id` 加载。DataLoader key 改为 scanRecord 的 `latest_deep_research_id`。
-- **`ScanDeepResearch` 不再有 `resultUrl` 字段**（R2 残留）：现有 persisted query（`m_ai_createScan`、`m_ai_updateScan`、`q_ai_findMyScanById`、`q_ai_findCollectionItemsByCursor`）里对 `latestDeepResearch { ... resultUrl ... }` 的选择必须全部去掉 `resultUrl`，否则 schema 校验失败。
+- **`ScanDeepResearch` 不再有 `resultUrl` 字段**（R2 残留）：现有 persisted query（`m_ai_scan_createOne`、`m_ai_scan_updateMyOne`、`q_ai_scan_getMyById`、`q_ai_collectionItem_listMy`）里对 `latestDeepResearch { ... resultUrl ... }` 的选择必须全部去掉 `resultUrl`，否则 schema 校验失败。
 - **哪些查询选 `latestDeepResearch { premiumResult }`（P1#4，premiumResult 是 JSONB 大字段，列表场景不选）**：
 
 | 操作 | 是否选 latestDeepResearch.premiumResult | 理由 |
 |------|------|------|
-| `q_ai_findMyScanById`（详情） | **选** | 详情页需要 premiumResult |
-| `m_ai_createScan` / `m_ai_updateScan` 回包 | **选**（仅 scanRecord 回包需要时） | 回包即详情形状；createScan 时 latest 恒 null，开销可忽略 |
-| `m_ai_runDeepResearch` 回包 | 不涉及（只返回 deepResearchId+status） | — |
-| `q_ai_findMyScans`（列表） | **不选** | 列表只需状态/基础字段 |
-| `q_ai_findCollectionItemsByCursor`（collection 列表） | **不选** | 同列表，避免每条带 JSONB 大字段 |
+| `q_ai_scan_getMyById`（详情） | **选** | 详情页需要 premiumResult |
+| `m_ai_scan_createOne` / `m_ai_scan_updateMyOne` 回包 | **选**（仅 scanRecord 回包需要时） | 回包即详情形状；createScan 时 latest 恒 null，开销可忽略 |
+| `m_ai_deepResearch_run` 回包 | 不涉及（只返回 deepResearchId+status） | — |
+| `q_ai_scan_listMy`（列表） | **不选** | 列表只需状态/基础字段 |
+| `q_ai_collectionItem_listMy`（collection 列表） | **不选** | 同列表，避免每条带 JSONB 大字段 |
 - premiumResult 直接是 PG `premium_result` 列值（无 R2、无 presign、无下载）。
 
 ## 6. 分层落点（遵循 AGENTS.md 约定）
 
 | 层 | 文件 | 改动 |
 |----|------|------|
-| Schema | `schema/customer/ai.graphqls` | 改 `RunDeepResearchResult`；加 `DeepResearchStatus` + `q_ai_getDeepResearchStatus`；`ScanRecord.deepResearch`→`latestDeepResearch` |
+| Schema | `schema/customer/ai.graphqls` | 改 `RunDeepResearchResult`；加 `DeepResearchStatus` + `q_ai_deepResearch_getStatus`；`ScanRecord.deepResearch`→`latestDeepResearch` |
 | DataFetcher | `bff/graphql/customer/ai/AiFetcher.kt` | `runDeepResearch` 改为创建记录+预检+提交后启动后台任务；新增 `getDeepResearchStatus`；DataLoader 改按 latest_deep_research_id |
 | Service | `modules/ai/DeepResearchTaskService.kt` | 后台任务协调：不可变上下文；AI 事务外；DB 阶段经 TxRunner 用 writer。**不在 Handler 开事务**。**无 R2 上传/doc 组装** |
 | Facade | `modules/ai/AiFacade.kt` | 转发 `createDeepResearchTask`、`getDeepResearchStatus` |
@@ -318,9 +318,9 @@ type ScanDeepResearch {
 ## 7. 前端改造要点（方案 B，供前端 agent review）
 
 - `runDeepResearchFlow`：返回语义从 `Promise<ScanRecord>` 改为「拿 deepResearchId → 轮询 → SUCCESS 后重查权威 ScanRecord → SQLite 覆盖」。
-- **mutation 返回即检查终态（P2-1）**：mutation 可能直接返回 `{ status: 40, errorCode: "TASK_SUBMISSION_FAILED" }`（executor 提交失败）。拿到返回后应**立即** `if (status === 40) { 清 pending; throw DeepResearchTaskError(errorCode) }`，不进轮询（否则多一次轮询且 pending 刚写入又要清）。`errorCode` 直接取自 mutation 回包（§5.1 已加该字段），无需再调 `q_ai_getDeepResearchStatus`。`DeepResearchTaskError` 需支持从 mutation 返回值构造（现仅从轮询结果构造，需扩展）。
+- **mutation 返回即检查终态（P2-1）**：mutation 可能直接返回 `{ status: 40, errorCode: "TASK_SUBMISSION_FAILED" }`（executor 提交失败）。拿到返回后应**立即** `if (status === 40) { 清 pending; throw DeepResearchTaskError(errorCode) }`，不进轮询（否则多一次轮询且 pending 刚写入又要清）。`errorCode` 直接取自 mutation 回包（§5.1 已加该字段），无需再调 `q_ai_deepResearch_getStatus`。`DeepResearchTaskError` 需支持从 mutation 返回值构造（现仅从轮询结果构造，需扩展）。
 - **方案 B 一致性**：
-  - SUCCESS 后调 `q_ai_findMyScanById(scanRecordId)` 取权威 ScanRecord + `latestDeepResearch { premiumResult }`。
+  - SUCCESS 后调 `q_ai_scan_getMyById(scanRecordId)` 取权威 ScanRecord + `latestDeepResearch { premiumResult }`。
   - basicResult **与** premiumResult **均以 API ScanRecord 为准**（premiumResult 直接从 `latestDeepResearch.premiumResult` 读，无需下载 R2）。
   - 若轮询任务 A 成功时服务端 latest 已是更新的 B，`findMyScanById` 返回的 latest 即 B，避免「A 的 basic 配 B 的 premium」。
 - 轮询间隔几秒一次；处理 20/30/40 三态 UI。FAILED 的 AI_STATUS_REJECTED 从 `scanStatus` 读推荐补拍（沿用 `deepResearchRejectionReason`），其它 error_code 做通用失败提示。
@@ -332,7 +332,7 @@ type ScanDeepResearch {
 - **单设备禁止重入（产品规则，本期必做）**：
   - 同一 scan 存在**未终态** DeepResearch 任务时，**禁用「重新深度研究」按钮并显示「分析中」**。
   - 本地持久化一个 `pendingDeepResearchId`（SQLite，scan 行 nullable 列）：mutation 成功写入；终态时清空。
-  - **本地到期（5 min）不直接放开按钮**，而是先调 `q_ai_getDeepResearchStatus(pendingDeepResearchId)`，让服务端按 `updated_at` 执行惰性 CAS，按返回分支处理：
+  - **本地到期（5 min）不直接放开按钮**，而是先调 `q_ai_deepResearch_getStatus(pendingDeepResearchId)`，让服务端按 `updated_at` 执行惰性 CAS，按返回分支处理：
 
     | 返回 | 前端动作 |
     |------|---------|
@@ -352,12 +352,12 @@ type ScanDeepResearch {
 ## 8. GraphQL 交付清单（Trusted Documents）
 
 **服务端：**
-- `schema/customer/ai.graphqls`：改 `RunDeepResearchResult`；加 `DeepResearchStatus` + `q_ai_getDeepResearchStatus`；`ScanRecord.deepResearch`→`latestDeepResearch`。
-- `resources/graphql/persisted-queries/customer/customer.json`：加入新 Query 与改造后 mutation、`q_ai_findMyScanById`（含 latestDeepResearch）条目。`m_ai_runDeepResearch` 的回包选择须含 `{ deepResearchId status errorCode }`（errorCode 供 §7 早检查用）。
+- `schema/customer/ai.graphqls`：改 `RunDeepResearchResult`；加 `DeepResearchStatus` + `q_ai_deepResearch_getStatus`；`ScanRecord.deepResearch`→`latestDeepResearch`。
+- `resources/graphql/persisted-queries/customer/customer.json`：加入新 Query 与改造后 mutation、`q_ai_scan_getMyById`（含 latestDeepResearch）条目。`m_ai_deepResearch_run` 的回包选择须含 `{ deepResearchId status errorCode }`（errorCode 供 §7 早检查用）。
 - DGS codegen 类型随编译更新。
 
 **前端（antique）：**
-- `apps/shared/src/api/graphql.ts` 的 `_API_ENTRIES`：新增 `q_ai_getDeepResearchStatus`；更新 `m_ai_runDeepResearch`（返回值已改）与 `q_ai_findMyScanById`（含 latestDeepResearch{premiumResult}）的 query 文本。
+- `apps/shared/src/api/graphql.ts` 的 `_API_ENTRIES`：新增 `q_ai_deepResearch_getStatus`；更新 `m_ai_deepResearch_run`（返回值已改）与 `q_ai_scan_getMyById`（含 latestDeepResearch{premiumResult}）的 query 文本。
 - 重新生成 schema 类型与 persisted-query，与服务端 `customer.json` 1:1 对齐（缺任一侧线上即被拒）。
 
 ## 9. 错误处理与边界

@@ -202,13 +202,13 @@ export const rpcDeleteTodo       = (input: { id: string }, o: RpcOpts) => rpcOp<
 export const rpcDeleteTodoByIds  = (input: { ids: string[] }, o: RpcOpts) => rpcOp<RpcActionResult>('m_demo_todo_deleteMany', input, o);
 ```
 
-**注意与 GraphQL 版的返回差异（这是协议变化，不是 bug）**：q_demo_findTodoById GraphQL 版对未找到抛错，RPC 版服务端返回 HTTP 404 + code 404000 → rpcOp 抛 `ApiError`（`isSessionInvalid` 为 false，不会误伤会话状态）；deleteTodo 的 GraphQL `ActionResult.success` 在 RPC 中同样恒 true，失败走错误信封。
+**注意与 GraphQL 版的返回差异（这是协议变化，不是 bug）**：q_demo_todo_getMyById GraphQL 版对未找到抛错，RPC 版服务端返回 HTTP 404 + code 404000 → rpcOp 抛 `ApiError`（`isSessionInvalid` 为 false，不会误伤会话状态）；deleteTodo 的 GraphQL `ActionResult.success` 在 RPC 中同样恒 true，失败走错误信封。
 
 ### 4.3 新建 `client.rpc.test.ts`（mock fetch 注入 + testUtils 的 memoryInstallStore/memoryTokenStore）
 
 1. 头部与 body 断言（镜像 client.test.ts:51-102 用例 1）：`api.todoCreateOneRpc(...)` → URL `${BASE}/customer/core/greq/m_demo_todo_createOne`；**`Authorization` header 必须为 null**；`x-req-id` 存在；body.meta 含 projectId/clientPlatform('ios')/locale/currency/country/appVersion/otaVersion/accessToken('access-1')，body.input 与传入对象逐字段相等。
 2. install-only 模式：无 customer token 时 meta.accessToken === 'install-token-1'。
-3. 401002 → `guarded` 触发 refresh：mock 第一次返回 401 信封 `{code:'401002'}`，`m_auth_refreshToken`（gql 路径，mock 返回新 token）成功后重试 RPC 成功——断言 refresh 被调一次、最终拿到数据。
+3. 401002 → `guarded` 触发 refresh：mock 第一次返回 401 信封 `{code:'401002'}`，`m_auth_session_refresh`（gql 路径，mock 返回新 token）成功后重试 RPC 成功——断言 refresh 被调一次、最终拿到数据。
 4. 分页：todoFindByCursorRpc 返回 `{items:[...], pageInfo:{nextCursor:null, hasMore:false}}` 原样解包。
 5. 8 个 action 各一条 URL 断言（路径名逐一核对）。
 

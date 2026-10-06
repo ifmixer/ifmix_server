@@ -19,7 +19,7 @@ class GraphQLErrorExposureTest {
     private val stepInfo = mock<ExecutionStepInfo> { on { path } doReturn ResultPath.rootPath() }
     private val env = mock<DataFetchingEnvironment> {
         on { executionStepInfo } doReturn stepInfo
-        on { field } doReturn Field("m_ai_createScan")
+        on { field } doReturn Field("m_ai_scan_createOne")
     }
 
     private fun msg(exposeErrors: Boolean, ex: Throwable) =

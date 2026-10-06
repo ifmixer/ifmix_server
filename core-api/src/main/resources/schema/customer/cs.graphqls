@@ -77,14 +77,14 @@ input ListSupportRequestsInput {
 }
 
 extend type Mutation {
-    m_cs_submitFeedback(input: SubmitFeedbackInput!): SubmitFeedbackResult!
+    m_cs_feedback_createOne(input: SubmitFeedbackInput!): SubmitFeedbackResult!
     "创建工单（意见反馈 / 联系我们）。"
-    m_cs_createSupportRequest(input: CreateSupportRequestInput!): CreateSupportRequestResult!
+    m_cs_supportRequest_createOne(input: CreateSupportRequestInput!): CreateSupportRequestResult!
 }
 
 extend type Query {
     "我的工单详情（需登录，仅本人）。"
-    q_cs_mySupportRequestById(id: UUID!): SupportRequest!
+    q_cs_supportRequest_getMyById(id: UUID!): SupportRequest!
     "我的工单列表（需登录，按创建时间倒序游标翻页）。"
-    q_cs_mySupportRequests(input: ListSupportRequestsInput): SupportRequestPage!
+    q_cs_supportRequest_listMy(input: ListSupportRequestsInput): SupportRequestPage!
 }

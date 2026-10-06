@@ -42,7 +42,7 @@
 | （review）真机 fixture 方案 | 严格限定 dev 使用；遵守 key 生命周期；使用生产协议；导出版本化 JSON 并用 expo-sharing 传输；JUnit 固定 Apple 根证书 + development 模式；带 Tag，不进默认 CI（§10.1） |
 | （review）att 信任链 | 认可了该模型（只认 `tokenInstallId`；claim 经 VerifiedToken → Actor → ActionContext 传递；`signAccess` 加不变量），但**整套 att 下游放宽已整体移出本期**（模型说明放在 §8「以后」），本期不保留任何代码入口 |
 | （review）限流结构：双层「per-install + IP 聚合」、VALID 高位上限、不放宽旧客户端、去掉"立即生效" | **VALID 高位上限：采纳**（1000/IP/天）。**不放宽旧客户端：后被用户决定覆盖**（下游 IP 阈值按产品决定上调，不是兼容需要；见上面的「用户决定」行）。**"立即生效"：采纳**，改为重启生效。**双层 per-install + IP：采纳**（用户决定）。所有下游请求按 `tokenInstallId` 做 install 层限流，再叠加 IP 层；install 层不区分是否已验证（§4.6） |
-| （review）状态机与 rollout 闭环 | 采纳：`CreateInstallResult.attestationStatus`（10/20/30），只有 10 能进 REGISTERED；challenge 返回 `enabled`，服务端 OFF 时客户端不生成 key；新增 UNSUPPORTED 终态；429 分成 429000（验签前）和 429002（验签后，新增），客户端分别处理；attest / assertion 加超时和 attemptId，迟到结果丢弃；challenge 改为日窗口通过后再消费；`sign_count NOT NULL DEFAULT 0`；`AppAttestTrustAnchors`（固定 Apple 根证书指纹）；验签加进程内信号量；补充 Redis 全故障的影响范围；expiresInSec 改为 270；清理残留表述。**存量 install：用户选择补证（方案 A），新增 `m_install_attestExisting`（§6.7）** |
+| （review）状态机与 rollout 闭环 | 采纳：`CreateInstallResult.attestationStatus`（10/20/30），只有 10 能进 REGISTERED；challenge 返回 `enabled`，服务端 OFF 时客户端不生成 key；新增 UNSUPPORTED 终态；429 分成 429000（验签前）和 429002（验签后，新增），客户端分别处理；attest / assertion 加超时和 attemptId，迟到结果丢弃；challenge 改为日窗口通过后再消费；`sign_count NOT NULL DEFAULT 0`；`AppAttestTrustAnchors`（固定 Apple 根证书指纹）；验签加进程内信号量；补充 Redis 全故障的影响范围；expiresInSec 改为 270；清理残留表述。**存量 install：用户选择补证（方案 A），新增 `m_auth_install_attest`（§6.7）** |
 | （review）前端实现对照 | 采纳：§6.6 更正，createInstall 的 operation 文本一定会变，补充了发布顺序和契约测试；`attestReady` 改为惰性、幂等的 `initAttestation(ctx)`，`_layout` 按 loadEnvOverride → initAttestation → ensureInstallWhenOnline 串行执行；客户端日志脱敏（同时修复了 installToken 本来就没有脱敏的问题）；`next()` 改为传入 `InstallSnapshot`，凭证丢失但状态是 REGISTERED 时走 recover，所有清除路径都收口到协调器；发布门槛：capability 和 profile、codesign 检查 entitlement、TestFlight 上用 production 跑通 create 和 recover、平台发布清单（声明了 Android 就必须先过这一项才能切 ENFORCE）（§4.5、§6.3、§6.6、§6.8、§9） |
 | （review）环境切换 / mutex 边界 | 采纳：切换 API 环境时直接清掉 SecureStore 里的 install 和 session（ponytail：开发场景可以接受，按环境分开存列为升级路径）；硬规则：mutex 从不跨外部 IO 持有，用「短临界区 + epoch / attemptId 的 CAS 提交」，404 恢复中的创建和 refresh 都在锁外；`wipeLocalUserData` 改为「精确 + 前缀」两种保留规则；fixture 改用 `pauseAndDrain` + finally 恢复；`next()` 显式传入 purpose 和 targetInstallId；补充真实存储 key、404 集成和并发、不死锁这几类测试（§6.8、§7） |
 | （review）客户端生命周期协调 | 采纳：attestState 按 `projectId.apiEnv` 分开存，并加信封（schemaVersion / appAttestEnvironment / appVersion），不匹配时不发送 proof；UNSUPPORTED 在 App 升级后重新检测；新增 install 协调器（mutex + installEpoch + `clearInstallIfCurrent`），create / backfill / 前台清除共用；**更正：refresh 实际上会 bind**（`AuthAggHandler.refresh`，上一版依据的是过时文档，判断错误），所以有 session 时 404001 自动收敛：重建 install，再用新 installToken refresh 重新绑定；补充生命周期表（删除账号时保留 attestState，Dev 全新设备时清除）；损坏状态保守处理；统一调度规则；前台错误分类；fixture 与生产隔离（§6.7、§6.8） |
@@ -76,7 +76,7 @@ clientDataHash 字节契约；durable 表只存 VALID；403001 / 503002 拆分�
 
 ### 目标
 
-- `m_install_createInstall` 可要求一次新鲜的、来自真机正版 App 的平台证明：iOS App Attest，Android Play Integrity Standard request。
+- `m_auth_install_create` 可要求一次新鲜的、来自真机正版 App 的平台证明：iOS App Attest，Android Play Integrity Standard request。
 - 服务端自建验证，保存并利用原始平台信号（iOS keyId / 公钥 / receipt / fraud metric；Android 原始 verdict）。
 - iOS：install 绑定 Secure Enclave key；响应丢失或本地凭证丢失时用 assertion 找回，不重复建 install。
 - 单一 createInstall API，按 provider 区分平台证明；以后新平台新增 provider 即可接入。
@@ -135,9 +135,9 @@ Expo 内部： clientDataHash = SHA256(UTF8(challengeStr))                     /
 **流程**
 
 ```
-1. m_install_createAttestChallenge → { enabled, challenge, expiresInSec: 270 }   // 纯计算，不碰 Redis；服务端接受 300s
+1. m_auth_install_createAttestChallenge → { enabled, challenge, expiresInSec: 270 }   // 纯计算，不碰 Redis；服务端接受 300s
 2. 客户端按 §6.4 取得 proof（每把 key 只 attest 一次）
-3. m_install_createInstall(input.proof = { provider: 110, appAttest: { keyId, attestationObject, challenge } })
+3. m_auth_install_create(input.proof = { provider: 110, appAttest: { keyId, attestationObject, challenge } })
 4. 服务端（事务外，AttestGuard）：
    a. 校验 challenge 的签名和时效（见上）
    b. WebAuthn4J：x5c 链 → Apple App Attestation Root CA；扩展 1.2.840.113635.100.8.2 == expectedNonce；
@@ -169,7 +169,7 @@ requestHash = base64urlNoPadding(SHA256(UTF8(context)))           // Expo 原样
 
 ```
 1. 客户端：requestIntegrityCheckAsync(requestHash) → integrityToken
-2. m_install_createInstall(input.proof = { provider: 120, playIntegrity: { integrityToken, nonce: nonceStr } })
+2. m_auth_install_create(input.proof = { provider: 120, playIntegrity: { integrityToken, nonce: nonceStr } })
 3. 服务端（事务外）：
    a. decodeIntegrityToken：网络错误 / 5xx / 429 → UNAVAILABLE；4xx → INVALID
    b. 校验，不满足 → INVALID(reason)：
@@ -191,7 +191,7 @@ requestHash = base64urlNoPadding(SHA256(UTF8(context)))           // Expo 原样
 clientData = "ifmix-install-recover-v1\n" + projectId + "\n" + challengeStr
 客户端：   generateAssertionAsync(keyId, clientData)          // 不预哈希；需 fixture 验证 Expo 内部处理
 1. createAttestChallenge → challengeStr
-2. m_install_recoverInstall({ keyId, assertion, challenge })
+2. m_auth_install_recover({ keyId, assertion, challenge })
 3. 服务端：
    a. 校验 challenge 的签名和时效（同 §3.1）
    b. 只读查 (projectId, 110, keyId) 的绑定：无 → 404000；status=BLOCKED / RETIRED → 403002
@@ -538,9 +538,9 @@ input CreateInstallInput {
 
 extend type Mutation {
     "无鉴权；独立的 100/60s/IP 短窗口。一次性 challenge，服务端接受 300s，对客户端返回 270s。"
-    m_install_createAttestChallenge: AttestChallengeResult!
+    m_auth_install_createAttestChallenge: AttestChallengeResult!
     "无鉴权；独立的 10/60s/IP 短窗口。iOS 用 assertion 证明 key 所有权，重签已绑定 install 的 installToken。返回的 attestationStatus 固定为 10。"
-    m_install_recoverInstall(input: RecoverInstallInput!): CreateInstallResult!
+    m_auth_install_recover(input: RecoverInstallInput!): CreateInstallResult!
 }
 ```
 
@@ -937,18 +937,18 @@ UNSUPPORTED
 ### 6.6 Persisted query（契约一定会变）
 
 - `CreateInstall` 的 selection set 要从 `{ installId installToken }` 改成 `{ installId installToken attestationStatus }`，所以**operation 文本一定会变**：`apps/shared/src/api/graphql.ts` 的 query、`_API_ENTRIES`、codegen 产物，以及服务端 `graphql/persisted-queries/customer/customer.json` 都要同步更新。
-- 新增 operation：`m_install_createAttestChallenge`、`m_install_recoverInstall`、`m_install_attestExisting`。
+- 新增 operation：`m_auth_install_createAttestChallenge`、`m_auth_install_recover`、`m_auth_install_attest`。
 - **发布顺序**：
   1. 先合入服务端的 schema 和 allowlist；
   2. 再合入客户端的 query 和 codegen。
 
   已核实 allowlist 的机制（`TrustedDocumentProvider`）：服务端**按 reqName 取出 allowlist 里存的文本来执行，完全不读请求 body 里的 query**。所以：
-  - 服务端只要把 `m_install_createInstall` 存的文本更新成包含 `attestationStatus` 的版本即可，**不需要 V2 名字**。
+  - 服务端只要把 `m_auth_install_create` 存的文本更新成包含 `attestationStatus` 的版本即可，**不需要 V2 名字**。
   - 旧客户端会多收到一个 `attestationStatus` 字段，按 JSON 解析会被忽略，没有影响。
   - 新客户端必须等服务端上线之后再发布，否则拿不到这个字段。这个顺序由发布顺序保证；另外客户端把字段缺失当作 30 处理，作为兜底。
   - 新增的三个 operation 必须先进服务端 allowlist，否则客户端请求会被 403000 拒绝。
 - **契约测试**：客户端断言 `CreateInstall` 的 selection set 包含 `attestationStatus`；服务端断言 allowlist 里的文本能通过当前 schema 的校验。
-### 6.7 存量 install 补证（`m_install_attestExisting`，用户决定：方案 A）
+### 6.7 存量 install 补证（`m_auth_install_attest`，用户决定：方案 A）
 
 **为什么要补证**：`ensureInstall()` 只要本地有凭证就直接返回，所以下面两类 install 永远不会再走证明流程：
 - flag 打开之前创建的；
@@ -970,7 +970,7 @@ type AttestExistingResult {
 }
 extend type Mutation {
     "只接受 installToken（type=5、没有 actor、带 iid）。把 App Attest key 绑定到当前 install。限流：10/60s/IP + 3/install/天"
-    m_install_attestExisting(input: AttestExistingInput!): AttestExistingResult!
+    m_auth_install_attest(input: AttestExistingInput!): AttestExistingResult!
 }
 ```
 

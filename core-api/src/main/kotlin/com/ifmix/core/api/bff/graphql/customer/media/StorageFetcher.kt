@@ -17,7 +17,7 @@ class StorageFetcher(
     private val ctxProvider: ActionContextProvider,
 ) {
 
-    @DgsMutation(field = "m_media_presignUpload")
+    @DgsMutation(field = "m_media_media_presignUpload")
     fun presignUpload(dfe: DgsDataFetchingEnvironment, @InputArgument input: PresignUploadInput): PresignUploadResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val result = storageService.presignUpload(ctx, input)
@@ -29,7 +29,7 @@ class StorageFetcher(
         )
     }
 
-    @DgsMutation(field = "m_media_presignDownload")
+    @DgsMutation(field = "m_media_media_presignDownload")
     fun presignDownload(dfe: DgsDataFetchingEnvironment, @InputArgument input: PresignDownloadInput): PresignDownloadResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val result = storageService.presignDownload(ctx, input)

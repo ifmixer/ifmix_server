@@ -19,7 +19,7 @@ class DemoFetcher(
     private val ctxProvider: ActionContextProvider,
 ) {
 
-    @DgsQuery(field = "q_demo_findTodoById")
+    @DgsQuery(field = "q_demo_todo_getMyById")
     fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): com.ifmix.core.api.entity.demo.Todo {
         val ctx = ctxProvider.fromDfe(dfe)
         val todo = demoService.findById(ctx, id)
@@ -27,13 +27,13 @@ class DemoFetcher(
         return todo
     }
 
-    @DgsQuery(field = "q_demo_findTodosByIds")
+    @DgsQuery(field = "q_demo_todo_getMyByIds")
     fun findByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): List<com.ifmix.core.api.entity.demo.Todo> {
         val ctx = ctxProvider.fromDfe(dfe)
         return demoService.findByIds(ctx, ids)
     }
 
-    @DgsQuery(field = "q_demo_findTodos")
+    @DgsQuery(field = "q_demo_todo_listMy")
     fun findTodos(
         dfe: DgsDataFetchingEnvironment,
         @InputArgument findOptions: com.ifmix.core.api.generated.types.CommonFindOptions?,
@@ -43,14 +43,14 @@ class DemoFetcher(
         return page
     }
 
-    @DgsMutation(field = "m_demo_createTodo")
+    @DgsMutation(field = "m_demo_todo_createOne")
     fun createTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: CreateTodoInput): CreateTodoResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val todo = globalTx.withTx(ctx) { txCtx -> demoService.create(txCtx, input) }
         return CreateTodoResult(todo = todo)
     }
 
-    @DgsMutation(field = "m_demo_updateTodo")
+    @DgsMutation(field = "m_demo_todo_updateMyById")
     fun updateTodo(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoInput): UpdateTodoResult {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx -> demoService.partialUpdate(txCtx, input) }
@@ -58,21 +58,21 @@ class DemoFetcher(
         return UpdateTodoResult(success = true, todo = todo)
     }
 
-    @DgsMutation(field = "m_demo_batchUpdateTodoItems")
+    @DgsMutation(field = "m_demo_todoItem_updateMyMany")
     fun batchUpdateTodoItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateTodoItemsMutationInput): UpdateTodoItemsResult {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx -> demoService.batchUpdateItems(txCtx, input) }
         return UpdateTodoItemsResult(success = true)
     }
 
-    @DgsMutation(field = "m_demo_deleteTodo")
+    @DgsMutation(field = "m_demo_todo_deleteMyOne")
     fun deleteTodo(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): com.ifmix.core.api.dto.common.ActionResult {
         val ctx = ctxProvider.fromDfe(dfe)
         globalTx.withTx(ctx) { txCtx -> demoService.deleteById(txCtx, id) }
         return com.ifmix.core.api.dto.common.ActionResult(success = true)
     }
 
-    @DgsMutation(field = "m_demo_deleteTodoByIds")
+    @DgsMutation(field = "m_demo_todo_deleteMyMany")
     fun deleteTodoByIds(dfe: DgsDataFetchingEnvironment, @InputArgument ids: List<UUID>): com.ifmix.core.api.dto.common.ActionResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val count = globalTx.withTx(ctx) { txCtx -> demoService.deleteByIds(txCtx, ids) }

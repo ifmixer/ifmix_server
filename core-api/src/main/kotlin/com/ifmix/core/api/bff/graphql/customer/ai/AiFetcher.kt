@@ -59,13 +59,13 @@ class AiFetcher(
 ) {
     // --- Scan queries ---
 
-    @DgsQuery(field = "q_ai_findMyScanById")
+    @DgsQuery(field = "q_ai_scan_getMyById")
     fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): ScanRecord {
         val ctx = ctxProvider.fromDfe(dfe)
         return aiService.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)
     }
 
-    @DgsQuery(field = "q_ai_findMyScans")
+    @DgsQuery(field = "q_ai_scan_listMy")
     fun findMyScans(
         dfe: DgsDataFetchingEnvironment,
         @InputArgument findOptions: com.ifmix.core.api.generated.types.CommonFindOptions?,
@@ -76,13 +76,13 @@ class AiFetcher(
 
     // --- Collection queries ---
 
-    @DgsQuery(field = "q_ai_getDefaultCollection")
+    @DgsQuery(field = "q_ai_collection_getDefault")
     fun getDefault(dfe: DgsDataFetchingEnvironment): ScanCollection {
         val ctx = ctxProvider.fromDfe(dfe)
         return collectionService.getDefault(ctx)
     }
 
-    @DgsQuery(field = "q_ai_findCollectionItemsByCursor")
+    @DgsQuery(field = "q_ai_collectionItem_listMy")
     fun findItemsByCursor(dfe: DgsDataFetchingEnvironment, @InputArgument input: ListScanCollectionItemsInput?): Page<ScanCollectionItem> {
         val ctx = ctxProvider.fromDfe(dfe)
         val req = input?.let { ListItemsReq(cursor = it.cursor, limit = it.limit, collectionId = null) }
@@ -99,7 +99,7 @@ class AiFetcher(
         return loader.load(scanRecordId)
     }
 
-    @DgsQuery(field = "q_ai_getDeepResearchStatus")
+    @DgsQuery(field = "q_ai_deepResearch_getStatus")
     fun getDeepResearchStatus(
         dfe: DgsDataFetchingEnvironment,
         @InputArgument deepResearchId: UUID,
@@ -127,7 +127,7 @@ class AiFetcher(
 
     // --- Scan mutations ---
 
-    @DgsMutation(field = "m_ai_createScan")
+    @DgsMutation(field = "m_ai_scan_createOne")
     fun newScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: NewScanInput): NewScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
         rateLimitByAction(ctx, "scan", DownstreamLimits.of(rlProps.scan), "too many createScan")
@@ -148,14 +148,14 @@ class AiFetcher(
         return NewScanResult(scanId = taskCtx.scanId, status = status, errorCode = errorCode)
     }
 
-    @DgsQuery(field = "q_ai_getScanStatus")
+    @DgsQuery(field = "q_ai_scan_getStatus")
     fun getScanStatus(dfe: DgsDataFetchingEnvironment, @InputArgument scanId: UUID): ScanStatus {
         val ctx = ctxProvider.fromDfe(dfe)
         val snapshot = globalTx.withTx(ctx) { txCtx -> aiService.getScanStatus(txCtx, scanId) }
         return ScanStatus(scanId = snapshot.scanId, status = snapshot.status, errorCode = snapshot.errorCode)
     }
 
-    @DgsMutation(field = "m_ai_runDeepResearch")
+    @DgsMutation(field = "m_ai_deepResearch_run")
     fun runDeepResearch(dfe: DgsDataFetchingEnvironment, @InputArgument input: com.ifmix.core.api.generated.types.RunDeepResearchInput): com.ifmix.core.api.generated.types.RunDeepResearchResult {
         // 异步化（设计 §3.3）：事务内完成 images 更新 + 配额预检 + 创建 IN_PROGRESS 记录，
         // 事务提交后（withTx 返回即已提交）才提交后台任务——后台才能读到已提交的记录。
@@ -184,7 +184,7 @@ class AiFetcher(
         )
     }
 
-    @DgsMutation(field = "m_ai_updateScan")
+    @DgsMutation(field = "m_ai_scan_updateMyOne")
     fun updateScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: UpdateScanInput): UpdateScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
         return globalTx.withTx(ctx) { txCtx ->
@@ -196,14 +196,14 @@ class AiFetcher(
         }
     }
 
-    @DgsMutation(field = "m_ai_batchUpdateScan")
+    @DgsMutation(field = "m_ai_scan_updateMyMany")
     fun batchUpdateScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): com.ifmix.core.api.generated.types.BatchUpdateScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val updated = globalTx.withTx(ctx) { txCtx -> aiService.batchUpdateScan(txCtx, input) }
         return com.ifmix.core.api.generated.types.BatchUpdateScanResult(updatedCount = updated)
     }
 
-    @DgsMutation(field = "m_ai_deleteScan")
+    @DgsMutation(field = "m_ai_scan_deleteMyOne")
     fun deleteScanById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): DeleteScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
         return globalTx.withTx(ctx) { txCtx -> DeleteScanResult(success = aiService.deleteScan(txCtx, id)) }
@@ -211,7 +211,7 @@ class AiFetcher(
 
     // --- Collection mutations ---
 
-    @DgsMutation(field = "m_ai_addCollectionItem")
+    @DgsMutation(field = "m_ai_collectionItem_add")
     fun addItem(dfe: DgsDataFetchingEnvironment, @InputArgument input: AddScanCollectionItemInput): AddScanCollectionItemResult {
         val ctx = ctxProvider.fromDfe(dfe)
         return globalTx.withTx(ctx) { txCtx ->
@@ -220,7 +220,7 @@ class AiFetcher(
         }
     }
 
-    @DgsMutation(field = "m_ai_removeCollectionItems")
+    @DgsMutation(field = "m_ai_collectionItem_removeMyMany")
     fun removeItems(dfe: DgsDataFetchingEnvironment, @InputArgument input: RemoveScanCollectionItemsInput): RemoveScanCollectionItemsResult {
         val ctx = ctxProvider.fromDfe(dfe)
         return globalTx.withTx(ctx) { txCtx ->

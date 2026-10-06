@@ -45,10 +45,10 @@ type TodoPage {
 }
 
 extend type Query {
-    q_demo_findTodoById(id: UUID!): Todo!
-    q_demo_findTodosByIds(ids: [UUID!]!): [Todo!]!
+    q_demo_todo_getMyById(id: UUID!): Todo!
+    q_demo_todo_getMyByIds(ids: [UUID!]!): [Todo!]!
     "动态条件查询。可过滤字段: title(String), done(Boolean), customerId(UUID), note(String), createdAt(DateTime), updatedAt(DateTime)"
-    q_demo_findTodos(findOptions: CommonFindOptions): TodoPage!
+    q_demo_todo_listMy(findOptions: CommonFindOptions): TodoPage!
 }
 
 # --- Mutation: Create ---
@@ -146,9 +146,9 @@ type UpdateTodoItemsResult {
 # --- Mutation: Delete ---
 
 extend type Mutation {
-    m_demo_createTodo(input: CreateTodoInput!): CreateTodoResult!
-    m_demo_updateTodo(input: UpdateTodoInput!): UpdateTodoResult!
-    m_demo_batchUpdateTodoItems(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsResult!
-    m_demo_deleteTodo(id: UUID!): ActionResult!
-    m_demo_deleteTodoByIds(ids: [UUID!]!): ActionResult!
+    m_demo_todo_createOne(input: CreateTodoInput!): CreateTodoResult!
+    m_demo_todo_updateMyById(input: UpdateTodoInput!): UpdateTodoResult!
+    m_demo_todoItem_updateMyMany(input: UpdateTodoItemsMutationInput!): UpdateTodoItemsResult!
+    m_demo_todo_deleteMyOne(id: UUID!): ActionResult!
+    m_demo_todo_deleteMyMany(ids: [UUID!]!): ActionResult!
 }

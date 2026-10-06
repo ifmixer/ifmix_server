@@ -31,7 +31,7 @@ class GraphQlHttpStatusFilterTest {
     }
 
     @Test fun `no errors returns null (keep 200)`() {
-        assertThat(status("""{"data":{"q_auth_me":{"id":"x"}}}""")).isNull()
+        assertThat(status("""{"data":{"q_auth_session_me":{"id":"x"}}}""")).isNull()
     }
 
     @Test fun `empty errors array returns null`() {
