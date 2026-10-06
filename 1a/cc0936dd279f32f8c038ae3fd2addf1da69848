@@ -1,0 +1,14 @@
+"docs/check since v1.0.3.md"
+  h_b17efd5c751f9f 1-422
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1acc0936dd279f32f8c038ae3fd2addf1da69848",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
