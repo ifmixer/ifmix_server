@@ -115,15 +115,18 @@ XxxController
 
 ### DTO 与转换
 
-**命名规范**（2026-10-06 定稿）：手写与 Jimmer DTO language 生成的类型**统一命名 `XxxDto`**（暂不引入 View 之类的区分）；协议入参用 `XxxInput`（generated 删除后名字空出，去掉 `InputDto` 双后缀）。
+**命名规范**（2026-10-06 定稿）：协议入参 `XxxInput`、协议出参 `XxxRes`；repo 内部投影（不跨 wire）`XxxDto`。
 
-**repo 投影**（2026-10-06 定稿）：repo 保持现状——支持不传 fetcher（默认全字段返回，形状完整、可安全做 entity/query 缓存）或显式传 viewType/fetcher 按需裁剪；**默认调用形态是不传**。特殊场景（如 list 需裁剪 JSONB 大字段）可为该查询定义专用 listDto 并在 repo 方法内固定使用。
+**repo 层直接出 DTO**（2026-10-06 定稿，方案 1）：repo 读方法直接返回 Jimmer DTO language 生成的类型（经 Fetcher 抓取），不再返回 entity 让上游手动转。形状与 entity 投影一致时**省略手写 mapper，直接复用 DTO language 产物**；写路径用其 `toEntity()`。
 
-**缓存形状**（2026-10-06 定稿）：默认全字段结果可安全缓存（entity/query 缓存，复用面最大）；专用 listDto 的缓存 key 与其形状绑定。
+- **代价（已知并接受）**：Redis 缓存条目与形状绑定——list 精简 / detail 完整是两个缓存条目，不再有"entity 超集统一缓存"的复用。多形状 = 每查询一个 DTO。
+- **DTO 字段显式声明，禁止通配**：DB 新增字段不自动出现在任何 DTO/wire 响应（防隐式泄漏）；OpenAPI snapshot 兜底。
+- 仍需手写的：跨实体聚合（Todo+items+counts，逻辑外键 DTO language 抓不到）、update 的 set/unset 部分更新、协议类型（`RequestMeta`、`Envelope`——不是任何实体的投影）、外部服务 request/response、跨模块响应（逻辑外键、不与单一实体绑定）。
+- 大字段裁剪：裁剪路径**直接返回 Jimmer DTO language 生成的 DTO**——`.dto` 文件声明裁剪形状（生成 FETCHER + 自包含 data class），repo `select(table.fetch(XxxRes.FETCHER))` 返回 DTO（如 scan list 不含 `basicResult` JSONB）。DTO 是自包含数据类，无 Unloaded 风险；默认路径仍出全字段 entity 供缓存。
+- 命名：直接作为 wire 出参的 DTO language 类型命名 `XxxRes`（跨 wire，见下表）；仅内部使用的投影叫 `XxxDto`。
 
 分界规则：**字段照抄实体的用 Jimmer DTO 语言，其余手写**——耦合在"字段几乎照抄实体"时无害（实体演进带动契约，由 OpenAPI snapshot 捕获），在"对外契约需独立演进"时是纯负担。
 
-- 用 Jimmer DTO language：单实体读出参 `XxxDto`（含边界稳定的关联抓取）、简单 create input（实体字段子集、无部分更新语义）。
 - 手写 data class：update input（`set` + `unset` 部分更新语义）、多源聚合 response（页面级 DTO，如 todo+items+counts）、协议类型（`RequestMeta`、`Envelope`——不是任何实体的投影）、外部服务 request/response、跨模块响应（逻辑外键、不与单一实体绑定）。
 - `Instant` 字段由 Jackson 默认序列化为 ISO-8601 字符串（与手写 `toString()` 等价），加一条测试锁住。
 - **Konvert 优先**（2026-10-06 修订，取代早先"不引入 Konvert"）：字段同名搬运（含嵌套 data class↔data class）能用 Konvert `@Mapper` 生成的尽量生成；涉及类型转换/服务端打戳（如 recItems createdAt）/unset 枚举转换/批量聚合组装的仍手写，可 Konvert 生成主干 + 手写后处理。Jimmer 生成 DTO 自带的 `toEntity()`/构造器继续直接用，不为它套 Konvert。

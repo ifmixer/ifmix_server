@@ -15,8 +15,11 @@ object RequestHeaders {
     const val APP_VERSION = "x-app-version"
     const val OTA_VERSION = "x-ota-version"
     const val CLIENT_PLATFORM = "x-client-platform"
-    /** 线协议版本：缺省/1 = 明文；2 = body 加密（见 WireCryptoFilter）。响应头同名回传 2 表示响应已加密。 */
-    const val PROTO_VERSION = "x-proto-version"
+    /**
+     * 线协议版本：缺省/1 = 明文；3 = body 加密（RFC 9180 HPKE，见 WireCryptoFilter）。响应头同名回传 3 表示响应已加密。
+     * 旧名 `x-proto-version`（v2 从未上线）已随 v2 一并移除，v3 用新名 `x-wirep-version`（客户端已同步实现）。
+     */
+    const val WIREP_VERSION = "x-wirep-version"
     /** Cloudflare bot score（1-99，越低越像 bot）。需在 CF Transform Rule 里把 cf.bot_management.score 写入该请求头。 */
     const val CF_BOT_SCORE = "cf-bot-score"
 }

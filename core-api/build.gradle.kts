@@ -20,6 +20,10 @@ dependencies {
 
 
 
+    // Wire v3 应用层加密（RFC 9180 HPKE）：BouncyCastle org.bouncycastle.crypto.hpke。
+    // 1.86 与 JDK 25 (Corretto) 兼容（实测 compileKotlin + WireCrypto 向量测试通过）。
+    implementation("org.bouncycastle:bcprov-jdk18on:1.86")
+
     // Coroutines (needed for runBlocking in AntiqueService to call suspend ScanRunner)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
 

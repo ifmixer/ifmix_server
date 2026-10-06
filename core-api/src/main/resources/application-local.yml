@@ -41,6 +41,7 @@ app:
     strict: true
   # dev 专用 wire key（kid=1，公钥 LS5DEl51a3/c8jNshXdQ4v07vUhElYN4M0KWjSTK+QQ=，客户端 local/dev 预设内置）。
   wire-crypto:
+      mode: optional   # 本地允许明文 curl 调试；上线环境必须 required
     keys: '1:V64XjEMXAoqme3StrLwe1+Yt1Z3/BwrJOUCnsuqx2lk='
   show-sql: true
   auth:
