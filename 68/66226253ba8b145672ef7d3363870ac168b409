@@ -1,0 +1,90 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 62,68,79,85,102,130,151,158,187,199,206,214,223
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/AuthFetcher.kt
+  h_b17efd5c751f9f 76
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/cs/CsFetcher.kt
+  h_b17efd5c751f9f 36,43,51,57
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/demo/DemoFetcher.kt
+  h_b17efd5c751f9f 22,30,36,46,53,61,68,75
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/media/StorageFetcher.kt
+  h_b17efd5c751f9f 20,32
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/pay/PaymentFetcher.kt
+  h_b17efd5c751f9f 20
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/GReqRouterConfig.kt
+  h_b17efd5c751f9f 14
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/PersistedQueryStore.kt
+  h_b17efd5c751f9f 27,39
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/ReqNamePathInterceptor.kt
+  h_b17efd5c751f9f 13
+core-api/src/main/kotlin/com/ifmix/core/api/infra/ratelimit/RateLimitProperties.kt
+  h_b17efd5c751f9f 16,18,20,22,24,26,28
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/handler/AuthAggHandler.kt
+  h_b17efd5c751f9f 372
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 126,130,132,134,137,142,149,169
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 2-40
+core-api/src/main/resources/schema/customer/ai.graphqls
+  h_b17efd5c751f9f 240,242-247,253-259
+core-api/src/main/resources/schema/customer/auth.graphqls
+  h_b17efd5c751f9f 41,45-48,76,122,176,178,180,182,184
+core-api/src/main/resources/schema/customer/cs.graphqls
+  h_b17efd5c751f9f 80,82,87,89
+core-api/src/main/resources/schema/customer/demo.graphqls
+  h_b17efd5c751f9f 48-49,51,149-153
+core-api/src/main/resources/schema/customer/media.graphqls
+  h_b17efd5c751f9f 25-26
+core-api/src/main/resources/schema/customer/pay.graphqls
+  h_b17efd5c751f9f 16
+core-api/src/test/kotlin/com/ifmix/api/core/common/http/GraphQlHttpStatusFilterChainTest.kt
+  h_b17efd5c751f9f 20,41,46,55
+core-api/src/test/kotlin/com/ifmix/api/core/common/http/GraphQlHttpStatusFilterTest.kt
+  h_b17efd5c751f9f 34
+core-api/src/test/kotlin/com/ifmix/api/core/graphql/trusted/ReqNamePathInterceptorTest.kt
+  h_b17efd5c751f9f 22,27,32
+core-api/src/test/kotlin/com/ifmix/api/core/graphql/trusted/TrustedDocumentProviderTest.kt
+  h_b17efd5c751f9f 42-43,51,60,68
+core-api/src/test/kotlin/com/ifmix/core/api/infra/graphql/GraphQLErrorExposureTest.kt
+  h_b17efd5c751f9f 22
+docs/design/ai/api-key-pool.md
+  h_b17efd5c751f9f 9
+docs/design/ai/deep-research-async.md
+  h_b17efd5c751f9f 11,70,87,91,231,244,251,285,290-294,301,321,323,335,355-356,360
+docs/design/attest/install-attestation.md
+  h_b17efd5c751f9f 45,79,138,140,172,194,541,543,940,946,951,973
+docs/design/infra/idempotency.md
+  h_b17efd5c751f9f 296
+docs/design/install/install-customer-hardening.md
+  h_b17efd5c751f9f 328,330-331
+docs/design/install/install-tracking.md
+  h_b17efd5c751f9f 125,132-135,138,311,313,315,317,319
+docs/design/notification/scan-async-notification-push.md
+  h_b17efd5c751f9f 11,58,72,75,159-160,248,278,280,283,288
+docs/design/proposals/graphql-to-http-rpc-openapi.md
+  h_b17efd5c751f9f 31
+docs/design/proposals/rpc-pilot-client.md
+  h_b17efd5c751f9f 205,211
+docs/design/proposals/rpc-rollout-client.md
+  h_b17efd5c751f9f 23-24
+docs/guide/AUTH_DESIGN.md
+  h_b17efd5c751f9f 119-122,126
+docs/guide/CODING_GUIDE.md
+  h_b17efd5c751f9f 81,120,126
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 10-11,16,19,36,113,115,122,127
+docs/ops/release.md
+  h_b17efd5c751f9f 56,68
+docs/testing/GRAPHQL_TRUSTED_DOCUMENTS.md
+  h_b17efd5c751f9f 27,98-99,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6866226253ba8b145672ef7d3363870ac168b409",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
