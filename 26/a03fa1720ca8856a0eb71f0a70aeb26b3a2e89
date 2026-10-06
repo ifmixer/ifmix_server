@@ -1,0 +1,21 @@
+core-api/src/main/resources/application-local.yml
+  s_921e1ded8c465e::t_df7bc2bb641727 18-25
+core-api/src/main/resources/application.yml
+  s_921e1ded8c465e::t_97d1c774b65a85 7-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26a03fa1720ca8856a0eb71f0a70aeb26b3a2e89",
+  "prompts": {},
+  "sessions": {
+    "s_921e1ded8c465e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dafe8b62-a72f-4bbe-83cc-ec9c2b26f130",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
