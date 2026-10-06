@@ -112,7 +112,7 @@ class AiRateLimitTest {
         }
         controller = AiController(
             ctxFactory, aiService, mock<ScanCollectionFacade>(), mock<DeepResearchTaskService>(),
-            scanTaskService, mock<AiQueryService>(), globalTx, objectMapper, rateLimiter, RateLimitProperties(),
+            scanTaskService, mock<AiQueryService>(), globalTx, rateLimiter, RateLimitProperties(),
         )
     }
 
@@ -125,14 +125,14 @@ class AiRateLimitTest {
 
     private fun scanBody() = ApiRequestBody(
         meta(),
-        objectMapper.convertValue(mapOf("images" to emptyList<Any?>()), tools.jackson.databind.node.ObjectNode::class.java),
+        objectMapper.convertValue(mapOf("images" to emptyList<Any?>()), com.ifmix.core.api.dto.ai.NewScanInput::class.java),
     )
 
     private fun drBody() = ApiRequestBody(
         meta(),
         objectMapper.convertValue(
             mapOf("scanRecordId" to UUID.randomUUID().toString(), "images" to emptyList<Any?>()),
-            tools.jackson.databind.node.ObjectNode::class.java,
+            com.ifmix.core.api.dto.ai.RunDeepResearchInput::class.java,
         ),
     )
 

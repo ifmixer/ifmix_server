@@ -59,13 +59,13 @@ class MediaControllerTest {
                 tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER,
             ),
         )
-        controller = MediaController(ctxFactory, facade, objectMapper)
+        controller = MediaController(ctxFactory, facade)
     }
 
     private fun validMeta() = RequestMeta(reqId = reqId, projectId = projectId, accessToken = "SECRET-customer")
 
-    private fun body(input: Map<String, Any?>): ApiRequestBody =
-        ApiRequestBody(validMeta(), objectMapper.convertValue(input, tools.jackson.databind.node.ObjectNode::class.java))
+    private inline fun <reified T : Any> body(input: Map<String, Any?>): ApiRequestBody<T> =
+        ApiRequestBody(validMeta(), objectMapper.convertValue(input, T::class.java))
 
     private fun request() = MockHttpServletRequest().apply { LogContext.start(this) }
 
@@ -106,14 +106,11 @@ class MediaControllerTest {
 
     @Test
     fun `presignUpload missing required field fails with 400 semantic`() {
-        val ex = assertThrows(Exception::class.java) {
+        val ex = assertThrows(ApiError::class.java) {
             controller.presignUpload(request(), ApiRequestBody(validMeta(), null))
         }
-        // Jackson 3：prefix/contentType 必填缺失 → InvalidNullException（Spring 边界映射 400000）
-        assertTrue(
-            ex is tools.jackson.core.JacksonException || ex.message?.contains("Invalid null") == true,
-            "got: ${ex::class.qualifiedName} ${ex.message}",
-        )
+        // input 缺段 → requireInput 400000；非法 shape 在生产环境由 Spring 反序列化边界映射同一 400000
+        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
         LogContext.clear()
     }
 
@@ -135,7 +132,7 @@ class MediaControllerTest {
         val ex = assertThrows(ApiError::class.java) {
             controller.presignUpload(
                 request(),
-                ApiRequestBody(meta, objectMapper.createObjectNode()),
+                ApiRequestBody<PresignUploadInput>(meta, null),
             )
         }
         assertEquals(ErrorCode.UNAUTHORIZED, ex.errorCode)

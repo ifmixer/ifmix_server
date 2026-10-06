@@ -11,6 +11,7 @@ import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ApiRequestBody
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.http.LogContext
+import com.ifmix.core.api.infra.http.NoInput
 import com.ifmix.core.api.infra.http.RequestMeta
 import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
 import com.ifmix.core.api.infra.ratelimit.RateLimiter
@@ -97,7 +98,7 @@ class CustomerControllerTest {
         addHeader("X-Forwarded-For", ip)
     }
 
-    private fun call() = controller.createAnonymousCustomer(request(), ApiRequestBody(installMeta(), objectMapper.createObjectNode()))
+    private fun call() = controller.createAnonymousCustomer(request(), ApiRequestBody<NoInput>(installMeta()))
 
     private fun stubHappyPath(): UUID {
         val customerId = UUID.randomUUID()
@@ -200,7 +201,7 @@ class CustomerControllerTest {
             LogContext.start(this)
             addHeader("X-Forwarded-For", "9.9.9.9")
         }
-        controller.createAnonymousCustomer(req, ApiRequestBody(installMeta(), objectMapper.createObjectNode()))
+        controller.createAnonymousCustomer(req, ApiRequestBody<NoInput>(installMeta()))
         verify(rateLimiter).check(eq(Window.UTC_DAY), eq(installDayKey), eq(5))
         verify(rateLimiter).check(eq(Window.MINUTE), eq("ratelimit:$pid:anonymous:ip:min:9.9.9.9"), eq(100))
         verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(ipMinKey), eq(100))

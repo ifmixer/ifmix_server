@@ -6,6 +6,7 @@ import com.ifmix.core.api.dto.payment.VerifyReq
 import com.ifmix.core.api.infra.http.ActionContextFactory
 import com.ifmix.core.api.infra.http.ApiRequestBody
 import com.ifmix.core.api.infra.http.Envelope
+import com.ifmix.core.api.infra.http.requireInput
 import com.ifmix.core.api.modules.pay.PaymentFacade
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import tools.jackson.databind.ObjectMapper
 import java.time.Instant
 
 /**
@@ -33,18 +33,13 @@ import java.time.Instant
 class PayController(
     private val ctxFactory: ActionContextFactory,
     private val paymentService: PaymentFacade,
-    private val objectMapper: ObjectMapper,
 ) {
-
-    /** 缺 input 段 → 空 object node（必填字段缺失走 Jackson InvalidNullException → 400 语义）。 */
-    private fun <T> input(body: ApiRequestBody, clazz: Class<T>): T =
-        objectMapper.convertValue(body.input ?: objectMapper.createObjectNode(), clazz)
 
     @Operation(operationId = "m_pay_iap_verify")
     @PostMapping("m_pay_iap_verify", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun verifyIapPurchase(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<VerifyIapPurchaseRes>> {
+    fun verifyIapPurchase(request: HttpServletRequest, @RequestBody body: ApiRequestBody<VerifyReq>): ResponseEntity<Envelope<VerifyIapPurchaseRes>> {
         val ctx = ctxFactory.fromRpc(request, PaySpecs.IAP_VERIFY, body.meta)
-        val req = input(body, VerifyReq::class.java)
+        val req = body.requireInput()
         val res = paymentService.verifyIapPurchase(ctx, req)
         return ResponseEntity.ok(
             Envelope.ok(

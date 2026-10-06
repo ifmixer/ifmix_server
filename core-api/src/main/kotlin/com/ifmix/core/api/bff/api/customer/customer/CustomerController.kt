@@ -8,6 +8,7 @@ import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ApiRequestBody
 import com.ifmix.core.api.infra.http.Envelope
 import com.ifmix.core.api.infra.http.ErrorCode
+import com.ifmix.core.api.infra.http.NoInput
 import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
 import com.ifmix.core.api.infra.ratelimit.RateLimiter
 import com.ifmix.core.api.infra.ratelimit.RateLimitResult
@@ -54,7 +55,7 @@ class CustomerController(
     @PostMapping("m_customer_customer_createAnonymous", consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createAnonymousCustomer(
         request: HttpServletRequest,
-        @RequestBody body: ApiRequestBody,
+        @RequestBody body: ApiRequestBody<NoInput>,
     ): ResponseEntity<Envelope<CreateAnonymousRes>> {
         val ctx = ctxFactory.fromRpc(request, CustomerSpecs.CREATE_ANONYMOUS, body.meta)
         // 只要求携带有效可信 iid（token 类型不限）；legacy fallback 关闭后无 token iid → 这里即 401000

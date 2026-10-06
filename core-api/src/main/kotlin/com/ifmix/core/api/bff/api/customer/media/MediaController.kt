@@ -8,6 +8,7 @@ import com.ifmix.core.api.dto.storage.PresignUploadResult
 import com.ifmix.core.api.infra.http.ActionContextFactory
 import com.ifmix.core.api.infra.http.ApiRequestBody
 import com.ifmix.core.api.infra.http.Envelope
+import com.ifmix.core.api.infra.http.requireInput
 import com.ifmix.core.api.modules.media.StorageFacade
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import tools.jackson.databind.ObjectMapper
 
 /**
  * media 模块 API controller：2 个 `POST /api/customer/core/{actionName}`（rollout-server §4 M1）。
@@ -33,26 +33,21 @@ import tools.jackson.databind.ObjectMapper
 class MediaController(
     private val ctxFactory: ActionContextFactory,
     private val facade: StorageFacade,
-    private val objectMapper: ObjectMapper,
 ) {
-
-    /** 缺 input 段 → 空 object node（必填字段缺失走 Jackson InvalidNullException → 400 语义）。 */
-    private fun <T> input(body: ApiRequestBody, clazz: Class<T>): T =
-        objectMapper.convertValue(body.input ?: objectMapper.createObjectNode(), clazz)
 
     @Operation(operationId = "m_media_media_presignUpload")
     @PostMapping("m_media_media_presignUpload", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun presignUpload(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<PresignUploadResult>> {
+    fun presignUpload(request: HttpServletRequest, @RequestBody body: ApiRequestBody<PresignUploadInput>): ResponseEntity<Envelope<PresignUploadResult>> {
         val ctx = ctxFactory.fromRpc(request, MediaSpecs.PRESIGN_UPLOAD, body.meta)
-        val input = input(body, PresignUploadInput::class.java)
+        val input = body.requireInput()
         return ResponseEntity.ok(Envelope.ok(facade.presignUpload(ctx, input)).copy(reqId = ctx.requestId))
     }
 
     @Operation(operationId = "m_media_media_presignDownload")
     @PostMapping("m_media_media_presignDownload", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun presignDownload(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<PresignDownloadResult>> {
+    fun presignDownload(request: HttpServletRequest, @RequestBody body: ApiRequestBody<PresignDownloadInput>): ResponseEntity<Envelope<PresignDownloadResult>> {
         val ctx = ctxFactory.fromRpc(request, MediaSpecs.PRESIGN_DOWNLOAD, body.meta)
-        val input = input(body, PresignDownloadInput::class.java)
+        val input = body.requireInput()
         return ResponseEntity.ok(Envelope.ok(facade.presignDownload(ctx, input)).copy(reqId = ctx.requestId))
     }
 }

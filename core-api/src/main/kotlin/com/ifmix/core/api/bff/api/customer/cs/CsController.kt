@@ -15,6 +15,7 @@ import com.ifmix.core.api.dto.cs.toRes
 import com.ifmix.core.api.infra.http.ActionContextFactory
 import com.ifmix.core.api.infra.http.ApiRequestBody
 import com.ifmix.core.api.infra.http.Envelope
+import com.ifmix.core.api.infra.http.requireInput
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.cs.CsFacade
 import io.swagger.v3.oas.annotations.Operation
@@ -26,7 +27,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import tools.jackson.databind.ObjectMapper
 
 /**
  * cs 模块 API controller：4 个 `POST /api/customer/core/{actionName}`（rollout-server §4 M1）。
@@ -41,45 +41,40 @@ class CsController(
     private val ctxFactory: ActionContextFactory,
     private val csService: CsFacade,
     private val globalTx: GlobalTxRunner,
-    private val objectMapper: ObjectMapper,
 ) {
-
-    /** 缺 input 段 → 空 object node（必填字段缺失走 Jackson InvalidNullException → 400 语义）。 */
-    private fun <T> input(body: ApiRequestBody, clazz: Class<T>): T =
-        objectMapper.convertValue(body.input ?: objectMapper.createObjectNode(), clazz)
 
     @Operation(operationId = "m_cs_feedback_createOne")
     @PostMapping("m_cs_feedback_createOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun submitFeedback(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<SubmitFeedbackRes>> {
+    fun submitFeedback(request: HttpServletRequest, @RequestBody body: ApiRequestBody<SubmitFeedbackInput>): ResponseEntity<Envelope<SubmitFeedbackRes>> {
         val ctx = ctxFactory.fromRpc(request, CsSpecs.SUBMIT_FEEDBACK, body.meta)
-        val input = input(body, SubmitFeedbackInput::class.java)
+        val input = body.requireInput()
         val id = globalTx.withTx(ctx) { txCtx -> csService.submit(txCtx, input.toReq()) }
         return ResponseEntity.ok(Envelope.ok(SubmitFeedbackRes(id = id)).copy(reqId = ctx.requestId))
     }
 
     @Operation(operationId = "m_cs_supportRequest_createOne")
     @PostMapping("m_cs_supportRequest_createOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun createSupportRequest(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<CreateSupportRequestRes>> {
+    fun createSupportRequest(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateSupportRequestInput>): ResponseEntity<Envelope<CreateSupportRequestRes>> {
         val ctx = ctxFactory.fromRpc(request, CsSpecs.CREATE_SUPPORT_REQUEST, body.meta)
-        val input = input(body, CreateSupportRequestInput::class.java)
+        val input = body.requireInput()
         val id = globalTx.withTx(ctx) { txCtx -> csService.createSupportRequest(txCtx, input.toReq()) }
         return ResponseEntity.ok(Envelope.ok(CreateSupportRequestRes(id = id)).copy(reqId = ctx.requestId))
     }
 
     @Operation(operationId = "q_cs_supportRequest_getById")
     @PostMapping("q_cs_supportRequest_getById", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun mySupportRequestById(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<SupportRequestRes>> {
+    fun mySupportRequestById(request: HttpServletRequest, @RequestBody body: ApiRequestBody<SupportRequestByIdInput>): ResponseEntity<Envelope<SupportRequestRes>> {
         val ctx = ctxFactory.fromRpc(request, CsSpecs.MY_SUPPORT_REQUEST_BY_ID, body.meta)
-        val input = input(body, SupportRequestByIdInput::class.java)
+        val input = body.requireInput()
         return ResponseEntity.ok(Envelope.ok(csService.findMySupportRequestById(ctx, input.id).toRes()).copy(reqId = ctx.requestId))
     }
 
     @Operation(operationId = "q_cs_supportRequest_list")
     @PostMapping("q_cs_supportRequest_list", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun mySupportRequests(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<Page<SupportRequestRes>>> {
+    fun mySupportRequests(request: HttpServletRequest, @RequestBody body: ApiRequestBody<ListSupportRequestsInput>): ResponseEntity<Envelope<Page<SupportRequestRes>>> {
         val ctx = ctxFactory.fromRpc(request, CsSpecs.MY_SUPPORT_REQUESTS, body.meta)
-        // 原 GraphQL 侧 input 整段可空：缺段/显式 null → null req 透传
-        val input = body.input?.takeIf { !it.isNull }?.let { objectMapper.convertValue(it, ListSupportRequestsInput::class.java) }
+        // 原 GraphQL 侧 input 整段可空：缺段/显式 null → null req 透传（此处不用 requireInput）
+        val input = body.input
         val page = csService.findMySupportRequests(ctx, input?.let { ListSupportRequestsReq(cursor = it.cursor, limit = it.limit) })
         return ResponseEntity.ok(
             Envelope.ok(Page(items = page.items.map { it.toRes() }, pageInfo = page.pageInfo)).copy(reqId = ctx.requestId),

@@ -20,6 +20,8 @@ import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ApiRequestBody
 import com.ifmix.core.api.infra.http.Envelope
 import com.ifmix.core.api.infra.http.ErrorCode
+import com.ifmix.core.api.infra.http.NoInput
+import com.ifmix.core.api.infra.http.requireInput
 import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
 import com.ifmix.core.api.infra.ratelimit.RateLimiter
 import com.ifmix.core.api.infra.ratelimit.RateLimitResult
@@ -37,7 +39,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import tools.jackson.databind.ObjectMapper
 import java.util.Base64
 
 /**
@@ -59,21 +60,16 @@ class InstallApiController(
     private val rlProps: RateLimitProperties,
     private val attestGuard: AttestGuard,
     private val serverConfigFacade: ProjectServerConfigFacade,
-    private val objectMapper: ObjectMapper,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    /** 缺 input 段 → 空 object node（对齐 DemoController.input()）；非法 input 由 Spring 边界映射 400000。 */
-    private fun <T> input(body: ApiRequestBody, clazz: Class<T>): T =
-        objectMapper.convertValue(body.input ?: objectMapper.createObjectNode(), clazz)
-
     @Operation(operationId = "m_install_install_create")
     @PostMapping("m_install_install_create", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun createInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<CreateInstallRes>> {
+    fun createInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> {
         val ctx = ctxFactory.fromRpc(request, InstallSpecs.CREATE_INSTALL, body.meta)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
-        val input = input(body, CreateInstallInput::class.java)
+        val input = body.requireInput()
 
         // 1. 入口短窗口 100/60s/IP（验签前，保护验签消耗的 CPU）
         when (val rl = rateLimiter.check(
@@ -140,11 +136,11 @@ class InstallApiController(
 
     @Operation(operationId = "m_install_install_updateOne")
     @PostMapping("m_install_install_updateOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun updateInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<UpdateInstallRes>> {
+    fun updateInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<UpdateInstallInput>): ResponseEntity<Envelope<UpdateInstallRes>> {
         val ctx = ctxFactory.fromRpc(request, InstallSpecs.UPDATE_INSTALL, body.meta)
         val installId = ctx.tokenInstallId
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "install token required")
-        val input = input(body, UpdateInstallInput::class.java)
+        val input = body.requireInput()
         val ok = globalTx.withTx(ctx) { txCtx ->
             installFacade.updateInstall(
                 txCtx, installId,
@@ -162,7 +158,7 @@ class InstallApiController(
 
     @Operation(operationId = "m_install_install_createAttestChallenge")
     @PostMapping("m_install_install_createAttestChallenge", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun createAttestChallenge(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<AttestChallengeRes>> {
+    fun createAttestChallenge(request: HttpServletRequest, @RequestBody body: ApiRequestBody<NoInput>): ResponseEntity<Envelope<AttestChallengeRes>> {
         val ctx = ctxFactory.fromRpc(request, InstallSpecs.CREATE_ATTEST_CHALLENGE, body.meta)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
@@ -191,11 +187,11 @@ class InstallApiController(
 
     @Operation(operationId = "m_install_install_recover")
     @PostMapping("m_install_install_recover", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun recoverInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<CreateInstallRes>> {
+    fun recoverInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<RecoverInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> {
         val ctx = ctxFactory.fromRpc(request, InstallSpecs.RECOVER_INSTALL, body.meta)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
-        val input = input(body, RecoverInstallInput::class.java)
+        val input = body.requireInput()
         when (val rl = rateLimiter.check(
             Window.MINUTE,
             "ratelimit:$pid:recover-install:ip:min:$clientIp",
@@ -272,9 +268,9 @@ class InstallApiController(
 
     @Operation(operationId = "m_install_install_attest")
     @PostMapping("m_install_install_attest", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun attestExisting(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<AttestExistingRes>> {
+    fun attestExisting(request: HttpServletRequest, @RequestBody body: ApiRequestBody<AttestExistingInput>): ResponseEntity<Envelope<AttestExistingRes>> {
         val ctx = ctxFactory.fromRpc(request, InstallSpecs.ATTEST_EXISTING, body.meta)
-        val input = input(body, AttestExistingInput::class.java)
+        val input = body.requireInput()
 
         // 1. 鉴权：严格只认 installToken（type=5 && actorId==null && tokenInstallId!=null，否则 401000）
         val ok = when {

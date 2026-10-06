@@ -55,7 +55,7 @@ KSP 生成失败/生成代码不可读时允许该处回退手写，但必须在
 
 ### 3.3 Controller / ActionSpec 迁移规则（与 pilot 相同，三处强调）
 
-1. Controller 模板 = `DemoController`：`@RequestMapping("/rpc/customer/core")` + 每 action `@PostMapping("/{actionName}")` + `ActionContextFactory.fromRpc` + mutation 包 `GlobalTxRunner` + `Envelope.ok(data).copy(reqId=...)`；不 import repo/handler。
+1. Controller 模板 = `DemoController`：`@RequestMapping("/rpc/customer/core")` + 每 action `@PostMapping("/{actionName}")` + `ActionContextFactory.fromRpc` + mutation 包 `GlobalTxRunner` + `Envelope.ok(data).copy(reqId=...)`；不 import repo/handler。请求体为泛型 `ApiRequestBody<T>`（input 类型由 endpoint 签名声明、Spring 边界反序列化，必填用 `requireInput()`，无入参用 `NoInput`；实施修订 2026-10-06）。
 2. **ActionSpec 的唯一依据是现有 DataFetcher 的 `fromDfe(...)` 实参**：迁移某 action 时，逐字段把该 fetcher 里 `ctxProvider.fromDfe(dfe, requireAppId=…, requireActorType=…, requireLocale=…)` 的实参搬进 `ActionSpec`（映射：requireActorType=ACTOR_CUSTOMER → CUSTOMER；null → NONE 或 INSTALL_OR_CUSTOMER 按 token 语义），并在该模块测试里加一张「actionName ↔ fromDfe 实参」对照断言。**禁止凭感觉填**。
 3. **命名一致性测试**（每模块）：反射扫描该模块全部 ActionSpec——path 段 `m_` ⇔ `isMutation=true`；module 段 = 所属模块；resource/action 在 rpc-rollout-client.md §1 表内。
 

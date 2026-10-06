@@ -64,16 +64,15 @@ class InstallApiControllerTest {
         whenever(rateLimiter.check(any(), any(), any())).thenReturn(RateLimitResult.Allowed)
         controller = InstallApiController(
             installFacade, globalTx, ActionContextFactory(jwt, strict = true),
-            rateLimiter, rlProps, attestGuard, serverConfigFacade, JsonMapper.builder().build(),
+            rateLimiter, rlProps, attestGuard, serverConfigFacade,
         )
     }
 
     private fun meta(token: String?) = RequestMeta(reqId = reqId, projectId = projectId, accessToken = token)
 
-    private fun body(meta: RequestMeta?, input: Map<String, Any?>?): ApiRequestBody {
+    private inline fun <reified T : Any> body(meta: RequestMeta?, input: Map<String, Any?>?): ApiRequestBody<T> {
         val mapper = JsonMapper.builder().build()
-        val node = input?.let { mapper.convertValue(it, tools.jackson.databind.node.ObjectNode::class.java) }
-        return ApiRequestBody(meta, node)
+        return ApiRequestBody(meta, input?.let { mapper.convertValue(it, T::class.java) })
     }
 
     private fun request() = MockHttpServletRequest().apply { LogContext.start(this) }

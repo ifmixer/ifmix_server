@@ -83,7 +83,7 @@ class DemoControllerTest {
         whenever(globalTx.withTx<Any>(any(), any())).thenAnswer {
             ((it.arguments[1]) as (ActionContext) -> Any)(ctx)
         }
-        controller = DemoController(ctxFactory, facade, queryService, globalTx, objectMapper)
+        controller = DemoController(ctxFactory, facade, queryService, globalTx)
     }
 
     // ===== 公共构造 =====
@@ -91,11 +91,10 @@ class DemoControllerTest {
     /** customer token + projectId 的合法 meta（reqId 显式带上，供 Envelope.reqId 回显断言）。 */
     private fun validMeta() = RequestMeta(reqId = reqId, projectId = projectId, accessToken = "SECRET-customer")
 
-    /** 用 mapper 把 meta/input 段组装成 controller 收到的 [ApiRequestBody]（wire 形状）；input 空 → null 段。 */
-    private fun body(meta: RequestMeta?, input: Map<String, Any?>): ApiRequestBody {
-        val node = if (input.isEmpty()) null
-        else objectMapper.convertValue(input, tools.jackson.databind.node.ObjectNode::class.java)
-        return ApiRequestBody(meta, node)
+    /** 用 mapper 把 meta/input 段组装成 controller 收到的 [ApiRequestBody]（wire 形状）；input 空表 → null 段。 */
+    private inline fun <reified T : Any> body(meta: RequestMeta?, input: Map<String, Any?>): ApiRequestBody<T> {
+        val converted = if (input.isEmpty()) null else objectMapper.convertValue(input, T::class.java)
+        return ApiRequestBody(meta, converted)
     }
 
     private fun request() = MockHttpServletRequest().apply { LogContext.start(this) }
@@ -259,15 +258,12 @@ class DemoControllerTest {
 
     @Test
     fun `missing input segment fails with invalid request`() {
-        val ex = assertThrows(Exception::class.java) {
+        // input 缺段 → requireInput 直接 400000；生产环境非法 shape 在 Spring 反序列化边界
+        // 抛 HttpMessageNotReadableException，由 GlobalExceptionHandler 映射同一 400000
+        val ex = assertThrows(ApiError::class.java) {
             controller.findTodoById(request(), ApiRequestBody(validMeta(), null))
         }
-        // Jackson 3：FindTodoByIdInput.id 非空但缺失 → InvalidNullException（400 语义，
-        // 由 Spring 经 HttpMessageNotReadable 边界映射为 INVALID_REQUEST/400000）
-        assertTrue(
-            ex is tools.jackson.core.JacksonException || ex.message?.contains("Invalid null") == true,
-            "got: ${ex::class.qualifiedName} ${ex.message}",
-        )
+        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
         LogContext.clear()
     }
 

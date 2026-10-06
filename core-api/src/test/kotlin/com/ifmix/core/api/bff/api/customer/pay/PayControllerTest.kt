@@ -57,13 +57,13 @@ class PayControllerTest {
                 tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER,
             ),
         )
-        controller = PayController(ctxFactory, paymentService, objectMapper)
+        controller = PayController(ctxFactory, paymentService)
     }
 
     private fun validMeta() = RequestMeta(reqId = reqId, projectId = projectId, accessToken = "SECRET-customer")
 
-    private fun body(input: Map<String, Any?>): ApiRequestBody =
-        ApiRequestBody(validMeta(), objectMapper.convertValue(input, tools.jackson.databind.node.ObjectNode::class.java))
+    private inline fun <reified T : Any> body(input: Map<String, Any?>): ApiRequestBody<T> =
+        ApiRequestBody(validMeta(), objectMapper.convertValue(input, T::class.java))
 
     private fun request() = MockHttpServletRequest().apply { LogContext.start(this) }
 
@@ -95,14 +95,11 @@ class PayControllerTest {
 
     @Test
     fun `verifyIapPurchase missing required field fails with 400 semantic`() {
-        val ex = assertThrows(Exception::class.java) {
+        val ex = assertThrows(ApiError::class.java) {
             controller.verifyIapPurchase(request(), ApiRequestBody(validMeta(), null))
         }
-        // platform/productId 必填缺失 → Jackson InvalidNullException（Spring 边界映射 400000）
-        assertTrue(
-            ex is tools.jackson.core.JacksonException || ex.message?.contains("Invalid null") == true,
-            "got: ${ex::class.qualifiedName} ${ex.message}",
-        )
+        // input 缺段 → requireInput 400000；platform/productId 缺失在生产环境由 Spring 边界映射同一 400000
+        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
         LogContext.clear()
     }
 

@@ -81,14 +81,19 @@ data class RequestMeta(
 )
 ```
 
-### 3.2 新建 `RpcRequestBody.kt`
+### 3.2 新建 `RpcRequestBody.kt`（实施修订 2026-10-06：泛型化）
 
 ```kotlin
-data class RpcRequestBody(
-    val meta: RequestMeta?,          // 缺失视为全空 meta（容错：明文 curl 调试）
-    val input: JsonNode? = null,     // 各 controller 用 objectMapper.convertValue 转具体输入
+data class ApiRequestBody<T>(
+    val meta: RequestMeta? = null,   // 缺失视为全空 meta（容错：明文 curl 调试）
+    val input: T? = null,            // 类型由 endpoint 签名泛型声明，Spring 边界反序列化
 )
 ```
+
+input 的具体类型写在各 endpoint 签名上（`@RequestBody body: ApiRequestBody<FindTodoByIdInput>`），
+非法 input 在 Spring 边界抛 `HttpMessageNotReadableException` → GlobalExceptionHandler 400000；
+必填 input 用扩展 `requireInput()` 收口（缺段/显式 null → 400000），无入参 action 用 `NoInput` 占位。
+springdoc 按泛型生成各 action 的 input schema（R4 客户端 codegen 前提）。
 
 ### 3.3 兼容性决策（2026-10-06 修订，覆盖早先版本）
 
@@ -339,14 +344,16 @@ class DemoController(
 )
 ```
 
-8 个 endpoint，全部 `@PostMapping("/{actionName}", consumes = [MediaType.APPLICATION_JSON_VALUE])`，方法体统一模式：
+8 个 endpoint，全部 `@PostMapping("/{actionName}", consumes = [MediaType.APPLICATION_JSON_VALUE])`，方法体统一模式（实施修订 2026-10-06：input 泛型边界反序列化，controller 不再注入 ObjectMapper）：
 
 ```kotlin
-val ctx = ctxFactory.fromRpc(request, Specs.XXX, body.meta)
-val input = objectMapper.convertValue(body.input ?: EmptyNode.instance, FindTodoByIdInput::class.java)
-// mutation: globalTx.withTx(ctx) { txCtx -> facade.xxx(txCtx, DemoRpcMappers.toGenerated(input)) }
-// query:    直接调 queryService / facade
-return ResponseEntity.ok(Envelope.ok(resultDto))
+fun findTodoById(request: HttpServletRequest, @RequestBody body: ApiRequestBody<FindTodoByIdInput>): ResponseEntity<Envelope<TodoRes>> {
+    val ctx = ctxFactory.fromRpc(request, Specs.XXX, body.meta)
+    val input = body.requireInput()
+    // mutation: globalTx.withTx(ctx) { txCtx -> facade.xxx(txCtx, DemoRpcMappers.toGenerated(input)) }
+    // query:    直接调 queryService / facade
+    return ResponseEntity.ok(Envelope.ok(resultDto).copy(reqId = ctx.requestId))
+}
 ```
 
 逐 endpoint 规格（actionName → spec → 行为；语义与 DemoFetcher.kt 逐行对齐；actionName 按四段命名规范 `{q|m}_{module}_{resource}_{action}`）：

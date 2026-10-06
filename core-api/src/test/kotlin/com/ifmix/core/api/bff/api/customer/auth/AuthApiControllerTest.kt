@@ -52,13 +52,12 @@ class AuthApiControllerTest {
         whenever(globalTx.withTx<Any>(any(), any())).thenAnswer {
             ((it.arguments[1]) as (ActionContext) -> Any)(it.arguments[0] as ActionContext)
         }
-        controller = AuthApiController(authService, globalTx, ActionContextFactory(jwt, strict = true), JsonMapper.builder().build())
+        controller = AuthApiController(authService, globalTx, ActionContextFactory(jwt, strict = true))
     }
 
-    private fun body(input: Map<String, Any?>?): ApiRequestBody {
+    private inline fun <reified T : Any> body(input: Map<String, Any?>?): ApiRequestBody<T> {
         val mapper = JsonMapper.builder().build()
-        val node = input?.let { mapper.convertValue(it, tools.jackson.databind.node.ObjectNode::class.java) }
-        return ApiRequestBody(RequestMeta(reqId = reqId, projectId = projectId, accessToken = "SECRET"), node)
+        return ApiRequestBody(RequestMeta(reqId = reqId, projectId = projectId, accessToken = "SECRET"), input?.let { mapper.convertValue(it, T::class.java) })
     }
 
     private fun request() = MockHttpServletRequest().apply { LogContext.start(this) }

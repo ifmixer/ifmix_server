@@ -70,13 +70,13 @@ class CsControllerTest {
         whenever(globalTx.withTx<Any>(any(), any())).thenAnswer {
             ((it.arguments[1]) as (ActionContext) -> Any)(ctx)
         }
-        controller = CsController(ctxFactory, csService, globalTx, objectMapper)
+        controller = CsController(ctxFactory, csService, globalTx)
     }
 
     private fun validMeta() = RequestMeta(reqId = reqId, projectId = projectId, accessToken = "SECRET-customer")
 
-    private fun body(input: Map<String, Any?>?): ApiRequestBody =
-        ApiRequestBody(validMeta(), input?.let { objectMapper.convertValue(it, tools.jackson.databind.node.ObjectNode::class.java) })
+    private inline fun <reified T : Any> body(input: Map<String, Any?>?): ApiRequestBody<T> =
+        ApiRequestBody(validMeta(), input?.let { objectMapper.convertValue(it, T::class.java) })
 
     private fun request() = MockHttpServletRequest().apply { LogContext.start(this) }
 
@@ -192,13 +192,10 @@ class CsControllerTest {
 
     @Test
     fun `submitFeedback missing required field fails with 400 semantic`() {
-        val ex = assertThrows(Exception::class.java) {
+        val ex = assertThrows(ApiError::class.java) {
             controller.submitFeedback(request(), ApiRequestBody(validMeta(), null))
         }
-        assertTrue(
-            ex is tools.jackson.core.JacksonException || ex.message?.contains("Invalid null") == true,
-            "got: ${ex::class.qualifiedName} ${ex.message}",
-        )
+        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
         LogContext.clear()
     }
 

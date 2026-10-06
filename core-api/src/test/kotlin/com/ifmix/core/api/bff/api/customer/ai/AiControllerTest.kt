@@ -107,7 +107,7 @@ class AiControllerTest {
         }
         controller = AiController(
             ctxFactory, aiService, collectionService, deepResearchTaskService, scanTaskService,
-            queryService, globalTx, objectMapper, rateLimiter, RateLimitProperties(),
+            queryService, globalTx, rateLimiter, RateLimitProperties(),
         )
     }
 
@@ -115,8 +115,8 @@ class AiControllerTest {
 
     private fun validMeta() = RequestMeta(reqId = reqId, projectId = projectId, accessToken = "SECRET-customer")
 
-    private fun body(input: Map<String, Any?>): ApiRequestBody =
-        ApiRequestBody(validMeta(), objectMapper.convertValue(input, tools.jackson.databind.node.ObjectNode::class.java))
+    private inline fun <reified T : Any> body(input: Map<String, Any?>): ApiRequestBody<T> =
+        ApiRequestBody(validMeta(), objectMapper.convertValue(input, T::class.java))
 
     private fun request() = MockHttpServletRequest().apply {
         addHeader("X-Forwarded-For", "1.2.3.4")
@@ -367,13 +367,10 @@ class AiControllerTest {
 
     @Test
     fun `missing input segment fails with invalid request (400 语义)`() {
-        val ex = assertThrows(Exception::class.java) {
+        val ex = assertThrows(ApiError::class.java) {
             controller.findScanById(request(), ApiRequestBody(validMeta(), null))
         }
-        assertTrue(
-            ex is tools.jackson.core.JacksonException || ex.message?.contains("Invalid null") == true,
-            "got: ${ex::class.qualifiedName} ${ex.message}",
-        )
+        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
         LogContext.clear()
     }
 
