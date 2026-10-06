@@ -10,7 +10,7 @@
 
 ### 1.1 controller 侧
 
-每模块 controller（8 个：demo/media/cs/pay/customer/auth/install/ai）加 companion object，常量名沿用现 `XxxSpecs` 里的命名（便于机械搬移）：
+每模块 controller（8 个类；`CustomerController` / `InstallApiController` / `AuthApiController` 同在 `bff/api/customer/auth/` 包，其余为 demo/media/cs/pay/ai 各一）加 companion object，常量名沿用现 `XxxSpecs` 里的命名（便于机械搬移）：
 
 ```kotlin
 class AiController(/* 依赖不变 */) {

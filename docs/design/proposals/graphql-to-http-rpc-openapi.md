@@ -31,7 +31,6 @@
   - **前缀是权限的表达，不是权限的来源**：路径客户端可见可填，裁决仍由 endpoint 的 `requireActorType` 声明 + 业务所有权校验承担；`{module, resource} × {read, write}` 前缀矩阵的价值在 manager 表面的粗粒度授权、审计与边缘规则。
   - **一致性由测试锁死**：controller 的 `@PostMapping` path 扫描——`m_` 前缀 ⇔ `fromRpc` 的 `isMutation` 实参；module 段与 controller 所属模块一致。
 - **URL 不带 resourceId**（2026-10-06 定稿）：边缘/WAF 规则是模式级的，action 粒度由 actionName 承载，具体资源 ID 是攻击者可轮换的高基数字段、对边缘决策无价值；且 ID 属业务载荷，应留在加密 body 内。路径统一一种形状，路由/测试/OpenAPI 均单套处理。
-- reqName 保持现状，例如 `q_ai_findMyScans`、`m_auth_login`，减少前后端重命名成本。
 - 成功和失败统一返回 `Envelope<T> = { code, msg, data }`。
 - HTTP status 必须等于 `code` 前三位；成功为 `200000` / HTTP 200。
 - 不再返回 GraphQL 的 `data + errors`、partial error 或 `errors[0]`。
