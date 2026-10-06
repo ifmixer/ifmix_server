@@ -1,0 +1,14 @@
+core-api/src/main/resources/schema/customer/auth.graphqls
+  h_b17efd5c751f9f 50-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e7bf7836eef87b675c1d627c6b286f5e22f3a0d",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
