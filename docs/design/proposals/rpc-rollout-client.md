@@ -10,7 +10,7 @@
 ## 0. 现状与总览
 
 - demo 8 个 action 客户端已走 RPC（`rpc.ts`/`rpcDemo.ts`/`client.ts` `todo*Rpc` 方法），但用的是**旧命名**（`m_demo_createTodo`），本计划 R0 统一改为四段新命名。
-- URL 已定稿：`POST /api/customer/core/{actionName}`（2026-10-06 服务端定稿：rpc→api），`actionName = {q|m}_{module}_{resource}_{action}`（proposal §一；module=resource 重叠允许，如 `m_install_install_*`）。
+- URL 已定稿：`POST /api/customer/core/{actionName}`（2026-10-06 服务端定稿：rpc→api），`actionName = {q|m}_{module}_{resource}_{action}`（proposal §一；module=resource 重叠允许；install/customer 已并入 auth 模块，action 名为 `m_auth_install_*` / `m_auth_customer_*`，重叠形态示例改看 `m_media_media_presignUpload`）。
 - 迁移模式与 pilot 完全一致：每 action 一条 `rpcOp` 封装 + `client.ts` 加 `*Rpc` 方法（走 `guarded()`）+ 手写类型 + mock fetch 测试；gql 版本保留到 R5。
 - 服务端按模块出规格文档（Controller/DTO/测试），**action 名以本文件 §1 的表为单一真相**；两端冲突以本表为准并回改文档。
 
@@ -39,12 +39,12 @@
 | R1 | m_cs_createSupportRequest | `m_cs_supportRequest_createOne` |
 | R1 | q_cs_mySupportRequests | `q_cs_supportRequest_list` |
 | R1 | q_cs_mySupportRequestById | `q_cs_supportRequest_getById` |
-| R2 | m_customer_createAnonymousCustomer | `m_customer_customer_createAnonymous` |
-| R2 | m_install_createInstall | `m_install_install_create` |
-| R2 | m_install_updateInstall | `m_install_install_updateOne` |
-| R2 | m_install_attestExisting | `m_install_install_attest` |
-| R2 | m_install_recoverInstall | `m_install_install_recover` |
-| R2 | m_install_createAttestChallenge | `m_install_install_createAttestChallenge` |
+| R2 | m_customer_createAnonymousCustomer | `m_auth_customer_createAnonymous` |
+| R2 | m_install_createInstall | `m_auth_install_create` |
+| R2 | m_install_updateInstall | `m_auth_install_updateOne` |
+| R2 | m_install_attestExisting | `m_auth_install_attest` |
+| R2 | m_install_recoverInstall | `m_auth_install_recover` |
+| R2 | m_install_createAttestChallenge | `m_auth_install_createAttestChallenge` |
 | R2 | m_auth_login | `m_auth_session_login` |
 | R2 | m_auth_logout | `m_auth_session_logout` |
 | R2 | m_auth_refreshToken | `m_auth_session_refresh` |
@@ -88,7 +88,7 @@
 ⚠️ 本阶段动会话管线，规则最严格：
 
 1. **`raw` 层切换**：`client.ts` 内 `raw.anonymous` / `raw.refresh` / login / logout / me / deleteAccount 的内部实现从 gqlOp 换为 rpcOp（新名见 §1.2），**对 session.ts 的输入输出契约一个字段都不许变**（`toTokens` 输入形状不变）。gql 版封装保留但不再被 raw 层调用（标记 `@deprecated 试点后删除`）。
-2. 补 `makeInstallRpcOpts`（pilot 裁定 2 预留的 authorization 参数已就位）：`m_install_*` 与 anonymous 创建走 install-token 模式。
+2. 补 `makeInstallRpcOpts`（pilot 裁定 2 预留的 authorization 参数已就位）：`m_auth_install_*` 与 anonymous 创建（`m_auth_customer_*`）走 install-token 模式。
 3. attest 三件套（createAttestChallenge / createInstall / attestExisting / recover）：走 `installCoordinator`/`installProof` 既有状态机，仅换传输；proof 子树照旧走 `redactForLog` 脱敏。
 4. 测试重点：冷启动匿名引导链（createInstall → createAnonymous → 业务请求）、401002 refresh 重试、401003 → resetToAnonymous、install token 恢复链（recover/attestExisting 的 403001/403002/409001/404001 错误码语义与 gql 版逐一对齐）。
 5. E2E：真机/模拟器走完整身份引导 + 登录 + refresh + logout + deleteAccount。**gate 2：身份链路联调报告**（这是风险最高的阶段，必须实测降级：key 未配时引导链全程明文可用）。
