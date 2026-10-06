@@ -35,10 +35,16 @@ class PayController(
     private val paymentService: PaymentFacade,
 ) {
 
-    @Operation(operationId = "m_pay_iap_verify")
-    @PostMapping("m_pay_iap_verify", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    companion object {
+        // pay 模块 action 常量（原 PaySpecs 机械搬移；CUSTOMER + requireProjectId=true，
+        // 对照原 PaymentFetcher `fromDfe(dfe)` 全默认实参）。
+        const val IAP_VERIFY = "m_pay_iap_verify"
+    }
+
+    @Operation(operationId = IAP_VERIFY)
+    @PostMapping(IAP_VERIFY, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun verifyIapPurchase(request: HttpServletRequest, @RequestBody body: ApiRequestBody<VerifyReq>): ResponseEntity<Envelope<VerifyIapPurchaseRes>> {
-        val ctx = ctxFactory.fromRpc(request, PaySpecs.IAP_VERIFY, body.meta)
+        val ctx = ctxFactory.fromRpc(request, IAP_VERIFY, isMutation = true, body = body)
         val req = body.requireInput()
         val res = paymentService.verifyIapPurchase(ctx, req)
         return ResponseEntity.ok(

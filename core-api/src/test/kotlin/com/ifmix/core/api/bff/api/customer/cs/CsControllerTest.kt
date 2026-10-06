@@ -202,42 +202,34 @@ class CsControllerTest {
     // ===== 命名一致性护栏 =====
 
     @Test
-    fun `routes one-to-one with CsSpecs and mutation prefix matches isMutation`() {
-        val specs = setOf(
-            CsSpecs.SUBMIT_FEEDBACK,
-            CsSpecs.CREATE_SUPPORT_REQUEST,
-            CsSpecs.MY_SUPPORT_REQUEST_BY_ID,
-            CsSpecs.MY_SUPPORT_REQUESTS,
+    fun `routes one-to-one with controller companion constants`() {
+        // rpc-rollout-client.md §1 R1：cs 6 action 里的 4 个
+        val expected = setOf(
+            "m_cs_feedback_createOne", "m_cs_supportRequest_createOne",
+            "q_cs_supportRequest_getById", "q_cs_supportRequest_list",
         )
-        assertEquals(4, specs.size)
-        specs.forEach { spec ->
-            assertEquals(spec.isMutation, spec.reqName.startsWith("m_"))
-            assertEquals("cs", spec.reqName.split("_")[1])
-        }
-
         val postings = CsController::class.declaredMemberFunctions
             .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
         assertEquals(4, postings.size)
-        val pathOf = postings.associate { f ->
+        val names = postings.map { f ->
             val path = f.annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
-            val specConst = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
-            path to specs.single { it.reqName == specConst }
+            val operationId = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
+            assertEquals(path, operationId, "path must equal operationId: " + path)
+            path
         }
-        assertEquals(specs.map { it.reqName }.toSet(), pathOf.values.map { it.reqName }.toSet())
+        assertEquals(expected, names.toSet())
+        names.forEach { n ->
+            val segs = n.split("_")
+            assertEquals(4, segs.size, "four-segment format: " + n)
+            assertTrue(segs[0] in setOf("q", "m"), "q_/m_ prefix: " + n)
+            assertEquals("cs", segs[1], "module segment: " + n)
+            assertTrue(segs[2] in setOf("feedback", "supportRequest"), "resource segment: " + n)
+        }
+        // companion 常量与路由 path 同源
+        assertEquals("m_cs_feedback_createOne", CsController.SUBMIT_FEEDBACK)
+        assertEquals("q_cs_supportRequest_list", CsController.MY_SUPPORT_REQUESTS)
     }
 
-    // ===== ActionSpec ↔ 原 fromDfe 实参对照（rollout-server §3.3.2：禁止凭感觉填）=====
-    // 原 CsFetcher 4 个 action 均为 ctxProvider.fromDfe(dfe) 全默认：
-    //   requireAppId=true / requireActorType=ACTOR_CUSTOMER / requireLocale=false / requireCountry=false / requireCurrency=false
-    // ↔ actor=CUSTOMER、requireProjectId=true（默认）。此处断言规格未漂移。
-
-    @Test
-    fun `specs match original fromDfe arguments`() {
-        CsSpecs::class.java.declaredFields.filter { it.type == com.ifmix.core.api.infra.http.ActionSpec::class.java }.forEach {
-            it.isAccessible = true
-            val spec = it.get(null) as com.ifmix.core.api.infra.http.ActionSpec
-            assertEquals(com.ifmix.core.api.infra.http.ActorRequirement.CUSTOMER, spec.actor, "${spec.reqName}.actor")
-            assertEquals(true, spec.requireProjectId, "${spec.reqName}.requireProjectId")
-        }
-    }
+    // 原「spec matches original fromDfe arguments」对照测试删除：ActionSpec 已撤销，
+    // requireActorType 实参映射（全部 CUSTOMER）见 controller 调用点 + 实施单 §1.2 裁决表。
 }

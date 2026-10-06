@@ -143,22 +143,27 @@ class MediaControllerTest {
     // ===== 命名一致性护栏 =====
 
     @Test
-    fun `routes one-to-one with MediaSpecs and mutation prefix matches isMutation`() {
-        val specs = setOf(MediaSpecs.PRESIGN_UPLOAD, MediaSpecs.PRESIGN_DOWNLOAD)
-        assertEquals(2, specs.size)
-        specs.forEach { spec ->
-            assertEquals(spec.isMutation, spec.reqName.startsWith("m_"))
-            assertEquals("media", spec.reqName.split("_")[1])
-        }
-
+    fun `routes one-to-one with controller companion constants`() {
+        val expected = setOf("m_media_media_presignUpload", "m_media_media_presignDownload")
         val postings = MediaController::class.declaredMemberFunctions
             .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
         assertEquals(2, postings.size)
-        val pathOf = postings.associate { f ->
+        val names = postings.map { f ->
             val path = f.annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
-            val specConst = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
-            path to specs.single { it.reqName == specConst }
+            val operationId = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
+            assertEquals(path, operationId, "path must equal operationId: " + path)
+            path
         }
-        assertEquals(specs.map { it.reqName }.toSet(), pathOf.values.map { it.reqName }.toSet())
+        assertEquals(expected, names.toSet())
+        names.forEach { n ->
+            val segs = n.split("_")
+            assertEquals(4, segs.size, "four-segment format: " + n)
+            assertEquals("m", segs[0], "all media actions are mutations: " + n)
+            assertEquals("media", segs[1], "module segment: " + n)
+            assertEquals("media", segs[2], "resource segment: " + n)
+        }
+        // companion 常量与路由 path 同源
+        assertEquals("m_media_media_presignUpload", MediaController.PRESIGN_UPLOAD)
+        assertEquals("m_media_media_presignDownload", MediaController.PRESIGN_DOWNLOAD)
     }
 }

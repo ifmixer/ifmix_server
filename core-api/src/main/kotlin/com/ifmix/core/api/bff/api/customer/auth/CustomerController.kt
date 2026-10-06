@@ -4,6 +4,7 @@ import com.ifmix.core.api.bff.api.customer.demo.DemoController
 import com.ifmix.core.api.dto.customer.CreateAnonymousRes
 import com.ifmix.core.api.dto.customer.CustomerRes
 import com.ifmix.core.api.infra.http.ActionContextFactory
+import com.ifmix.core.api.infra.http.ActorRequirement
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ApiRequestBody
 import com.ifmix.core.api.infra.http.Envelope
@@ -51,13 +52,23 @@ class CustomerController(
     private val rlProps: RateLimitProperties,
 ) {
 
-    @Operation(operationId = "m_auth_customer_createAnonymous")
-    @PostMapping("m_auth_customer_createAnonymous", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    companion object {
+        // customer 模块 action 常量（原 CustomerSpecs 机械搬移）：原 CustomerFetcher
+        // `fromDfe(dfe, requireActorType = null)` → INSTALL_OR_CUSTOMER（不要求登录、token 照校验、
+        // install/customer token 皆可；createAnonymous 只要求可信 iid）。
+        const val CREATE_ANONYMOUS = "m_auth_customer_createAnonymous"
+    }
+
+    @Operation(operationId = CREATE_ANONYMOUS)
+    @PostMapping(CREATE_ANONYMOUS, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createAnonymousCustomer(
         request: HttpServletRequest,
         @RequestBody body: ApiRequestBody<NoInput>,
     ): ResponseEntity<Envelope<CreateAnonymousRes>> {
-        val ctx = ctxFactory.fromRpc(request, CustomerSpecs.CREATE_ANONYMOUS, body.meta)
+        val ctx = ctxFactory.fromRpc(
+            request, CREATE_ANONYMOUS, isMutation = true, body = body,
+            requireActorType = ActorRequirement.INSTALL_OR_CUSTOMER,
+        )
         // 只要求携带有效可信 iid（token 类型不限）；legacy fallback 关闭后无 token iid → 这里即 401000
         ctx.mustGetTokenInstallId()
         val projectId = ctx.mustGetProjectId()

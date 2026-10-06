@@ -208,32 +208,27 @@ class CustomerControllerTest {
         LogContext.clear()
     }
 
-    // ===== 命名一致性护栏 =====
+    // ===== 命名一致性护栏（实施单 §1.3：四段格式 + module 段 + action 在 rpc-rollout-client §1 表内）=====
+    // 原 CustomerFetcher: ctxProvider.fromDfe(dfe, requireActorType = null)（requireAppId=true 默认）
+    // ↔ requireActorType = INSTALL_OR_CUSTOMER（不要求登录、token 照校验、install/customer token 皆可）、
+    // requireProjectId=true。实参映射由 controller 调用点 + ActionContextFactoryTest 运行时校验兜底。
 
     @Test
-    fun `route matches CustomerSpecs and mutation prefix matches isMutation`() {
-        val spec = CustomerSpecs.CREATE_ANONYMOUS
-        assertEquals(true, spec.isMutation)
-        assertEquals("m_", spec.reqName.take(2))
-        assertEquals("auth", spec.reqName.split("_")[1])
-
+    fun `route matches controller companion constant`() {
+        // rpc-rollout-client.md §1 R2：m_auth_customer_createAnonymous 名单一真相
         val postings = CustomerController::class.declaredMemberFunctions
             .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
         assertEquals(1, postings.size)
         val path = postings.single().annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
-        val specConst = postings.single().annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
-        assertEquals(spec.reqName, path)
-        assertEquals(spec.reqName, specConst)
-    }
-
-    // ===== ActionSpec ↔ 原 fromDfe 实参对照 =====
-    // 原 CustomerFetcher: ctxProvider.fromDfe(dfe, requireActorType = null)（requireAppId=true 默认）
-    // ↔ actor=INSTALL_OR_CUSTOMER（不要求登录、token 照校验、install/customer token 皆可）、requireProjectId=true。
-
-    @Test
-    fun `spec matches original fromDfe arguments`() {
-        assertThat(CustomerSpecs.CREATE_ANONYMOUS.actor)
-            .isEqualTo(com.ifmix.core.api.infra.http.ActorRequirement.INSTALL_OR_CUSTOMER)
-        assertThat(CustomerSpecs.CREATE_ANONYMOUS.requireProjectId).isTrue()
+        val operationId = postings.single().annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
+        assertEquals("m_auth_customer_createAnonymous", path)
+        assertEquals("m_auth_customer_createAnonymous", operationId)
+        val segs = path.split("_")
+        assertEquals(4, segs.size, "four-segment format: " + path)
+        assertEquals("m", segs[0], "createAnonymous is a mutation")
+        assertEquals("auth", segs[1], "module segment (customer 段在 auth 包下，以 action 名第 2 段为准)")
+        assertEquals("customer", segs[2], "resource segment")
+        // companion 常量与路由 path 同源
+        assertEquals("m_auth_customer_createAnonymous", CustomerController.CREATE_ANONYMOUS)
     }
 }

@@ -56,36 +56,49 @@ class DemoController(
     private val globalTx: GlobalTxRunner,
 ) {
 
-    @Operation(operationId = "q_demo_todo_getById")
-    @PostMapping("q_demo_todo_getById", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    companion object {
+        // demo 模块 8 个 RPC action 的 actionName 常量（原 DemoSpecs 常量机械搬移；
+        // 全部 CUSTOMER + requireProjectId=true——§3.4 裁决表：demo 是 customer 资源）。
+        const val FIND_TODO_BY_ID = "q_demo_todo_getById"
+        const val FIND_TODOS_BY_IDS = "q_demo_todo_getByIds"
+        const val FIND_TODOS = "q_demo_todo_list"
+        const val CREATE_TODO = "m_demo_todo_createOne"
+        const val UPDATE_TODO = "m_demo_todo_updateOne"
+        const val BATCH_UPDATE_TODO_ITEMS = "m_demo_todo_updateItems"
+        const val DELETE_TODO = "m_demo_todo_deleteOne"
+        const val DELETE_TODO_BY_IDS = "m_demo_todo_deleteMany"
+    }
+
+    @Operation(operationId = FIND_TODO_BY_ID)
+    @PostMapping(FIND_TODO_BY_ID, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun findTodoById(request: HttpServletRequest, @RequestBody body: ApiRequestBody<FindTodoByIdInput>): ResponseEntity<Envelope<TodoRes>> {
-        val ctx = ctxFactory.fromRpc(request, DemoSpecs.FIND_TODO_BY_ID, body.meta)
+        val ctx = ctxFactory.fromRpc(request, FIND_TODO_BY_ID, isMutation = false, body = body)
         val input = body.requireInput()
         val todo = queryService.findTodoById(ctx, input.id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "Todo not found: ${input.id}")
         return ResponseEntity.ok(Envelope.ok(todo).copy(reqId = ctx.requestId))
     }
 
-    @Operation(operationId = "q_demo_todo_getByIds")
-    @PostMapping("q_demo_todo_getByIds", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = FIND_TODOS_BY_IDS)
+    @PostMapping(FIND_TODOS_BY_IDS, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun findTodosByIds(request: HttpServletRequest, @RequestBody body: ApiRequestBody<FindTodosByIdsInput>): ResponseEntity<Envelope<List<TodoRes>>> {
-        val ctx = ctxFactory.fromRpc(request, DemoSpecs.FIND_TODOS_BY_IDS, body.meta)
+        val ctx = ctxFactory.fromRpc(request, FIND_TODOS_BY_IDS, isMutation = false, body = body)
         val input = body.requireInput()
         return ResponseEntity.ok(Envelope.ok(queryService.findTodosByIds(ctx, input.ids)).copy(reqId = ctx.requestId))
     }
 
-    @Operation(operationId = "q_demo_todo_list")
-    @PostMapping("q_demo_todo_list", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = FIND_TODOS)
+    @PostMapping(FIND_TODOS, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun findTodos(request: HttpServletRequest, @RequestBody body: ApiRequestBody<FindTodosInput>): ResponseEntity<Envelope<Page<TodoRes>>> {
-        val ctx = ctxFactory.fromRpc(request, DemoSpecs.FIND_TODOS, body.meta)
+        val ctx = ctxFactory.fromRpc(request, FIND_TODOS, isMutation = false, body = body)
         val input = body.requireInput()
         return ResponseEntity.ok(Envelope.ok(queryService.findTodos(ctx, input.findOptions)).copy(reqId = ctx.requestId))
     }
 
-    @Operation(operationId = "m_demo_todo_createOne")
-    @PostMapping("m_demo_todo_createOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = CREATE_TODO)
+    @PostMapping(CREATE_TODO, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createTodo(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateTodoInput>): ResponseEntity<Envelope<CreateTodoRes>> {
-        val ctx = ctxFactory.fromRpc(request, DemoSpecs.CREATE_TODO, body.meta)
+        val ctx = ctxFactory.fromRpc(request, CREATE_TODO, isMutation = true, body = body)
         val input = body.requireInput()
         val created = globalTx.withTx(ctx) { txCtx -> facade.create(txCtx, input) }
         // 复用批量组装逻辑（单元素列表）补全 items + counts 完整视图
@@ -94,10 +107,10 @@ class DemoController(
         return ResponseEntity.ok(Envelope.ok(CreateTodoRes(todo = full)).copy(reqId = ctx.requestId))
     }
 
-    @Operation(operationId = "m_demo_todo_updateOne")
-    @PostMapping("m_demo_todo_updateOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = UPDATE_TODO)
+    @PostMapping(UPDATE_TODO, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun updateTodo(request: HttpServletRequest, @RequestBody body: ApiRequestBody<UpdateTodoInput>): ResponseEntity<Envelope<UpdateTodoRes>> {
-        val ctx = ctxFactory.fromRpc(request, DemoSpecs.UPDATE_TODO, body.meta)
+        val ctx = ctxFactory.fromRpc(request, UPDATE_TODO, isMutation = true, body = body)
         val input = body.requireInput()
         globalTx.withTx(ctx) { txCtx -> facade.partialUpdate(txCtx, input) }
         // 写后读用**原 ctx**（非 txCtx）——对齐 DemoFetcher.updateTodo:57 的写后读语义
@@ -105,28 +118,28 @@ class DemoController(
         return ResponseEntity.ok(Envelope.ok(UpdateTodoRes(success = true, todo = todo)).copy(reqId = ctx.requestId))
     }
 
-    @Operation(operationId = "m_demo_todo_updateItems")
-    @PostMapping("m_demo_todo_updateItems", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = BATCH_UPDATE_TODO_ITEMS)
+    @PostMapping(BATCH_UPDATE_TODO_ITEMS, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun batchUpdateTodoItems(request: HttpServletRequest, @RequestBody body: ApiRequestBody<UpdateTodoItemsMutationInput>): ResponseEntity<Envelope<UpdateTodoItemsRes>> {
-        val ctx = ctxFactory.fromRpc(request, DemoSpecs.BATCH_UPDATE_TODO_ITEMS, body.meta)
+        val ctx = ctxFactory.fromRpc(request, BATCH_UPDATE_TODO_ITEMS, isMutation = true, body = body)
         val input = body.requireInput()
         globalTx.withTx(ctx) { txCtx -> facade.batchUpdateItems(txCtx, input) }
         return ResponseEntity.ok(Envelope.ok(UpdateTodoItemsRes(success = true)).copy(reqId = ctx.requestId))
     }
 
-    @Operation(operationId = "m_demo_todo_deleteOne")
-    @PostMapping("m_demo_todo_deleteOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = DELETE_TODO)
+    @PostMapping(DELETE_TODO, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun deleteTodo(request: HttpServletRequest, @RequestBody body: ApiRequestBody<FindTodoByIdInput>): ResponseEntity<Envelope<ActionResult>> {
-        val ctx = ctxFactory.fromRpc(request, DemoSpecs.DELETE_TODO, body.meta)
+        val ctx = ctxFactory.fromRpc(request, DELETE_TODO, isMutation = true, body = body)
         val input = body.requireInput()
         globalTx.withTx(ctx) { txCtx -> facade.deleteById(txCtx, input.id) }
         return ResponseEntity.ok(Envelope.ok(ActionResult(success = true)).copy(reqId = ctx.requestId))
     }
 
-    @Operation(operationId = "m_demo_todo_deleteMany")
-    @PostMapping("m_demo_todo_deleteMany", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = DELETE_TODO_BY_IDS)
+    @PostMapping(DELETE_TODO_BY_IDS, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun deleteTodoByIds(request: HttpServletRequest, @RequestBody body: ApiRequestBody<FindTodosByIdsInput>): ResponseEntity<Envelope<ActionResult>> {
-        val ctx = ctxFactory.fromRpc(request, DemoSpecs.DELETE_TODO_BY_IDS, body.meta)
+        val ctx = ctxFactory.fromRpc(request, DELETE_TODO_BY_IDS, isMutation = true, body = body)
         val input = body.requireInput()
         val count = globalTx.withTx(ctx) { txCtx -> facade.deleteByIds(txCtx, input.ids) }
         return ResponseEntity.ok(Envelope.ok(ActionResult(success = true, modifiedCount = count)).copy(reqId = ctx.requestId))

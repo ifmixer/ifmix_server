@@ -389,44 +389,37 @@ class AiControllerTest {
         LogContext.clear()
     }
 
-    // ===== 3. 命名一致性护栏：13 条路由 ↔ AiSpecs 一一对应 =====
+    // ===== 3. 命名一致性护栏（实施单 §1.3：四段格式 + module 段 + action 在 rpc-rollout-client §1 表内）=====
 
     @Test
-    fun `routes one-to-one with AiSpecs and mutation prefix matches isMutation`() {
-        val specs = setOf(
-            AiSpecs.SCAN_GET_BY_ID, AiSpecs.SCAN_LIST, AiSpecs.SCAN_GET_STATUS,
-            AiSpecs.DEEP_RESEARCH_RUN, AiSpecs.DEEP_RESEARCH_GET_STATUS,
-            AiSpecs.COLLECTION_GET_DEFAULT, AiSpecs.COLLECTION_ITEM_ADD,
-            AiSpecs.COLLECTION_ITEM_REMOVE_MANY, AiSpecs.COLLECTION_ITEM_LIST,
-            AiSpecs.SCAN_CREATE_ONE, AiSpecs.SCAN_UPDATE_ONE, AiSpecs.SCAN_DELETE_ONE,
-            AiSpecs.SCAN_UPDATE_MANY,
-        )
-        assertEquals(13, specs.size)
-        specs.forEach { spec ->
-            assertEquals(spec.isMutation, spec.reqName.startsWith("m_"))
-            assertEquals("ai", spec.reqName.split("_")[1], "module segment must be ai: ${spec.reqName}")
-            assertEquals(true, spec.requireProjectId)
-        }
+    fun `routes one-to-one with controller companion constants`() {
         // rpc-rollout-client.md §1 R3 新名总表
-        assertEquals(
-            setOf(
-                "m_ai_scan_createOne", "m_ai_scan_updateOne", "m_ai_scan_deleteOne", "m_ai_scan_updateMany",
-                "q_ai_scan_list", "q_ai_scan_getById", "q_ai_scan_getStatus",
-                "m_ai_deepResearch_run", "q_ai_deepResearch_getStatus",
-                "q_ai_collection_getDefault", "m_ai_collectionItem_add", "m_ai_collectionItem_removeMany",
-                "q_ai_collectionItem_list",
-            ),
-            specs.map { it.reqName }.toSet(),
+        val expected = setOf(
+            "m_ai_scan_createOne", "m_ai_scan_updateOne", "m_ai_scan_deleteOne", "m_ai_scan_updateMany",
+            "q_ai_scan_list", "q_ai_scan_getById", "q_ai_scan_getStatus",
+            "m_ai_deepResearch_run", "q_ai_deepResearch_getStatus",
+            "q_ai_collection_getDefault", "m_ai_collectionItem_add", "m_ai_collectionItem_removeMany",
+            "q_ai_collectionItem_list",
         )
 
         val postings = AiController::class.declaredMemberFunctions
             .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
         assertEquals(13, postings.size)
-        val pathOf = postings.associate { f ->
+        val names = postings.map { f ->
             val path = f.annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
-            val specConst = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
-            path to specs.single { it.reqName == specConst }
+            val operationId = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
+            assertEquals(path, operationId, "path must equal operationId: " + path)
+            path
         }
-        assertEquals(specs.map { it.reqName }.toSet(), pathOf.values.map { it.reqName }.toSet())
+        assertEquals(expected, names.toSet())
+        names.forEach { n ->
+            val segs = n.split("_")
+            assertEquals(4, segs.size, "four-segment format: " + n)
+            assertTrue(segs[0] in setOf("q", "m"), "q_/m_ prefix: " + n)
+            assertEquals("ai", segs[1], "module segment must be ai: " + n)
+        }
+        // companion 常量与路由 path 同源
+        assertEquals("q_ai_scan_getById", AiController.SCAN_GET_BY_ID)
+        assertEquals("m_ai_scan_updateMany", AiController.SCAN_UPDATE_MANY)
     }
 }

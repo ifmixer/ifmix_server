@@ -30,9 +30,29 @@ class ActionContextFactory(
 ) {
     private val log = LoggerFactory.getLogger(ActionContextFactory::class.java)
 
-    /** 从 RPC 请求构造 ActionContext。meta 缺失时按空 RequestMeta 处理（明文 curl 调试场景）。 */
-    fun fromRpc(request: HttpServletRequest, spec: ActionSpec, meta: RequestMeta?): ActionContext {
-        val m = meta ?: RequestMeta()
+    /**
+     * 从 RPC 请求构造 ActionContext。body.meta 缺失时按空 [RequestMeta] 处理（明文 curl 调试场景）。
+     *
+     * 显式传 [isMutation] 时校验与 [actionName] 前缀的一致性（`m_` ⇔ 写）——
+     * 不一致即抛 [IllegalStateException]（运行时锁死「前缀 ⇔ 读写」关系）。
+     * 省略（null）时由 `actionName` 的 `m_` 前缀兜底推导。
+     */
+    fun fromRpc(
+        request: HttpServletRequest,
+        actionName: String,
+        isMutation: Boolean? = null,
+        body: ApiRequestBody<*>,
+        requireActorType: ActorRequirement = ActorRequirement.CUSTOMER,
+        requireProjectId: Boolean = true,
+    ): ActionContext {
+        val m = body?.meta ?: RequestMeta()
+
+        // 前缀 ⇔ 读写一致性（取代原反射一致性测试的「path ⇔ isMutation」断言，实施单 §1.2-1）。
+        val effectiveMutation = isMutation ?: actionName.startsWith("m_")
+        if (isMutation != null && actionName.startsWith("m_") != isMutation)
+            throw IllegalStateException(
+                "actionName prefix mismatch: $actionName vs isMutation=$isMutation",
+            )
 
         // ===== token（自含，直接吃 meta.accessToken；纯 token，无 Bearer 前缀）=====
         val rawToken = m.accessToken?.trim()?.takeIf { it.isNotEmpty() }
@@ -42,7 +62,7 @@ class ActionContextFactory(
         when {
             rawToken == null -> {
                 // 无 token：按 ActorRequirement 裁决
-                if (spec.actor == ActorRequirement.CUSTOMER)
+                if (requireActorType == ActorRequirement.CUSTOMER)
                     throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
             }
             rawToken.startsWith("Bearer ") ->
@@ -65,7 +85,7 @@ class ActionContextFactory(
                 if (verified.tokenType == AuthJwtService.TOKEN_TYPE_INSTALL) {
                     // install token 只提供可信 iid，不是 actor，也没有 sub。
                     tokenInstallId = verified.installId?.let { tryUuid(it) }
-                    if (spec.actor == ActorRequirement.CUSTOMER)
+                    if (requireActorType == ActorRequirement.CUSTOMER)
                         throw ApiError(ErrorCode.UNAUTHORIZED, "customer authentication required")
                 } else {
                     // customer token 也携带 iid claim（对齐 GraphQL RequestParser.parseTokenInstallId：
@@ -82,7 +102,7 @@ class ActionContextFactory(
                     // customer token 也可能携带 iid claim（同 RequestParser.parseTokenInstallId 语义：
                     // type=5 与 type=10 都取）。scan/DR 的 install 层限流与 mustGetTokenInstallId 依赖它。
                     tokenInstallId = verified.installId?.let { tryUuid(it) }
-                    if (spec.actor == ActorRequirement.CUSTOMER && verified.actorType == ActorTypes.MANAGER)
+                    if (requireActorType == ActorRequirement.CUSTOMER && verified.actorType == ActorTypes.MANAGER)
                         throw ApiError(ErrorCode.FORBIDDEN, "actor type not allowed for this endpoint")
                 }
             }
@@ -90,7 +110,7 @@ class ActionContextFactory(
 
         // ===== projectId（meta 通道）=====
         val projectId = m.projectId?.takeIf { it.isNotBlank() }
-        if (spec.requireProjectId && projectId == null)
+        if (requireProjectId && projectId == null)
             throw ApiError(ErrorCode.INVALID_REQUEST, "projectId is required")
         if (projectId != null && !projectId.matches(PROJECT_ID_RE))
             throw ApiError(ErrorCode.INVALID_REQUEST, "invalid projectId format")
@@ -159,9 +179,10 @@ class ActionContextFactory(
             userTz = userTz,
             deviceModel = deviceModel,
             osVersion = osVersion,
-            actionName = spec.reqName,
-            isMutation = spec.isMutation,
-            preferReader = !spec.isMutation,
+            meta = m,
+            actionName = actionName,
+            isMutation = effectiveMutation,
+            preferReader = !effectiveMutation,
         )
         ActionContextHolder.set(ctx)
         LogContext.bind(ctx, request)

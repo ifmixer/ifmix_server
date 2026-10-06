@@ -35,18 +35,25 @@ class MediaController(
     private val facade: StorageFacade,
 ) {
 
-    @Operation(operationId = "m_media_media_presignUpload")
-    @PostMapping("m_media_media_presignUpload", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    companion object {
+        // media 模块 action 常量（原 MediaSpecs 机械搬移；CUSTOMER + requireProjectId=true，
+        // 对照原 StorageFetcher `fromDfe(dfe)` 全默认实参）。
+        const val PRESIGN_UPLOAD = "m_media_media_presignUpload"
+        const val PRESIGN_DOWNLOAD = "m_media_media_presignDownload"
+    }
+
+    @Operation(operationId = PRESIGN_UPLOAD)
+    @PostMapping(PRESIGN_UPLOAD, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun presignUpload(request: HttpServletRequest, @RequestBody body: ApiRequestBody<PresignUploadInput>): ResponseEntity<Envelope<PresignUploadResult>> {
-        val ctx = ctxFactory.fromRpc(request, MediaSpecs.PRESIGN_UPLOAD, body.meta)
+        val ctx = ctxFactory.fromRpc(request, PRESIGN_UPLOAD, isMutation = true, body = body)
         val input = body.requireInput()
         return ResponseEntity.ok(Envelope.ok(facade.presignUpload(ctx, input)).copy(reqId = ctx.requestId))
     }
 
-    @Operation(operationId = "m_media_media_presignDownload")
-    @PostMapping("m_media_media_presignDownload", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = PRESIGN_DOWNLOAD)
+    @PostMapping(PRESIGN_DOWNLOAD, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun presignDownload(request: HttpServletRequest, @RequestBody body: ApiRequestBody<PresignDownloadInput>): ResponseEntity<Envelope<PresignDownloadResult>> {
-        val ctx = ctxFactory.fromRpc(request, MediaSpecs.PRESIGN_DOWNLOAD, body.meta)
+        val ctx = ctxFactory.fromRpc(request, PRESIGN_DOWNLOAD, isMutation = true, body = body)
         val input = body.requireInput()
         return ResponseEntity.ok(Envelope.ok(facade.presignDownload(ctx, input)).copy(reqId = ctx.requestId))
     }
