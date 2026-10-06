@@ -1,0 +1,43 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/RequestParser.kt
+  s_b59dd1570ee716::t_f24aaed2900f91 74-75,85-86,227-229,231-242
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestHeaders.kt
+  s_b59dd1570ee716::t_777ebd5cd01f71 6-7,13-15
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCryptoFilter.kt
+  s_55b5c74423b72e::t_95dcb900840c3e 167-171
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/RequestParserTest.kt
+  s_3b6c3f6db81f52::t_bb9a3cdbee727c 157-188
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/WireCryptoTest.kt
+  s_b59dd1570ee716::t_36dcc680ea3c79 353-367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d93480a939e816e05be052b3b426071a780c8e0e",
+  "prompts": {},
+  "sessions": {
+    "s_3b6c3f6db81f52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a97e16c03199fbc29",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    },
+    "s_55b5c74423b72e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac7aa049260a5882f",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    },
+    "s_b59dd1570ee716": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60a7dec3-a69d-4412-9ff8-b40b8621b993",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
