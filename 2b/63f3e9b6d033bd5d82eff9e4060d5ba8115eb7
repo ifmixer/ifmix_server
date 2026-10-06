@@ -1,0 +1,43 @@
+core-api/build.gradle.kts
+  s_b049fe9f48e3d7::t_e4063751fa5d5c 23-26
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ErrorCode.kt
+  s_db31b686394892::t_dfa23a7018d649 16
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestHeaders.kt
+  s_b049fe9f48e3d7::t_c2c1e795f93a43 18-22
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCrypto.kt
+  s_b049fe9f48e3d7::t_00a7d03a1fa618 7,12,15-17,19,21-23,25,27-29,31-33,36,38-41,43,45,48-49,60,62,68-69,71,76-77,80-81,84-88,90-101,103-104,106-107,109-110,116,120-123,128,130,132-133,135-142,145-147,149-159,172-174
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCryptoFilter.kt
+  s_b049fe9f48e3d7::t_8ef88bd062ffa2 25,30,37,41,44,65
+core-api/src/main/resources/application.yml
+  s_b049fe9f48e3d7::t_254e7016ed3008 81-83,86
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/WireCryptoTest.kt
+  s_db31b686394892::t_fb7f41a899477c 11-13,19,27-28,31-34,38,40,43-93,96-97,105,126-162,169-172,175-176,178-179,181-184,186,188-189,193-194,197-202,219-220,241,245,248,255-256,260,262-264,270,272,274-275,278-282,286-287,291-293,297,304,309,317-318,320,322,327,329-332,334-337,339-341,343,349-357,360,364-371,374-380
+core-api/src/test/resources/wire-v3/gen_vectors.py
+  s_b049fe9f48e3d7::t_a3c804b29d8480 1-69
+core-api/src/test/resources/wire-v3/wire-v3-rfc-vectors.json
+  s_b049fe9f48e3d7::t_61b75db53279c1 1-6333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b63f3e9b6d033bd5d82eff9e4060d5ba8115eb7",
+  "prompts": {},
+  "sessions": {
+    "s_b049fe9f48e3d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6987755fd0109673",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    },
+    "s_db31b686394892": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6715a16-be5b-4a46-8289-a357905e15c3",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
