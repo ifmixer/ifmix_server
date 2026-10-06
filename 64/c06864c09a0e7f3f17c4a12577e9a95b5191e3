@@ -1,0 +1,14 @@
+docs/design/proposals/rpc-refactor-controller-mapper.md
+  h_b17efd5c751f9f 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64c06864c09a0e7f3f17c4a12577e9a95b5191e3",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
