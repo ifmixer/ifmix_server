@@ -53,6 +53,7 @@ docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一
 | proposals | [graphql-to-http-rpc-openapi](docs/design/proposals/graphql-to-http-rpc-openapi.md)（🔄 demo 试点实施中） | GraphQL → HTTP RPC + OpenAPI 迁移计划；§一 = RPC 协议定稿（信封/meta/header/命名） |
 | proposals | [rpc-pilot-server](docs/design/proposals/rpc-pilot-server.md) / [rpc-pilot-client](docs/design/proposals/rpc-pilot-client.md)（🚧 实施中） | demo 试点实现计划（前后端各一份，客户端已验收） |
 | proposals | [rpc-rollout-client](docs/design/proposals/rpc-rollout-client.md)（📝 R0 待启动） | demo 后客户端全量迁移计划（R0–R5、39 个 action 新名总表、四个 gate） |
+| proposals | [rpc-rollout-server](docs/design/proposals/rpc-rollout-server.md)（📝 M0 待启动） | demo 后服务端全量迁移计划（M0–M5、Envelope.reqId、Konvert mapper、subagent≤3 并行纪律） |
 
 已归档删除（git 历史可查）：`superpowers/specs/2026-10-02-…r2-versioning`（作废，理由在 deep-research-async §1.1）、`…install-attestation-impl-plan`（任务全 done，遗留项在设计文档头部）、`superpowers/plans/2026-09-29-install-tracking`（结论已沉淀）、`design/api-key-table`（并入 api-key-pool「表结构」）。
 

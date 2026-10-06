@@ -4,13 +4,13 @@
 >
 > **2026-10-06 讨论定稿**：去 GraphQL 的决策依据、请求信封 `{meta, input}` 与命名（§一）、header 留守原则与限流职责边界（§一）、与 wire v3 的合并执行顺序（§六）。
 >
-> **试点实施**：demo 模块作为首个迁移对象，实现任务已拆分给前后端 agent——服务端见 [rpc-pilot-server](rpc-pilot-server.md)、客户端见 [rpc-pilot-client](rpc-pilot-client.md)（试点通过 review 前不迁移其他模块、不删 GraphQL）。URL 决策：不带 resourceId，统一 `POST /rpc/customer/core/{actionName}`；DTO 分界规则见 §一「DTO 与转换」。
+> **试点实施**：demo 模块作为首个迁移对象，实现任务已拆分给前后端 agent——服务端见 [rpc-pilot-server](rpc-pilot-server.md)、客户端见 [rpc-pilot-client](rpc-pilot-client.md)（试点通过 review 前不迁移其他模块、不删 GraphQL）。URL 决策：不带 resourceId，统一 `POST /api/customer/core/{actionName}`；DTO 分界规则见 §一「DTO 与转换」。
 >
 > **全量迁移**：demo 之后的客户端迁移计划见 [rpc-rollout-client](rpc-rollout-client.md)（R0–R5 阶段、39 个 action 新名总表、四个 review gate；action 命名四段规范 `{q|m}_{module}_{resource}_{action}` 的单一真相表在该文件 §1）。
 
 **目标：** 在移动端上线前，将 `core-api` 的 34 个 DGS GraphQL action 迁移为 HTTP RPC，并以 OpenAPI/Swagger 作为唯一移动端 API 契约。
 
-**架构：** 使用 `POST /customer/core/rpc/{reqName}`，保留现有 `q_`/`m_` reqName。Controller 负责路由、按 action 校验 header、构造 `ActionContext`、开启必要事务和包装 `Envelope`；复杂读取由 `XxxQueryService` 批量查询并聚合；现有 Facade → Handler → Repository 分层继续保留。
+**架构：** 使用 `POST /api/customer/core/{reqName}`，保留现有 `q_`/`m_` reqName。Controller 负责路由、按 action 校验 header、构造 `ActionContext`、开启必要事务和包装 `Envelope`；复杂读取由 `XxxQueryService` 批量查询并聚合；现有 Facade → Handler → Repository 分层继续保留。
 
 **技术栈：** Kotlin / Spring MVC / springdoc-openapi / Jimmer DTO + Fetcher / PostgreSQL / Redis / JUnit 5。
 
@@ -26,7 +26,7 @@
 
 ### API 契约
 
-- 所有移动端 action 使用 `POST /rpc/customer/core/{actionName}`（2026-10-06 修订：`/rpc/` 提前，CF/WAF 按 `/rpc/customer/*` 一条规则覆盖）。
+- 所有移动端 action 使用 `POST /api/customer/core/{actionName}`（2026-10-06 修订：`/api/` 提前，CF/WAF 按 `/api/customer/*` 一条规则覆盖）。
 - **actionName 四段结构 `{q|m}_{module}_{resource}_{action}`**（2026-10-06 定稿）：`q/m` 表读/写意图，`module` 为业务模块，`resource` 为资源名，`action` 为标准动词（`getById / getByIds / list / createOne / createMany / updateOne / updateMany / deleteOne / deleteMany`，特殊子资源操作用具体名词如 `updateItems`；不兼容形状变更加 `V2` 后缀）。示例：`q_demo_todo_getById`、`m_demo_todo_createOne`。
   - **前缀是权限的表达，不是权限的来源**：路径客户端可见可填，裁决仍由 ActionSpec（actor 要求）+ 业务所有权校验承担；`{module, resource} × {read, write}` 前缀矩阵的价值在 manager 表面的粗粒度授权、审计与边缘规则。
   - **一致性由测试锁死**：路由表扫描——path 以 `m_` 开头 ⇔ `ActionSpec.isMutation=true`；module 段与 controller 所属模块一致。
@@ -36,13 +36,13 @@
 - HTTP status 必须等于 `code` 前三位；成功为 `200000` / HTTP 200。
 - 不再返回 GraphQL 的 `data + errors`、partial error 或 `errors[0]`。
 - Swagger 的 `operationId` 使用 reqName，前端从 OpenAPI 生成客户端。
-- URL 的 `customer` 受众段保留：token type 已含 manager(20)，将来管理端 API 用 `/manager/rpc/…` 独立命名空间，CF 规则与源站路由可按受众切分。
+- URL 的 `customer` 受众段保留：token type 已含 manager(20)，将来管理端 API 用 `/manager/api/…` 独立命名空间，CF 规则与源站路由可按受众切分。
 
 ### 请求信封与 meta（2026-10-06 定稿）
 
 - 加密前的请求 JSON 载荷统一为 `{"meta": {…}, "input": {…}}` 两段结构：`input` 为业务入参（每个 action 的 `XxxRequest`），`meta` 为非业务语义的请求属性（所有 action 共用的 `RequestMeta` OpenAPI 组件，不进各 action 的类型）。
 - 不沿用 GraphQL 的 `variables`：那是"模板替换参数"的词汇，RPC 没有 query 模板，载荷本身就是请求；客户端从 OpenAPI 重新生成，保留旧名零收益。命名采用业界通行的 `meta`（gRPC metadata、JSON:API 先例）；不用 `header`（与 HTTP header 纠缠）、不用 `context`（与服务端 ActionContext 冲突，两层必须不同名）。
-- 响应维持 `Envelope{code, msg, data}`，`data` 为各 action 的 `XxxResponse`；Envelope 预留 `meta` 字段暂不启用，首个候选是 `serverTime`（客户端对时，wire §9 ts 时效决策的前置条件）。
+- 响应维持 `Envelope{reqId, code, msg, data}`（2026-10-06 修订：信封顶层增加 `reqId`，回显 `meta.reqId`；错误路径由 GlobalExceptionHandler 从 request attribute / `x-req-id` header 兜底取值）；`data` 为各 action 的 `XxxResponse`；Envelope 预留 `meta` 字段暂不启用，首个候选是 `serverTime`（客户端对时，wire §9 ts 时效决策的前置条件）。
 - meta 在 Kotlin 侧为 typed `RequestMeta` data class，不做 `Map<String, String>` 透传；字段全可空，必填性由 `ActionSpec` 按 action 声明；新增字段属协议变更，走设计评审。
 
 **RequestMeta 字段清单**（2026-10-06 讨论定稿）：
@@ -96,7 +96,7 @@ XxxController
   └─ query   → XxxQueryService → Facade → Handler → Repository
 ```
 
-- Controller 包按 URL 受众段镜像：`bff/rpc/customer/{module}/`；`bff/rpc/manager/{module}/` 预留（token type 已含 manager）。公共的 ActionContextFactory/Envelope/异常处理留在 `infra/http/`，不下放受众包。
+- Controller 包按 URL 受众段镜像：`bff/api/customer/{module}/`；`bff/api/manager/{module}/` 预留（token type 已含 manager）。公共的 ActionContextFactory/Envelope/异常处理留在 `infra/http/`，不下放受众包。
 - 聚合层命名为 `XxxQueryService`，不继续叫 Fetcher：`Fetcher` 已同时被 DGS DataFetcher 和 Jimmer Fetcher 使用，继续复用会造成歧义。
 - `XxxQueryService` 只处理读取、批量加载和响应聚合，不承担 mutation。
 - Controller、QueryService 都不能直接访问 Repository；跨模块聚合只调用模块 Facade。
@@ -115,11 +115,18 @@ XxxController
 
 ### DTO 与转换
 
-分界规则（2026-10-06 定稿）：**字段照抄实体的用 Jimmer DTO 语言，其余手写**——Jimmer DTO 的收益是省字段搬运样板，代价是类型与实体结构耦合；耦合在"字段几乎照抄实体"时无害（实体演进带动契约，由 OpenAPI snapshot 捕获），在"对外契约需独立演进"时是纯负担。
+**命名规范**（2026-10-06 定稿）：手写与 Jimmer DTO language 生成的类型**统一命名 `XxxDto`**（暂不引入 View 之类的区分）；协议入参用 `XxxInput`（generated 删除后名字空出，去掉 `InputDto` 双后缀）。
 
-- 用 Jimmer DTO language：单实体读视图 `XxxDto` / `XxxDetailDto`（含边界稳定的关联抓取）、简单 create input（实体字段子集、无部分更新语义）。
-- 手写 data class：update input（`set` + `unsetFields` 部分更新语义）、多源聚合 response（页面级 DTO）、协议类型（`RequestMeta`、`Envelope`——不是任何实体的投影）、外部服务 request/response、跨模块响应（逻辑外键、不与单一实体绑定）。
-- 默认不引入 Konvert：Jimmer 生成 DTO 已自带 `Entity -> DTO` 构造器和 `toEntity()`，再加 Konvert 属于重复能力。
+**repo 投影**（2026-10-06 定稿）：repo 保持现状——支持不传 fetcher（默认全字段返回，形状完整、可安全做 entity/query 缓存）或显式传 viewType/fetcher 按需裁剪；**默认调用形态是不传**。特殊场景（如 list 需裁剪 JSONB 大字段）可为该查询定义专用 listDto 并在 repo 方法内固定使用。
+
+**缓存形状**（2026-10-06 定稿）：默认全字段结果可安全缓存（entity/query 缓存，复用面最大）；专用 listDto 的缓存 key 与其形状绑定。
+
+分界规则：**字段照抄实体的用 Jimmer DTO 语言，其余手写**——耦合在"字段几乎照抄实体"时无害（实体演进带动契约，由 OpenAPI snapshot 捕获），在"对外契约需独立演进"时是纯负担。
+
+- 用 Jimmer DTO language：单实体读出参 `XxxDto`（含边界稳定的关联抓取）、简单 create input（实体字段子集、无部分更新语义）。
+- 手写 data class：update input（`set` + `unset` 部分更新语义）、多源聚合 response（页面级 DTO，如 todo+items+counts）、协议类型（`RequestMeta`、`Envelope`——不是任何实体的投影）、外部服务 request/response、跨模块响应（逻辑外键、不与单一实体绑定）。
+- `Instant` 字段由 Jackson 默认序列化为 ISO-8601 字符串（与手写 `toString()` 等价），加一条测试锁住。
+- **Konvert 优先**（2026-10-06 修订，取代早先"不引入 Konvert"）：字段同名搬运（含嵌套 data class↔data class）能用 Konvert `@Mapper` 生成的尽量生成；涉及类型转换/服务端打戳（如 recItems createdAt）/unset 枚举转换/批量聚合组装的仍手写，可 Konvert 生成主干 + 手写后处理。Jimmer 生成 DTO 自带的 `toEntity()`/构造器继续直接用，不为它套 Konvert。
 
 ### Jimmer 关联与聚合
 
@@ -185,7 +192,7 @@ XxxController
 
 工作内容：
 
-- 在 `bff/rpc/customer/{module}/` 新增 Controller。
+- 在 `bff/api/customer/{module}/` 新增 Controller。
 - 每个方法使用原 reqName 路径和 OpenAPI operationId。
 - Mutation 保留当前 `GlobalTxRunner` 边界。
 - 新增 `DemoQueryService`，用 Jimmer 关联或 batch-by-ids 替代 Todo DataLoader。
@@ -262,7 +269,7 @@ XxxController
 
 最终验收：
 
-- 34 个 action 均可通过 `/customer/core/rpc/{reqName}` 调用。
+- 34 个 action 均可通过 `/api/customer/core/{reqName}` 调用。
 - Swagger/OpenAPI 完整列出所有 action、header、request、Envelope response 和错误状态。
 - HTTP status 与六位 code 前三位一致。
 - 业务层无 GraphQL generated type。

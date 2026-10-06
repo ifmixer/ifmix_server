@@ -7,12 +7,12 @@
 
 ## 0. 一页纸摘要
 
-为 `POST /rpc/customer/core/{actionName}` 建立协议无关的 RPC 基础设施（ActionSpec / RequestMeta / ActionContextFactory），迁移 demo 的 8 个 action。请求信封 `{meta, input}`、响应 `Envelope{code, msg, data}`、HTTP status = code 前三位。**`ActionContextFactory` 自包含**：直接消费 `meta.accessToken`（`AuthJwtService.verify`），不与 GraphQL 解析路径（RequestParser/ActionContextProvider）共享任何包装或适配代码。业务层（DemoFacade/Handler/Repository）**零改动**，DTO 转换全部在 BFF 层（generated types → 协议 DTO 的解耦留给阶段 2）。
+为 `POST /api/customer/core/{actionName}` 建立协议无关的 RPC 基础设施（ActionSpec / RequestMeta / ActionContextFactory），迁移 demo 的 8 个 action。请求信封 `{meta, input}`、响应 `Envelope{code, msg, data}`、HTTP status = code 前三位。**`ActionContextFactory` 自包含**：直接消费 `meta.accessToken`（`AuthJwtService.verify`），不与 GraphQL 解析路径（RequestParser/ActionContextProvider）共享任何包装或适配代码。业务层（DemoFacade/Handler/Repository）**零改动**，DTO 转换全部在 BFF 层（generated types → 协议 DTO 的解耦留给阶段 2）。
 
 ## 0.1 协议契约速查（与 proposal §一 一致，实现时逐条对齐）
 
 ```
-URL:      POST /rpc/customer/core/{actionName}
+URL:      POST /api/customer/core/{actionName}
           actionName = {q|m}_{module}_{resource}_{action}，如 q_demo_todo_getById（命名规范见 proposal §一）
 请求体:   {"meta": {...RequestMeta...}, "input": {...该 action 的输入对象...}}
           wire v3 加密时 body 是 octet-stream，WireCryptoFilter 解密后 controller 看到明文 JSON
@@ -34,7 +34,7 @@ header 留守: Content-Type / x-wirep-version: 3（加密时）/ User-Agent / CF
 | **S1** | wire v3 服务端 + 版本头改名 | `WireCrypto*`、`RequestHeaders.kt`、wire 相关测试、`wire-v3-plan-server.md`、wire 两篇文档 | 无 | Wave 1 |
 | **S2** | RPC 基础设施 | `infra/http/ActionSpec.kt`、`RequestMeta.kt`、`RpcRequestBody.kt`、`ActionContextFactory.kt`（新建，自包含）、`ActionContext.kt`（追加 3 字段）、`GlobalExceptionHandler.kt`（追加 Retry-After）、各自测试 | 无 | Wave 1 |
 | **S3** | demo 协议 DTO + mapper | `dto/demo/**`（新建）、`dto/common/FindOptionsDto.kt`（新建）、`dto/common/FilterGroupDto.kt`（新建） | 无 | Wave 1 |
-| **S4** | DemoQueryService + DemoController | `bff/rpc/customer/demo/**` | S2 + S3 | Wave 2 |
+| **S4** | DemoQueryService + DemoController | `bff/api/customer/demo/**` | S2 + S3 | Wave 2 |
 | **S5** | 合约/单测补全 + 全量回归 | `src/test/**`（S2/S4 未覆盖的 controller 级测试） | S4 | Wave 3 |
 | **S6** | 联调 E2E + 差异对比 + 停下等 review | 文档回写 | 全部 | Wave 4（串行） |
 
@@ -130,7 +130,7 @@ class ActionContextFactory(
     private val strict: Boolean = true,
 ) {
     /** 从 RPC 请求构造 ActionContext。meta 缺失时按空 RequestMeta 处理（明文 curl 调试场景）。 */
-    fun fromRpc(request: HttpServletRequest, spec: ActionSpec, meta: RequestMeta?): ActionContext
+    fun fromApi(request: HttpServletRequest, spec: ActionSpec, meta: RequestMeta?): ActionContext
 }
 ```
 
@@ -168,7 +168,7 @@ ex.retryAfterSec?.let { resp.header("Retry-After", it.toString()) }
 - 解密后的 body **不落日志**（`RequestLoggingFilter` 只打 header/状态，现状即满足；确认无 body 输出即可）。
 - `meta.accessToken` 出现在任何日志/异常 message 里都算 bug：RequestParser 现有报错信息不含 token 原文，保持。
 
-### 3.9 S2 单元测试（新建 `src/test/kotlin/com/ifmix/core/api/infra/http/rpc/`）
+### 3.9 S2 单元测试（新建 `src/test/kotlin/com/ifmix/core/api/infra/http/api/`）
 
 参照现有 `WireCryptoTest` / `LogContextTest` 的纯单测风格（MockHttpServletRequest + Mockito，不起 Spring context）：
 
@@ -303,7 +303,7 @@ op 取值集合（校验用）：`EQ, NE, GT, GTE, LT, LTE, IN, NIN, LIKE, IS_NU
 
 ---
 
-## 5. WP-S4：DemoQueryService + DemoController（`bff/rpc/customer/demo/`）
+## 5. WP-S4：DemoQueryService + DemoController（`bff/api/customer/demo/`）
 
 ### 5.1 `DemoQueryService.kt`
 
@@ -329,7 +329,7 @@ fun findTodos(ctx: ActionContext, findOptions: dto.common.CommonFindOptions?): P
 
 ```kotlin
 @RestController
-@RequestMapping("/rpc/customer/core", produces = [MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping("/api/customer/core", produces = [MediaType.APPLICATION_JSON_VALUE])
 class DemoController(
     private val ctxFactory: ActionContextFactory,
     private val facade: DemoFacade,
@@ -342,7 +342,7 @@ class DemoController(
 8 个 endpoint，全部 `@PostMapping("/{actionName}", consumes = [MediaType.APPLICATION_JSON_VALUE])`，方法体统一模式：
 
 ```kotlin
-val ctx = ctxFactory.fromRpc(request, Specs.XXX, body.meta)
+val ctx = ctxFactory.fromApi(request, Specs.XXX, body.meta)
 val input = objectMapper.convertValue(body.input ?: EmptyNode.instance, FindTodoByIdInput::class.java)
 // mutation: globalTx.withTx(ctx) { txCtx -> facade.xxx(txCtx, DemoRpcMappers.toGenerated(input)) }
 // query:    直接调 queryService / facade
@@ -364,7 +364,7 @@ return ResponseEntity.ok(Envelope.ok(resultDto))
 
 Spec 常量集中定义为 `DemoSpecs` object（8 个 `ActionSpec`，actionName 与上表一致，全部 CUSTOMER + requireProjectId=true）。
 
-### 5.3 S4 单元测试（`src/test/kotlin/com/ifmix/core/api/bff/rpc/customer/demo/`）
+### 5.3 S4 单元测试（`src/test/kotlin/com/ifmix/core/api/bff/api/customer/demo/`）
 
 仿 `InstallFetcherAttestTest` 的 Mockito 风格（mock facade/globalTx 直通；ctxFactory 用真实实例 + MockHttpServletRequest，JWT mock）：
 
