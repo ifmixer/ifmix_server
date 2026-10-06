@@ -1,0 +1,104 @@
+AGENTS.md
+  h_b17efd5c751f9f 53,55
+core-api/build.gradle.kts
+  h_b17efd5c751f9f 159
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/AuthFetcher.kt
+  h_b17efd5c751f9f 26,38,50,67,76
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/CustomerFetcher.kt
+  h_b17efd5c751f9f 1-106
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/InstallFetcher.kt
+  h_b17efd5c751f9f 1-381
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/customer/Customer.kt
+  h_b17efd5c751f9f 1-34
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/customer/DeletionReasons.kt
+  h_b17efd5c751f9f 1-12
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/install/Install.kt
+  h_b17efd5c751f9f 1-58
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/install/InstallAttestation.kt
+  h_b17efd5c751f9f 1-80
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/install/InstallCustomerRelation.kt
+  h_b17efd5c751f9f 1-22
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestGuard.kt
+  h_b17efd5c751f9f 24
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GlobalExceptionHandler.kt
+  h_b17efd5c751f9f 14,22,39-43,50,55,59-60,64,66,70,73,75-77
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCryptoFilter.kt
+  h_b17efd5c751f9f 18,29-30,39,55-57
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/customer/CustomerFacade.kt
+  h_b17efd5c751f9f 1-23
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/customer/handler/CustomerMergeHandler.kt
+  h_b17efd5c751f9f 1-67
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/customer/repo/CustomerRepository.kt
+  h_b17efd5c751f9f 1-155
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/handler/AuthAggHandler.kt
+  h_b17efd5c751f9f 20-21,26,100,372
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/InstallFacade.kt
+  h_b17efd5c751f9f 1-100
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/handler/InstallAggHandler.kt
+  h_b17efd5c751f9f 1-364
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/repo/InstallAttestationRepository.kt
+  h_b17efd5c751f9f 1-115
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/repo/InstallCustomerRelationRepository.kt
+  h_b17efd5c751f9f 1-80
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/repo/InstallRepository.kt
+  h_b17efd5c751f9f 1-36
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/NotificationFacade.kt
+  h_b17efd5c751f9f 7
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/NotificationHandler.kt
+  h_b17efd5c751f9f 6
+core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/AuthRefreshInstallTest.kt
+  h_b17efd5c751f9f 15-17,36,94
+core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/install/BindActionDecisionTest.kt
+  h_b17efd5c751f9f 1-36
+core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/install/CreateInstallPkTest.kt
+  h_b17efd5c751f9f 1-51
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationDispatchServiceTest.kt
+  h_b17efd5c751f9f 6
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationHandlerTest.kt
+  h_b17efd5c751f9f 7,11
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationTypeRoutingTest.kt
+  h_b17efd5c751f9f 10-11
+core-api/src/test/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/CustomerFetcherRateLimitTest.kt
+  h_b17efd5c751f9f 1-173
+core-api/src/test/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/InstallFetcherAttestTest.kt
+  h_b17efd5c751f9f 1-505
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/ErrorExposureTest.kt
+  h_b17efd5c751f9f 13-14
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/WireCryptoTest.kt
+  h_b17efd5c751f9f 144-146,185,189,194,217
+core-api/src/test/kotlin/com/ifmix/core/api/modules/auth/install/handler/InstallAggHandlerAttestTest.kt
+  h_b17efd5c751f9f 1-254
+docs/design/infra/wire-encryption.md
+  h_b17efd5c751f9f 101
+docs/design/proposals/graphql-to-http-rpc-openapi.md
+  h_b17efd5c751f9f 7,13,29-34,39,62,196,205,255,272
+docs/design/proposals/rpc-pilot-client.md
+  h_b17efd5c751f9f 10,15,104,113,195-202,209
+docs/design/proposals/rpc-pilot-server.md
+  h_b17efd5c751f9f 10,15-19,152,185,335,345-347,357,359,365-366,370,388
+docs/design/proposals/rpc-rollout-client.md
+  h_b17efd5c751f9f 10-12,17,25-27,33-34,40-41,50-55,76,99,113
+docs/design/proposals/rpc-rollout-server.md
+  h_b17efd5c751f9f 17-20,60-62,79-80,83,99,105
+docs/guide/ARCHITECTURE.md
+  h_b17efd5c751f9f 3,32-33,92,111,121,134-136,173,195,282,384
+docs/guide/AUTH_DESIGN.md
+  h_b17efd5c751f9f 15-22
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 19,34-39
+docs/ops/release.md
+  h_b17efd5c751f9f 7,44-51
+docs/testing/GRAPHQL_TRUSTED_DOCUMENTS.md
+  h_b17efd5c751f9f 14,25-27,98-99,103,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5080d15e49787a98e82ae19aedf21eeb057cc3b2",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
