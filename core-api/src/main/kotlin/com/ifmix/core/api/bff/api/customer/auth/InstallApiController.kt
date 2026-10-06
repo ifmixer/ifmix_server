@@ -1,14 +1,14 @@
 package com.ifmix.core.api.bff.api.customer.auth
 
-import com.ifmix.core.api.dto.install.AttestChallengeRes
-import com.ifmix.core.api.dto.install.AttestExistingInput
-import com.ifmix.core.api.dto.install.AttestExistingRes
-import com.ifmix.core.api.dto.install.CreateInstallInput
-import com.ifmix.core.api.dto.install.CreateInstallRes
-import com.ifmix.core.api.dto.install.RecoverInstallInput
-import com.ifmix.core.api.dto.install.UpdateInstallInput
-import com.ifmix.core.api.dto.install.UpdateInstallRes
-import com.ifmix.core.api.entity.install.AttestationStatuses
+import com.ifmix.core.api.dto.auth.install.AttestChallengeRes
+import com.ifmix.core.api.dto.auth.install.AttestExistingInput
+import com.ifmix.core.api.dto.auth.install.AttestExistingRes
+import com.ifmix.core.api.dto.auth.install.CreateInstallInput
+import com.ifmix.core.api.dto.auth.install.CreateInstallRes
+import com.ifmix.core.api.dto.auth.install.RecoverInstallInput
+import com.ifmix.core.api.dto.auth.install.UpdateInstallInput
+import com.ifmix.core.api.dto.auth.install.UpdateInstallRes
+import com.ifmix.core.api.entity.auth.install.AttestationStatuses
 import com.ifmix.core.api.infra.attest.AttestChallengeCodec
 import com.ifmix.core.api.infra.attest.AttestGuard
 import com.ifmix.core.api.infra.attest.AppAttestVerification
@@ -27,7 +27,7 @@ import com.ifmix.core.api.infra.ratelimit.RateLimiter
 import com.ifmix.core.api.infra.ratelimit.RateLimitResult
 import com.ifmix.core.api.infra.ratelimit.Window
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
-import com.ifmix.core.api.modules.install.InstallFacade
+import com.ifmix.core.api.modules.auth.install.InstallFacade
 import com.ifmix.core.api.modules.project.ProjectServerConfigFacade
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag

@@ -1,8 +1,8 @@
 package com.ifmix.core.api.bff.api.customer.auth
 
-import com.ifmix.core.api.dto.customer.CreateAnonymousRes
+import com.ifmix.core.api.dto.auth.customer.CreateAnonymousRes
 import com.ifmix.core.api.entity.common.ActorTypes
-import com.ifmix.core.api.entity.customer.Customer
+import com.ifmix.core.api.entity.auth.customer.Customer
 import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.auth.VerifiedToken
 import com.ifmix.core.api.infra.http.ActionContext
@@ -20,7 +20,7 @@ import com.ifmix.core.api.infra.ratelimit.Window
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.auth.AuthFacade
 import com.ifmix.core.api.modules.auth.handler.CreateAnonymousRes as HandlerCreateAnonymousRes
-import com.ifmix.core.api.modules.customer.CustomerFacade
+import com.ifmix.core.api.modules.auth.customer.CustomerFacade
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
