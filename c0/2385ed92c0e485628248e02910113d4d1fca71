@@ -1,0 +1,52 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoController.kt
+  h_b17efd5c751f9f 5-7,11-15,67,77,85,93,95-96,100,105,107-108,111,116,118-120
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoQueryService.kt
+  h_b17efd5c751f9f 4-5,23-24,27,35,39,45-46,55,66
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 74-84,87-92
+core-api/src/main/kotlin/com/ifmix/core/api/dto/common/FilterGroupDto.kt
+  h_b17efd5c751f9f 14-24
+core-api/src/main/kotlin/com/ifmix/core/api/dto/common/FindOptionsDto.kt
+  h_b17efd5c751f9f 13,16-23
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/DemoApiMappers.kt
+  h_b17efd5c751f9f 9,11-13,15,18,21-22,37-38,47-48,55-56
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/TodoInputs.kt
+  h_b17efd5c751f9f 7,9,11-12,14,19,22-26,29-42
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/TodoViews.kt
+  h_b17efd5c751f9f 3,9-10,17,21,23,25,29-31
+core-api/src/main/kotlin/com/ifmix/core/api/entity/demo/TodoRecommend.kt
+  h_b17efd5c751f9f 3-4,24-25,29,32,36-37
+core-api/src/main/kotlin/com/ifmix/core/api/infra/repo/CrudRepoTemplate.kt
+  h_b17efd5c751f9f 3,7,205-206
+core-api/src/main/kotlin/com/ifmix/core/api/infra/repo/FilterGroupResolver.kt
+  h_b17efd5c751f9f 3-5,82-83,85-96
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/AiFacade.kt
+  h_b17efd5c751f9f 8
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 6
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/repo/ScanRecordRepository.kt
+  h_b17efd5c751f9f 26
+core-api/src/main/kotlin/com/ifmix/core/api/modules/demo/DemoFacade.kt
+  h_b17efd5c751f9f 5-8
+core-api/src/main/kotlin/com/ifmix/core/api/modules/demo/handler/TodoAggHandler.kt
+  h_b17efd5c751f9f 7-14,84,89,127
+core-api/src/main/kotlin/com/ifmix/core/api/modules/demo/repo/TodoItemRepository.kt
+  h_b17efd5c751f9f 10,66,72,76
+core-api/src/main/kotlin/com/ifmix/core/api/modules/demo/repo/TodoRepository.kt
+  h_b17efd5c751f9f 17-18,84,90,96
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoControllerTest.kt
+  h_b17efd5c751f9f 5-6,9-11,122,142,149,153,164-165,177,190,274,279,281,286,288
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoQueryServiceTest.kt
+  h_b17efd5c751f9f 11,38,104,110,163,167,198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c02385ed92c0e485628248e02910113d4d1fca71",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
