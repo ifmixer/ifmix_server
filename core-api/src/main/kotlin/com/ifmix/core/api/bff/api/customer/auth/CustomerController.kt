@@ -34,8 +34,7 @@ import org.springframework.web.bind.annotation.RestController
  * - 无需登录（带 token 照校验），但必须携带有效可信 iid（[com.ifmix.core.api.infra.http.ActionContext.mustGetTokenInstallId]，
  *   iid 无效/缺失 → UNAUTHORIZED，进入事务前）；
  * - 下游 install 层限流（attest 规格 §4.6）：install 层 → IP 层 → 业务；install 层拒绝不碰 IP 计数器；
- *   IP 层拒绝 install 额度不退；无可信 token iid → legacy IP 层独立计数器
- *   （mustGetTokenInstallId 已先行拦截 401，此分支实际不可达，保留对齐原 fetcher 语义）；
+ *   IP 层拒绝 install 额度不退（legacy 兼容计数器已删，2026-10-06；iid 必有——mustGetTokenInstallId 先行 401）；
  * - 限流拒绝 429000 且必带 retryAfterSec（GlobalExceptionHandler 自动写 Retry-After 头）；
  * - mutation 包 [GlobalTxRunner.withTx]；customer 视图按原 nested resolver 语义查库补全
  *   （原 GraphQL 仅在客户端选取 customer 字段时查库，HTTP 无字段裁剪故固定返回）。
@@ -69,50 +68,36 @@ class CustomerController(
             request, REQNAME_CREATE_ANONYMOUS, isMutation = true, body = body,
             requireActorType = ActorRequirement.INSTALL_OR_CUSTOMER,
         )
-        // 只要求携带有效可信 iid（token 类型不限）；legacy fallback 关闭后无 token iid → 这里即 401000
+        // 只要求携带有效可信 iid（token 类型不限）；无 token iid → 这里即 401000
         ctx.mustGetTokenInstallId()
         val projectId = ctx.mustGetProjectId()
         val clientIp = ctx.clientIp ?: "unknown"
-        val iid = ctx.tokenInstallId
-        if (iid != null) {
-            when (val rl = rateLimiter.check(
-                Window.UTC_DAY,
-                "ratelimit:$projectId:anonymous:install:day:$iid",
-                rlProps.anonymous.installDay,
-            )) {
-                RateLimitResult.Allowed, RateLimitResult.Degraded -> Unit
-                is RateLimitResult.Limited ->
-                    throw ApiError(ErrorCode.RATE_LIMITED, "too many anonymous customer creations", retryAfterSec = rl.retryAfterSec)
-            }
-            when (val rl = rateLimiter.check(
-                Window.MINUTE,
-                "ratelimit:$projectId:anonymous:ip:min:$clientIp",
-                rlProps.anonymous.ipMinute,
-            )) {
-                RateLimitResult.Allowed, RateLimitResult.Degraded -> Unit
-                is RateLimitResult.Limited ->
-                    throw ApiError(ErrorCode.RATE_LIMITED, "too many anonymous customer creations", retryAfterSec = rl.retryAfterSec)
-            }
-            when (val rl = rateLimiter.check(
-                Window.UTC_DAY,
-                "ratelimit:$projectId:anonymous:ip:day:$clientIp",
-                rlProps.anonymous.ipDay,
-            )) {
-                RateLimitResult.Allowed, RateLimitResult.Degraded -> Unit
-                is RateLimitResult.Limited ->
-                    throw ApiError(ErrorCode.RATE_LIMITED, "too many anonymous customer creations", retryAfterSec = rl.retryAfterSec)
-            }
-        } else {
-            // legacy 严格阈值独立计数器（key 带 legacy: 段）；可信 iid 缺失在 mustGetTokenInstallId 已 401，此分支不可达，保留对齐原 fetcher
-            when (val rl = rateLimiter.check(
-                Window.MINUTE,
-                "ratelimit:$projectId:anonymous:legacy:ip:min:$clientIp",
-                rlProps.anonymous.legacyIpMinute,
-            )) {
-                RateLimitResult.Allowed, RateLimitResult.Degraded -> Unit
-                is RateLimitResult.Limited ->
-                    throw ApiError(ErrorCode.RATE_LIMITED, "too many anonymous customer creations", retryAfterSec = rl.retryAfterSec)
-            }
+        when (val rl = rateLimiter.check(
+            Window.UTC_DAY,
+            "ratelimit:$projectId:anonymous:install:day:${ctx.tokenInstallId}",
+            rlProps.anonymous.installDay,
+        )) {
+            RateLimitResult.Allowed, RateLimitResult.Degraded -> Unit
+            is RateLimitResult.Limited ->
+                throw ApiError(ErrorCode.RATE_LIMITED, "too many anonymous customer creations", retryAfterSec = rl.retryAfterSec)
+        }
+        when (val rl = rateLimiter.check(
+            Window.MINUTE,
+            "ratelimit:$projectId:anonymous:ip:min:$clientIp",
+            rlProps.anonymous.ipMinute,
+        )) {
+            RateLimitResult.Allowed, RateLimitResult.Degraded -> Unit
+            is RateLimitResult.Limited ->
+                throw ApiError(ErrorCode.RATE_LIMITED, "too many anonymous customer creations", retryAfterSec = rl.retryAfterSec)
+        }
+        when (val rl = rateLimiter.check(
+            Window.UTC_DAY,
+            "ratelimit:$projectId:anonymous:ip:day:$clientIp",
+            rlProps.anonymous.ipDay,
+        )) {
+            RateLimitResult.Allowed, RateLimitResult.Degraded -> Unit
+            is RateLimitResult.Limited ->
+                throw ApiError(ErrorCode.RATE_LIMITED, "too many anonymous customer creations", retryAfterSec = rl.retryAfterSec)
         }
         val res = globalTx.withTx(ctx) { txCtx -> authService.createAnonymousCustomer(txCtx) }
         // customer 视图：原 nested resolver 语义（按 customerId 查库，未命中 NOT_FOUND）

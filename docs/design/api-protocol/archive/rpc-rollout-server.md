@@ -1,6 +1,6 @@
 # RPC 全量迁移计划 — 服务端（ifmix_server）：demo 之后的所有修改
 
-> **给接手的 agent**：按顺序读 `AGENTS.md` → `docs/design/proposals/graphql-to-http-rpc-openapi.md` §一（协议唯一真相源）→ `rpc-pilot-server.md`（demo 试点，模式先例与基础设施规格）→ `rpc-rollout-client.md` §1（**action 名总表，单一真相，本文件不复制**）→ 本文件。冲突时以 proposal §一 为准并回改文档。
+> **给接手的 agent**：按顺序读 `AGENTS.md` → `docs/design/api-protocol/graphql-to-http-rpc-openapi.md` §一（协议唯一真相源）→ `rpc-pilot-server.md`（demo 试点，模式先例与基础设施规格）→ `rpc-rollout-client.md` §1（**action 名总表，单一真相，本文件不复制**）→ 本文件。冲突时以 proposal §一 为准并回改文档。
 > - 仓库：`/Users/jason/ai/myprojects/ifmix_server`；继续在 `feature/graphql-to-rpc` 分支按阶段提交，commit 前缀 `[rpc][M*]`。
 > - 客户端按 `rpc-rollout-client.md` 并行推进（R0–R5）；**每个 M 阶段联调前确认客户端对应阶段就绪，时序以 gate 为准**。
 > - **硬边界：gqlOp 路径全量保留到 M5；每迁移一个模块只新增 RPC 代码，不改既有 Facade/Handler/Repository 的行为；webhook 路径不动；`infra/auth/RequestParser.kt`、`infra/graphql/ActionContextProvider.kt` 不改。**
@@ -15,7 +15,7 @@ demo 试点（S1–S6）：客户端已验收；服务端若未完成，**先按
 
 ```
 URL:      POST /api/customer/core/{actionName}
-          actionName = {q|m}_{module}_{resource}_{action}（四段下划线；总表见 rpc-rollout-client.md §1）
+          actionName = {q|m}_{module}_{resource}_{action}（四段下划线；总表见 ../rpc-rollout-client.md §1）
 请求体:   {"meta": {...}, "input": {...}}（wire v3 加密时 octet-stream；meta 字段见 pilot §0.1）
 响应体:   {"reqId": "...", "code": "200000", "msg": "success", "data": {...}}   ← reqId 为本次新增
           reqId = 回显 meta.reqId（缺省用服务端生成值）；HTTP status = code 前三位
@@ -91,7 +91,7 @@ mapper:   手写 companion factory + Res 字段无默认值（§3.2；敏感字�
 1. **actionName 常量定义在 controller 的 companion object**（`const val SCAN_GET_BY_ID = "q_ai_scan_getById"`，Kotlin const 可直接用于注解），`@PostMapping` / `@Operation(operationId=)` / `fromRpc` 三处引用同一常量；8 个 `XxxSpecs.kt` 删除。
 2. fromRpc 签名：`fromRpc(request, actionName, isMutation: Boolean? = null, body, requireActorType = CUSTOMER, requireProjectId = true)`——actionName/isMutation 的唯一依据仍是迁移对象 DataFetcher 的 `fromDfe(...)` 实参，逐字段核对，**禁止凭感觉填**；isMutation 省略时由 actionName 的 `m_` 前缀兜底；**body 整体透传**（factory 自取 meta，并把 raw RequestMeta 挂上 ActionContext：`ctx.meta.xxx` 直读透传字段，新增 meta 字段只改 RequestMeta 一处；有校验/归一逻辑的字段仍由 factory 出派生字段）。
 3. 请求体为泛型 `ApiRequestBody<T>`（input 类型由 endpoint 签名声明、Spring 边界反序列化，必填 `requireInput()`，无入参 `NoInput`）；mutation 包 `GlobalTxRunner`；不 import repo/handler。
-4. **命名一致性测试**（每模块，缩减）：反射扫 controller 的 @PostMapping path——四段格式合法、`m_` 前缀 ⇔ endpoint 的 isMutation 实参、module 段 = 所属模块、action 在 rpc-rollout-client.md §1 表内。
+4. **命名一致性测试**（每模块，缩减）：反射扫 controller 的 @PostMapping path——四段格式合法、`m_` 前缀 ⇔ endpoint 的 isMutation 实参、module 段 = 所属模块、action 在 ../rpc-rollout-client.md §1 表内。
 5. 限流样板（install 层 → IP 层 → legacy、拒绝不退款）目前三处手抄——**暂不动**，等 customer/install 并入 auth 的重构落地后统一收口成共享机制。
 
 ## 4. 阶段计划（与客户端 R0–R5 对齐）
@@ -109,7 +109,7 @@ S1–S6 未完成的先完成；已完成的把 §2 的 2/3/4 三处修订补进
 
 ### M2 install + customer + auth 身份链路（8 actions）⚠️ 风险最高
 
-> 实施注（2026-10-06）：install 与 customer 控制器已并入 `bff/api/customer/auth/` 包（action 名 `m_auth_install_*` / `m_auth_customer_createAnonymous`，resource/action 段不变只改 module 段；详见 rpc-rollout-client.md §1.2）；session 各 action 名以 §1.2 表为准。
+> 实施注（2026-10-06）：install 与 customer 控制器已并入 `bff/api/customer/auth/` 包（action 名 `m_auth_install_*` / `m_auth_customer_createAnonymous`，resource/action 段不变只改 module 段；详见 ../rpc-rollout-client.md §1.2）；session 各 action 名以 §1.2 表为准。
 
 3 个 subagent 上限用满：install / customer+auth 两个 WP 并行 + 第三个做共享测试基建（错误码矩阵）。
 

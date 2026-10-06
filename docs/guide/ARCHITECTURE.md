@@ -185,7 +185,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 
 ## RPC API 设计
 
-> 协议唯一真相源：[proposals/graphql-to-http-rpc-openapi.md](../design/proposals/graphql-to-http-rpc-openapi.md) §一。
+> 协议唯一真相源：[api-protocol/archive/graphql-to-http-rpc-openapi.md](../design/api-protocol/archive/graphql-to-http-rpc-openapi.md) §一。
 > GraphQL 引擎已删除（2026-10-06），历史设计看 git。
 
 - **Endpoint**: `POST /api/customer/core/{actionName}`，全部 action 统一一种 URL 形状（不带 resourceId，ID 在加密 body 内）
@@ -271,7 +271,7 @@ DB (via Jimmer KSqlClient)
 | 33 | AuthIdentity 账号中枢 + Customer/IdpIdentity 关系表 | 账号资料与 project 级用户分离；IdpIdentity↔AuthIdentity 用 M:N 关系表 |
 | 34 | 匿名 Customer 清理迁到 core-job | 批处理任务不占 web 进程，Spring Batch 编排 |
 | 35 | 不建设通用创建幂等 | 重复损害低，通用 key/状态机仍无法保证外部 AI Exactly Once；接受重复，以限流、配额、清理和监控兜底 |
-| 36 | 新 Customer 必须来自 Install（目标态） | createAnonymous/login/refresh 携带 installToken，保证新 customer token 含 iid 并原子维护关系；legacy 仅作迁移兼容 |
+| 36 | 新 Customer 必须来自 Install（目标态） | createAnonymous/login/refresh 携带 installToken，保证新 customer token 含 iid 并原子维护关系（legacy 兼容已移除，2026-10-06） |
 
 ## API 约定
 

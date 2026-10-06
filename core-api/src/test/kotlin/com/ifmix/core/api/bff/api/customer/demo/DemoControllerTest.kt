@@ -312,7 +312,7 @@ class DemoControllerTest {
         // rpc-rollout-client.md §1.1 demo 表（8 个 action 名单一真相）
         val expected = setOf(
             "q_demo_todo_getById", "q_demo_todo_getByIds", "q_demo_todo_list",
-            "m_demo_todo_createOne", "m_demo_todo_updateOne", "m_demo_todo_updateItems",
+            "m_demo_todo_createOne", "m_demo_todo_updateById", "m_demo_todoItem_updateMany",
             "m_demo_todo_deleteOne", "m_demo_todo_deleteMany",
         )
         val postings = DemoController::class.declaredMemberFunctions
@@ -330,7 +330,7 @@ class DemoControllerTest {
             assertEquals(4, segs.size, "four-segment format: $n")
             assertTrue(segs[0] in setOf("q", "m"), "q_/m_ prefix: $n")
             assertEquals("demo", segs[1], "module segment: $n")
-            assertEquals("todo", segs[2], "resource segment: $n")
+            assertTrue(segs[2] in setOf("todo", "todoItem"), "resource segment: $n")
         }
         // companion 常量与路由 path 同源
         assertEquals("q_demo_todo_getById", DemoController.REQNAME_FIND_TODO_BY_ID)

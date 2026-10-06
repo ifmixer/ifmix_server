@@ -1,6 +1,6 @@
 # RPC 试点实现计划 — 服务端（ifmix_server）：RPC 基础设施 + demo 模块
 
-> **给接手的 agent**：按顺序读 `AGENTS.md` → `docs/design/proposals/graphql-to-http-rpc-openapi.md` §一（协议定稿，唯一真相源）→ `docs/design/infra/wire-encryption.md` §10 → 本文件。契约冲突时以 proposal §一 与 wire §10 为准并回改本文件。逐任务更新「状态」，不要重做已完成任务。
+> **给接手的 agent**：按顺序读 `AGENTS.md` → `docs/design/api-protocol/graphql-to-http-rpc-openapi.md` §一（协议定稿，唯一真相源）→ `docs/design/infra/wire-encryption.md` §10 → 本文件。契约冲突时以 proposal §一 与 wire §10 为准并回改本文件。逐任务更新「状态」，不要重做已完成任务。
 > - 仓库：`/Users/jason/ai/myprojects/ifmix_server`；分支 `feature/graphql-to-rpc`（自 main 切出；**若已建 feature/rpc-pilot，直接 `git branch -m feature/graphql-to-rpc`**）。
 > - 客户端配套见 `rpc-pilot-client.md`（antique 仓库，不归你改）。**客户端 wire v3 已完成并合入 master**；其头部用 `x-wirep-version`（客户端已按本定稿改名）。
 > - **硬性边界：本试点只做基础设施 + demo 模块。其余模块（media/cs/install/customer/auth/pay/ai）一律不动；GraphQL 全量保留不删（双轨并存，联调通过后另行删除）。**

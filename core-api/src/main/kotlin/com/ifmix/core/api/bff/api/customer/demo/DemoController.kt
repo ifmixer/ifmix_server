@@ -62,8 +62,8 @@ class DemoController(
         const val REQNAME_FIND_TODOS_BY_IDS = "q_demo_todo_getByIds"
         const val REQNAME_FIND_TODOS = "q_demo_todo_list"
         const val REQNAME_CREATE_TODO = "m_demo_todo_createOne"
-        const val REQNAME_UPDATE_TODO = "m_demo_todo_updateOne"
-        const val REQNAME_BATCH_UPDATE_TODO_ITEMS = "m_demo_todo_updateItems"
+        const val REQNAME_UPDATE_TODO = "m_demo_todo_updateById"
+        const val REQNAME_BATCH_UPDATE_TODO_ITEMS = "m_demo_todoItem_updateMany"
         const val REQNAME_DELETE_TODO = "m_demo_todo_deleteOne"
         const val REQNAME_DELETE_TODO_BY_IDS = "m_demo_todo_deleteMany"
     }

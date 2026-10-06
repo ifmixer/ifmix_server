@@ -43,7 +43,7 @@ import java.util.UUID
  * 自 AiFetcherRateLimitTest 移植到 RPC controller（限流逻辑原样搬运，仅入口从 DFE 换成 meta+factory）：
  * - 有 iid（customer token 的 iid）：install 层（5/min + 100/天）→ IP 层（100/min + 1000/天）；
  *   install 层拒绝不碰 IP 计数器；IP 拒绝 install 已扣不退；scan 与 DR 分别计数。
- * - 无 iid（legacy fallback 期）：legacy 独立计数器（scan 5/min+500/天、DR 3/min+300/天），不占大额 IP 计数器。
+ * - 无 iid（legacy 兼容计数器已删，2026-10-06）：直接走 IP 层（与有 iid 共用大额计数器），无 install 层。
  * 数值从 RateLimitProperties 读取（默认值 = 规格 §4.6 yaml）。
  */
 class AiRateLimitTest {
@@ -57,14 +57,10 @@ class AiRateLimitTest {
     private val scanInstallDayKey = "ratelimit:$pid:scan:install:day:$iid"
     private val scanIpMinKey = "ratelimit:$pid:scan:ip:min:$ip"
     private val scanIpDayKey = "ratelimit:$pid:scan:ip:day:$ip"
-    private val scanLegacyMinKey = "ratelimit:$pid:scan:legacy:ip:min:$ip"
-    private val scanLegacyDayKey = "ratelimit:$pid:scan:legacy:ip:day:$ip"
     private val drInstallMinKey = "ratelimit:$pid:deep-research:install:min:$iid"
     private val drInstallDayKey = "ratelimit:$pid:deep-research:install:day:$iid"
     private val drIpMinKey = "ratelimit:$pid:deep-research:ip:min:$ip"
     private val drIpDayKey = "ratelimit:$pid:deep-research:ip:day:$ip"
-    private val drLegacyMinKey = "ratelimit:$pid:deep-research:legacy:ip:min:$ip"
-    private val drLegacyDayKey = "ratelimit:$pid:deep-research:legacy:ip:day:$ip"
 
     private val jwt = mock<AuthJwtService>()
     private val aiService = mock<AiFacade>()
@@ -75,7 +71,7 @@ class AiRateLimitTest {
     private lateinit var objectMapper: ObjectMapper
     private lateinit var controller: AiController
 
-    /** 是否携带 iid claim（false = legacy 分支）。 */
+    /** 是否携带 iid claim（false = 无 iid，只走 IP 层）。 */
     private var withIid = true
 
     @BeforeEach
@@ -174,31 +170,21 @@ class AiRateLimitTest {
     }
 
     @Test
-    fun `scan legacy fallback only legacy counters used with strict thresholds`() {
+    fun `scan without iid uses ip counters only, no install layer and no legacy counter`() {
         withIid = false
         controller.createScan(request(), scanBody())
-        verify(rateLimiter).check(eq(Window.MINUTE), eq(scanLegacyMinKey), eq(5))
-        verify(rateLimiter).check(eq(Window.UTC_DAY), eq(scanLegacyDayKey), eq(500))
+        verify(rateLimiter).check(eq(Window.MINUTE), eq(scanIpMinKey), eq(100))
+        verify(rateLimiter).check(eq(Window.UTC_DAY), eq(scanIpDayKey), eq(1000))
         verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(scanInstallMinKey), any())
-        verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(scanIpMinKey), any())
+        verify(rateLimiter, never()).check(eq(Window.UTC_DAY), eq(scanInstallDayKey), any())
     }
 
     @Test
-    fun `scan legacy minute limited rejects with retryAfterSec`() {
+    fun `scan without iid ip minute limited rejects with retryAfterSec`() {
         withIid = false
-        whenever(rateLimiter.check(eq(Window.MINUTE), eq(scanLegacyMinKey), eq(5))).thenReturn(RateLimitResult.Limited(20))
+        whenever(rateLimiter.check(eq(Window.MINUTE), eq(scanIpMinKey), eq(100))).thenReturn(RateLimitResult.Limited(20))
         val e = assertThrows<ApiError> { controller.createScan(request(), scanBody()) }
         assertThat(e.retryAfterSec).isEqualTo(20L)
-    }
-
-    @Test
-    fun `scan without token iid uses legacy counters (401 comes from mustGetTokenInstallId in the service layer, e2e covered)`() {
-        // 限流层语义：无 tokenInstallId → legacy 独立计数器；401000 由业务层 mustGetTokenInstallId 抛（本单测 mock 掉 service）
-        withIid = false
-        controller.createScan(request(), scanBody())
-        verify(rateLimiter).check(eq(Window.MINUTE), eq(scanLegacyMinKey), eq(5))
-        verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(scanInstallMinKey), any())
-        verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(scanIpMinKey), any())
     }
 
     // ===== DeepResearch：同结构、独立计数 =====
@@ -220,11 +206,11 @@ class AiRateLimitTest {
     }
 
     @Test
-    fun `dr legacy fallback 3 per minute and 300 per day legacy counters`() {
+    fun `dr without iid uses ip counters only`() {
         withIid = false
         controller.runDeepResearch(request(), drBody())
-        verify(rateLimiter).check(eq(Window.MINUTE), eq(drLegacyMinKey), eq(3))
-        verify(rateLimiter).check(eq(Window.UTC_DAY), eq(drLegacyDayKey), eq(300))
+        verify(rateLimiter).check(eq(Window.MINUTE), eq(drIpMinKey), eq(100))
+        verify(rateLimiter).check(eq(Window.UTC_DAY), eq(drIpDayKey), eq(1000))
         verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(drInstallMinKey), any())
     }
 

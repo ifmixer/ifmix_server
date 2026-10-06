@@ -14,6 +14,7 @@ import com.ifmix.core.api.infra.attest.AttestGuard
 import com.ifmix.core.api.infra.attest.AppAttestVerification
 import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.http.ActionContext
+import com.ifmix.core.api.infra.http.ClientPlatform
 import com.ifmix.core.api.infra.http.ActionContextFactory
 import com.ifmix.core.api.infra.http.ActorRequirement
 import com.ifmix.core.api.infra.http.ApiError
@@ -67,17 +68,40 @@ class InstallApiController(
         // install 模块 action 常量（原 InstallSpecs 机械搬移）：全部 requireActorType = NONE
         //（唯一依据 = InstallFetcher 各 action 的 `fromDfe(dfe, requireActorType = null)` 实参；
         // token 要求由各 endpoint 的既有内部校验精确执行）。
-        const val REQNAME_CREATE_INSTALL = "m_auth_install_create"
+        // v6：createInstall 按平台拆分（同一私有流程，限流 key 不含平台段——共享 IP 配额）
+        const val REQNAME_CREATE_IOS_INSTALL = "m_auth_install_createIosInstall"
+        const val REQNAME_CREATE_ANDROID_INSTALL = "m_auth_install_createAndroidInstall"
         const val REQNAME_UPDATE_INSTALL = "m_auth_install_updateOne"
         const val REQNAME_ATTEST_EXISTING = "m_auth_install_attest"
         const val REQNAME_RECOVER_INSTALL = "m_auth_install_recover"
         const val REQNAME_CREATE_ATTEST_CHALLENGE = "m_auth_install_createAttestChallenge"
     }
 
-    @Operation(operationId = REQNAME_CREATE_INSTALL)
-    @PostMapping(REQNAME_CREATE_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun createInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> {
-        val ctx = ctxFactory.fromRpc(request, REQNAME_CREATE_INSTALL, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
+    @Operation(operationId = REQNAME_CREATE_IOS_INSTALL)
+    @PostMapping(REQNAME_CREATE_IOS_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun createIosInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> =
+        createInstallInternal(request, body, ClientPlatform.IOS, AttestGuard.PROVIDER_IOS)
+
+    @Operation(operationId = REQNAME_CREATE_ANDROID_INSTALL)
+    @PostMapping(REQNAME_CREATE_ANDROID_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun createAndroidInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> =
+        createInstallInternal(request, body, ClientPlatform.ANDROID, AttestGuard.PROVIDER_ANDROID)
+
+    /** 平台一致性（v6 强校验 1）：自报 meta.clientPlatform 必须与 action 平台一致，缺失也算 mismatch → 400000。 */
+    private fun requirePlatform(ctx: ActionContext, expected: ClientPlatform) {
+        if (ctx.clientPlatform != expected)
+            throw ApiError(ErrorCode.INVALID_REQUEST, "client platform mismatch: expected $expected")
+    }
+
+    private fun createInstallInternal(
+        request: HttpServletRequest,
+        body: ApiRequestBody<CreateInstallInput>,
+        expectedPlatform: ClientPlatform,
+        expectedProvider: Int,
+    ): ResponseEntity<Envelope<CreateInstallRes>> {
+        val actionName = if (expectedPlatform == ClientPlatform.IOS) REQNAME_CREATE_IOS_INSTALL else REQNAME_CREATE_ANDROID_INSTALL
+        val ctx = ctxFactory.fromRpc(request, actionName, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
+        requirePlatform(ctx, expectedPlatform)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
         val input = body.requireInput()
@@ -93,8 +117,9 @@ class InstallApiController(
                 throw ApiError(ErrorCode.RATE_LIMITED, "too many createInstall", retryAfterSec = rl.retryAfterSec)
         }
 
-        // 2. proof / proofStatus 组合校验（§5.1 表：两者同时非空 → 400000；proofStatus ∉ {null,20} → 400000）
-        val bundle = attestGuard.parseProofInput(mapOf("proof" to input.proof), input.proofStatus)
+        // 2. proof / proofStatus 组合校验（§5.1 表：两者同时非空 → 400000；proofStatus ∉ {null,20} → 400000；
+        //    v6 强校验 2：proof.provider 与 action 平台不一致 → 400000）
+        val bundle = attestGuard.parseProofInput(mapOf("proof" to input.proof), input.proofStatus, expectedProvider)
 
         // 3. 纯技术验证（不套 mode）→ 套 §4.3 矩阵（ENFORCE+INVALID → 403001；ENFORCE+无 proof/UNAVAILABLE → 403001/503002）
         val verification = attestGuard.verifyProof(ctx, bundle, input.proofStatus)
@@ -128,9 +153,15 @@ class InstallApiController(
             throw ApiError(ErrorCode.ATTESTATION_FAILED, "attestation key already bound (key_reused)")
         }
 
-        // §5.9：VALID 且 storeType 交叉不一致 → 只打日志不拒绝（OBSERVE/ENFORCE 同）
-        if (verifiedProof != null && verifiedProof.provider == AttestGuard.PROVIDER_IOS && input.storeType != null && input.storeType != 10) {
-            attestGuard.logStoreMismatch(pid, verifiedProof.provider, input.storeType)
+        // §5.9（v6 泛化）：VALID 且 storeType 与 provider 交叉不一致（110↔10 / 120↔20）→ 只打日志不拒绝（OBSERVE/ENFORCE 同）
+        if (verifiedProof != null && input.storeType != null) {
+            val expectedStoreType = when (verifiedProof.provider) {
+                AttestGuard.PROVIDER_IOS -> 10
+                AttestGuard.PROVIDER_ANDROID -> 20
+                else -> null
+            }
+            if (expectedStoreType != null && input.storeType != expectedStoreType)
+                attestGuard.logStoreMismatch(pid, verifiedProof.provider, input.storeType)
         }
 
         val attestationStatus = when (decision) {
@@ -312,7 +343,7 @@ class InstallApiController(
 
         // 4. verifyProof（§5.1 组合校验 + §5.7 输入上限；INVALID → 20；UNAVAILABLE → 503002）
         val proofStatus: Int? = null
-        val bundle = attestGuard.parseProofInput(mapOf("proof" to input.proof), proofStatus)
+        val bundle = attestGuard.parseProofInput(mapOf("proof" to input.proof), proofStatus, AttestGuard.PROVIDER_IOS)
         val verification = attestGuard.verifyProof(ctx, bundle, proofStatus)
         when (verification) {
             is AttestGuard.Verification.Valid -> Unit

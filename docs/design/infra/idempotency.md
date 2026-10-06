@@ -236,7 +236,7 @@ customer token:
 
 login 和 refresh 同样携带 installToken，确保新签发的 customer token 始终有 iid，并维护 Install↔Customer 关系。
 
-> 本轮选择强制方案，不实现 legacy 无 iid 的业务写入灰度。旧 token 必须先通过 installToken+refreshToken 刷新为含 iid 的新 token；logout 仍保留缺 iid 兼容。
+> 本轮选择强制方案，不实现 legacy 无 iid 的业务写入灰度。旧 token 必须先通过 installToken+refreshToken 刷新为含 iid 的新 token；logout 仍保留缺 iid 兼容。（2026-10-06：legacy 兼容链路已整体移除，线上无老 app、无需兼容。）
 
 ### 4.2 客户端允许重复创建凭证
 

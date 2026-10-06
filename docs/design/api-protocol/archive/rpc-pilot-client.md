@@ -1,8 +1,8 @@
 # RPC 试点实现计划 — 客户端（antique / client-sdk）：rpcOp 传输层 + demo action
 
-> **给接手的 agent**：先读 `packages/client-sdk/AGENTS.md` → ifmix_server 仓库 `docs/design/proposals/graphql-to-http-rpc-openapi.md` §一（协议定稿，唯一真相源）→ 本文件。契约冲突时以 §一 为准并回改本文件。逐任务更新「状态」，不要重做已完成任务。
+> **给接手的 agent**：先读 `packages/client-sdk/AGENTS.md` → ifmix_server 仓库 `docs/design/api-protocol/graphql-to-http-rpc-openapi.md` §一（协议定稿，唯一真相源）→ 本文件。契约冲突时以 §一 为准并回改本文件。逐任务更新「状态」，不要重做已完成任务。
 > - 仓库：`/Users/jason/ai/myprojects/antique`；改动集中在 `packages/client-sdk/packages/api/`；分支 `feature/graphql-to-rpc`（自 master 切出——**wire v3 客户端已完成并合入 master**；若已建 feature/rpc-pilot，直接 `git branch -m feature/graphql-to-rpc`）。
-> - 服务端配套见 ifmix_server 仓库 `docs/design/proposals/rpc-pilot-server.md`（不归你改）。
+> - 服务端配套见 ifmix_server 仓库 `docs/design/api-protocol/rpc-pilot-server.md`（不归你改）。
 > - **硬性边界：只做传输层 + demo 的 8 个 action。其余 action 不动，gqlOp 路径全量保留，trusted documents/codegen 流程不删，现有测试一行行为都不许变（挪位置可以）。**
 
 ## 0. 一页纸摘要

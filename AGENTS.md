@@ -39,7 +39,7 @@ docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一
 |------|------|------|
 | install | [install-tracking](docs/design/install/install-tracking.md)（✅ 已实现） | install 表、install↔customer 关系、install token（type=5/iid）、绑定判定矩阵 |
 | install | [install-customer-hardening](docs/design/install/install-customer-hardening.md)（✅ 已实现） | 强关系与客户端容错跨端修改清单（含错误码收敛） |
-| attest | [install-attestation](docs/design/attest/install-attestation.md)（✅ 服务端已实现，剩真机 fixture / TestFlight 冒烟 / Apple 端点实测） | App Attest 一期 1a：challenge/attestation/assertion、限流、core-job 回填、灰度切 ENFORCE；Android (Play Integrity) 为 1b |
+| attest | [install-attestation](docs/design/attest/install-attestation.md)（✅ 服务端已实现（v6：createInstall 按平台拆分），剩真机 fixture / TestFlight 冒烟 / Apple 端点实测） | App Attest 一期 1a：challenge/attestation/assertion、限流、core-job 回填、灰度切 ENFORCE；Android (Play Integrity) 为 1b |
 | ai | [api-key-pool](docs/design/ai/api-key-pool.md)（✅ 已实现） | key 池轮询/冷却/降级 + `core_ai_api_key` 表结构 + provider 通用化 |
 | ai | [api-key-disable-and-probe-skip](docs/design/ai/api-key-disable-and-probe-skip.md)（✅ 已实现） | 401/403 永久禁用、pick 全冷却跳窗口（key 池演进） |
 | ai | [deep-research-async](docs/design/ai/deep-research-async.md)（✅ 已实现） | DR 异步化 + PG premium_result 存储 + 历史版本 + latest 权威指针 |
@@ -49,11 +49,13 @@ docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一
 | notification | [push-feature-flag](docs/design/notification/push-feature-flag.md)（✅ 已实现） | 前端 hard code flag + mutation 传参（非后端 kill switch） |
 | infra | [wire-encryption](docs/design/infra/wire-encryption.md)（v2 已实现未发布；§10 v3 HPKE 提案已定稿，v1.0.6 前实施） | wire 加密：v2 → v3（RFC 9180 HPKE）、降级模型、安全模型与演进决策 |
 | infra | [idempotency](docs/design/infra/idempotency.md)（✅ 决策完成） | 创建接口幂等性评估：不建通用幂等，语义幂等 + 业务唯一键 |
-| proposals | [graphql-to-http-rpc-openapi](docs/design/proposals/graphql-to-http-rpc-openapi.md)（✅ 已实施 2026-10-06，GraphQL 引擎已删除） | GraphQL → HTTP API + OpenAPI 迁移计划；§一 = API 协议定稿（信封/meta/header/命名） |
-| proposals | [rpc-pilot-server](docs/design/proposals/rpc-pilot-server.md) / [rpc-pilot-client](docs/design/proposals/rpc-pilot-client.md)（✅ 已完成） | demo 试点实现计划（前后端各一份） |
-| proposals | [rpc-rollout-client](docs/design/proposals/rpc-rollout-client.md)（📝 R1 待启动） | demo 后客户端全量迁移计划（R0–R5、39 个 action 新名总表、四个 gate；R0 完成，待跟进 /api、wire v2、强制加密） |
+| api-protocol | [rpc-protocol-decisions](docs/design/api-protocol/rpc-protocol-decisions.md)（✅ 已实施 2026-10-06，GraphQL 引擎已删除） | **RPC 协议决策留存（先读这份）**：URL/四段命名、信封 `{meta,input}`、header 留守原则、Controller/DTO/mapper 三层规则 |
+| api-protocol | [konvert-rollout-server](docs/design/api-protocol/konvert-rollout-server.md)（📝 K3/K4/§5.3 待实施） | Konvert 全量替换手写 mapper 计划；§0.5 语法校准是实测定稿，K1 收敛、K2 已实施 |
+| api-protocol | [rpc-rollout-client](docs/design/api-protocol/rpc-rollout-client.md)（📝 客户端侧 R1 待启动） | antique 仓库 demo 后客户端迁移计划（R0–R5、action 名总表、gate）；服务端侧已全部完成 |
 
 已归档删除（git 历史可查）：`superpowers/specs/2026-10-02-…r2-versioning`（作废，理由在 deep-research-async §1.1）、`…install-attestation-impl-plan`（任务全 done，遗留项在设计文档头部）、`superpowers/plans/2026-09-29-install-tracking`（结论已沉淀）、`design/api-key-table`（并入 api-key-pool「表结构」）。
+
+已实施归档（保留在 [docs/design/api-protocol/archive/](docs/design/api-protocol/archive/)，决策摘要见 rpc-protocol-decisions）：`graphql-to-http-rpc-openapi`（§一 = 协议定稿全文与推导）、`rpc-pilot-server` / `rpc-pilot-client`（demo 试点）、`rpc-rollout-server`（M0–M5，§3 = mapper/controller 通用规范）、`rpc-refactor-controller-mapper`（ActionSpec 撤销等四项重构，已落地）。
 
 ## 代码约定速查
 

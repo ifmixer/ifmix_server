@@ -1,6 +1,6 @@
 # RPC 全量迁移计划 — 客户端（antique / client-sdk）：demo 之后的所有修改
 
-> **给接手的 agent**：先读 `packages/client-sdk/AGENTS.md` → ifmix_server 仓库 `docs/design/proposals/graphql-to-http-rpc-openapi.md` §一（协议唯一真相源，含最新 URL/命名定稿）→ `rpc-pilot-client.md`（demo 试点，模式先例）→ 本文件。冲突时以 proposal §一 与本文件 §1 的 action 名表为准。
+> **给接手的 agent**：先读 `packages/client-sdk/AGENTS.md` → ifmix_server 仓库 `docs/design/api-protocol/archive/graphql-to-http-rpc-openapi.md` §一（协议唯一真相源，含最新 URL/命名定稿）→ [rpc-pilot-client](archive/rpc-pilot-client.md)（demo 试点，已归档）→ 本文件。冲突时以 proposal §一 与本文件 §1 的 action 名表为准。
 > - 仓库：`/Users/jason/ai/myprojects/antique`；继续在 `feature/graphql-to-rpc` 分支上按阶段提交，commit 前缀 `[rpc][R*]`。每阶段一个（或一组）commit。
 > - 前置：demo 试点（C1–C5）已验收合并；服务端按 `rpc-pilot-server.md` / 后续模块规格文档并行实施，**每个 R 阶段开始前确认对应服务端模块已就绪（联调可用），否则该阶段挂起等待，不要先改后弃**。
 > - **硬边界：gqlOp 路径与 trusted documents/codegen 全量保留到 R5；每迁移一个模块只是"新增 RPC 封装 + client 方法"，不改既有 gql 方法的行为；attest/auth/install/pay/noti 包的会话语义不动。**
@@ -10,7 +10,7 @@
 ## 0. 现状与总览
 
 - demo 8 个 action 客户端已走 RPC（`rpc.ts`/`rpcDemo.ts`/`client.ts` `todo*Rpc` 方法），但用的是**旧命名**（`m_demo_createTodo`），本计划 R0 统一改为四段新命名。
-- URL 已定稿：`POST /api/customer/core/{actionName}`（2026-10-06 服务端定稿：rpc→api），`actionName = {q|m}_{module}_{resource}_{action}`（proposal §一；module=resource 重叠允许；install/customer 已并入 auth 模块，action 名为 `m_auth_install_*` / `m_auth_customer_*`，重叠形态示例改看 `m_media_media_presignUpload`）。
+- URL 已定稿：`POST /api/customer/core/{actionName}`（2026-10-06 服务端定稿：rpc→api），`actionName = {q|m}_{module}_{resource}_{action}`（proposal §一；module=resource 重叠允许；install/customer 已并入 auth 模块，action 名为 `m_auth_install_*` / `m_auth_customer_*`，media resource 定名 file（表同步改名 `core_media_file_record`），无 module=resource 重叠形态）。
 - 迁移模式与 pilot 完全一致：每 action 一条 `rpcOp` 封装 + `client.ts` 加 `*Rpc` 方法（走 `guarded()`）+ 手写类型 + mock fetch 测试；gql 版本保留到 R5。
 - 服务端按模块出规格文档（Controller/DTO/测试），**action 名以本文件 §1 的表为单一真相**；两端冲突以本表为准并回改文档。
 
@@ -24,8 +24,8 @@
 | q_demo_findTodosByIds | `q_demo_todo_getByIds` |
 | q_demo_findTodos | `q_demo_todo_list` |
 | m_demo_createTodo | `m_demo_todo_createOne` |
-| m_demo_updateTodo | `m_demo_todo_updateOne` |
-| m_demo_batchUpdateTodoItems | `m_demo_todo_updateItems` |
+| m_demo_updateTodo | `m_demo_todo_updateById` |
+| m_demo_batchUpdateTodoItems | `m_demo_todoItem_updateMany` |
 | m_demo_deleteTodo | `m_demo_todo_deleteOne` |
 | m_demo_deleteTodoByIds | `m_demo_todo_deleteMany` |
 
@@ -33,14 +33,15 @@
 
 | 阶段 | 旧名（GraphQL） | 新名 |
 |---|---|---|
-| R1 | m_media_presignUpload | `m_media_media_presignUpload` |
-| R1 | m_media_presignDownload | `m_media_media_presignDownload` |
+| R1 | m_media_presignUpload | `m_media_file_presignUpload` |
+| R1 | m_media_presignDownload | `m_media_file_presignDownload` |
 | R1 | m_cs_submitFeedback | `m_cs_feedback_createOne` |
 | R1 | m_cs_createSupportRequest | `m_cs_supportRequest_createOne` |
 | R1 | q_cs_mySupportRequests | `q_cs_supportRequest_list` |
 | R1 | q_cs_mySupportRequestById | `q_cs_supportRequest_getById` |
 | R2 | m_customer_createAnonymousCustomer | `m_auth_customer_createAnonymous` |
-| R2 | m_install_createInstall | `m_auth_install_create` |
+| R2 | m_install_createInstall | `m_auth_install_createIosInstall`（v6 平台拆分） |
+| R2 | m_install_createInstall | `m_auth_install_createAndroidInstall`（v6 平台拆分） |
 | R2 | m_install_updateInstall | `m_auth_install_updateOne` |
 | R2 | m_install_attestExisting | `m_auth_install_attest` |
 | R2 | m_install_recoverInstall | `m_auth_install_recover` |
@@ -65,7 +66,7 @@
 | R3 | m_ai_removeCollectionItems | `m_ai_collectionItem_removeMany` |
 | R3 | q_ai_findCollectionItemsByCursor | `q_ai_collectionItem_list` |
 
-动词表约束：`getById / getByIds / list / createOne / createMany / updateOne / updateMany / deleteOne / deleteMany`，具体操作允许专名（`presignUpload / presignDownload / attest / recover / refresh / login / logout / me / createAnonymous / run / getStatus / getDefault / add / verify / updateItems`）；不兼容形状变更加 `V2` 后缀。
+动词表约束：`getById / getByIds / list / createOne / createMany / updateOne / updateMany / deleteOne / deleteMany`，具体操作允许专名（`presignUpload / presignDownload / attest / recover / refresh / login / logout / me / createAnonymous / run / getStatus / getDefault / add / verify / createIosInstall / createAndroidInstall`）；2026-10-06 修订：updateById 取代 updateOne（资源定位语义更准）、todoItem 批量更新 resource 段定 todoItem；不兼容形状变更加 `V2` 后缀。
 
 ## 2. 阶段计划
 

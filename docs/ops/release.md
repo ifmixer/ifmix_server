@@ -23,11 +23,11 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 ### 发布前必须完成的修复（2026-10-05 code review，P1）
 
 - [ ] **P1-attest ×3**（AppleReceiptClientImpl 429 归类 / DeviceCheck receipt 双重 base64 / DeviceCheck JWT 缺 `iat` + teamId 预检）——job 暂不调度，**不阻塞本版**，但列入恢复调度前置条件。
-- [ ] **WireCrypto 低阶点黑名单**：当前黑名单常数错误（拦不到真低阶点），安全声明失真，须换真实编码或如实注释。
-- [ ] **ClientIpResolver 可信 IP**：XFF 首段可伪造导致全部 `:ip:` 限流可绕过，改取 `CF-Connecting-IP`/可信代理链。
-- [ ] **日志脱敏**：RequestLoggingFilter 4xx/5xx WARN 输出 refreshToken/authCode 明文；Google webhook token 经 query 进日志。
-- [ ] **AI 惰性超时与预算对齐**：`STALE_IN_PROGRESS_SEC=300` < AI 调用 360s < runner 600s，慢而成功的任务被误杀。
-- [ ] **DR 空 premium_result 判失败**（决策 6 落地）。
+- [ ] **WireCrypto 低阶点黑名单**：当前黑名单常数错误（拦不到真低阶点），安全声明失真，须换真实编码或如实注释（2026-10-06 复核：仍未修）。
+- [ ] **ClientIpResolver 可信 IP**：XFF 首段可伪造导致全部 `:ip:` 限流可绕过，改取 `CF-Connecting-IP`/可信代理链（2026-10-06 复核：仍未修）。
+- [ ] **日志脱敏**：RequestLoggingFilter 4xx/5xx WARN 输出 refreshToken/authCode 明文；Google webhook token 经 query 进日志（2026-10-06 复核：仍未修）。
+- [ ] **AI 惰性超时与预算对齐**：`STALE_IN_PROGRESS_SEC=300` < runner 600s 总预算（2026-10-06 复核：仍未修，300–600s 的慢任务会被查询侧误杀 TIMEOUT）。
+- [ ] **DR 空 premium_result 判失败**（决策 6 落地；2026-10-06 复核：仍未修，AI 正常返回即 SUCCESS）。
 
 应修（P2）：RateLimiter INCR/EXPIRE 原子化、bind 关系部分唯一索引、logout 只认可信 iid、webhook 幂等唯一索引、FirebaseAppRegistry 负缓存、AiChatClientFactory 无淘汰缓存、scan 表 customer_id 索引、attestExisting 冲突重查返回值、ActionContextProvider 与 yml 默认值对齐。全量清单见 review 记录；修复用提示词 A–E 派发。
 
@@ -46,7 +46,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 install attestation 一期（1a，iOS App Attest）。设计见 `docs/design/attest/install-attestation.md`（注意 §0 v5 修订表）。相对 `feature/install` 的主要变化：
 
 - **attestation（默认关）**：`m_install_createInstall` 新增 `proof` / `proofStatus` / `storeType` 入参 + `attestationStatus` 返回（10/20/30）；新增 3 个 mutation `m_install_createAttestChallenge` / `m_install_recoverInstall` / `m_install_attestExisting`（存量补证）。判定矩阵 / 错误码（403001/403002/409001/404001/429002/503002）/ retryAfterSec extensions（429000/429002 必带）见规格 §4.3/§4.4。
-- **限流阈值调整**：createInstall 入口 10/60s → **100/60s/IP**，验签后新增 IP 日窗口（attested 1000/天、unverified 100/天，UTC 日分桶）；下游 createAnonymous / scan / DeepResearch 增加 install 层限流（防滥用，小阈值）+ 上调 IP 层（系统防护，100/min + 1000/天），legacy 请求走独立旧严格阈值计数器；阈值全部 `app.ratelimit.*` 配置、**重启生效**（紧急降额需重启/发布，非即时 kill switch）。上线前需按规格 §4.6 核对 AI key 池容量。
+- **限流阈值调整**：createInstall 入口 10/60s → **100/60s/IP**，验签后新增 IP 日窗口（attested 1000/天、unverified 100/天，UTC 日分桶）；下游 createAnonymous / scan / DeepResearch 增加 install 层限流（防滥用，小阈值）+ 上调 IP 层（系统防护，100/min + 1000/天）。legacy 严格阈值计数器已随 legacy 兼容移除（2026-10-06，线上无 app）；阈值全部 `app.ratelimit.*` 配置、**重启生效**（紧急降额需重启/发布，非即时 kill switch）。上线前需按规格 §4.6 核对 AI key 池容量。
 - **新 env 两个**：`APP_ATTEST_GLOBAL_ENABLED`（默认 false，全局 kill switch）、`APP_ATTEST_CHALLENGE_SECRET`（`current[,previous]`，32 字节 base64；全局开关开时缺失 = 配置无效 fail-closed → 503002 + 节流日志 `attest.config_invalid`）。
 - **DB 迁移 V14/V15**：`core_project_server_config.app_attest_config`（JSONB）；`core_install.store_type`（INT NULL）；新表 `core_install_attestation`（含 `attestation_object` 回填列）。先 `flywayMigrate` 再发新代码。
 - **core-job 三个新任务**（`--job.name`）：`attestReceiptBackfill`（Apple receipt 回填，attestation_object 换 receipt）、`attestFraudMetricRefresh`（DeviceCheck two bits，失败指数退避封顶 24h；deviceCheck 配置缺失跳过不报错）、`attestEvidenceCleanup`（evidence 90 天清理）。外部 cron 触发，频率见规格 §5.7/§5.8（backfill/refresh 建议每日，evidence 每日）。**【2026-10-05 运维决定】执行入口已注释（`AttestJobs` 三个 @Bean），线上暂不调度、不配 cron**——不影响 createInstall/recover/attestExisting（纯本地验证，不依赖 receipt/fraud_metric）；代价 = fraud_metric 缺失（二期策略需要时再恢复）+ `attestation_object` 列随 install 增长。恢复：取消 `AttestJobs.kt` 内注释 → 部署 → 配 cron（首次启用会回填全部历史行，注意对 Apple 的集中请求量）。
@@ -58,7 +58,7 @@ install attestation 一期（1a，iOS App Attest）。设计见 `docs/design/att
 相对 v1.0.3 的主要变化，发布前逐项确认：
 
 - **install 体系**：`m_install_createInstall` / `m_install_updateInstall`；token 增加 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（V5/V6）。
-- **老 app 兼容**：`app.auth.legacy-install-id-fallback`（默认 `true`）——token 无 `iid` 时 createAnonymous / login / refresh / 写入退回 `x-install-id` header。老 app 全部升级后关闭。
+- ~~老 app 兼容~~：`app.auth.legacy-install-id-fallback` 已整体移除（2026-10-06 决策：线上无 app，无需兼容）——token 必须携带可信 `iid`，否则 401000。
 - **扫描计数迁表**：`core_customer.scan_count / deep_research_count` → `core_ai_customer_scan_metrics`（V9，旧列暂留，发布完成后另起迁移删除）。
 - **AI key 池**：轮询 + Redis 分布式冷却；`core_ai_agnes_key` → `core_ai_api_key`（V8）。
 - **错误透出**：线上（`app.expose-errors=false`）5xx 只返回通用文案。

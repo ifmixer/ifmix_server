@@ -1,6 +1,6 @@
 # Konvert 全量替换手写 mapper — 服务端实施计划
 
-> **给接手的 agent**：先读 `AGENTS.md` → `docs/design/proposals/graphql-to-http-rpc-openapi.md` §一 → 本文件。所有映射形态、注解、文件路径均已定稿，**不做任何设计决策**；遇到与本文不符的代码现实，停下写报告。
+> **给接手的 agent**：先读 `AGENTS.md` → `docs/design/api-protocol/archive/graphql-to-http-rpc-openapi.md` §一 → 本文件。所有映射形态、注解、文件路径均已定稿，**不做任何设计决策**；遇到与本文不符的代码现实，停下写报告。
 > - 仓库：/Users/jason/orca/workspaces/ifmix_server/server-graphql-to-rpc（分支 `feature/graphql-to-rpc`）。Konvert 4.5.1 已引入且 cs 试点已通过（commit `b2038bd`，见 `dto/cs/SubmitFeedbackInput.kt` 的 `@KonvertTo` 用法）。
 > - 注解包名：`io.mcarle.konvert.api.*`（**不是** `.annotations`）。语法细节以官方文档校准：https://mcarleio.github.io/konvert/annotations/mapping.html
 > - 硬边界：不改 wire 契约字段；不改 Handler/Repository 行为；不动 demo/auth 之外的 wire 类型；每个 K 阶段独立 commit（前缀 `[konvert][K*]`）并跑 `./gradlew :core-api:test` 全绿。

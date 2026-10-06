@@ -58,7 +58,7 @@ fun fromRpc(
 
 - 删除 8 个 `XxxSpecs.kt`（常量搬进 controller companion，`ActionSpec` data class 与 `ActorRequirement` 中前者删除、后者保留并检查引用）。
 - 各 endpoint 调用点把 `requireActorType = ...` 按原 Spec 的 `actor` 值显式传（CUSTOMER 是默认可省；install 模块的 NONE / INSTALL_OR_CUSTOMER 必须显式）——**实参唯一依据是原 DataFetcher 的 `fromDfe(...)` 实参映射，禁止凭感觉填**。
-- **命名一致性测试重写**（每模块现有 `routes one-to-one ...` 测试）：反射扫 controller 的 `@PostMapping` path，断言 ① 四段格式 `{q|m}_{module}_{resource}_{action}` 合法；② module 段 = controller 包名；③ action 在 rpc-rollout-client.md §1 表内。原「path ⇔ ActionSpec.isMutation」断言由 1.2-1 的运行时校验取代，测试里删掉。
+- **命名一致性测试重写**（每模块现有 `routes one-to-one ...` 测试）：反射扫 controller 的 `@PostMapping` path，断言 ① 四段格式 `{q|m}_{module}_{resource}_{action}` 合法；② module 段 = controller 包名；③ action 在 ../rpc-rollout-client.md §1 表内。原「path ⇔ ActionSpec.isMutation」断言由 1.2-1 的运行时校验取代，测试里删掉。
 - `@Operation(operationId = ...)` 保留并引用常量（OpenAPI operationId 稳定性依赖它）。
 
 ## 改动 2：Envelope.ok(reqId, data)

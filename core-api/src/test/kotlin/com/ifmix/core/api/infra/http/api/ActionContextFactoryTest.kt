@@ -367,7 +367,7 @@ class ActionContextFactoryTest {
     fun `user tz device model os version pass through trimmed`() {
         val ctx = relaxed.fromRpc(
             request(),
-            "m_demo_todo_updateOne",
+            "m_demo_todo_updateById",
             isMutation = true,
             body = body(meta(projectId = projectId, userTz = " Asia/Shanghai ", deviceModel = "Pixel 8 ", osVersion = " 15 ")),
             requireActorType = ActorRequirement.NONE,
@@ -376,7 +376,7 @@ class ActionContextFactoryTest {
         assertThat(ctx.deviceModel).isEqualTo("Pixel 8")
         assertThat(ctx.osVersion).isEqualTo("15")
         assertThat(ctx.installId).isNull()
-        assertThat(ctx.actionName).isEqualTo("m_demo_todo_updateOne")
+        assertThat(ctx.actionName).isEqualTo("m_demo_todo_updateById")
         assertThat(ctx.isMutation).isEqualTo(true)
         assertThat(ctx.preferReader).isEqualTo(false)
         assertThat(ctx.readCache).isEqualTo(false)

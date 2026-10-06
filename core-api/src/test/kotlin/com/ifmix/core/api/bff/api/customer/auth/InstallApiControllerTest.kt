@@ -69,7 +69,8 @@ class InstallApiControllerTest {
         )
     }
 
-    private fun meta(token: String?) = RequestMeta(reqId = reqId, projectId = projectId, accessToken = token)
+    private fun meta(token: String?, platform: String? = null) =
+        RequestMeta(reqId = reqId, projectId = projectId, accessToken = token, clientPlatform = platform)
 
     private inline fun <reified T : Any> body(meta: RequestMeta?, input: Map<String, Any?>?): ApiRequestBody<T> {
         val mapper = JsonMapper.builder().build()
@@ -128,7 +129,7 @@ class InstallApiControllerTest {
         LogContext.clear()
     }
 
-    // ===== createInstall：IP 限流 429000（retryAfterSec 必带）=====
+    // ===== createIosInstall/createAndroidInstall（v6 平台拆分）：IP 限流 429000（retryAfterSec 必带）=====
 
     @Test
     fun `createInstall ip rate limited returns 429000 with retryAfterSec`() {
@@ -136,7 +137,7 @@ class InstallApiControllerTest {
         whenever(rateLimiter.check(eq(com.ifmix.core.api.infra.ratelimit.Window.MINUTE), any(), any()))
             .thenReturn(RateLimitResult.Limited(retryAfterSec = 37))
         val ex = assertThrows(ApiError::class.java) {
-            controller.createInstall(request(), body(meta("SECRET"), mapOf("storeType" to 10)))
+            controller.createIosInstall(request(), body(meta("SECRET", "ios"), mapOf("storeType" to 10)))
         }
         assertEquals(ErrorCode.RATE_LIMITED, ex.errorCode)
         assertEquals(37L, ex.retryAfterSec)
@@ -148,7 +149,7 @@ class InstallApiControllerTest {
     fun `createInstall no-proof passes guard and creates in tx`() {
         customerJwt()
         val installId = UUID.randomUUID()
-        whenever(attestGuard.parseProofInput(isNull(), isNull())).thenReturn(null)
+        whenever(attestGuard.parseProofInput(any(), isNull(), eq(AttestGuard.PROVIDER_IOS))).thenReturn(null)
         whenever(attestGuard.verifyProof(any(), isNull(), isNull()))
             .thenReturn(AttestGuard.Verification.NoProof)
         whenever(attestGuard.decideCreateInstall(AttestGuard.Verification.NoProof, null))
@@ -158,11 +159,46 @@ class InstallApiControllerTest {
         ).thenReturn(com.ifmix.core.api.modules.auth.install.handler.InstallAggHandler.CreateInstallRes(installId, "token-1"))
         whenever(serverConfigFacade.findAttestConfig(projectId)).thenReturn(null)
 
-        val resp = controller.createInstall(request(), body(meta("SECRET"), mapOf("storeType" to 10)))
+        val resp = controller.createIosInstall(request(), body(meta("SECRET", "ios"), mapOf("storeType" to 10)))
         assertEquals("200000", resp.body!!.code)
         assertEquals(installId, resp.body!!.data?.installId)
         assertEquals(30, resp.body!!.data?.attestationStatus)
         verify(globalTx).withTx<Any>(any(), any())
+        LogContext.clear()
+    }
+
+    // ===== v6 强校验 1：自报平台与 action 平台不一致（含缺失）→ 400000，且不碰限流/事务 =====
+
+    @Test
+    fun `createIosInstall with android platform mismatches 400000`() {
+        customerJwt()
+        val ex = assertThrows(ApiError::class.java) {
+            controller.createIosInstall(request(), body(meta("SECRET", "android"), mapOf("storeType" to 10)))
+        }
+        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
+        verifyNoInteractions(rateLimiter, globalTx)
+        LogContext.clear()
+    }
+
+    @Test
+    fun `createIosInstall without platform mismatches 400000`() {
+        customerJwt()
+        val ex = assertThrows(ApiError::class.java) {
+            controller.createIosInstall(request(), body(meta("SECRET"), mapOf("storeType" to 10)))
+        }
+        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
+        verifyNoInteractions(rateLimiter, globalTx)
+        LogContext.clear()
+    }
+
+    @Test
+    fun `createAndroidInstall with ios platform mismatches 400000`() {
+        customerJwt()
+        val ex = assertThrows(ApiError::class.java) {
+            controller.createAndroidInstall(request(), body(meta("SECRET", "ios"), mapOf("storeType" to 20)))
+        }
+        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
+        verifyNoInteractions(rateLimiter, globalTx)
         LogContext.clear()
     }
 
@@ -183,14 +219,15 @@ class InstallApiControllerTest {
 
     @Test
     fun `routes one-to-one with controller companion constants`() {
-        // rpc-rollout-client.md §1 R2：install 5 action 名单一真相
+        // rpc-rollout-client.md §1 R2（v6）：install 6 action 名单一真相（createInstall 按平台拆分）
         val expected = setOf(
-            "m_auth_install_create", "m_auth_install_updateOne", "m_auth_install_attest",
+            "m_auth_install_createIosInstall", "m_auth_install_createAndroidInstall",
+            "m_auth_install_updateOne", "m_auth_install_attest",
             "m_auth_install_recover", "m_auth_install_createAttestChallenge",
         )
         val postings = InstallApiController::class.declaredMemberFunctions
             .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
-        assertEquals(5, postings.size)
+        assertEquals(6, postings.size)
         val names = postings.map { f ->
             val path = f.annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
             val operationId = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
@@ -206,7 +243,8 @@ class InstallApiControllerTest {
             assertTrue(segs[2] == "install", "resource segment (install 段在 auth 包下，以 action 名第 2 段为准): " + n)
         }
         // companion 常量与路由 path 同源
-        assertEquals("m_auth_install_create", InstallApiController.REQNAME_CREATE_INSTALL)
+        assertEquals("m_auth_install_createIosInstall", InstallApiController.REQNAME_CREATE_IOS_INSTALL)
+        assertEquals("m_auth_install_createAndroidInstall", InstallApiController.REQNAME_CREATE_ANDROID_INSTALL)
         assertEquals("m_auth_install_createAttestChallenge", InstallApiController.REQNAME_CREATE_ATTEST_CHALLENGE)
     }
 }

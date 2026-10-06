@@ -12,6 +12,22 @@
 > **2026-10-06 迁移注记**：customer/install 已并入 auth 模块——`modules/install/` → `modules/auth/install/`、`modules/customer/` → `modules/auth/customer/`、`entity/install/`、`entity/customer/` → `entity/auth/` 下同名子包、`dto/*` → `dto/auth/`；controller 位于 `bff/api/customer/auth/`；`infra/auth/RequestParser.kt` 已随 GraphQL 删除收敛（token 解析唯一入口 `infra/http/ActionContextFactory.kt`）。本文中的路径为迁移前的历史记录，按此对照。
 ## 0. 修订记录
 
+### v6（2026-10-06：createInstall 按平台拆分 + legacy 兼容移除）
+
+- **推翻 v5「不按平台拆」决策**：`m_auth_install_create` 拆为
+  `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`（RPC 分支实施；HTTP RPC 协议，
+  原「GraphQL」小节标题按现状读作 API 契约）。
+- 两入口委托同一私有流程（入口限流 → proof/proofStatus 组合校验 → verifyProof → decide → 日窗口 →
+  challenge 消费 → 事务绑定）；**限流 key 不含平台段**——两个 action 共享同一 IP 配额，防护总量不因拆分放大。
+- 强校验（均进限流前）：① 自报 `meta.clientPlatform` 必须与 action 平台一致（缺失也算 mismatch）→ 400000；
+  ② `AttestGuard.parseProofInput` 增加 `expectedProvider`（iOS=110 / Android=120），交叉提交 → 400000。
+  attestExisting 固定预期 PROVIDER_IOS。
+- §5.9 storeType 交叉校验按 provider 泛化：110↔10(APP_STORE)、120↔20(GOOGLE_PLAY)，不一致只打日志不拒绝。
+- attest 仍可选（无 proof 走 no-proof，ENFORCE 下由 mode 判定）；Android 1b：proof=120 → NotEvaluated →
+  OBSERVE 放行 NOT_ATTEMPTED / ENFORCE 503002。**灰度注意**：切 ENFORCE 且 project 只配了 ios 时，
+  Android action 一律 503002（fail-closed 正确）。
+- legacy 兼容整体移除（fallback 开关 / `legacyInstallId` / legacy 限流计数器）：无可信 iid 一律 401000。
+
 ### v5（第五轮 review，2026-10-04，进入实现前）
 
 | review 项 | 处理 |
@@ -490,6 +506,10 @@ fun check(window: Window, key: String, limit: Int): RateLimitResult
 ## 5. 服务端设计
 
 ### 5.1 GraphQL
+
+> **v6 注（RPC 分支）**：本节 schema 为 graphql 分支历史口径；RPC 分支对应 wire DTO `CreateInstallInput`
+> 并按平台拆分为 `m_auth_install_createIosInstall`（provider=110）/ `m_auth_install_createAndroidInstall`
+> （provider=120）两个 action，proof.provider 必须与 action 平台一致（交叉提交 400000）。
 
 ```graphql
 input InstallProofInput {

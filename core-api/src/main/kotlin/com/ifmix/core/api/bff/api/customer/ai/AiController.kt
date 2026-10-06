@@ -271,27 +271,23 @@ class AiController(
 
     /**
      * 下游接口的 install 层限流（attest 规格 §4.6「下游接口的 install 层」）：
+     * 两档（legacy 兼容计数器已删，2026-10-06）：
      * - 有可信 [ActionContext.tokenInstallId]（只认 token 签名过的 iid；scan/DR 用 customer token 的 iid）：
      *   install 层（scan/DR：5/min + 100/天）→ IP 层（100/min + 1000/天）。install 层拒绝不碰 IP 计数器；
      *   IP 层拒绝时 install 额度已扣、**不退**（被拒请求一律不退款）。
-     * - 无 iid（legacy fallback 兼容期，旧 app 只带可伪造的 x-install-id）：走 legacy IP 层
-     *   （独立计数器，key 带 `legacy:` 段：scan 5/min+500/天、DR 3/min+300/天），不占新大额 IP 计数器。
-     *   legacy fallback 关闭后 `tokenInstallId==null` 的请求在业务前被拒
-     *   （`mustGetTokenInstallId` 现有语义 401000，此处不重复）。
+     * - 无 iid：直接走 IP 层（与有 iid 共用大额计数器）。
      * 顺序 install 层 → IP 层 → 业务；按 projectId 隔离。
      */
     /** scan / deep-research 的限流阈值（RateLimitProperties 的 Scan / DeepResearch 字段一致，取公共六项）。 */
     private data class DownstreamLimits(
-        val legacyIpMinute: Int,
-        val legacyIpDay: Int,
         val ipMinute: Int,
         val ipDay: Int,
         val installMinute: Int,
         val installDay: Int,
     ) {
         companion object {
-            fun of(s: RateLimitProperties.Scan) = DownstreamLimits(s.legacyIpMinute, s.legacyIpDay, s.ipMinute, s.ipDay, s.installMinute, s.installDay)
-            fun of(d: RateLimitProperties.DeepResearch) = DownstreamLimits(d.legacyIpMinute, d.legacyIpDay, d.ipMinute, d.ipDay, d.installMinute, d.installDay)
+            fun of(s: RateLimitProperties.Scan) = DownstreamLimits(s.ipMinute, s.ipDay, s.installMinute, s.installDay)
+            fun of(d: RateLimitProperties.DeepResearch) = DownstreamLimits(d.ipMinute, d.ipDay, d.installMinute, d.installDay)
         }
     }
 
@@ -304,21 +300,14 @@ class AiController(
         val projectId = ctx.mustGetProjectId()
         val ip = ctx.clientIp ?: "unknown"
         val iid = ctx.tokenInstallId
-        when {
-            iid != null -> {
-                // install 层（防滥用，额度小）：先查 install 再查 IP（§4.6「被拒不退」语义）
-                checkRateLimit(Window.MINUTE, "ratelimit:$projectId:$action:install:min:$iid", limits.installMinute, message)
-                checkRateLimit(Window.UTC_DAY, "ratelimit:$projectId:$action:install:day:$iid", limits.installDay, message)
-                // IP 层（系统防护，额度大）
-                checkRateLimit(Window.MINUTE, "ratelimit:$projectId:$action:ip:min:$ip", limits.ipMinute, message)
-                checkRateLimit(Window.UTC_DAY, "ratelimit:$projectId:$action:ip:day:$ip", limits.ipDay, message)
-            }
-            else -> {
-                // legacy（无可信 iid，兼容期旧客户端）：严格阈值独立计数器，不占新大额 IP 计数器
-                checkRateLimit(Window.MINUTE, "ratelimit:$projectId:$action:legacy:ip:min:$ip", limits.legacyIpMinute, message)
-                checkRateLimit(Window.UTC_DAY, "ratelimit:$projectId:$action:legacy:ip:day:$ip", limits.legacyIpDay, message)
-            }
+        if (iid != null) {
+            // install 层（防滥用，额度小）：先查 install 再查 IP（§4.6「被拒不退」语义）
+            checkRateLimit(Window.MINUTE, "ratelimit:$projectId:$action:install:min:$iid", limits.installMinute, message)
+            checkRateLimit(Window.UTC_DAY, "ratelimit:$projectId:$action:install:day:$iid", limits.installDay, message)
         }
+        // IP 层（系统防护，额度大；无 iid 时只走这一层）
+        checkRateLimit(Window.MINUTE, "ratelimit:$projectId:$action:ip:min:$ip", limits.ipMinute, message)
+        checkRateLimit(Window.UTC_DAY, "ratelimit:$projectId:$action:ip:day:$ip", limits.ipDay, message)
     }
 
     private fun checkRateLimit(window: Window, key: String, limit: Int, message: String) {

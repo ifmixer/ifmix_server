@@ -247,6 +247,26 @@ class AttestGuardTest {
     }
 
     @Test
+    fun provider_mismatch_with_expectedProvider___400000() {
+        // v6 强校验 2：iOS action（预期 110）提 Android proof、Android action（预期 120）提 iOS proof
+        val ios = mapOf("proof" to iosProofMap(validChallenge()))
+        val android = mapOf(
+            "proof" to mapOf(
+                "provider" to 120,
+                "playIntegrity" to mapOf(
+                    "integrityToken" to Base64.getEncoder().encodeToString(byteArrayOf(2)),
+                    "nonce" to "nonce",
+                ),
+            ),
+        )
+        assertThrows<ApiError> { guard.parseProofInput(ios, null, AttestGuard.PROVIDER_ANDROID) }
+        assertThrows<ApiError> { guard.parseProofInput(android, null, AttestGuard.PROVIDER_IOS) }
+        // 匹配时正常解析
+        assertThat(guard.parseProofInput(ios, null, AttestGuard.PROVIDER_IOS)).isNotNull
+        assertThat(guard.parseProofInput(android, null, AttestGuard.PROVIDER_ANDROID)).isNotNull
+    }
+
+    @Test
     fun unknown_provider___400000() {
         val input = mapOf("proof" to mapOf("provider" to 999))
         assertThrows<ApiError> { guard.parseProofInput(input, null) }

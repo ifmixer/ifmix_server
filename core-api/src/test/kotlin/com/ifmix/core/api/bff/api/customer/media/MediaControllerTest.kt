@@ -144,7 +144,7 @@ class MediaControllerTest {
 
     @Test
     fun `routes one-to-one with controller companion constants`() {
-        val expected = setOf("m_media_media_presignUpload", "m_media_media_presignDownload")
+        val expected = setOf("m_media_file_presignUpload", "m_media_file_presignDownload")
         val postings = MediaController::class.declaredMemberFunctions
             .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
         assertEquals(2, postings.size)
@@ -160,10 +160,10 @@ class MediaControllerTest {
             assertEquals(4, segs.size, "four-segment format: " + n)
             assertEquals("m", segs[0], "all media actions are mutations: " + n)
             assertEquals("media", segs[1], "module segment: " + n)
-            assertEquals("media", segs[2], "resource segment: " + n)
+            assertEquals("file", segs[2], "resource segment (media→file，2026-10-06 定名): " + n)
         }
         // companion 常量与路由 path 同源
-        assertEquals("m_media_media_presignUpload", MediaController.REQNAME_PRESIGN_UPLOAD)
-        assertEquals("m_media_media_presignDownload", MediaController.REQNAME_PRESIGN_DOWNLOAD)
+        assertEquals("m_media_file_presignUpload", MediaController.REQNAME_PRESIGN_UPLOAD)
+        assertEquals("m_media_file_presignDownload", MediaController.REQNAME_PRESIGN_DOWNLOAD)
     }
 }

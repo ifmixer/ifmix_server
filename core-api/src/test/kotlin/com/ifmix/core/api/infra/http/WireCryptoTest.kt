@@ -219,7 +219,7 @@ class WireCryptoTest {
     private fun wireFilter(
         keys: String = "1:${Base64.getEncoder().encodeToString(HEX.parseHex(SERVER_PRIV_HEX))}",
         mode: String = "required",
-    ) = WireCryptoFilter(keys, WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, mode)
+    ) = WireCryptoFilter(keys, WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, mode, 5L * 1024 * 1024)
 
     /** 内层 servlet 回显看到的 content-type / body，便于断言解密包装；status 可指定。 */
     private fun runFilter(filter: WireCryptoFilter, req: MockHttpServletRequest, status: Int = 200): MockHttpServletResponse {
@@ -266,7 +266,7 @@ class WireCryptoTest {
 
         // 未配 key：required 模式下 /api/** 请求全部 400003（配置错误大声失败，无明文降级）
         val noKeys = runFilter(
-            WireCryptoFilter("", WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, "required"),
+            WireCryptoFilter("", WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, "required", 5L * 1024 * 1024),
             MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_deleteOne").apply {
                 addHeader(RequestHeaders.WIREP_VERSION, "2"); contentType = "application/octet-stream"
                 setContent(TestClient(crypto.publicKey(1)!!, kid = 1).sealRequest("{}".toByteArray(), ts = System.currentTimeMillis()))

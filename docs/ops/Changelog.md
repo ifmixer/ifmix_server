@@ -14,6 +14,9 @@
 - **wire 加密 v2（强制，无明文降级）**：X25519+HKDF+AES-256-GCM 请求/响应加密，版本头 `x-wirep-version: 2`，>4KB 响应 gzip；`/api/**` 明文请求 400004、解密失败 400003（无版本协商）。ts 偏差仅 warn（客户端时钟偏差不可控，强制时效暂缓——见 wire 设计 §9 决策修订）。请求 body 全局上限 5MB（`WIRE_MAX_REQUEST_BYTES`，超限 400000）。
 - **多维限流**：createInstall 入口 100/60s/IP + 验签后 IP 日窗口；createAnonymous / scan / DeepResearch install 层限流；阈值全部 `app.ratelimit.*` 配置、重启生效。
 - **`m_customer_deleteAccount`**（V7）：软删 + 解绑全部 install 关系 + 吊销全部 refresh token，事务内原子生效；`DeletionReasons` 码表。
+- **actionName 修订（feature/graphql-to-rpc，2026-10-06）**：`m_demo_todo_updateOne → m_demo_todo_updateById`、`m_demo_todo_updateItems → m_demo_todoItem_updateMany`（resource 段定 todoItem）；media 资源定名 file：`m_media_media_presignUpload/Download → m_media_file_presignUpload/Download`，表 `core_media_upload_record` → `core_media_file_record`（V16，RENAME 保留数据）。
+- **createInstall 按平台拆分**（attest 规格 v6）：`m_auth_install_create` → `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`；自报 `meta.clientPlatform` 与 action 平台不一致（含缺失）→ 400000；proof.provider 与 action 交叉提交 → 400000；两 action 共享同一 IP 限流配额（key 不含平台段）；storeType 交叉校验泛化 110↔10 / 120↔20（只记日志）。限流配额总口径不变。
+- **legacy 兼容整体移除**（线上无 app，无需兼容）：`app.auth.legacy-install-id-fallback` 开关、`legacyInstallId` 死路径、legacy 限流计数器（anonymous/scan/DR 的 `legacy-ip-*` 独立阈值）全部删除；无可信 iid 一律 401000，scan/DR 无 iid 直接走大额 IP 层。
 - **HTTP RPC + OpenAPI（breaking，feature/graphql-to-rpc）**：GraphQL(DGS) 引擎与 persisted documents 删除，全部 action 迁移为 `POST /api/customer/core/{actionName}`（四段 actionName `{q|m}_{module}_{resource}_{action}`，客户端从 OpenAPI 生成）。请求信封 `{"meta","input"}`（meta=typed `RequestMeta`，凭证暂在 `meta.accessToken`，定稿三段信封顶层 `authorization` 后两端锁步切换）；响应 `Envelope{reqId,code,msg,data}`，HTTP status = code 前三位；错误不再有 partial error。dev 调试通道（local profile）：`Authorization` header + `x-req-meta` header 作 meta 底座（`DevRpcHeaderAdapter`），Swagger UI Authorize 支持。`legacy-install-id-fallback` 随老 app 兼容决策移除（线上无老 app）。
 
 ### Changed
@@ -24,12 +27,12 @@
 - **refresh token 生成改 `SecureRandom`**（原 `Random` 可预测）；`AUTH_JWT_PRIVATE_KEY` 缺失启动即失败（原静默临时密钥）。
 - 旧同步 scan 路径（`m_ai_runAiScan`）废弃，统一走异步任务。
 
-### Fixed（2026-10-05 review 修复，发布前落地，见 release.md 检查清单）
-- WireCrypto 低阶点黑名单常数错误（安全声明失真）。
-- ClientIpResolver 取可信 IP（CF-Connecting-IP/代理链），封堵伪造 XFF 绕过 IP 限流。
-- 请求日志对 refreshToken / authCode / webhook token 脱敏。
-- AI 惰性超时窗口与 runner 预算对齐（原 300s < 360s < 600s 误杀慢任务）。
-- DeepResearch 缺 `premium_result` 判失败并重试，不再"成功"落空报告。
+### ~~Fixed~~（2026-10-05 review 声称的修复，2026-10-06 复核**全部未落地**，保持 open——以 release.md「发布前必须完成的修复」为准）
+- ~~WireCrypto 低阶点黑名单~~：未修（代码无低阶点校验）。
+- ~~ClientIpResolver 可信 IP~~：未修（仍取第一个 XFF，可伪造绕过 IP 限流）。
+- ~~日志 refreshToken/authCode 脱敏~~：未修（4xx/5xx WARN 的 req 摘要仍含明文）。
+- ~~AI 惰性超时对齐~~：未修（`STALE_IN_PROGRESS_SEC=300` 仍小于 runner 600s 预算，慢任务误杀）。
+- ~~DR 空 `premium_result` 判失败~~：未修（AI 正常返回即 SUCCESS，缺 premium_result 不校验）。
 
 ### DB 迁移
 V4（scan 计数器）→ V5/V6（install）→ V7（deletion）→ V8（key 表改名）→ V9（metrics）→ V10–V13（异步 + 通知）→ V14（project server config）→ V15（attestation）。**V6/V8 要求停机窗口内先迁移后发代码**（旧实例迁移后写入即失败）。

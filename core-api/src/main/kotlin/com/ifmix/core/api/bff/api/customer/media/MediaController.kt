@@ -38,8 +38,8 @@ class MediaController(
     companion object {
         // media 模块 action 常量（原 MediaSpecs 机械搬移；CUSTOMER + requireProjectId=true，
         // 对照原 StorageFetcher `fromDfe(dfe)` 全默认实参）。
-        const val REQNAME_PRESIGN_UPLOAD = "m_media_media_presignUpload"
-        const val REQNAME_PRESIGN_DOWNLOAD = "m_media_media_presignDownload"
+        const val REQNAME_PRESIGN_UPLOAD = "m_media_file_presignUpload"
+        const val REQNAME_PRESIGN_DOWNLOAD = "m_media_file_presignDownload"
     }
 
     @Operation(operationId = REQNAME_PRESIGN_UPLOAD)

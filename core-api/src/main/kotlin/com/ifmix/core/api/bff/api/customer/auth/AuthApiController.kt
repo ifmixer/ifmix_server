@@ -6,6 +6,7 @@ import com.ifmix.core.api.dto.auth.LogoutInput
 import com.ifmix.core.api.dto.auth.MeRes
 import com.ifmix.core.api.dto.auth.RefreshInput
 import com.ifmix.core.api.dto.auth.RefreshRes
+import com.ifmix.core.api.dto.auth.AuthKonvertMappersImpl
 import com.ifmix.core.api.dto.auth.UserInfoRes
 import com.ifmix.core.api.dto.common.ActionResult
 import com.ifmix.core.api.infra.http.ActionContextFactory
@@ -83,7 +84,7 @@ class AuthApiController(
         val res = globalTx.withTx(ctx) { txCtx ->
             authService.login(txCtx, LoginReq(idpId = input.idpId, credential = input.credential))
         }
-        return ResponseEntity.ok(Envelope.ok(ctx.requestId, res.toWire()))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, AuthKonvertMappersImpl.toWire(res)))
     }
 
     @Operation(operationId = REQNAME_REFRESH)
@@ -124,11 +125,4 @@ class AuthApiController(
         }
         return ResponseEntity.ok(Envelope.ok(ctx.requestId, ActionResult(success = true)))
     }
-
-    private fun com.ifmix.core.api.modules.auth.handler.LoginRes.toWire() = LoginRes(
-        accessToken = accessToken,
-        refreshToken = refreshToken,
-        expiresIn = expiresIn.toInt(),
-        user = UserInfoRes(id = user.id, email = user.email),
-    )
 }

@@ -271,7 +271,7 @@ HTTPS 管传输（网络第三方）、wire 管设备持有者（HTTPS 终结后
 - 原规划由 RPC 协议直接承接：请求信封 `{"meta": {…}, "input": {…}}`；凭证槽位定稿为三段信封顶层
   `authorization`（完整 header 值语义，`Bearer ` 前缀可选；graphql 分支 wire v2.1 已用同名同语义实现），
   迁移完成前暂由 `meta.accessToken` 承载。meta 字段定义与 header 留守原则见
-  `docs/design/proposals/graphql-to-http-rpc-openapi.md` §一「凭证与 meta 分离」。
+  `docs/design/api-protocol/archive/graphql-to-http-rpc-openapi.md` §一「凭证与 meta 分离」。
 - **请求 body 全局上限** `app.wire-crypto.max-request-bytes`（默认 5MB，`WIRE_MAX_REQUEST_BYTES`）：
   `WireCryptoFilter` 对 `/api/**` 按 Content-Length 预检（明文/密文统一，读取 body 之前拦截），超限明文
   400 + 400000。body 内字段（meta 等）不单独限长；无 Content-Length 的 chunked 请求不预检，密文侧由
