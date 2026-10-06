@@ -1,11 +1,11 @@
 package com.ifmix.core.api.bff.graphql.customer.ai
 
 import com.ifmix.core.api.generated.types.DeleteScanResult
-import com.ifmix.core.api.generated.types.NewScanInput
+import com.ifmix.core.api.dto.ai.NewScanInput
 import com.ifmix.core.api.generated.types.NewScanResult
 import com.ifmix.core.api.generated.types.ScanStatus
 import com.ifmix.core.api.dto.common.Page
-import com.ifmix.core.api.generated.types.UpdateScanInput
+import com.ifmix.core.api.dto.ai.UpdateScanInput
 import com.ifmix.core.api.generated.types.UpdateScanResult
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
 import com.ifmix.core.api.infra.graphql.ActionContextProvider
@@ -172,7 +172,7 @@ class AiFetcher(
     }
 
     @DgsMutation(field = "m_ai_runDeepResearch")
-    fun runDeepResearch(dfe: DgsDataFetchingEnvironment, @InputArgument input: com.ifmix.core.api.generated.types.RunDeepResearchInput): com.ifmix.core.api.generated.types.RunDeepResearchResult {
+    fun runDeepResearch(dfe: DgsDataFetchingEnvironment, @InputArgument input: com.ifmix.core.api.dto.ai.RunDeepResearchInput): com.ifmix.core.api.generated.types.RunDeepResearchResult {
         // 异步化（设计 §3.3）：事务内完成 images 更新 + 配额预检 + 创建 IN_PROGRESS 记录，
         // 事务提交后（withTx 返回即已提交）才提交后台任务——后台才能读到已提交的记录。
         val ctx = ctxProvider.fromDfe(dfe)
@@ -213,7 +213,7 @@ class AiFetcher(
     }
 
     @DgsMutation(field = "m_ai_batchUpdateScan")
-    fun batchUpdateScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): com.ifmix.core.api.generated.types.BatchUpdateScanResult {
+    fun batchUpdateScan(dfe: DgsDataFetchingEnvironment, @InputArgument input: com.ifmix.core.api.dto.ai.BatchUpdateScanInput): com.ifmix.core.api.generated.types.BatchUpdateScanResult {
         val ctx = ctxProvider.fromDfe(dfe)
         val updated = globalTx.withTx(ctx) { txCtx -> aiService.batchUpdateScan(txCtx, input) }
         return com.ifmix.core.api.generated.types.BatchUpdateScanResult(updatedCount = updated)

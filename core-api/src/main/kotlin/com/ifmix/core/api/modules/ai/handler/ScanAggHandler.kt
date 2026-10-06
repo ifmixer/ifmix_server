@@ -1,15 +1,16 @@
 package com.ifmix.core.api.modules.ai.handler
 
-import com.ifmix.core.api.generated.types.NewScanInput
-import com.ifmix.core.api.generated.types.RunDeepResearchInput
-import com.ifmix.core.api.generated.types.UpdateScanInput
 import com.ifmix.core.api.dto.common.CommonFindOptions
 import com.ifmix.core.api.dto.ai.AiScanResult
 import com.ifmix.core.api.dto.ai.DeepResearchResult
 import com.ifmix.core.api.dto.ai.DeepResearchTaskContext
+import com.ifmix.core.api.dto.ai.NewScanInput
+import com.ifmix.core.api.dto.ai.requireScanUnsetFields
+import com.ifmix.core.api.dto.ai.RunDeepResearchInput
 import com.ifmix.core.api.dto.ai.ScanInput
 import com.ifmix.core.api.dto.ai.ScanStatusSnapshot
 import com.ifmix.core.api.dto.ai.ScanTaskContext
+import com.ifmix.core.api.dto.ai.UpdateScanInput
 import com.ifmix.core.api.dto.notification.NotificationContent
 import com.ifmix.core.api.dto.notification.NotificationRequest
 import com.ifmix.core.api.dto.notification.NotiType
@@ -375,6 +376,8 @@ class ScanAggHandler(
     }
 
     fun updateScan(sc: ModuleCtx, input: UpdateScanInput): Boolean {
+        // unset 协议字符串校验（原 generated 枚举在 GraphQL 边界校验，RPC 侧在 handler 入口对齐，demo 同款）
+        requireScanUnsetFields(input.unset)
         val projectId = sc.action.mustGetProjectId()
         val customerId = sc.action.mustGetActorId()
         // owner-scoped：非本人拥有（或不存在）统一 NOT_FOUND；存在则执行更新（no-op set 也算成功）。
@@ -389,7 +392,7 @@ class ScanAggHandler(
      * 批量更新 scan（owner-scoped）：仅影响调用者本人拥有的记录，返回实际更新数。
      * ids 为空视为非法请求。
      */
-    fun batchUpdateScan(sc: ModuleCtx, input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): Int {
+    fun batchUpdateScan(sc: ModuleCtx, input: com.ifmix.core.api.dto.ai.BatchUpdateScanInput): Int {
         val projectId = sc.action.mustGetProjectId()
         val customerId = sc.action.mustGetActorId()
         if (input.ids.isEmpty()) throw com.ifmix.core.api.infra.http.ApiError(
@@ -589,6 +592,10 @@ class ScanAggHandler(
         val customerId = sc.action.mustGetActorId()
         return scanRepo.findMyScans(sc, projectId, customerId, findOptions)
     }
+
+    /** 批量按 id 取 scan 列表视图（owner-scoped，不加载 basicResult；collectionItem_list 组装用）。 */
+    fun findScanRecordsListViewByIds(sc: ModuleCtx, ids: Collection<UUID>): List<ScanRecord> =
+        scanRepo.findByIdsListView(sc, sc.action.mustGetProjectId(), sc.action.mustGetActorId(), ids)
 
     private fun guessMediaType(key: String, mediaType: String?): String =
         mediaType ?: run {

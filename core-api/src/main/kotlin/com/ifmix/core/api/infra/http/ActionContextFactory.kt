@@ -76,6 +76,9 @@ class ActionContextFactory(
                         anonymous = verified.anonymous,
                         sessionId = verified.sessionId,
                     )
+                    // customer token 也可能携带 iid claim（同 RequestParser.parseTokenInstallId 语义：
+                    // type=5 与 type=10 都取）。scan/DR 的 install 层限流与 mustGetTokenInstallId 依赖它。
+                    tokenInstallId = verified.installId?.let { tryUuid(it) }
                     if (spec.actor == ActorRequirement.CUSTOMER && verified.actorType == ActorTypes.MANAGER)
                         throw ApiError(ErrorCode.FORBIDDEN, "actor type not allowed for this endpoint")
                 }

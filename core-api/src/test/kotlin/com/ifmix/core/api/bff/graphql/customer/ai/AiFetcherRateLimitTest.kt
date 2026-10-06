@@ -5,7 +5,7 @@ import com.ifmix.core.api.dto.ai.ScanTaskContext
 import com.ifmix.core.api.entity.ai.DeepResearchStatuses
 import com.ifmix.core.api.entity.ai.ScanStatus
 import com.ifmix.core.api.entity.ai.ScanStatuses
-import com.ifmix.core.api.generated.types.NewScanInput
+import com.ifmix.core.api.dto.ai.NewScanInput
 import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.http.ApiError
@@ -186,7 +186,7 @@ class AiFetcherRateLimitTest {
 
     @Test
     fun `dr with iid install and ip counters with correct keys and limits`() {
-        fetcher.runDeepResearch(dfe, com.ifmix.core.api.generated.types.RunDeepResearchInput(scanRecordId = UUID.randomUUID(), images = emptyList(), featureFlags = null))
+        fetcher.runDeepResearch(dfe, com.ifmix.core.api.dto.ai.RunDeepResearchInput(scanRecordId = UUID.randomUUID(), images = emptyList(), featureFlags = null))
         verify(rateLimiter).check(eq(Window.MINUTE), eq(drInstallMinKey), eq(5))
         verify(rateLimiter).check(eq(Window.UTC_DAY), eq(drInstallDayKey), eq(100))
         verify(rateLimiter).check(eq(Window.MINUTE), eq(drIpMinKey), eq(100))
@@ -203,7 +203,7 @@ class AiFetcherRateLimitTest {
     @Test
     fun `dr legacy fallback 3 per minute and 300 per day legacy counters`() {
         stubDfe(ctxWithLegacy())
-        fetcher.runDeepResearch(dfe, com.ifmix.core.api.generated.types.RunDeepResearchInput(scanRecordId = UUID.randomUUID(), images = emptyList(), featureFlags = null))
+        fetcher.runDeepResearch(dfe, com.ifmix.core.api.dto.ai.RunDeepResearchInput(scanRecordId = UUID.randomUUID(), images = emptyList(), featureFlags = null))
         verify(rateLimiter).check(eq(Window.MINUTE), eq(drLegacyMinKey), eq(3))
         verify(rateLimiter).check(eq(Window.UTC_DAY), eq(drLegacyDayKey), eq(300))
         verify(rateLimiter, never()).check(eq(Window.MINUTE), eq(drInstallMinKey), any())
@@ -212,7 +212,7 @@ class AiFetcherRateLimitTest {
     @Test
     fun `dr ip day 1001st request rejects`() {
         whenever(rateLimiter.check(eq(Window.UTC_DAY), eq(drIpDayKey), eq(1000))).thenReturn(RateLimitResult.Limited(10))
-        val e = assertThrows<ApiError> { fetcher.runDeepResearch(dfe, com.ifmix.core.api.generated.types.RunDeepResearchInput(scanRecordId = UUID.randomUUID(), images = emptyList(), featureFlags = null)) }
+        val e = assertThrows<ApiError> { fetcher.runDeepResearch(dfe, com.ifmix.core.api.dto.ai.RunDeepResearchInput(scanRecordId = UUID.randomUUID(), images = emptyList(), featureFlags = null)) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.RATE_LIMITED)
     }
 

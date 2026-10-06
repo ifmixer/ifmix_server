@@ -2,8 +2,8 @@ package com.ifmix.core.api.modules.ai
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import com.ifmix.core.api.generated.types.BatchUpdateScanInput
-import com.ifmix.core.api.generated.types.BatchUpdateScanSetInput
+import com.ifmix.core.api.dto.ai.BatchUpdateScanInput
+import com.ifmix.core.api.dto.ai.BatchUpdateScanSetInput
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode

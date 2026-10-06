@@ -2,10 +2,10 @@ package com.ifmix.core.api.modules.ai
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import com.ifmix.core.api.generated.types.RunDeepResearchInput
-import com.ifmix.core.api.generated.types.DeepResearchImageInput
-import com.ifmix.core.api.generated.types.UpdateScanInput
-import com.ifmix.core.api.generated.types.UpdateScanSetInput
+import com.ifmix.core.api.dto.ai.RunDeepResearchInput
+import com.ifmix.core.api.dto.ai.DeepResearchImageInput
+import com.ifmix.core.api.dto.ai.UpdateScanInput
+import com.ifmix.core.api.dto.ai.UpdateScanSetInput
 import com.ifmix.core.api.dto.ai.DeepResearchResult
 import com.ifmix.core.api.dto.ai.DeepResearchTaskContext
 import com.ifmix.core.api.infra.db.ModuleCtx
