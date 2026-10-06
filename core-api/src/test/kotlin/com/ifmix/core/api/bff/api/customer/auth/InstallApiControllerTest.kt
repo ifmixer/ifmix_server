@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import kotlin.reflect.full.declaredMemberFunctions
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
@@ -177,21 +178,36 @@ class InstallApiControllerTest {
         LogContext.clear()
     }
 
-    // ===== 命名一致性护栏 =====
+    // ===== 命名一致性护栏（实施单 §1.3：四段格式 + module 段 + action 在 rpc-rollout-client §1 表内；
+    // install 的 action 名 module 段是 auth 表里的 install 段，包在 ...customer.auth 下，以 action 名第 2 段为准）=====
 
     @Test
-    fun `routes one-to-one with InstallSpecs and mutation prefix matches isMutation`() {
-        val specs = listOf(
-            InstallSpecs.CREATE_INSTALL, InstallSpecs.UPDATE_INSTALL, InstallSpecs.ATTEST_EXISTING,
-            InstallSpecs.RECOVER_INSTALL, InstallSpecs.CREATE_ATTEST_CHALLENGE,
+    fun `routes one-to-one with controller companion constants`() {
+        // rpc-rollout-client.md §1 R2：install 5 action 名单一真相
+        val expected = setOf(
+            "m_auth_install_create", "m_auth_install_updateOne", "m_auth_install_attest",
+            "m_auth_install_recover", "m_auth_install_createAttestChallenge",
         )
-        assertEquals(5, specs.size)
-        specs.forEach { spec ->
-            assertTrue(spec.reqName.startsWith("m_auth_"), "${spec.reqName} must be m_ (all install actions are mutations)")
-            assertTrue(spec.isMutation)
-            assertTrue(spec.reqName.count { it == '_' } == 3, "four-segment name required: ${spec.reqName}")
+        val postings = InstallApiController::class.declaredMemberFunctions
+            .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
+        assertEquals(5, postings.size)
+        val names = postings.map { f ->
+            val path = f.annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
+            val operationId = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
+            assertEquals(path, operationId, "path must equal operationId: " + path)
+            path
         }
-        assertEquals(specs.map { it.reqName }.toSet().size, specs.size)
+        assertEquals(expected, names.toSet())
+        names.forEach { n ->
+            val segs = n.split("_")
+            assertEquals(4, segs.size, "four-segment format: " + n)
+            assertTrue(segs[0] == "m", "all install actions are mutations: " + n)
+            assertTrue(segs[1] == "auth", "module segment: " + n)
+            assertTrue(segs[2] == "install", "resource segment (install 段在 auth 包下，以 action 名第 2 段为准): " + n)
+        }
+        // companion 常量与路由 path 同源
+        assertEquals("m_auth_install_create", InstallApiController.CREATE_INSTALL)
+        assertEquals("m_auth_install_createAttestChallenge", InstallApiController.CREATE_ATTEST_CHALLENGE)
     }
 }
 

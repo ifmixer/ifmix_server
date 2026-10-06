@@ -15,7 +15,7 @@ import com.ifmix.core.api.infra.attest.AppAttestVerification
 import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.http.ActionContextFactory
-import com.ifmix.core.api.infra.http.ActionSpec
+import com.ifmix.core.api.infra.http.ActorRequirement
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ApiRequestBody
 import com.ifmix.core.api.infra.http.Envelope
@@ -63,10 +63,21 @@ class InstallApiController(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Operation(operationId = "m_auth_install_create")
-    @PostMapping("m_auth_install_create", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    companion object {
+        // install 模块 action 常量（原 InstallSpecs 机械搬移）：全部 requireActorType = NONE
+        //（唯一依据 = InstallFetcher 各 action 的 `fromDfe(dfe, requireActorType = null)` 实参；
+        // token 要求由各 endpoint 的既有内部校验精确执行）。
+        const val CREATE_INSTALL = "m_auth_install_create"
+        const val UPDATE_INSTALL = "m_auth_install_updateOne"
+        const val ATTEST_EXISTING = "m_auth_install_attest"
+        const val RECOVER_INSTALL = "m_auth_install_recover"
+        const val CREATE_ATTEST_CHALLENGE = "m_auth_install_createAttestChallenge"
+    }
+
+    @Operation(operationId = CREATE_INSTALL)
+    @PostMapping(CREATE_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> {
-        val ctx = ctxFactory.fromRpc(request, InstallSpecs.CREATE_INSTALL, body.meta)
+        val ctx = ctxFactory.fromRpc(request, CREATE_INSTALL, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
         val input = body.requireInput()
@@ -127,17 +138,17 @@ class InstallApiController(
             AttestGuard.CreateInstallDecision.NOT_PERSISTED -> 20 // 带了 proof 但没绑定（OBSERVE 下 INVALID 等）
             AttestGuard.CreateInstallDecision.NOT_ATTEMPTED -> 30 // 没带 proof / 服务端未校验
         }
-        return ResponseEntity.ok(Envelope.ok(CreateInstallRes(installId = res.installId, installToken = res.installToken, attestationStatus = attestationStatus)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, CreateInstallRes(installId = res.installId, installToken = res.installToken, attestationStatus = attestationStatus)))
     }
 
     /** 读 project 级 mode（§4.3 单一 mode，作用于所有已配置 provider；null = 未配置）。 */
     private fun configMode(ctx: ActionContext) =
         serverConfigFacade.findAttestConfig(ctx.mustGetProjectId())?.mode
 
-    @Operation(operationId = "m_auth_install_updateOne")
-    @PostMapping("m_auth_install_updateOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = UPDATE_INSTALL)
+    @PostMapping(UPDATE_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun updateInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<UpdateInstallInput>): ResponseEntity<Envelope<UpdateInstallRes>> {
-        val ctx = ctxFactory.fromRpc(request, InstallSpecs.UPDATE_INSTALL, body.meta)
+        val ctx = ctxFactory.fromRpc(request, UPDATE_INSTALL, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
         val installId = ctx.tokenInstallId
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "install token required")
         val input = body.requireInput()
@@ -151,15 +162,15 @@ class InstallApiController(
                 input.deepResearchNotiEnabled,
             )
         }
-        return ResponseEntity.ok(Envelope.ok(UpdateInstallRes(success = ok)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, UpdateInstallRes(success = ok)))
     }
 
     // ===== m_auth_install_createAttestChallenge（§5.1：无鉴权；100/60s/IP；纯计算不碰 Redis）=====
 
-    @Operation(operationId = "m_auth_install_createAttestChallenge")
-    @PostMapping("m_auth_install_createAttestChallenge", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = CREATE_ATTEST_CHALLENGE)
+    @PostMapping(CREATE_ATTEST_CHALLENGE, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createAttestChallenge(request: HttpServletRequest, @RequestBody body: ApiRequestBody<NoInput>): ResponseEntity<Envelope<AttestChallengeRes>> {
-        val ctx = ctxFactory.fromRpc(request, InstallSpecs.CREATE_ATTEST_CHALLENGE, body.meta)
+        val ctx = ctxFactory.fromRpc(request, CREATE_ATTEST_CHALLENGE, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
         // 短窗口 100/60s/IP（挑战是纯 HMAC 计算，与 createInstall 入口对齐，避免 CGNAT 瓶颈）
@@ -177,18 +188,18 @@ class InstallApiController(
         val enabled = attestGuard.isChallengeEnabled(pid, ctx.clientPlatform)
         if (!enabled) {
             // 客户端据此不生成 key，直接走 no-proof createInstall
-            return ResponseEntity.ok(Envelope.ok(AttestChallengeRes(enabled = false, challenge = null, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)).copy(reqId = ctx.requestId))
+            return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestChallengeRes(enabled = false, challenge = null, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)))
         }
         val challenge = attestGuard.issueChallenge(pid)
-        return ResponseEntity.ok(Envelope.ok(AttestChallengeRes(enabled = true, challenge = challenge, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestChallengeRes(enabled = true, challenge = challenge, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)))
     }
 
     // ===== m_auth_install_recover（§3.3：无鉴权；10/60s/IP；与 mode/全局开关无关——决策 9）=====
 
-    @Operation(operationId = "m_auth_install_recover")
-    @PostMapping("m_auth_install_recover", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = RECOVER_INSTALL)
+    @PostMapping(RECOVER_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun recoverInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<RecoverInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> {
-        val ctx = ctxFactory.fromRpc(request, InstallSpecs.RECOVER_INSTALL, body.meta)
+        val ctx = ctxFactory.fromRpc(request, RECOVER_INSTALL, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
         val input = body.requireInput()
@@ -255,7 +266,7 @@ class InstallApiController(
             installFacade.recoverInstall(txCtx, binding, assertionSuccess.newCounter)
         }
         recoverLog(ctx, "ok", null)
-        return ResponseEntity.ok(Envelope.ok(CreateInstallRes(installId = res.installId, installToken = res.installToken, attestationStatus = 10)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, CreateInstallRes(installId = res.installId, installToken = res.installToken, attestationStatus = 10)))
     }
 
     /** §5.5/§2 决策 11：event=install.recover 日志补 mode/provider 字段（不打印 keyId/证明原文）。 */
@@ -266,10 +277,10 @@ class InstallApiController(
 
     // ===== m_auth_install_attest（§6.7：严格只认 installToken；10/60s/IP + 3/install/UTC 日）=====
 
-    @Operation(operationId = "m_auth_install_attest")
-    @PostMapping("m_auth_install_attest", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = ATTEST_EXISTING)
+    @PostMapping(ATTEST_EXISTING, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun attestExisting(request: HttpServletRequest, @RequestBody body: ApiRequestBody<AttestExistingInput>): ResponseEntity<Envelope<AttestExistingRes>> {
-        val ctx = ctxFactory.fromRpc(request, InstallSpecs.ATTEST_EXISTING, body.meta)
+        val ctx = ctxFactory.fromRpc(request, ATTEST_EXISTING, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
         val input = body.requireInput()
 
         // 1. 鉴权：严格只认 installToken（type=5 && actorId==null && tokenInstallId!=null，否则 401000）
@@ -296,7 +307,7 @@ class InstallApiController(
 
         // 3. 服务端未启用（OFF / 未配置 / 全局开关关）→ 30（NOT_EVALUATED，客户端废弃 key 等下次启动）
         if (!attestGuard.isAttestationEnabled(pid)) {
-            return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 30)).copy(reqId = ctx.requestId))
+            return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = 30)))
         }
 
         // 4. verifyProof（§5.1 组合校验 + §5.7 输入上限；INVALID → 20；UNAVAILABLE → 503002）
@@ -307,15 +318,15 @@ class InstallApiController(
             is AttestGuard.Verification.Valid -> Unit
             is AttestGuard.Verification.Invalid -> {
                 // INVALID 与 mode 无关（ENFORCE 也一样）：返回 20，不报错、不写记录
-                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 20)).copy(reqId = ctx.requestId))
+                return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = 20)))
             }
             is AttestGuard.Verification.Unavailable ->
                 throw ApiError(ErrorCode.ATTESTATION_UNAVAILABLE, "attestation verification temporarily unavailable (${verification.reason.code})")
             is AttestGuard.Verification.NotEvaluated ->
-                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 30)).copy(reqId = ctx.requestId))
+                return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = 30)))
             is AttestGuard.Verification.Disabled,
             is AttestGuard.Verification.NoProof ->
-                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 30)).copy(reqId = ctx.requestId))
+                return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = 30)))
         }
         val verified = (verification as AttestGuard.Verification.Valid).proof
 
@@ -324,7 +335,7 @@ class InstallApiController(
         when {
             precheck != null && precheck.installId == installId && precheck.status == AttestationStatuses.ACTIVE -> {
                 // 同 install ACTIVE → 幂等 10，**跳过额度与消费**（不占新 key 额度、不消费 challenge）
-                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 10)).copy(reqId = ctx.requestId))
+                return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = 10)))
             }
             precheck != null && precheck.status != AttestationStatuses.ACTIVE ->
                 throw ApiError(ErrorCode.ATTEST_KEY_BLOCKED, "attestation key is not active (status=${precheck.status})")
@@ -366,7 +377,7 @@ class InstallApiController(
             }
         }
         attestLog(ctx, "ok", null)
-        return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = txResult)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = txResult)))
     }
 
     /** §5.5：event=install.attest 日志（attestExisting 路径；与 Guard 内的纯技术日志分开，带 action 语义）。 */

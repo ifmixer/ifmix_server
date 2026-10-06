@@ -60,6 +60,18 @@ data class ActionContext(
     val isMutation: Boolean = false,
     /** true = 优先走 reader；mutation 时默认为 false，query 时默认为 true */
     val preferReader: Boolean = !isMutation,
+    /**
+     * [ActionContextFactory.fromRpc] 解析用的 raw [RequestMeta] 实例（body.meta，缺失时 [RequestMeta] 空对象）。
+     *
+     * 分界（2026-10-06）：
+     * - 透传型 meta 字段（遥测类，无校验/归一逻辑）走 `ctx.meta.xxx` 直读；以后新增此类字段
+     *   只改 [RequestMeta] 一处。
+     * - 有校验/归一逻辑的字段（locale/currency/country/clientPlatform/projectId）仍由 factory
+     *   出派生字段（`ctx.locale` 等），**禁止业务层绕过 `ctx.locale` 直读 `ctx.meta.locale`**。
+     *
+     * 非 factory 构造点（webhook/内部调用/测试）保持默认空 [RequestMeta]。
+     */
+    val meta: RequestMeta = RequestMeta(),
     // ===== 全局事务支持 =====
     /**
      * 全局事务 KSqlClient（由 GlobalTxRunner 在 DataFetcher 层设置）。

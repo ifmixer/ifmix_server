@@ -118,18 +118,27 @@ class PayControllerTest {
     // ===== 命名一致性护栏 =====
 
     @Test
-    fun `route matches PaySpecs and mutation prefix matches isMutation`() {
-        val spec = PaySpecs.IAP_VERIFY
-        assertEquals(true, spec.isMutation)
-        assertEquals("m_", spec.reqName.take(2))
-        assertEquals("pay", spec.reqName.split("_")[1])
-
+    fun `routes one-to-one with controller companion constants`() {
+        // rpc-rollout-client.md §1 R3：m_pay_iap_verify 名单一真相
+        val expected = setOf("m_pay_iap_verify")
         val postings = PayController::class.declaredMemberFunctions
             .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
         assertEquals(1, postings.size)
-        val path = postings.single().annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
-        val specConst = postings.single().annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
-        assertEquals(spec.reqName, path)
-        assertEquals(spec.reqName, specConst)
+        val names = postings.map { f ->
+            val path = f.annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
+            val operationId = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
+            assertEquals(path, operationId, "path must equal operationId: " + path)
+            path
+        }
+        assertEquals(expected, names.toSet())
+        names.forEach { n ->
+            val segs = n.split("_")
+            assertEquals(4, segs.size, "four-segment format: " + n)
+            assertEquals("m", segs[0], "iap verify is a mutation: " + n)
+            assertEquals("pay", segs[1], "module segment: " + n)
+            assertEquals("iap", segs[2], "resource segment: " + n)
+        }
+        // companion 常量与路由 path 同源
+        assertEquals("m_pay_iap_verify", PayController.IAP_VERIFY)
     }
 }

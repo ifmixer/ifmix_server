@@ -43,41 +43,50 @@ class CsController(
     private val globalTx: GlobalTxRunner,
 ) {
 
-    @Operation(operationId = "m_cs_feedback_createOne")
-    @PostMapping("m_cs_feedback_createOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    companion object {
+        // cs 模块 action 常量（原 CsSpecs 机械搬移；全部 CUSTOMER + requireProjectId=true，
+        // 对照原 CsFetcher `fromDfe(dfe)` 全默认实参）。
+        const val SUBMIT_FEEDBACK = "m_cs_feedback_createOne"
+        const val CREATE_SUPPORT_REQUEST = "m_cs_supportRequest_createOne"
+        const val MY_SUPPORT_REQUEST_BY_ID = "q_cs_supportRequest_getById"
+        const val MY_SUPPORT_REQUESTS = "q_cs_supportRequest_list"
+    }
+
+    @Operation(operationId = SUBMIT_FEEDBACK)
+    @PostMapping(SUBMIT_FEEDBACK, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun submitFeedback(request: HttpServletRequest, @RequestBody body: ApiRequestBody<SubmitFeedbackInput>): ResponseEntity<Envelope<SubmitFeedbackRes>> {
-        val ctx = ctxFactory.fromRpc(request, CsSpecs.SUBMIT_FEEDBACK, body.meta)
+        val ctx = ctxFactory.fromRpc(request, SUBMIT_FEEDBACK, isMutation = true, body = body)
         val input = body.requireInput()
         val id = globalTx.withTx(ctx) { txCtx -> csService.submit(txCtx, input.toReq()) }
-        return ResponseEntity.ok(Envelope.ok(SubmitFeedbackRes(id = id)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, SubmitFeedbackRes(id = id)))
     }
 
-    @Operation(operationId = "m_cs_supportRequest_createOne")
-    @PostMapping("m_cs_supportRequest_createOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = CREATE_SUPPORT_REQUEST)
+    @PostMapping(CREATE_SUPPORT_REQUEST, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createSupportRequest(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateSupportRequestInput>): ResponseEntity<Envelope<CreateSupportRequestRes>> {
-        val ctx = ctxFactory.fromRpc(request, CsSpecs.CREATE_SUPPORT_REQUEST, body.meta)
+        val ctx = ctxFactory.fromRpc(request, CREATE_SUPPORT_REQUEST, isMutation = true, body = body)
         val input = body.requireInput()
         val id = globalTx.withTx(ctx) { txCtx -> csService.createSupportRequest(txCtx, input.toReq()) }
-        return ResponseEntity.ok(Envelope.ok(CreateSupportRequestRes(id = id)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, CreateSupportRequestRes(id = id)))
     }
 
-    @Operation(operationId = "q_cs_supportRequest_getById")
-    @PostMapping("q_cs_supportRequest_getById", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = MY_SUPPORT_REQUEST_BY_ID)
+    @PostMapping(MY_SUPPORT_REQUEST_BY_ID, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun mySupportRequestById(request: HttpServletRequest, @RequestBody body: ApiRequestBody<SupportRequestByIdInput>): ResponseEntity<Envelope<SupportRequestRes>> {
-        val ctx = ctxFactory.fromRpc(request, CsSpecs.MY_SUPPORT_REQUEST_BY_ID, body.meta)
+        val ctx = ctxFactory.fromRpc(request, MY_SUPPORT_REQUEST_BY_ID, isMutation = false, body = body)
         val input = body.requireInput()
-        return ResponseEntity.ok(Envelope.ok(csService.findMySupportRequestById(ctx, input.id).toRes()).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, csService.findMySupportRequestById(ctx, input.id).toRes()))
     }
 
-    @Operation(operationId = "q_cs_supportRequest_list")
-    @PostMapping("q_cs_supportRequest_list", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = MY_SUPPORT_REQUESTS)
+    @PostMapping(MY_SUPPORT_REQUESTS, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun mySupportRequests(request: HttpServletRequest, @RequestBody body: ApiRequestBody<ListSupportRequestsInput>): ResponseEntity<Envelope<Page<SupportRequestRes>>> {
-        val ctx = ctxFactory.fromRpc(request, CsSpecs.MY_SUPPORT_REQUESTS, body.meta)
+        val ctx = ctxFactory.fromRpc(request, MY_SUPPORT_REQUESTS, isMutation = false, body = body)
         // 原 GraphQL 侧 input 整段可空：缺段/显式 null → null req 透传（此处不用 requireInput）
         val input = body.input
         val page = csService.findMySupportRequests(ctx, input?.let { ListSupportRequestsReq(cursor = it.cursor, limit = it.limit) })
         return ResponseEntity.ok(
-            Envelope.ok(Page(items = page.items.map { it.toRes() }, pageInfo = page.pageInfo)).copy(reqId = ctx.requestId),
+            Envelope.ok(ctx.requestId, Page(items = page.items.map { it.toRes() }, pageInfo = page.pageInfo)),
         )
     }
 }

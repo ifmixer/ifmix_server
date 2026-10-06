@@ -294,37 +294,36 @@ class DemoControllerTest {
         LogContext.clear()
     }
 
-    // ===== 命名一致性护栏：8 条路由 ↔ DemoSpecs 一一对应 =====
+    // ===== 命名一致性护栏：8 条路由四段格式 + module/resource 段 + action 在 rpc-rollout-client §1 表内 =====
+    // （实施单 §1.3：原「path ⇔ ActionSpec.isMutation」断言由 factory 运行时前缀 ⇔ 读写校验取代，测试里删掉）
 
     @Test
-    fun `routes one-to-one with DemoSpecs and mutation prefix matches isMutation`() {
-        val specs = setOf(
-            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.FIND_TODO_BY_ID,
-            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.FIND_TODOS_BY_IDS,
-            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.FIND_TODOS,
-            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.CREATE_TODO,
-            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.UPDATE_TODO,
-            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.BATCH_UPDATE_TODO_ITEMS,
-            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.DELETE_TODO,
-            com.ifmix.core.api.bff.api.customer.demo.DemoSpecs.DELETE_TODO_BY_IDS,
+    fun `routes one-to-one with controller companion constants`() {
+        // rpc-rollout-client.md §1.1 demo 表（8 个 action 名单一真相）
+        val expected = setOf(
+            "q_demo_todo_getById", "q_demo_todo_getByIds", "q_demo_todo_list",
+            "m_demo_todo_createOne", "m_demo_todo_updateOne", "m_demo_todo_updateItems",
+            "m_demo_todo_deleteOne", "m_demo_todo_deleteMany",
         )
-        assertEquals(8, specs.size)
-        specs.forEach { spec ->
-            assertEquals(spec.isMutation, spec.reqName.startsWith("m_"))
-            assertEquals("demo", spec.reqName.split("_")[1])
-            assertEquals("todo", spec.reqName.split("_")[2])
-        }
-
         val postings = DemoController::class.declaredMemberFunctions
             .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }
         assertEquals(8, postings.size)
-        val pathOf = postings.associate { f ->
+        val names = postings.map { f ->
             val path = f.annotations.filterIsInstance<org.springframework.web.bind.annotation.PostMapping>().single().value.first()
-            val specConst = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>()
-                .single().operationId
-            path to specs.single { it.reqName == specConst }
+            val operationId = f.annotations.filterIsInstance<io.swagger.v3.oas.annotations.Operation>().single().operationId
+            assertEquals(path, operationId, "path must equal operationId: $path")
+            path
         }
-        assertEquals(specs.map { it.reqName }.toSet(), pathOf.values.map { it.reqName }.toSet())
+        assertEquals(expected, names.toSet())
+        names.forEach { n ->
+            val segs = n.split("_")
+            assertEquals(4, segs.size, "four-segment format: $n")
+            assertTrue(segs[0] in setOf("q", "m"), "q_/m_ prefix: $n")
+            assertEquals("demo", segs[1], "module segment: $n")
+            assertEquals("todo", segs[2], "resource segment: $n")
+        }
+        // companion 常量与路由 path 同源
+        assertEquals("q_demo_todo_getById", DemoController.FIND_TODO_BY_ID)
     }
 
 }

@@ -4,13 +4,14 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
+import assertk.assertions.isSameInstanceAs
 import com.ifmix.core.api.entity.common.ActorTypes
 import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.auth.TokenExpiredException
 import com.ifmix.core.api.infra.auth.VerifiedToken
 import com.ifmix.core.api.infra.http.ActionContextFactory
 import com.ifmix.core.api.infra.http.ActorRequirement
-import com.ifmix.core.api.infra.http.ActionSpec
+import com.ifmix.core.api.infra.http.ApiRequestBody
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ClientPlatform
 import com.ifmix.core.api.infra.http.ErrorCode
@@ -75,6 +76,9 @@ class ActionContextFactoryTest {
         osVersion = osVersion,
     )
 
+    /** fromRpc 的 body 实参：meta 透传（原 meta 传参逻辑映射到 body.meta）。 */
+    private fun body(meta: RequestMeta? = null) = ApiRequestBody<Any?>(meta)
+
     /** install token（type=5，无 sub）或 customer/manager token（sub 为合法 UUID）的可信 claims。 */
     private fun token(type: Int, installId: String? = null, actorId: String? = null) = VerifiedToken(
         actorId = actorId,
@@ -83,9 +87,6 @@ class ActionContextFactoryTest {
         tokenType = type,
         installId = installId,
     )
-
-    private fun spec(name: String = "demoGet", mutation: Boolean = false, actor: ActorRequirement = ActorRequirement.NONE) =
-        ActionSpec(name, mutation, actor)
 
     @BeforeEach
     fun reset() {
@@ -98,7 +99,7 @@ class ActionContextFactoryTest {
     @Test
     fun `customer endpoint without token throws UNAUTHORIZED authentication required`() {
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec(actor = ActorRequirement.CUSTOMER), meta(projectId = projectId))
+            strict.fromRpc(request(), "demoGet", body = body(meta(projectId = projectId)), requireActorType = ActorRequirement.CUSTOMER)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
         assertThat(ex.message).isEqualTo("authentication required")
@@ -108,7 +109,7 @@ class ActionContextFactoryTest {
     fun `customer endpoint with install token throws UNAUTHORIZED customer authentication required`() {
         Mockito.`when`(jwt.verify(any())).thenReturn(token(AuthJwtService.TOKEN_TYPE_INSTALL, installId = iid.toString()))
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.CUSTOMER), meta("SECRET-install", projectId))
+            strict.fromRpc(request(), "demoGet", body = body(meta("SECRET-install", projectId)), requireActorType = ActorRequirement.CUSTOMER)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
         assertThat(ex.message).isEqualTo("customer authentication required")
@@ -126,7 +127,7 @@ class ActionContextFactoryTest {
             )
         )
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.CUSTOMER), meta("SECRET-manager", projectId))
+            strict.fromRpc(request(), "demoGet", body = body(meta("SECRET-manager", projectId)), requireActorType = ActorRequirement.CUSTOMER)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
         assertThat(ex.message).isEqualTo("actor type not allowed for this endpoint")
@@ -139,7 +140,7 @@ class ActionContextFactoryTest {
         Mockito.`when`(jwt.verify(any())).thenReturn(
             VerifiedToken(actorId = cid.toString(), projectId = projectId, actorType = ActorTypes.CUSTOMER, sessionId = "s1")
         )
-        val ctx = strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.CUSTOMER), meta("SECRET-customer", projectId))
+        val ctx = strict.fromRpc(request(), "demoGet", body = body(meta("SECRET-customer", projectId)), requireActorType = ActorRequirement.CUSTOMER)
         assertThat(ctx.actorId).isEqualTo(cid)
         assertThat(ctx.actorType).isEqualTo(ActorTypes.CUSTOMER)
         assertThat(ctx.anonymous).isEqualTo(false)
@@ -155,7 +156,7 @@ class ActionContextFactoryTest {
     fun `expired token throws TOKEN_EXPIRED`() {
         Mockito.`when`(jwt.verify(any())).thenThrow(TokenExpiredException())
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.CUSTOMER), meta("SECRET-expired", projectId))
+            strict.fromRpc(request(), "demoGet", body = body(meta("SECRET-expired", projectId)), requireActorType = ActorRequirement.CUSTOMER)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.TOKEN_EXPIRED)
         assertThat(ex.message).isEqualTo("access token expired")
@@ -166,7 +167,7 @@ class ActionContextFactoryTest {
     fun `signature verification failure throws UNAUTHORIZED without leaking token`() {
         Mockito.`when`(jwt.verify(any())).thenReturn(null)
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.CUSTOMER), meta("SECRET-bogus", projectId))
+            strict.fromRpc(request(), "demoGet", body = body(meta("SECRET-bogus", projectId)), requireActorType = ActorRequirement.CUSTOMER)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
         assertThat(ex.message).isEqualTo("invalid token: signature verification failed") // 固定文案，不含 token 原文
@@ -179,7 +180,7 @@ class ActionContextFactoryTest {
             VerifiedToken(actorId = UUID.randomUUID().toString(), projectId = "other-app", actorType = ActorTypes.CUSTOMER)
         )
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.CUSTOMER), meta("SECRET-cross", projectId))
+            strict.fromRpc(request(), "demoGet", body = body(meta("SECRET-cross", projectId)), requireActorType = ActorRequirement.CUSTOMER)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
         assertThat(ex.message).isEqualTo("invalid token: app mismatch")
@@ -192,7 +193,7 @@ class ActionContextFactoryTest {
             VerifiedToken(actorId = "not-a-uuid", projectId = projectId, actorType = ActorTypes.CUSTOMER)
         )
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.CUSTOMER), meta("SECRET-nosub", projectId))
+            strict.fromRpc(request(), "demoGet", body = body(meta("SECRET-nosub", projectId)), requireActorType = ActorRequirement.CUSTOMER)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
         assertThat(ex.message).isEqualTo("invalid token: missing or invalid subject")
@@ -202,7 +203,7 @@ class ActionContextFactoryTest {
     @Test
     fun `bearer prefixed meta token throws UNAUTHORIZED protocol education message before verify`() {
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.CUSTOMER), meta("Bearer SECRET", projectId))
+            strict.fromRpc(request(), "demoGet", body = body(meta("Bearer SECRET", projectId)), requireActorType = ActorRequirement.CUSTOMER)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
         assertThat(ex.message).isEqualTo("invalid token: send raw token in meta.accessToken")
@@ -215,14 +216,19 @@ class ActionContextFactoryTest {
     @Test
     fun `install token on install-or-customer endpoint yields null actor with token install id and type`() {
         Mockito.`when`(jwt.verify(any())).thenReturn(token(AuthJwtService.TOKEN_TYPE_INSTALL, installId = iid.toString()))
-        val spec = ActionSpec("createAnonymous", isMutation = true, actor = ActorRequirement.INSTALL_OR_CUSTOMER)
-        val ctx = strict.fromRpc(request(), spec, meta("SECRET-install", projectId))
+        val ctx = strict.fromRpc(
+            request(),
+            "m_auth_customer_createAnonymous",
+            isMutation = true,
+            body = body(meta("SECRET-install", projectId)),
+            requireActorType = ActorRequirement.INSTALL_OR_CUSTOMER,
+        )
         assertThat(ctx.actorId).isNull()
         assertThat(ctx.tokenInstallId).isEqualTo(iid)
         assertThat(ctx.tokenType).isEqualTo(AuthJwtService.TOKEN_TYPE_INSTALL)
         assertThat(ctx.installId).isNull()
         assertThat(ctx.legacyInstallId).isNull()
-        assertThat(ctx.actionName).isEqualTo("createAnonymous")
+        assertThat(ctx.actionName).isEqualTo("m_auth_customer_createAnonymous")
         assertThat(ctx.isMutation).isEqualTo(true)
         assertThat(ctx.preferReader).isEqualTo(false)
         LogContext.clear()
@@ -233,8 +239,9 @@ class ActionContextFactoryTest {
         Mockito.`when`(jwt.verify(any())).thenReturn(token(AuthJwtService.TOKEN_TYPE_INSTALL, installId = null))
         val ctx = relaxed.fromRpc(
             request(),
-            spec("demoGet", false, ActorRequirement.INSTALL_OR_CUSTOMER),
-            meta("SECRET-install", projectId)
+            "demoGet",
+            body = body(meta("SECRET-install", projectId)),
+            requireActorType = ActorRequirement.INSTALL_OR_CUSTOMER,
         )
         assertThat(ctx.tokenInstallId).isNull()
         assertThat(ctx.tokenType).isEqualTo(AuthJwtService.TOKEN_TYPE_INSTALL)
@@ -246,7 +253,7 @@ class ActionContextFactoryTest {
     @Test
     fun `none and install-or-customer endpoints without token pass with null actor`() {
         for (req in listOf(ActorRequirement.NONE, ActorRequirement.INSTALL_OR_CUSTOMER)) {
-            val ctx = strict.fromRpc(request(), spec("demoGet", false, req), meta(projectId = projectId))
+            val ctx = strict.fromRpc(request(), "demoGet", body = body(meta(projectId = projectId)), requireActorType = req)
             assertThat(ctx.actorId).isNull()
             assertThat(ctx.tokenType).isNull()
             LogContext.clear()
@@ -258,7 +265,7 @@ class ActionContextFactoryTest {
         // 带了 token 就校验（与 RequestParser 语义一致：无论端点是否要求登录，过期/无效 token 都抛）
         Mockito.`when`(jwt.verify(any())).thenThrow(TokenExpiredException())
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), meta("SECRET-expired", projectId))
+            strict.fromRpc(request(), "demoGet", body = body(meta("SECRET-expired", projectId)))
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.TOKEN_EXPIRED)
         LogContext.clear()
@@ -271,8 +278,10 @@ class ActionContextFactoryTest {
         val ex = assertThrows<ApiError> {
             relaxed.fromRpc(
                 request(),
-                ActionSpec("demoGet", false, ActorRequirement.NONE, requireProjectId = true),
-                meta(null, null)
+                "demoGet",
+                body = body(meta(null, null)),
+                requireActorType = ActorRequirement.NONE,
+                requireProjectId = true,
             )
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.INVALID_REQUEST)
@@ -284,7 +293,7 @@ class ActionContextFactoryTest {
     fun `invalid project id format throws INVALID_REQUEST`() {
         for (bad in listOf("IFMIX", "ab", "ifmix_demo", "Ifmix-demo")) {
             val ex = assertThrows<ApiError> {
-                relaxed.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), meta(null, bad))
+                relaxed.fromRpc(request(), "demoGet", body = body(meta(null, bad)), requireActorType = ActorRequirement.NONE)
             }
             assertThat(ex.errorCode).isEqualTo(ErrorCode.INVALID_REQUEST)
             assertThat(ex.message).isEqualTo("invalid projectId format")
@@ -296,8 +305,10 @@ class ActionContextFactoryTest {
     fun `project id not required passes without meta project id`() {
         val ctx = relaxed.fromRpc(
             request(),
-            ActionSpec("demoGet", false, ActorRequirement.NONE, requireProjectId = false),
-            meta(null, null)
+            "demoGet",
+            body = body(meta(null, null)),
+            requireActorType = ActorRequirement.NONE,
+            requireProjectId = false,
         )
         assertThat(ctx.projectId).isNull()
         LogContext.clear()
@@ -308,7 +319,7 @@ class ActionContextFactoryTest {
     @Test
     fun `strict mode rejects bad currency`() {
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId, currency = "usd1"))
+            strict.fromRpc(request(), "q_demo_todo_getById", body = body(meta(projectId = projectId, currency = "usd1")), requireActorType = ActorRequirement.NONE)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.INVALID_REQUEST)
         assertThat(ex.message).isEqualTo("invalid meta.currency: invalid format")
@@ -317,7 +328,7 @@ class ActionContextFactoryTest {
 
     @Test
     fun `relaxed mode drops bad currency to null`() {
-        val ctx = relaxed.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId, currency = "usd1"))
+        val ctx = relaxed.fromRpc(request(), "demoGet", body = body(meta(projectId = projectId, currency = "usd1")), requireActorType = ActorRequirement.NONE)
         assertThat(ctx.currency).isNull()
         LogContext.clear()
     }
@@ -326,8 +337,9 @@ class ActionContextFactoryTest {
     fun `currency and country normalized to uppercase`() {
         val ctx = relaxed.fromRpc(
             request(),
-            spec("demoGet", false, ActorRequirement.NONE),
-            meta(projectId = projectId, currency = "usd", country = "cn")
+            "demoGet",
+            body = body(meta(projectId = projectId, currency = "usd", country = "cn")),
+            requireActorType = ActorRequirement.NONE,
         )
         assertThat(ctx.currency).isEqualTo("USD")
         assertThat(ctx.country).isEqualTo("CN")
@@ -336,7 +348,7 @@ class ActionContextFactoryTest {
 
     @Test
     fun `relaxed mode drops bad country to null`() {
-        val ctx = relaxed.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId, country = "cn1"))
+        val ctx = relaxed.fromRpc(request(), "demoGet", body = body(meta(projectId = projectId, country = "cn1")), requireActorType = ActorRequirement.NONE)
         assertThat(ctx.country).isNull()
         LogContext.clear()
     }
@@ -344,7 +356,7 @@ class ActionContextFactoryTest {
     @Test
     fun `locale not in supported set yields null without throwing`() {
         for (v in listOf("ko", "ru-RU", "en-US")) {
-            val ctx = relaxed.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId, locale = v))
+            val ctx = relaxed.fromRpc(request(), "demoGet", body = body(meta(projectId = projectId, locale = v)), requireActorType = ActorRequirement.NONE)
             assertThat(ctx.locale).isEqualTo(if (v == "en-US") "en" else null)
             LogContext.clear()
         }
@@ -356,15 +368,17 @@ class ActionContextFactoryTest {
     fun `user tz device model os version pass through trimmed`() {
         val ctx = relaxed.fromRpc(
             request(),
-            spec("demoPut", true, ActorRequirement.NONE),
-            meta(projectId = projectId, userTz = " Asia/Shanghai ", deviceModel = "Pixel 8 ", osVersion = " 15 ")
+            "m_demo_todo_updateOne",
+            isMutation = true,
+            body = body(meta(projectId = projectId, userTz = " Asia/Shanghai ", deviceModel = "Pixel 8 ", osVersion = " 15 ")),
+            requireActorType = ActorRequirement.NONE,
         )
         assertThat(ctx.userTz).isEqualTo("Asia/Shanghai")
         assertThat(ctx.deviceModel).isEqualTo("Pixel 8")
         assertThat(ctx.osVersion).isEqualTo("15")
         assertThat(ctx.installId).isNull()
         assertThat(ctx.legacyInstallId).isNull()
-        assertThat(ctx.actionName).isEqualTo("demoPut")
+        assertThat(ctx.actionName).isEqualTo("m_demo_todo_updateOne")
         assertThat(ctx.isMutation).isEqualTo(true)
         assertThat(ctx.preferReader).isEqualTo(false)
         assertThat(ctx.readCache).isEqualTo(false)
@@ -372,8 +386,8 @@ class ActionContextFactoryTest {
     }
 
     @Test
-    fun `query spec gets prefer reader true and query cache`() {
-        val ctx = relaxed.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId))
+    fun `query action gets prefer reader true and query cache`() {
+        val ctx = relaxed.fromRpc(request(), "demoGet", body = body(meta(projectId = projectId)), requireActorType = ActorRequirement.NONE)
         assertThat(ctx.preferReader).isEqualTo(true)
         assertThat(ctx.readCache).isEqualTo(true)
         LogContext.clear()
@@ -383,8 +397,9 @@ class ActionContextFactoryTest {
     fun `app version and ota version passed through trimmed`() {
         val ctx = relaxed.fromRpc(
             request(),
-            spec("demoGet", false, ActorRequirement.NONE),
-            meta(projectId = projectId, appVersion = " 1.2.3 ", otaVersion = " 1-23-3 ")
+            "demoGet",
+            body = body(meta(projectId = projectId, appVersion = " 1.2.3 ", otaVersion = " 1-23-3 ")),
+            requireActorType = ActorRequirement.NONE,
         )
         assertThat(ctx.appVersion).isEqualTo("1.2.3")
         assertThat(ctx.otaVersion).isEqualTo("1-23-3")
@@ -393,7 +408,13 @@ class ActionContextFactoryTest {
 
     @Test
     fun `null meta is treated as empty meta`() {
-        val ctx = relaxed.fromRpc(request(), ActionSpec("demoGet", false, ActorRequirement.NONE, requireProjectId = false), null)
+        val ctx = relaxed.fromRpc(
+            request(),
+            "demoGet",
+            body = body(null),
+            requireActorType = ActorRequirement.NONE,
+            requireProjectId = false,
+        )
         assertThat(ctx.projectId).isNull()
         assertThat(ctx.actorId).isNull()
         LogContext.clear()
@@ -403,7 +424,7 @@ class ActionContextFactoryTest {
 
     @Test
     fun `meta req id takes priority over log context request id`() {
-        val ctx = relaxed.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId, reqId = "client-req-1"))
+        val ctx = relaxed.fromRpc(request(), "demoGet", body = body(meta(projectId = projectId, reqId = "client-req-1")), requireActorType = ActorRequirement.NONE)
         assertThat(ctx.requestId).isEqualTo("client-req-1")
         LogContext.clear()
     }
@@ -413,7 +434,7 @@ class ActionContextFactoryTest {
         val req = MockHttpServletRequest()
         req.addHeader(RequestHeaders.REQ_ID, "xrid-42")
         LogContext.start(req)
-        val ctx = relaxed.fromRpc(req, spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId))
+        val ctx = relaxed.fromRpc(req, "demoGet", body = body(meta(projectId = projectId)), requireActorType = ActorRequirement.NONE)
         assertThat(ctx.requestId).isEqualTo("xrid-42")
         LogContext.clear()
     }
@@ -427,7 +448,7 @@ class ActionContextFactoryTest {
             addHeader(RequestHeaders.CF_BOT_SCORE, " 42 ")
         }
         LogContext.start(req)
-        val ctx = relaxed.fromRpc(req, spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId, clientPlatform = "WEB"))
+        val ctx = relaxed.fromRpc(req, "demoGet", body = body(meta(projectId = projectId, clientPlatform = "WEB")), requireActorType = ActorRequirement.NONE)
         assertThat(ctx.clientIp).isEqualTo("9.9.9.9")
         assertThat(ctx.botScore).isEqualTo(42)
         assertThat(ctx.clientPlatform).isEqualTo(ClientPlatform.WEB)
@@ -440,7 +461,7 @@ class ActionContextFactoryTest {
             addHeader(RequestHeaders.CF_BOT_SCORE, "0")
         }
         LogContext.start(req)
-        val ctx = relaxed.fromRpc(req, spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId))
+        val ctx = relaxed.fromRpc(req, "demoGet", body = body(meta(projectId = projectId)), requireActorType = ActorRequirement.NONE)
         assertThat(ctx.botScore).isNull()
         assertThat(ctx.clientIp).isEqualTo(req.remoteAddr)
         LogContext.clear()
@@ -449,7 +470,7 @@ class ActionContextFactoryTest {
     @Test
     fun `invalid client platform rejected in strict mode`() {
         val ex = assertThrows<ApiError> {
-            strict.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId, clientPlatform = "palmos"))
+            strict.fromRpc(request(), "q_demo_todo_getById", body = body(meta(projectId = projectId, clientPlatform = "palmos")), requireActorType = ActorRequirement.NONE)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.INVALID_REQUEST)
         assertThat(ex.message).isEqualTo("invalid client platform: palmos")
@@ -458,7 +479,7 @@ class ActionContextFactoryTest {
 
     @Test
     fun `invalid client platform dropped to null in relaxed mode`() {
-        val ctx = relaxed.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), meta(projectId = projectId, clientPlatform = "palmos"))
+        val ctx = relaxed.fromRpc(request(), "q_demo_todo_getById", body = body(meta(projectId = projectId, clientPlatform = "palmos")), requireActorType = ActorRequirement.NONE)
         assertThat(ctx.clientPlatform).isNull()
         LogContext.clear()
     }
@@ -472,8 +493,59 @@ class ActionContextFactoryTest {
             .readValue(json, com.ifmix.core.api.infra.http.ApiRequestBody::class.java)
         val m = body.meta
         assertThat(m).isNotNull()
-        val ctx = relaxed.fromRpc(request(), spec("demoGet", false, ActorRequirement.NONE), m)
+        val ctx = relaxed.fromRpc(request(), "demoGet", body = ApiRequestBody<Any?>(m), requireActorType = ActorRequirement.NONE)
         assertThat(ctx.deviceModel).isEqualTo("X")
+        LogContext.clear()
+    }
+
+    // ===== meta 透传：ctx.meta 持有 raw 实例 =====
+
+    @Test
+    fun `ctx meta is the raw body meta instance`() {
+        val m = meta(projectId = projectId, userTz = "Asia/Shanghai")
+        val ctx = relaxed.fromRpc(request(), "demoGet", body = body(m), requireActorType = ActorRequirement.NONE)
+        assertThat(ctx.meta).isSameInstanceAs(m)
+        LogContext.clear()
+    }
+
+    @Test
+    fun `null body meta gives empty RequestMeta on ctx`() {
+        val ctx = relaxed.fromRpc(
+            request(),
+            "demoGet",
+            body = body(null),
+            requireActorType = ActorRequirement.NONE,
+            requireProjectId = false,
+        )
+        assertThat(ctx.meta.projectId).isNull()
+        LogContext.clear()
+    }
+
+    // ===== 前缀 ⇔ 读写一致性（实施单 §1.2-1：显式 isMutation 与 actionName 前缀不一致 → IllegalStateException）=====
+
+    @Test
+    fun `explicit isMutation mismatch with m_ prefix throws IllegalStateException`() {
+        assertThrows<IllegalStateException> {
+            strict.fromRpc(request(), "m_demo_todo_createOne", isMutation = false, body = body(meta(projectId = projectId)))
+        }
+    }
+
+    @Test
+    fun `explicit isMutation mismatch with q_ prefix throws IllegalStateException`() {
+        assertThrows<IllegalStateException> {
+            strict.fromRpc(request(), "q_demo_todo_getById", isMutation = true, body = body(meta(projectId = projectId)))
+        }
+    }
+
+    @Test
+    fun `omitted isMutation is derived from action name prefix`() {
+        val ctx = relaxed.fromRpc(request(), "q_demo_todo_getById", body = body(meta(projectId = projectId)), requireActorType = ActorRequirement.NONE)
+        assertThat(ctx.isMutation).isEqualTo(false)
+        assertThat(ctx.preferReader).isEqualTo(true)
+        LogContext.clear()
+        val mctx = relaxed.fromRpc(request(), "m_demo_todo_createOne", body = body(meta(projectId = projectId)), requireActorType = ActorRequirement.NONE)
+        assertThat(mctx.isMutation).isEqualTo(true)
+        assertThat(mctx.preferReader).isEqualTo(false)
         LogContext.clear()
     }
 }

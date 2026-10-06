@@ -9,14 +9,3 @@ package com.ifmix.core.api.infra.http
  * demo 8 个 action 全部为 CUSTOMER；另两档为后续模块预留，本试点不使用。
  */
 enum class ActorRequirement { NONE, INSTALL_OR_CUSTOMER, CUSTOMER }
-
-/**
- * 单个 RPC action 的规格：路由名、读写属性、主体要求、是否必须 projectId。
- * 由 [ActionContextFactory] 解释并构造 [ActionContext]。
- */
-data class ActionSpec(
-    val reqName: String,
-    val isMutation: Boolean,
-    val actor: ActorRequirement = ActorRequirement.CUSTOMER,
-    val requireProjectId: Boolean = true,
-)
