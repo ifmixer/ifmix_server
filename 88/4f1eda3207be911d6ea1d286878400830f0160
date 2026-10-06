@@ -1,0 +1,14 @@
+docs/design/proposals/konvert-rollout-server.md
+  h_b17efd5c751f9f 1-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "884f1eda3207be911d6ea1d286878400830f0160",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
