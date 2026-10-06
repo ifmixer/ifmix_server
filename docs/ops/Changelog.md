@@ -29,7 +29,7 @@
 - 旧同步 scan 路径（`m_ai_runAiScan`）废弃，统一走异步任务。
 
 ### ~~Fixed~~（2026-10-05 review 声称的修复，2026-10-06 复核**全部未落地**，保持 open——以 release.md「发布前必须完成的修复」为准）
-- ~~WireCrypto 低阶点黑名单~~：未修（代码无低阶点校验）。
+- ~~WireCrypto 低阶点黑名单~~：已随 HPKE 迁移消解（手写黑名单不存在，输入校验归 BouncyCastle HPKE 库，待安全复核后关闭）。
 - ~~ClientIpResolver 可信 IP~~：未修（仍取第一个 XFF，可伪造绕过 IP 限流）。
 - ~~日志 refreshToken/authCode 脱敏~~：未修（4xx/5xx WARN 的 req 摘要仍含明文）。
 - ~~AI 惰性超时对齐~~：未修（`STALE_IN_PROGRESS_SEC=300` 仍小于 runner 600s 预算，慢任务误杀）。

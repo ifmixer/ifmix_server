@@ -22,6 +22,8 @@ object RequestHeaders {
     const val WIREP_VERSION = "x-wirep-version"
     /** Cloudflare bot score（1-99，越低越像 bot）。需在 CF Transform Rule 里把 cf.bot_management.score 写入该请求头。 */
     const val CF_BOT_SCORE = "cf-bot-score"
+    /** Cloudflare 注入的真实客户端 IP（边缘设置，客户端伪造的该头会被 CF 覆盖）。IP 限流/日志的可信信源。 */
+    const val CF_CONNECTING_IP = "cf-connecting-ip"
     /**
      * dev 专用（仅 local profile 被消费，见 [DevRpcHeaderAdapter]）：RequestMeta JSON 字符串，
      * 作 body.meta 的字段级底座；**不含凭证**（accessToken 字段被忽略，凭证走 Authorization header）。

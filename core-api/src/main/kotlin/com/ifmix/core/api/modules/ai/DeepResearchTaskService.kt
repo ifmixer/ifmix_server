@@ -78,7 +78,18 @@ class DeepResearchTaskService(
         }
         val result = scanAggHandler.toDeepResearchResult(ctx, aiResponse)
 
-        // AI 正常返回即任务 SUCCESS；业务 scan_status 原样保存在 basicResult，前端从权威 ScanRecord 读取。
+        // 决策 6（P1 修复 2026-10-06）：AI 正常返回但缺 premium_result → 判 AI_FAILED（防「成功」落空报告）。
+        if (result.premiumResult == null) {
+            log.warn(
+                "DeepResearch AI response missing premium_result. deepResearchId={}, scanRecordId={}",
+                ctx.deepResearchId, ctx.scanRecordId,
+            )
+            val casHit = fail(mc, ctx, AiTaskErrorCodes.AI_FAILED, mapOf("message" to "missing premium_result"))
+            dispatchFailureNotification(ctx, casHit)
+            return
+        }
+
+        // AI 正常返回且 premium_result 在 → 任务 SUCCESS；业务 scan_status 原样保存在 basicResult，前端从权威 ScanRecord 读取。
         // 2. 成功回写（单短事务：CAS 20→30 + premium_result → FOR UPDATE 锁内指针比较 → scan_record 回写 + 配额）
         val finalized = txRunner.withTx(mc) {
             scanAggHandler.finalizeDeepResearchSuccess(it, ctx, result)

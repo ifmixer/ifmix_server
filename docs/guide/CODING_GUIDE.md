@@ -197,6 +197,16 @@ class DemoQueryService(private val facade: DemoFacade) {   // 只调 Facade，�
 }
 ```
 
+## Jimmer view DTO（wire 投影，2026-10-06 决策，落地待立项）
+
+wire 投影类型的产出方式（与 ifmix-server-swagger 同源项目对比后定稿；Konvert 负责过渡期映射，两者并存直至手写清零）：
+
+- **repo 投影直出（主路径）**：`select(table.fetch(XxxDto::class))`——DTO 形状即 fetch 形状，加载完整性由 Jimmer 保证（UnloadedException 机制性不可能）；裁剪投影直接省 IO（列表不查 JSONB 大字段）；单表固定投影与 CacheAside 缓存单元一致。
+- **entity→DTO 构造器（受限例外）**：仅当实体必然全字段加载时可用（事务内刚 save/get 的完整实体）；对部分加载实体禁用——构造器固定全属性读取，未 fetch 属性直接抛 UnloadedException。
+- **写路径**：`sql.entities.save(entity).execute(生成DTO类型)` 用 save returning 物化——本表列由 DML `RETURNING` 回读（Postgres 方言支持，零额外 roundtrip），关联才走残余查询。DB default 列的值必须从 DB 回来，**不手写重查**。
+- **不关联化（缓存决策）**：跨表字段（如 `ScanRecord.latestDeepResearch` 逻辑外键指向 ScanDeepResearch）不升格为 Jimmer 关联——缓存单元保持「单表行/固定投影」，失效边界=单表写；装配在 QueryService 层（收集 IDs → 批量查 → Map → copy 补齐）。`include` 白名单动态加载机制不变，只是补齐目标换成生成 DTO 的自定义字段。
+- **.dto 文件约定**：位于 `core-api/src/main/dto/`，生成类一律带 Dto 后缀（如 `ScanRecordListDto`）；实体不存在但 wire 需要的字段用 DTO 自定义字段声明（`xxx: Type?`，fetch 投影恒 null，装配层 copy 补齐）。
+
 ## Entity 设计
 
 ### 基类

@@ -42,3 +42,20 @@ class ClientIpResolverTest {
         assertEquals("1.2.3.4", ClientIpResolver.resolve(req))
     }
 }
+
+    @Test
+    fun `prefers CF-Connecting-IP over forged X-Forwarded-For (P1 fix)`() {
+        val req = MockHttpServletRequest()
+        req.addHeader(RequestHeaders.CF_CONNECTING_IP, "198.51.100.7")
+        // 客户端自带 XFF：CF 链路上不可信，不得作为限流信源
+        req.addHeader("X-Forwarded-For", "6.6.6.6, 7.7.7.7")
+        assertEquals("198.51.100.7", ClientIpResolver.resolve(req))
+    }
+
+    @Test
+    fun `blank CF-Connecting-IP falls back to X-Forwarded-For`() {
+        val req = MockHttpServletRequest()
+        req.addHeader(RequestHeaders.CF_CONNECTING_IP, "  ")
+        req.addHeader("X-Forwarded-For", "203.0.113.9")
+        assertEquals("203.0.113.9", ClientIpResolver.resolve(req))
+    }

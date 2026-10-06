@@ -301,7 +301,11 @@ HTTPS 管传输（网络第三方）、wire 管设备持有者（HTTPS 终结后
 
 ---
 
-## 10. v3 提案（2026-10-05 定稿，v1.0.6 发布前实施）：迁移 RFC 9180 HPKE
+## 10. v3 提案（2026-10-05 定稿；✅ 2026-10-06 服务端已实施）：迁移 RFC 9180 HPKE
+
+> 定稿修订（commit 081e3b6）：线协议版本号 3→2（v2 从未发布，无兼容负担），info/exporter 字符串同步为
+> `ifmix-wire-v2` / `ifmix-wire-v2-res`；无版本协商 + required 强制加密（明文 400004、解密失败 400003）。
+> 本节以下文本中的 ver/info 已按定稿更新；历史提案叙述里的 "v3" 字样指本轮 HPKE 迁移工作本身。
 
 ### 10.0 动机与边界
 
@@ -317,20 +321,20 @@ Suite（RFC 9180 标识符）：`KEM = DHKEM(X25519, HKDF-SHA256) 0x0020`，`KDF
 **请求**（`Content-Type: application/octet-stream`）：
 
 ```
-ver(1)=3 | kid(1) | enc(32) | flags(1) | HPKE-Seal(pkR=kid 对应公钥, info, aad, pt) ‖ tag
-info = "ifmix-wire-v3"
+ver(1)=2 | kid(1) | enc(32) | flags(1) | HPKE-Seal(pkR=kid 对应公钥, info, aad, pt) ‖ tag
+info = "ifmix-wire-v2"
 aad  = ver ‖ kid ‖ enc ‖ flags（35 字节，1+1+32+1；flags 参与 AAD 防翻转）
 pt   = ts_ms(8, BE) ‖ body（body 为原 JSON；flags bit0=1 表示 pt 整体 gzip 压缩后作为被加密输入）
 ```
 
 - HPKE base mode 单次 Seal 自带派生 nonce（base_nonce + seq=0），**无需显式 nonce 字段**；enc 即客户端 ephemeral 公钥。
-- **请求压缩**：`body` 序列化后与 ts 拼成 pt，pt > 4096 字节则 gzip（flags bit0=1）。服务端解密后按 flags 解压，**解压上限 1MB（可配 `app.wire.max-decompressed-bytes`）**，超限按 400003 拒绝——防 zip-bomb。
+- **请求压缩**：`body` 序列化后与 ts 拼成 pt，pt > 4096 字节则 gzip（flags bit0=1）。服务端解密后按 flags 解压，**解压上限 1MB（可配 `app.wire-crypto.max-decompressed-bytes`）**，超限按 400003 拒绝——防 zip-bomb。
 - `ts_ms` 保留：仅遥测；偏差仅 warn（§9 决策不变）。
 
 **响应**：复用请求的 HPKE 上下文密钥导出（标准 Exporter 接口，替代 v2 手工派生的 resKey）：
 
 ```
-resKey = HPKE-Export(context, "ifmix-wire-v3-res", L=32)
+resKey = HPKE-Export(context, "ifmix-wire-v2-res", L=32)
 flags(1) | nonce(12) | AES-256-GCM(resKey, nonce, aad = enc ‖ flags, payload) ‖ tag
 ```
 
@@ -356,7 +360,7 @@ flags(1) | nonce(12) | AES-256-GCM(resKey, nonce, aad = enc ‖ flags, payload) 
 
 > 实现计划已按前后端拆分：服务端 [wire-v3-plan-server](wire-v3-plan-server.md)、客户端 [wire-v3-plan-client](wire-v3-plan-client.md)（可并行执行，前后端各 1 个 agent，联调 1 个收尾）。
 
-1. 服务端：新增 HPKE 实现（替代 `WireCrypto` 的 HKDF/信封逻辑，类名/接入点不变），配置解析、Filter、降级、400003 语义不动；RFC 向量测试 + 端到端向量测试。
+1. ✅ 服务端：HPKE 实现（BouncyCastle `org.bouncycastle.crypto.hpke`，`WireCrypto.kt`），RFC 向量测试（`test/resources/wire-v3/wire-v3-rfc-vectors.json`）+ 端到端向量测试全绿；required/optional 与 400004 已实现（`WireCryptoFilter`）。
 2. ~~客户端：`apps/shared/src/api/wireCrypto.ts` 重写为 HPKE 封装（含请求 gzip + 解压上限对齐），固定向量测试对齐 RFC。~~ ✅ 2026-10-06 完成（实际落点 `packages/client-sdk/packages/api/src/api/wireCrypto.ts`，见 wire-v3-plan-client.md T2/T3）。
 3. 双端联调：真机走通 createScan（>4KB 请求验证压缩）+ 大响应 gzip + 降级路径（key 未配 → v1 明文）。
 4. 文档：本节状态改为已实现；release.md / Changelog 回写。

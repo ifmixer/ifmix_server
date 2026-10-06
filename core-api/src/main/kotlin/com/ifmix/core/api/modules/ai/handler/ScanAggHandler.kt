@@ -421,8 +421,10 @@ class ScanAggHandler(
     // ==================== DeepResearch 异步任务（设计 docs/design/ai/deep-research-async.md） ====================
 
     companion object {
-        /** 惰性超时：IN_PROGRESS 且 updatedAt 早于该秒数 → 查询侧 CAS 置 FAILED(TIMEOUT)（设计决策 8，5 min）。 */
-        private const val STALE_IN_PROGRESS_SEC = 300L
+        /** 惰性超时：IN_PROGRESS 且 updatedAt 早于该秒数 → 查询侧 CAS 置 FAILED(TIMEOUT)。
+         *  必须大于 runner 总预算 `app.ai.scan-deadline-sec`（默认 600s），否则慢而成功的任务在 runner
+         *  仍在运行时被查询侧误杀（P1 修复 2026-10-06：300s → 900s，留 300s 收尾余量）。 */
+        private const val STALE_IN_PROGRESS_SEC = 900L
     }
 
     /**
@@ -556,7 +558,7 @@ class ScanAggHandler(
 
     /**
      * 轮询状态查询（owner-scoped），含惰性超时判定（设计决策 12）：
-     * IN_PROGRESS 且 updatedAt 超 10 min → CAS 置 FAILED(TIMEOUT)；CAS 未命中说明后台刚终结 → 重读最新状态。
+     * IN_PROGRESS 且 updatedAt 超 15 min（> runner 600s 预算）→ CAS 置 FAILED(TIMEOUT)；CAS 未命中说明后台刚终结 → 重读最新状态。
      */
     fun getDeepResearchStatus(sc: ModuleCtx, deepResearchId: UUID): ScanDeepResearch {
         val projectId = sc.action.mustGetProjectId()

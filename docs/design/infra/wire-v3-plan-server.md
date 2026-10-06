@@ -1,5 +1,6 @@
 # Wire v3（RFC 9180 HPKE）实现计划 — 服务端（ifmix_server）
 
+> **状态：✅ 已全部实施（2026-10-06，S1 + 强制加密定稿 081e3b6）**——HPKE（BouncyCastle）、RFC 向量 + 端到端向量测试全绿、required/optional 与 400004 已实现。以下任务清单保留作实施记录。
 > **给接手的 agent**：先读 `docs/design/infra/wire-encryption.md` §10（v3 契约，唯一真相源）→ 本文件 → `AGENTS.md`。契约若与本文件不一致，以 §10 为准并回改本文件。逐任务更新「状态」，**不要重做已完成任务**。
 > - 仓库：`/Users/jason/ai/myprojects/ifmix_server`（与用户对齐工作分支：main 或 `feature/1.0.6-code-review`）
 > - 前端计划见 `docs/design/infra/wire-v3-plan-client.md`（另一仓库，不归你改）
@@ -33,14 +34,14 @@ info:    "ifmix-wire-v3"
 
 ### T1 依赖与向量文件（可与 T2 并行跑脚本，T3 测试前必须就绪）
 
-- [ ] **状态：pending**
+- [x] **状态：✅ 已完成（2026-10-06）**
 - `core-api/build.gradle.kts` 加 `org.bouncycastle:bcprov-jdk18on`（≥1.77，确认与 JDK 25 兼容的最新版）。
 - 写脚本 `core-api/src/test/resources/wire-v3/gen_vectors.py`（或 Kotlin 脚本）：从 `https://raw.githubusercontent.com/hpkewg/test-vectors/main/` 下载对应 suite 的 JSON（`DHKEM(X25519,HKDF-SHA256)_HKDF-SHA256_AES-256-GCM` base mode），**抽取本项目需要的字段**（enc/apu/apd/ct 与 key/expected）生成精简向量文件 `wire-v3-rfc-vectors.json`，文件头注明来源 URL 与 commit hash。
 - **验收**：向量文件生成可复现（脚本重跑 diff 为空）；无任何手誊 hex。
 
 ### T2 HPKE 实现替换（核心）
 
-- [ ] **状态：pending** ｜ 依赖：无（可与 T1 并行写代码）
+- [x] **状态：✅ 已完成（2026-10-06）** ｜ 依赖：无（可与 T1 并行写代码）
 - 重写 `core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCrypto.kt`（类名与公开接口 `open/seal/parse/isEnabled` 保持不变，Filter 零改动）：
   - `parse` 逻辑不变（env `APP_WIRE_KEYS`，kid 1..255）。
   - `open`：按契约速查解析 → BC HPKE `open` 消费 enc → 按 flags 解压（**超 1MB 上限抛 WireCryptoException**，上限走配置 `app.wire.max-decompressed-bytes`，默认 1048576）→ 返回 `Opened`（保留 clientTsMs/kid/enc 供 seal 用）。
@@ -52,7 +53,7 @@ info:    "ifmix-wire-v3"
 
 ### T3 测试
 
-- [ ] **状态：pending** ｜ 依赖：T1 + T2
+- [x] **状态：✅ 已完成（2026-10-06）** ｜ 依赖：T1 + T2
 - `WireCryptoTest.kt` 改造：
   - RFC 向量用例：从 T1 的 JSON 驱动（至少 base mode Seal/Open 各若干组），断言与官方向量逐字节一致。
   - 端到端 round-trip：seal→open→sealResponse→验证（含 >4KB 请求 gzip、4096/4097 边界、解压超限拒绝、未知 flag 位拒绝、未知 kid、坏 enc）。
@@ -61,7 +62,7 @@ info:    "ifmix-wire-v3"
 
 ### T4 收尾与文档（本仓库侧）
 
-- [ ] **状态：pending** ｜ 依赖：T3（可与前端 WP-I 并行）
+- [x] **状态：✅ 已完成（2026-10-06）** ｜ 依赖：T3（可与前端 WP-I 并行）
 - 回写本文各任务状态；`docs/design/infra/wire-encryption.md` §10.4 步骤 1 勾选。
 - `docs/ops/release.md`（v1.0.6 发布计划）与 `docs/ops/Changelog.md` 回写：wire v3（HPKE + 请求压缩），注明「v2 从未上线，无兼容负担」。
 - 检查 AGENTS.md / DESIGN 索引中 wire 行的描述是否仍准确。

@@ -81,12 +81,12 @@ class RequestLoggingFilter : OncePerRequestFilter() {
                 val max = if (error) 2000 else 500
                 builder
                     .addKeyValue("method", method)
-                    .addKeyValue("path", uri + query)
+                    .addKeyValue("path", redact(uri + query))
                     .addKeyValue("httpStatus", status)
                     .addKeyValue("duration", duration)
                     .apply { if (!hasCtx) addKeyValue("headers", importantHeaders(wrappedRequest)) }
-                    .addKeyValue("req", requestBody.truncate(max))
-                    .addKeyValue("res", getBody(wrappedResponse.contentAsByteArray, wrappedResponse.characterEncoding).truncate(max))
+                    .addKeyValue("req", redact(requestBody).truncate(max))
+                    .addKeyValue("res", redact(getBody(wrappedResponse.contentAsByteArray, wrappedResponse.characterEncoding)).truncate(max))
                     .log("http.request.end")
             }
 
@@ -125,6 +125,18 @@ class RequestLoggingFilter : OncePerRequestFilter() {
         if (length <= max) this else substring(0, max) + "...(truncated)"
 
     companion object {
+        /** 请求/响应日志里的敏感值打码（P1 修复 2026-10-06）：字段名保留、值替换 ***，先打码后截断。 */
+        internal fun redact(s: String): String = s
+            .replace(SENSITIVE_JSON_FIELDS) { m -> "${m.groupValues[1]}***${m.groupValues[2]}" }
+            .replace(SENSITIVE_QUERY_VALUES) { m -> m.value.substringBefore('=') + "=***" }
+
+        /** JSON body 中的凭证字段（login/refresh/logout 请求与响应都含 token；webhook signedPayload 整段是凭证）。 */
+        private val SENSITIVE_JSON_FIELDS =
+            Regex("""("(?:refreshToken|accessToken|authorization|authCode|password|token|signedPayload)"\s*:\s*")([^"]*)(")""")
+
+        /** URL query 中的凭证参数（Google webhook ?token=…）。 */
+        private val SENSITIVE_QUERY_VALUES = Regex("""([?&](?:token|access_token)=)[^&\s]+""")
+
         /** 排查用的重要请求头（不含 Authorization，后者单独脱敏处理）。 */
         private val LOGGED_HEADERS = listOf(
             RequestHeaders.PROJECT_ID,

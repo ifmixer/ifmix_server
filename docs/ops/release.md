@@ -23,7 +23,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 ### 发布前必须完成的修复（2026-10-05 code review，P1）
 
 - [ ] **P1-attest ×3**（AppleReceiptClientImpl 429 归类 / DeviceCheck receipt 双重 base64 / DeviceCheck JWT 缺 `iat` + teamId 预检）——job 暂不调度，**不阻塞本版**，但列入恢复调度前置条件。
-- [ ] **WireCrypto 低阶点黑名单**：当前黑名单常数错误（拦不到真低阶点），安全声明失真，须换真实编码或如实注释（2026-10-06 复核：仍未修）。
+- [x] **WireCrypto 低阶点黑名单**：已随 HPKE 迁移消解（2026-10-06 复核）——手写 X25519/HKDF 与黑名单常数已不存在，现实现为 BouncyCastle `org.bouncycastle.crypto.hpke`（wire-encryption.md §10.3「低阶点等输入校验全部交给 HPKE 库」）。**收尾动作**：安全复核确认 BC 对低阶点/全零共享密钥的拒绝行为后正式关闭本项。
 - [ ] **ClientIpResolver 可信 IP**：XFF 首段可伪造导致全部 `:ip:` 限流可绕过，改取 `CF-Connecting-IP`/可信代理链（2026-10-06 复核：仍未修）。
 - [ ] **日志脱敏**：RequestLoggingFilter 4xx/5xx WARN 输出 refreshToken/authCode 明文；Google webhook token 经 query 进日志（2026-10-06 复核：仍未修）。
 - [ ] **AI 惰性超时与预算对齐**：`STALE_IN_PROGRESS_SEC=300` < runner 600s 总预算（2026-10-06 复核：仍未修，300–600s 的慢任务会被查询侧误杀 TIMEOUT）。
