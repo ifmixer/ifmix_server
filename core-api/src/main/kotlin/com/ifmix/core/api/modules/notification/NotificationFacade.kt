@@ -4,7 +4,7 @@ import com.ifmix.core.api.dto.notification.NotificationRequest
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.tx.TxRunner
-import com.ifmix.core.api.modules.install.InstallFacade
+import com.ifmix.core.api.modules.auth.install.InstallFacade
 import com.ifmix.core.api.modules.notification.channel.PushChannel
 import com.ifmix.core.api.modules.notification.channel.PushDestinationKind
 import org.slf4j.LoggerFactory

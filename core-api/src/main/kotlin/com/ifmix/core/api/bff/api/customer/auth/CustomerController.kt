@@ -1,8 +1,8 @@
 package com.ifmix.core.api.bff.api.customer.auth
 
 import com.ifmix.core.api.bff.api.customer.demo.DemoController
-import com.ifmix.core.api.dto.customer.CreateAnonymousRes
-import com.ifmix.core.api.dto.customer.CustomerRes
+import com.ifmix.core.api.dto.auth.customer.CreateAnonymousRes
+import com.ifmix.core.api.dto.auth.customer.CustomerRes
 import com.ifmix.core.api.infra.http.ActionContextFactory
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ApiRequestBody
@@ -15,7 +15,7 @@ import com.ifmix.core.api.infra.ratelimit.RateLimitResult
 import com.ifmix.core.api.infra.ratelimit.Window
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.auth.AuthFacade
-import com.ifmix.core.api.modules.customer.CustomerFacade
+import com.ifmix.core.api.modules.auth.customer.CustomerFacade
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest

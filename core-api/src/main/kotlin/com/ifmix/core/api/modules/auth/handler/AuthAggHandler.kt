@@ -17,13 +17,13 @@ import com.ifmix.core.api.modules.auth.repo.AuthIdentityRepository
 import com.ifmix.core.api.modules.auth.repo.AuthIdentityIdpRelationRepository
 import com.ifmix.core.api.modules.auth.repo.IdpIdentityRepository
 import com.ifmix.core.api.modules.auth.repo.IdpRepository
-import com.ifmix.core.api.modules.customer.repo.CustomerRepository
-import com.ifmix.core.api.modules.customer.handler.CustomerMergeHandler
+import com.ifmix.core.api.modules.auth.customer.repo.CustomerRepository
+import com.ifmix.core.api.modules.auth.customer.handler.CustomerMergeHandler
 import com.ifmix.core.api.dto.payment.SubscriptionState
 import com.ifmix.core.api.entity.common.Tiers
 import com.ifmix.core.api.entity.common.IdpType
 import com.ifmix.core.api.entity.common.IdpTypes
-import com.ifmix.core.api.entity.customer.DeletionReasons
+import com.ifmix.core.api.entity.auth.customer.DeletionReasons
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
@@ -97,7 +97,7 @@ class AuthAggHandler(
     private val refreshTokenRepo: RefreshTokenRepository,
     private val customerRepo: CustomerRepository,
     private val mergeHandler: CustomerMergeHandler,
-    private val installFacade: com.ifmix.core.api.modules.install.InstallFacade,
+    private val installFacade: com.ifmix.core.api.modules.auth.install.InstallFacade,
     private val events: ApplicationEventPublisher,
     @Value("\${app.auth.access-ttl-sec:900}")
     private val accessTtlSec: Long,

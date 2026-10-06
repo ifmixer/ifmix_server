@@ -1,7 +1,7 @@
 package com.ifmix.core.api.bff.api.customer.auth
 
-import com.ifmix.core.api.dto.install.AttestExistingInput
-import com.ifmix.core.api.dto.install.CreateInstallInput
+import com.ifmix.core.api.dto.auth.install.AttestExistingInput
+import com.ifmix.core.api.dto.auth.install.CreateInstallInput
 import com.ifmix.core.api.infra.attest.AttestGuard
 import com.ifmix.core.api.infra.auth.AuthJwtService
 import com.ifmix.core.api.infra.auth.VerifiedToken
@@ -16,7 +16,7 @@ import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
 import com.ifmix.core.api.infra.ratelimit.RateLimiter
 import com.ifmix.core.api.infra.ratelimit.RateLimitResult
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
-import com.ifmix.core.api.modules.install.InstallFacade
+import com.ifmix.core.api.modules.auth.install.InstallFacade
 import com.ifmix.core.api.modules.project.ProjectServerConfigFacade
 import com.ifmix.core.api.entity.common.ActorTypes
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -154,7 +154,7 @@ class InstallApiControllerTest {
             .thenReturn(AttestGuard.CreateInstallDecision.NOT_ATTEMPTED)
         whenever(
             installFacade.createInstallWithProof(any(), anyOrNull(), eq(10), isNull()),
-        ).thenReturn(com.ifmix.core.api.modules.install.handler.InstallAggHandler.CreateInstallRes(installId, "token-1"))
+        ).thenReturn(com.ifmix.core.api.modules.auth.install.handler.InstallAggHandler.CreateInstallRes(installId, "token-1"))
         whenever(serverConfigFacade.findAttestConfig(projectId)).thenReturn(null)
 
         val resp = controller.createInstall(request(), body(meta("SECRET"), mapOf("storeType" to 10)))
