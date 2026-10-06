@@ -4,7 +4,7 @@
 > - 仓库：/Users/jason/orca/workspaces/ifmix_server/server-graphql-to-rpc（分支 `feature/graphql-to-rpc`）。Konvert 4.5.1 已引入且 cs 试点已通过（commit `b2038bd`，见 `dto/cs/SubmitFeedbackInput.kt` 的 `@KonvertTo` 用法）。
 > - 注解包名：`io.mcarle.konvert.api.*`（**不是** `.annotations`）。语法细节以官方文档校准：https://mcarleio.github.io/konvert/annotations/mapping.html
 > - 硬边界：不改 wire 契约字段；不改 Handler/Repository 行为；不动 demo/auth 之外的 wire 类型；每个 K 阶段独立 commit（前缀 `[konvert][K*]`）并跑 `./gradlew :core-api:test` 全绿。
-> - **进度（2026-10-06）**：K1 收敛为语法校准（见 §1，不产码）；K2 ✅ 已实施（commit `11e5debf`，entity 接口源验证通过）。**K3（ai）、K4（auth）、§5.3（pay 检查）待实施**——实施前必读 §0.5 语法校准，文中与本节冲突的旧写法一律以 §0.5 为准。
+> - **进度（2026-10-06 全部完成）**：K1 收敛为语法校准（见 §1，不产码）；K2 ✅ `11e5debf`；K3 ✅ `9d5df091`；K4 ✅ `744b5889`；§5.3 pay 检查 ✅ 判定**保留手写**（expiresAt 为 Long?→ISO 字符串的带条件类型转换，非纯同名搬运，无单命中内置转换器，expression 方案可空语义脆弱——§5.3「含逻辑则保留手写」分支）。§6 最终验收已通过：手写 mapper object 清零、471 用例全绿。§0.5 为最终语法事实（第 9/10 条为 K4 新增）。
 
 ## 0.5 语法校准（2026-10-06 实测定稿，覆盖正文中的旧写法）
 
@@ -18,6 +18,8 @@
 6. **Instant → String 内置自动**：`InstantToStringConverter` 默认启用，生成 `field.toString()`（ISO-8601），与手写一致，无需任何注解。**Long(epoch millis) → Instant** 需 `Mapping(enable = [LONG_EPOCH_MILLIS_TO_INSTANT_CONVERTER])` 显式启用（`XToTemporal` 系默认 `enabledByDefault=false`），生成 `Instant.ofEpochMilli(it)`。
 7. **`constant` 的值按代码原样插入**（`constant = "null"` 生成 `x = null`；`"emptyList()"` 生成 `items = emptyList()`），不是字符串字面量。
 8. **entity 接口源已验证可行**（K2 `TodoItem` 一次通过，生成同名字段直取 + 时间 `toString()`）；**List 元素映射自动组合已验证**（声明元素级映射函数后，`List<X> → List<Y>` 生成 `x?.map { toRes(it) }`，null 透传）。
+9. **数字类型转换默认全部禁用**（`BaseTypeConverter.enabledByDefault=false`，含 Long→Int）：K4 实测 `expiresIn` Long→Int 直接生成失败。需要时必须 `Mapping(enable = [...])` 显式启用（常量如 `io.mcarle.konvert.api.converter.LONG_TO_INT_CONVERTER`，生成 `.toInt()`）。**Instant→String 是例外**（第 6 条，TemporalToX 系默认启用）。
+10. **`Mapping(enable=…)` 必须同时写 `source=`**（通常与 `target` 同名）：不带 `source` 的 Mapping 不绑定同名源属性（`sourceData=null`），仅支持 `ignore`/`constant`/`expression` 三分支，否则 processor 报 `error("Could not convert value …")` 且被外层 `KonvertException: Error while processing X -> Y` 吞掉 root cause——K4 实测踩坑（探针二分定位）。
 
 ## 0. 目标与原则
 
