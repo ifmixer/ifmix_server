@@ -1,0 +1,79 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/auth/CustomerController.kt
+  s_d489703e020e2b::t_316cc0e6319bb1 4-5,18
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/auth/InstallApiController.kt
+  s_d489703e020e2b::t_d15f881a429752 3-11,30
+core-api/src/main/kotlin/com/ifmix/core/api/dto/auth/customer/CreateAnonymousRes.kt
+  s_d489703e020e2b::t_32799d1993dccb 1,3
+core-api/src/main/kotlin/com/ifmix/core/api/dto/auth/customer/CustomerRes.kt
+  s_d489703e020e2b::t_0d4d8ed9e9f8ab 1
+core-api/src/main/kotlin/com/ifmix/core/api/dto/auth/install/InstallApi.kt
+  s_d489703e020e2b::t_759ac32652fa50 1
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/customer/Customer.kt
+  s_d489703e020e2b::t_073db04adec354 1
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/customer/DeletionReasons.kt
+  s_d489703e020e2b::t_739c72de61b1ae 1
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/install/Install.kt
+  s_d489703e020e2b::t_cdf585b312cdca 1
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/install/InstallAttestation.kt
+  s_d489703e020e2b::t_a08f88a489281e 1
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/install/InstallCustomerRelation.kt
+  s_d489703e020e2b::t_4a4098c7aec7ab 1
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestGuard.kt
+  s_d489703e020e2b::t_c9bb4aa562c106 24
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/customer/CustomerFacade.kt
+  s_d489703e020e2b::t_9feaf645468bd0 1,3,6
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/customer/handler/CustomerMergeHandler.kt
+  s_d489703e020e2b::t_b1257117ce0210 1,7
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/customer/repo/CustomerRepository.kt
+  s_d489703e020e2b::t_623b4e7dea78a1 1,3-11
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/handler/AuthAggHandler.kt
+  s_d489703e020e2b::t_71cc90aa2ad590 20-21,26,100
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/InstallFacade.kt
+  s_d489703e020e2b::t_02e4ad74f38e5a 1,3,7-9
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/handler/InstallAggHandler.kt
+  s_d489703e020e2b::t_095737eb93ba6f 1,3-6,13-16
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/repo/InstallAttestationRepository.kt
+  s_d489703e020e2b::t_949b04e2d31da5 1,3-14
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/repo/InstallCustomerRelationRepository.kt
+  s_d489703e020e2b::t_8aedbe141d10e9 1,3-9
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/repo/InstallRepository.kt
+  s_d489703e020e2b::t_179c41aa664d85 1,3-7
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/NotificationFacade.kt
+  s_d489703e020e2b::t_23a8844d1bb3f0 7
+core-api/src/main/kotlin/com/ifmix/core/api/modules/notification/NotificationHandler.kt
+  s_d489703e020e2b::t_68b716aca37029 6
+core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/AuthRefreshInstallTest.kt
+  s_d489703e020e2b::t_8f32e87c45585a 15-17,36,94
+core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/install/BindActionDecisionTest.kt
+  s_d489703e020e2b::t_fc7bfb9c892956 1,6-7
+core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/install/CreateInstallPkTest.kt
+  s_d489703e020e2b::t_9193952f74f20e 1,6,10-13
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationDispatchServiceTest.kt
+  s_d489703e020e2b::t_92706b68a810cd 6
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationHandlerTest.kt
+  s_d489703e020e2b::t_cab63bcb77ba99 7,11
+core-api/src/test/kotlin/com/ifmix/api/core/modules/notification/NotificationTypeRoutingTest.kt
+  s_d489703e020e2b::t_4c338a00897b03 10-11
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/auth/CustomerControllerTest.kt
+  s_d489703e020e2b::t_c604511008e8b2 3,5,23
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/auth/InstallApiControllerTest.kt
+  s_d489703e020e2b::t_8d559a1a91d289 3-4,19,157
+core-api/src/test/kotlin/com/ifmix/core/api/modules/auth/install/handler/InstallAggHandlerAttestTest.kt
+  s_d489703e020e2b::t_c085fd88205c75 1,3-5,13-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "84df75678c0295b6ea1a180ce2ed9f1d62058976",
+  "prompts": {},
+  "sessions": {
+    "s_d489703e020e2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af90b0a784c0dc12b",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
