@@ -1,0 +1,42 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ClientIpResolver.kt
+  h_b17efd5c751f9f 4,6-11,19-20,23
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestHeaders.kt
+  h_b17efd5c751f9f 25-26
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilter.kt
+  h_b17efd5c751f9f 84,88-89,128-139
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RpcOpenApiErrorCustomizer.kt
+  h_b17efd5c751f9f 1-88
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/DeepResearchTaskService.kt
+  h_b17efd5c751f9f 81-92
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 424-427,561
+core-api/src/test/kotlin/com/ifmix/api/core/common/http/ClientIpResolverTest.kt
+  h_b17efd5c751f9f 45-61
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilterTest.kt
+  h_b17efd5c751f9f 7-8,44-57
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/RpcOpenApiErrorCustomizerTest.kt
+  h_b17efd5c751f9f 1-66
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/DeepResearchTaskServiceTest.kt
+  h_b17efd5c751f9f 1-85
+docs/design/infra/wire-encryption.md
+  h_b17efd5c751f9f 304-308,324-325,331,337,363
+docs/design/infra/wire-v3-plan-server.md
+  h_b17efd5c751f9f 3,37,44,56,65
+docs/guide/CODING_GUIDE.md
+  h_b17efd5c751f9f 200-209
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 32
+docs/ops/release.md
+  h_b17efd5c751f9f 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97b2c486ca6bcacd3f7a1f40d7a616781f8ec20b",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
