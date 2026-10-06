@@ -122,7 +122,7 @@ XxxController
 - **代价（已知并接受）**：Redis 缓存条目与形状绑定——list 精简 / detail 完整是两个缓存条目，不再有"entity 超集统一缓存"的复用。多形状 = 每查询一个 DTO。
 - **DTO 字段显式声明，禁止通配**：DB 新增字段不自动出现在任何 DTO/wire 响应（防隐式泄漏）；OpenAPI snapshot 兜底。
 - 仍需手写的：跨实体聚合（Todo+items+counts，逻辑外键 DTO language 抓不到）、update 的 set/unset 部分更新、协议类型（`RequestMeta`、`Envelope`——不是任何实体的投影）、外部服务 request/response、跨模块响应（逻辑外键、不与单一实体绑定）。
-- 大字段裁剪：为该查询定义专用 DTO（如 scan list 不含 `basicResult` JSONB），repo 方法内固定使用，稀疏投影不跨出该方法。
+- 大字段裁剪：裁剪路径**直接返回 Jimmer DTO language 生成的 DTO**——`.dto` 文件声明裁剪形状（生成 FETCHER + 自包含 data class），repo `select(table.fetch(XxxRes.FETCHER))` 返回 DTO（如 scan list 不含 `basicResult` JSONB）。DTO 是自包含数据类，无 Unloaded 风险；默认路径仍出全字段 entity 供缓存。
 - 命名：直接作为 wire 出参的 DTO language 类型命名 `XxxRes`（跨 wire，见下表）；仅内部使用的投影叫 `XxxDto`。
 
 分界规则：**字段照抄实体的用 Jimmer DTO 语言，其余手写**——耦合在"字段几乎照抄实体"时无害（实体演进带动契约，由 OpenAPI snapshot 捕获），在"对外契约需独立演进"时是纯负担。
