@@ -48,13 +48,12 @@ class PayController(
         val req = body.requireInput()
         val res = paymentService.verifyIapPurchase(ctx, req)
         return ResponseEntity.ok(
-            Envelope.ok(
+            Envelope.ok(ctx.requestId, 
                 VerifyIapPurchaseRes(
                     tier = res.tier,
                     // 原 fetcher：epoch millis → Instant → GraphQL DateTime（ISO-8601）
                     expiresAt = res.expiresAt?.let { Instant.ofEpochMilli(it).toString() },
-                ),
-            ).copy(reqId = ctx.requestId),
+                )),
         )
     }
 }

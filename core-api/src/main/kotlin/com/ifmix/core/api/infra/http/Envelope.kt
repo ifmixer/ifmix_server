@@ -10,6 +10,8 @@ package com.ifmix.core.api.infra.http
 data class Envelope<out T>(val code: String, val msg: String, val data: T?, val reqId: String? = null) {
     companion object {
         fun <T> ok(data: T): Envelope<T> = Envelope("200000", "success", data)
+        /** RPC 成功路径统一入口（rollout §3.1 改动 2）：回显 reqId，免逐点 copy。 */
+        fun <T> ok(reqId: String?, data: T): Envelope<T> = Envelope("200000", "success", data, reqId)
         fun error(code: String, msg: String): Envelope<Nothing> = Envelope(code, msg, null)
         fun errorWithDetails(code: String, msg: String, details: Any?): Envelope<*> =
             Envelope(code, msg, mapOf("details" to details).filter { it.value != null })

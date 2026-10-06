@@ -138,7 +138,7 @@ class InstallApiController(
             AttestGuard.CreateInstallDecision.NOT_PERSISTED -> 20 // 带了 proof 但没绑定（OBSERVE 下 INVALID 等）
             AttestGuard.CreateInstallDecision.NOT_ATTEMPTED -> 30 // 没带 proof / 服务端未校验
         }
-        return ResponseEntity.ok(Envelope.ok(CreateInstallRes(installId = res.installId, installToken = res.installToken, attestationStatus = attestationStatus)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, CreateInstallRes(installId = res.installId, installToken = res.installToken, attestationStatus = attestationStatus)))
     }
 
     /** 读 project 级 mode（§4.3 单一 mode，作用于所有已配置 provider；null = 未配置）。 */
@@ -162,7 +162,7 @@ class InstallApiController(
                 input.deepResearchNotiEnabled,
             )
         }
-        return ResponseEntity.ok(Envelope.ok(UpdateInstallRes(success = ok)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, UpdateInstallRes(success = ok)))
     }
 
     // ===== m_auth_install_createAttestChallenge（§5.1：无鉴权；100/60s/IP；纯计算不碰 Redis）=====
@@ -188,10 +188,10 @@ class InstallApiController(
         val enabled = attestGuard.isChallengeEnabled(pid, ctx.clientPlatform)
         if (!enabled) {
             // 客户端据此不生成 key，直接走 no-proof createInstall
-            return ResponseEntity.ok(Envelope.ok(AttestChallengeRes(enabled = false, challenge = null, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)).copy(reqId = ctx.requestId))
+            return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestChallengeRes(enabled = false, challenge = null, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)))
         }
         val challenge = attestGuard.issueChallenge(pid)
-        return ResponseEntity.ok(Envelope.ok(AttestChallengeRes(enabled = true, challenge = challenge, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestChallengeRes(enabled = true, challenge = challenge, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)))
     }
 
     // ===== m_auth_install_recover（§3.3：无鉴权；10/60s/IP；与 mode/全局开关无关——决策 9）=====
@@ -266,7 +266,7 @@ class InstallApiController(
             installFacade.recoverInstall(txCtx, binding, assertionSuccess.newCounter)
         }
         recoverLog(ctx, "ok", null)
-        return ResponseEntity.ok(Envelope.ok(CreateInstallRes(installId = res.installId, installToken = res.installToken, attestationStatus = 10)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, CreateInstallRes(installId = res.installId, installToken = res.installToken, attestationStatus = 10)))
     }
 
     /** §5.5/§2 决策 11：event=install.recover 日志补 mode/provider 字段（不打印 keyId/证明原文）。 */
@@ -307,7 +307,7 @@ class InstallApiController(
 
         // 3. 服务端未启用（OFF / 未配置 / 全局开关关）→ 30（NOT_EVALUATED，客户端废弃 key 等下次启动）
         if (!attestGuard.isAttestationEnabled(pid)) {
-            return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 30)).copy(reqId = ctx.requestId))
+            return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = 30)))
         }
 
         // 4. verifyProof（§5.1 组合校验 + §5.7 输入上限；INVALID → 20；UNAVAILABLE → 503002）
@@ -318,15 +318,15 @@ class InstallApiController(
             is AttestGuard.Verification.Valid -> Unit
             is AttestGuard.Verification.Invalid -> {
                 // INVALID 与 mode 无关（ENFORCE 也一样）：返回 20，不报错、不写记录
-                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 20)).copy(reqId = ctx.requestId))
+                return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = 20)))
             }
             is AttestGuard.Verification.Unavailable ->
                 throw ApiError(ErrorCode.ATTESTATION_UNAVAILABLE, "attestation verification temporarily unavailable (${verification.reason.code})")
             is AttestGuard.Verification.NotEvaluated ->
-                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 30)).copy(reqId = ctx.requestId))
+                return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = 30)))
             is AttestGuard.Verification.Disabled,
             is AttestGuard.Verification.NoProof ->
-                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 30)).copy(reqId = ctx.requestId))
+                return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = 30)))
         }
         val verified = (verification as AttestGuard.Verification.Valid).proof
 
@@ -335,7 +335,7 @@ class InstallApiController(
         when {
             precheck != null && precheck.installId == installId && precheck.status == AttestationStatuses.ACTIVE -> {
                 // 同 install ACTIVE → 幂等 10，**跳过额度与消费**（不占新 key 额度、不消费 challenge）
-                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 10)).copy(reqId = ctx.requestId))
+                return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = 10)))
             }
             precheck != null && precheck.status != AttestationStatuses.ACTIVE ->
                 throw ApiError(ErrorCode.ATTEST_KEY_BLOCKED, "attestation key is not active (status=${precheck.status})")
@@ -377,7 +377,7 @@ class InstallApiController(
             }
         }
         attestLog(ctx, "ok", null)
-        return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = txResult)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, AttestExistingRes(attestationStatus = txResult)))
     }
 
     /** §5.5：event=install.attest 日志（attestExisting 路径；与 Guard 内的纯技术日志分开，带 action 语义）。 */

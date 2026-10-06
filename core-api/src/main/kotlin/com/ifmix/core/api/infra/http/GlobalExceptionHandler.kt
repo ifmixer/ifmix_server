@@ -36,8 +36,6 @@ class GlobalExceptionHandler(
         val msg = code.clientMessage(ex.message, exposeErrors)
         // 线上 5xx 连 details 一起隐藏（details 同样可能带内部信息）
         val details = if (exposeErrors || !code.status.is5xxServerError) ex.details else null
-        val body = if (details != null) Envelope.errorWithDetails(code.externalCode, msg, details)
-            else Envelope.error(code.externalCode, msg)
         val resp = ResponseEntity.status(code.status)
         // Retry-After：retryAfterSec（限流类 429 / 降级 503）优先于 AI_UNAVAILABLE 的固定 60s。
         // 用 when 保证头只写一次——ResponseEntity.header() 是 append 语义，两条 if 会留下重复头。
@@ -46,7 +44,13 @@ class GlobalExceptionHandler(
             code == ErrorCode.AI_UNAVAILABLE -> resp.header("Retry-After", "60")
         }
         // 错误路径 reqId：factory 已解析（attribute）优先，其次 x-req-id header，再无则 null。
-        return resp.body(body.copy(reqId = reqIdOf(request)))
+        // 构建时直接带 reqId（rollout §3.1 改动 2：免逐点 copy，行为不变）。
+        val reqId = reqIdOf(request)
+        val body = if (details != null)
+            Envelope(code.externalCode, msg, mapOf("details" to details).filter { it.value != null }, reqId)
+        else
+            Envelope(code.externalCode, msg, null, reqId)
+        return resp.body(body)
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
@@ -77,7 +81,7 @@ class GlobalExceptionHandler(
         log.atError().setCause(ex).addKeyValue("headers", HeaderDump.of(request)).log("Unhandled exception")
         val msg = if (exposeErrors) (ex.message ?: "error") else GENERIC_SERVER_ERROR_MESSAGE
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(Envelope.error(ErrorCode.INTERNAL.externalCode, msg).copy(reqId = reqIdOf(request)))
+            .body(Envelope(ErrorCode.INTERNAL.externalCode, msg, null, reqIdOf(request)))
     }
 
     /**

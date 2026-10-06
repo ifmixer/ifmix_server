@@ -119,7 +119,7 @@ class CustomerController(
         val customer = customerFacade.findById(ctx, res.customerId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "customer not found")
         return ResponseEntity.ok(
-            Envelope.ok(
+            Envelope.ok(ctx.requestId, 
                 CreateAnonymousRes(
                     customerId = res.customerId,
                     customer = CustomerRes(id = customer.id, anonymous = customer.anonymous),
@@ -127,8 +127,7 @@ class CustomerController(
                     refreshToken = res.refreshToken,
                     refreshExpiresAt = res.refreshExpiresAt.toString(),
                     expiresIn = res.expiresIn.toInt(),
-                ),
-            ).copy(reqId = ctx.requestId),
+                )),
         )
     }
 }

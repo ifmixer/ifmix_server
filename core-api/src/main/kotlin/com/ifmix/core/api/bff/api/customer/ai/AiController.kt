@@ -105,7 +105,7 @@ class AiController(
         val ctx = ctxFactory.fromRpc(request, SCAN_GET_BY_ID, isMutation = false, body = body)
         val input = body.requireInput()
         val record = queryService.findScanById(ctx, input.id) ?: throw ApiError(ErrorCode.NOT_FOUND)
-        return ResponseEntity.ok(Envelope.ok(record).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, record))
     }
 
     @Operation(operationId = SCAN_LIST)
@@ -113,7 +113,7 @@ class AiController(
     fun findScans(request: HttpServletRequest, @RequestBody body: ApiRequestBody<ScanListInput>): ResponseEntity<Envelope<Page<ScanRecordListRes>>> {
         val ctx = ctxFactory.fromRpc(request, SCAN_LIST, isMutation = false, body = body)
         val input = body.requireInput()
-        return ResponseEntity.ok(Envelope.ok(queryService.findScans(ctx, input.findOptions)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, queryService.findScans(ctx, input.findOptions)))
     }
 
     @Operation(operationId = SCAN_GET_STATUS)
@@ -123,7 +123,7 @@ class AiController(
         val input = body.requireInput()
         // 惰性超时判定可能产生 CAS 写（IN_PROGRESS → FAILED(TIMEOUT)），走事务（同 AiFetcher）
         val res = globalTx.withTx(ctx) { txCtx -> queryService.getScanStatus(txCtx, input.scanId) }
-        return ResponseEntity.ok(Envelope.ok(res).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, res))
     }
 
     // ==================== DeepResearch ====================
@@ -152,8 +152,7 @@ class AiController(
             }
         }
         return ResponseEntity.ok(
-            Envelope.ok(RunDeepResearchRes(deepResearchId = taskCtx.deepResearchId, status = status, errorCode = errorCode))
-                .copy(reqId = ctx.requestId),
+            Envelope.ok(ctx.requestId, RunDeepResearchRes(deepResearchId = taskCtx.deepResearchId, status = status, errorCode = errorCode)),
         )
     }
 
@@ -164,7 +163,7 @@ class AiController(
         val input = body.requireInput()
         // 惰性超时判定可能产生 CAS 写（IN_PROGRESS → FAILED(TIMEOUT)），走事务（同 AiFetcher）
         val res = globalTx.withTx(ctx) { txCtx -> queryService.getDeepResearchStatus(txCtx, input.deepResearchId) }
-        return ResponseEntity.ok(Envelope.ok(res).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, res))
     }
 
     // ==================== Collection ====================
@@ -173,7 +172,7 @@ class AiController(
     @PostMapping(COLLECTION_GET_DEFAULT, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun getDefaultCollection(request: HttpServletRequest, @RequestBody body: ApiRequestBody<NoInput>): ResponseEntity<Envelope<ScanCollectionRes>> {
         val ctx = ctxFactory.fromRpc(request, COLLECTION_GET_DEFAULT, isMutation = false, body = body)
-        return ResponseEntity.ok(Envelope.ok(queryService.getDefaultCollection(ctx)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, queryService.getDefaultCollection(ctx)))
     }
 
     @Operation(operationId = COLLECTION_ITEM_ADD)
@@ -186,7 +185,7 @@ class AiController(
             // 语义保持：旧 GraphQL AddScanCollectionItemResult.collectionId 实际承载的是 item id（历史行为，勿「修正」）
             AddCollectionItemRes(collectionId = result.id, alreadyExists = false)
         }
-        return ResponseEntity.ok(Envelope.ok(res).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, res))
     }
 
     @Operation(operationId = COLLECTION_ITEM_REMOVE_MANY)
@@ -198,7 +197,7 @@ class AiController(
             val result = collectionService.removeItems(txCtx, com.ifmix.core.api.dto.ai.RemoveItemsReq(scanRecordIds = input.scanRecordIds))
             RemoveCollectionItemsRes(removedCount = result.removed)
         }
-        return ResponseEntity.ok(Envelope.ok(res).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, res))
     }
 
     @Operation(operationId = COLLECTION_ITEM_LIST)
@@ -206,7 +205,7 @@ class AiController(
     fun findCollectionItems(request: HttpServletRequest, @RequestBody body: ApiRequestBody<ListCollectionItemsInput>): ResponseEntity<Envelope<Page<ScanCollectionItemRes>>> {
         val ctx = ctxFactory.fromRpc(request, COLLECTION_ITEM_LIST, isMutation = false, body = body)
         val input = body.requireInput()
-        return ResponseEntity.ok(Envelope.ok(queryService.findCollectionItems(ctx, input)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, queryService.findCollectionItems(ctx, input)))
     }
 
     // ==================== Scan mutations ====================
@@ -232,8 +231,7 @@ class AiController(
             }
         }
         return ResponseEntity.ok(
-            Envelope.ok(CreateScanRes(scanId = taskCtx.scanId, status = status, errorCode = errorCode))
-                .copy(reqId = ctx.requestId),
+            Envelope.ok(ctx.requestId, CreateScanRes(scanId = taskCtx.scanId, status = status, errorCode = errorCode)),
         )
     }
 
@@ -248,7 +246,7 @@ class AiController(
             val record = if (success) aiService.findById(txCtx, input.id) else null
             UpdateScanRes(success = success, scanRecord = record?.let { queryService.toDetailRes(txCtx, it) })
         }
-        return ResponseEntity.ok(Envelope.ok(res).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, res))
     }
 
     @Operation(operationId = SCAN_DELETE_ONE)
@@ -257,7 +255,7 @@ class AiController(
         val ctx = ctxFactory.fromRpc(request, SCAN_DELETE_ONE, isMutation = true, body = body)
         val input = body.requireInput()
         val success = globalTx.withTx(ctx) { txCtx -> aiService.deleteScan(txCtx, input.id) }
-        return ResponseEntity.ok(Envelope.ok(DeleteScanRes(success = success)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, DeleteScanRes(success = success)))
     }
 
     @Operation(operationId = SCAN_UPDATE_MANY)
@@ -266,7 +264,7 @@ class AiController(
         val ctx = ctxFactory.fromRpc(request, SCAN_UPDATE_MANY, isMutation = true, body = body)
         val input = body.requireInput()
         val updated = globalTx.withTx(ctx) { txCtx -> aiService.batchUpdateScan(txCtx, input) }
-        return ResponseEntity.ok(Envelope.ok(BatchUpdateScanRes(updatedCount = updated)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, BatchUpdateScanRes(updatedCount = updated)))
     }
 
     // ==================== 限流（attest 规格 §4.6，自 AiFetcher 原样移植） ====================

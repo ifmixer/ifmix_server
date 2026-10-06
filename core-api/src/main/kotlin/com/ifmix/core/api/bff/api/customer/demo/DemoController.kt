@@ -42,7 +42,7 @@ import org.springframework.web.bind.annotation.RestController
  *
  * 统一模式：[ActionContextFactory.fromRpc] 构造 ctx（真实实例，JWT 走 meta.accessToken）→
  * mutation 用 [GlobalTxRunner.withTx] 包 Facade 调用（写后读一律用**原 ctx**，对齐 DemoFetcher
- * 语义），query 直调 [DemoQueryService]（聚合层，禁 N+1）→ 返回 [Envelope]（`.copy(reqId=ctx.requestId)` 回显）。
+ * 语义），query 直调 [DemoQueryService]（聚合层，禁 N+1）→ 返回 [Envelope]（`Envelope.ok(ctx.requestId, data)` 回显 reqId）。
  *
  * springdoc 标注仅顺手（operationId = actionName）；全量 OpenAPI 契约是 M4 的事（rollout §6「明确不做」）。
  */
@@ -76,7 +76,7 @@ class DemoController(
         val input = body.requireInput()
         val todo = queryService.findTodoById(ctx, input.id)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "Todo not found: ${input.id}")
-        return ResponseEntity.ok(Envelope.ok(todo).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, todo))
     }
 
     @Operation(operationId = FIND_TODOS_BY_IDS)
@@ -84,7 +84,7 @@ class DemoController(
     fun findTodosByIds(request: HttpServletRequest, @RequestBody body: ApiRequestBody<FindTodosByIdsInput>): ResponseEntity<Envelope<List<TodoRes>>> {
         val ctx = ctxFactory.fromRpc(request, FIND_TODOS_BY_IDS, isMutation = false, body = body)
         val input = body.requireInput()
-        return ResponseEntity.ok(Envelope.ok(queryService.findTodosByIds(ctx, input.ids)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, queryService.findTodosByIds(ctx, input.ids)))
     }
 
     @Operation(operationId = FIND_TODOS)
@@ -92,7 +92,7 @@ class DemoController(
     fun findTodos(request: HttpServletRequest, @RequestBody body: ApiRequestBody<FindTodosInput>): ResponseEntity<Envelope<Page<TodoRes>>> {
         val ctx = ctxFactory.fromRpc(request, FIND_TODOS, isMutation = false, body = body)
         val input = body.requireInput()
-        return ResponseEntity.ok(Envelope.ok(queryService.findTodos(ctx, input.findOptions)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, queryService.findTodos(ctx, input.findOptions)))
     }
 
     @Operation(operationId = CREATE_TODO)
@@ -104,7 +104,7 @@ class DemoController(
         // 复用批量组装逻辑（单元素列表）补全 items + counts 完整视图
         val full = queryService.findTodosByIds(ctx, listOf(created.id)).singleOrNull()
             ?: throw ApiError(ErrorCode.INTERNAL, "todo not found after create: ${created.id}")
-        return ResponseEntity.ok(Envelope.ok(CreateTodoRes(todo = full)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, CreateTodoRes(todo = full)))
     }
 
     @Operation(operationId = UPDATE_TODO)
@@ -115,7 +115,7 @@ class DemoController(
         globalTx.withTx(ctx) { txCtx -> facade.partialUpdate(txCtx, input) }
         // 写后读用**原 ctx**（非 txCtx）——对齐 DemoFetcher.updateTodo:57 的写后读语义
         val todo = queryService.findTodoById(ctx, input.id)
-        return ResponseEntity.ok(Envelope.ok(UpdateTodoRes(success = true, todo = todo)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, UpdateTodoRes(success = true, todo = todo)))
     }
 
     @Operation(operationId = BATCH_UPDATE_TODO_ITEMS)
@@ -124,7 +124,7 @@ class DemoController(
         val ctx = ctxFactory.fromRpc(request, BATCH_UPDATE_TODO_ITEMS, isMutation = true, body = body)
         val input = body.requireInput()
         globalTx.withTx(ctx) { txCtx -> facade.batchUpdateItems(txCtx, input) }
-        return ResponseEntity.ok(Envelope.ok(UpdateTodoItemsRes(success = true)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, UpdateTodoItemsRes(success = true)))
     }
 
     @Operation(operationId = DELETE_TODO)
@@ -133,7 +133,7 @@ class DemoController(
         val ctx = ctxFactory.fromRpc(request, DELETE_TODO, isMutation = true, body = body)
         val input = body.requireInput()
         globalTx.withTx(ctx) { txCtx -> facade.deleteById(txCtx, input.id) }
-        return ResponseEntity.ok(Envelope.ok(ActionResult(success = true)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, ActionResult(success = true)))
     }
 
     @Operation(operationId = DELETE_TODO_BY_IDS)
@@ -142,6 +142,6 @@ class DemoController(
         val ctx = ctxFactory.fromRpc(request, DELETE_TODO_BY_IDS, isMutation = true, body = body)
         val input = body.requireInput()
         val count = globalTx.withTx(ctx) { txCtx -> facade.deleteByIds(txCtx, input.ids) }
-        return ResponseEntity.ok(Envelope.ok(ActionResult(success = true, modifiedCount = count)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, ActionResult(success = true, modifiedCount = count)))
     }
 }

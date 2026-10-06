@@ -58,7 +58,7 @@ class CsController(
         val ctx = ctxFactory.fromRpc(request, SUBMIT_FEEDBACK, isMutation = true, body = body)
         val input = body.requireInput()
         val id = globalTx.withTx(ctx) { txCtx -> csService.submit(txCtx, input.toReq()) }
-        return ResponseEntity.ok(Envelope.ok(SubmitFeedbackRes(id = id)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, SubmitFeedbackRes(id = id)))
     }
 
     @Operation(operationId = CREATE_SUPPORT_REQUEST)
@@ -67,7 +67,7 @@ class CsController(
         val ctx = ctxFactory.fromRpc(request, CREATE_SUPPORT_REQUEST, isMutation = true, body = body)
         val input = body.requireInput()
         val id = globalTx.withTx(ctx) { txCtx -> csService.createSupportRequest(txCtx, input.toReq()) }
-        return ResponseEntity.ok(Envelope.ok(CreateSupportRequestRes(id = id)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, CreateSupportRequestRes(id = id)))
     }
 
     @Operation(operationId = MY_SUPPORT_REQUEST_BY_ID)
@@ -75,7 +75,7 @@ class CsController(
     fun mySupportRequestById(request: HttpServletRequest, @RequestBody body: ApiRequestBody<SupportRequestByIdInput>): ResponseEntity<Envelope<SupportRequestRes>> {
         val ctx = ctxFactory.fromRpc(request, MY_SUPPORT_REQUEST_BY_ID, isMutation = false, body = body)
         val input = body.requireInput()
-        return ResponseEntity.ok(Envelope.ok(csService.findMySupportRequestById(ctx, input.id).toRes()).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, csService.findMySupportRequestById(ctx, input.id).toRes()))
     }
 
     @Operation(operationId = MY_SUPPORT_REQUESTS)
@@ -86,7 +86,7 @@ class CsController(
         val input = body.input
         val page = csService.findMySupportRequests(ctx, input?.let { ListSupportRequestsReq(cursor = it.cursor, limit = it.limit) })
         return ResponseEntity.ok(
-            Envelope.ok(Page(items = page.items.map { it.toRes() }, pageInfo = page.pageInfo)).copy(reqId = ctx.requestId),
+            Envelope.ok(ctx.requestId, Page(items = page.items.map { it.toRes() }, pageInfo = page.pageInfo)),
         )
     }
 }

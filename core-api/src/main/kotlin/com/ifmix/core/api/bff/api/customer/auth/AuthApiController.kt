@@ -69,7 +69,7 @@ class AuthApiController(
             tierActive = res.active,
             tierExpiresAt = res.expiresAt?.let { Instant.ofEpochMilli(it) },
         )
-        return ResponseEntity.ok(Envelope.ok(out).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, out))
     }
 
     @Operation(operationId = LOGIN)
@@ -83,7 +83,7 @@ class AuthApiController(
         val res = globalTx.withTx(ctx) { txCtx ->
             authService.login(txCtx, LoginReq(idpId = input.idpId, credential = input.credential))
         }
-        return ResponseEntity.ok(Envelope.ok(res.toWire()).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, res.toWire()))
     }
 
     @Operation(operationId = REFRESH)
@@ -99,8 +99,7 @@ class AuthApiController(
             authService.refresh(txCtx, RefreshReq(refreshToken = input.refreshToken))
         }
         return ResponseEntity.ok(
-            Envelope.ok(RefreshRes(accessToken = res.accessToken, refreshToken = res.refreshToken, expiresIn = res.expiresIn.toInt()))
-                .copy(reqId = ctx.requestId),
+            Envelope.ok(ctx.requestId, RefreshRes(accessToken = res.accessToken, refreshToken = res.refreshToken, expiresIn = res.expiresIn.toInt())),
         )
     }
 
@@ -112,7 +111,7 @@ class AuthApiController(
         globalTx.withTx(ctx) { txCtx ->
             authService.logout(txCtx, LogoutReq(refreshToken = input.refreshToken))
         }
-        return ResponseEntity.ok(Envelope.ok(ActionResult(success = true)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, ActionResult(success = true)))
     }
 
     @Operation(operationId = DELETE_ACCOUNT)
@@ -123,7 +122,7 @@ class AuthApiController(
         globalTx.withTx(ctx) { txCtx ->
             authService.requestAccountDeletion(txCtx)
         }
-        return ResponseEntity.ok(Envelope.ok(ActionResult(success = true)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, ActionResult(success = true)))
     }
 
     private fun com.ifmix.core.api.modules.auth.handler.LoginRes.toWire() = LoginRes(

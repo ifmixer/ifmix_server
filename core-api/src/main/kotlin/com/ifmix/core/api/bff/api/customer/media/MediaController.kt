@@ -47,7 +47,7 @@ class MediaController(
     fun presignUpload(request: HttpServletRequest, @RequestBody body: ApiRequestBody<PresignUploadInput>): ResponseEntity<Envelope<PresignUploadResult>> {
         val ctx = ctxFactory.fromRpc(request, PRESIGN_UPLOAD, isMutation = true, body = body)
         val input = body.requireInput()
-        return ResponseEntity.ok(Envelope.ok(facade.presignUpload(ctx, input)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, facade.presignUpload(ctx, input)))
     }
 
     @Operation(operationId = PRESIGN_DOWNLOAD)
@@ -55,6 +55,6 @@ class MediaController(
     fun presignDownload(request: HttpServletRequest, @RequestBody body: ApiRequestBody<PresignDownloadInput>): ResponseEntity<Envelope<PresignDownloadResult>> {
         val ctx = ctxFactory.fromRpc(request, PRESIGN_DOWNLOAD, isMutation = true, body = body)
         val input = body.requireInput()
-        return ResponseEntity.ok(Envelope.ok(facade.presignDownload(ctx, input)).copy(reqId = ctx.requestId))
+        return ResponseEntity.ok(Envelope.ok(ctx.requestId, facade.presignDownload(ctx, input)))
     }
 }
