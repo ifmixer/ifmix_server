@@ -40,6 +40,7 @@ class GlobalExceptionHandler(
             else Envelope.error(code.externalCode, msg)
         val resp = ResponseEntity.status(code.status)
         if (code == ErrorCode.AI_UNAVAILABLE) resp.header("Retry-After", "60")
+        ex.retryAfterSec?.let { resp.header("Retry-After", it.toString()) }
         return resp.body(body)
     }
 

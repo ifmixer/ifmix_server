@@ -359,3 +359,18 @@ flags(1) | nonce(12) | AES-256-GCM(resKey, nonce, aad = enc ‖ flags, payload) 
 
 - v2 的低阶点黑名单教训（常数表三方不一致）直接作废——v3 输入校验交给 HPKE 库，全零 shared 检查随自定义 KDF 一并消失。
 - v2 章节标记「已取代」，仅供理解演进；git 历史可查代码原貌。
+
+---
+
+## 11. 2026-10-06 无兼容清理定稿（app 未上线）
+
+App 端未上线、无任何线上流量，协议清理不再考虑兼容：
+
+1. **版本号定 2**：信封 `ver(1)=2`、头 `x-wirep-version: 2`、info `"ifmix-wire-v2"`、exporter `"ifmix-wire-v2-res"`。历史 2/3 草案（自研信封 / HPKE 提案）从未上线，合并为一个版本，终结"从 3 开始"的困惑。§2 自研信封与 §10 的"ver=3"作废，线格式以 §10 为准、版本号以本节为准。
+2. **强制加密、无降级**：`app.wire-crypto.mode: required`（默认，线上）下 GraphQL 端点（`/customer/core/gql`、`/customer/core/greq/**`）必须加密——明文/头版本不符 → 明文 400 + `400004 WIRE_REQUIRED`；解密失败 → 400003（不变）。`optional` 仅 local/dev 调试。§5 降级表与 §9"保留降级与 kill switch"的决策**作废**（其前提是存在线上旧版本，已不成立）。
+3. **无版本协商**：只有一个版本。头缺省视为当前版本；头存在则必须等于 2。
+4. **范围**：仅 GraphQL 端点强制；webhook / wellknown / actuator / docs 等信封外流量原样放行。
+5. **配置缺失 = 配置错误**：`keys` 未配时 required 模式下全部请求 400003（大声失败），不再静默降级明文。
+6. **多 kid 轮换保留**（轮换不是版本兼容问题）；ts 仅 warn、语义幂等防重放等 §9 结论不变。
+
+**客户端同步项**（一次发版）：`WIRE_VERSION=2`、info/exporter 字符串 v2、头值 "2"；删除 415/400003 明文重发降级逻辑与 `wireUnsupported` 状态；`getWireKey` 缺失 → fail-fast 拒绝调用（不再静默明文）；向量重新生成。

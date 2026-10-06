@@ -12,25 +12,25 @@ import javax.crypto.spec.SecretKeySpec
 import org.bouncycastle.crypto.hpke.HPKE
 
 /**
- * `x-wirep-version: 3` 应用层加密（RFC 9180 HPKE base mode）：
+ * `x-wirep-version: 2` 应用层加密（RFC 9180 HPKE base mode）：
  * Suite = DHKEM(X25519, HKDF-SHA256) 0x0020 / HKDF-SHA256 0x0001 / AES-256-GCM 0x0002，
  * 全部走 BouncyCastle `org.bouncycastle.crypto.hpke`（RFC 9180 标准实现），不手写任何原语/常数。
  *
  * 请求 body（`Content-Type: application/octet-stream`）：
  * ```
- * ver(1)=3 | kid(1) | enc(32) | flags(1) | HPKE-Seal(密文) ‖ tag(16)
+ * ver(1)=2 | kid(1) | enc(32) | flags(1) | HPKE-Seal(密文) ‖ tag(16)
  * aad = 前 35 字节（ver‖kid‖enc‖flags，flags 参与 AAD 防翻转）
  * pt  = ts_ms(8, BE) ‖ body；flags bit0=1 → pt 整体 gzip 后再加密（pt > 4096 才压）
  * ```
  * 响应 body（HTTP status 保持原值）：
  * ```
  * flags(1) | nonce(12) | AES-256-GCM(resKey, nonce, aad = enc‖flags(33B), payload) ‖ tag(16)
- * resKey = HPKE-Export(context, "ifmix-wire-v3-res", L=32)；nonce 每响应 SecureRandom 现生成
+ * resKey = HPKE-Export(context, "ifmix-wire-v2-res", L=32)；nonce 每响应 SecureRandom 现生成
  * flags bit0=1 → payload gzip（>4096）；未知 flag 位客户端必须失败
  * ```
  * 解压上限 [maxDecompressedBytes]（默认 1MB，防 zip-bomb），超限抛 [WireCryptoException] → 400003。
- * 与客户端实现（antique: apps/shared/src/api/wireCrypto.ts）必须逐字节一致；
- * RFC 官方向量测试见 WireCryptoTest（core-api/src/test/resources/wire-v3/）。
+ * 与客户端实现（antique: packages/client-sdk/packages/api/src/api/wireCrypto.ts）必须逐字节一致；
+ * RFC 官方向量测试见 WireCryptoTest（core-api/src/test/resources/wire-v3/，目录名历史遗留）。
  *
  * @param keys kid → X25519 原始私钥（32 字节）。多 kid 并存以便轮换。
  * @param maxDecompressedBytes 请求解密后（gunzip 后）明文 pt 的字节上限。
@@ -97,7 +97,7 @@ class WireCrypto(
                 ctx.open(aad, payload.copyOfRange(HEADER_LEN, payload.size))
             }
             require(pt.size >= TS_LEN) { "missing ts" } // 客户端恒写 8 字节 ts，缺失 = 恶意构造
-            // resKey = HPKE-Export(context, "ifmix-wire-v3-res", 32)；context 生命周期仅限该请求
+            // resKey = HPKE-Export(context, "ifmix-wire-v2-res", 32)；context 生命周期仅限该请求
             val resKey = ctx.export(RESP_EXPORT_CONTEXT, KEY_LEN)
             Opened(
                 body = pt.copyOfRange(TS_LEN, pt.size),
@@ -117,7 +117,7 @@ class WireCrypto(
     fun publicKey(kid: Int): ByteArray? = keys[kid]?.pubRaw
 
     companion object {
-        const val VERSION = 3
+        const val VERSION = 2
         const val HEADER_LEN = 35 // ver(1) + kid(1) + enc(32) + flags(1)；请求 AAD = 该 35B 整段
         const val ENC_LEN = 32
         const val KEY_LEN = 32
@@ -137,13 +137,13 @@ class WireCrypto(
         /** RFC 9180 官方 suite（BouncyCastle 常量，不手写数字）。 */
         val SUITE = HPKE(HPKE.mode_base, HPKE.kem_X25519_SHA256, HPKE.kdf_HKDF_SHA256, HPKE.aead_AES_GCM256)
 
-        private val INFO = "ifmix-wire-v3".toByteArray()
-        private val RESP_EXPORT_CONTEXT = "ifmix-wire-v3-res".toByteArray()
+        private val INFO = "ifmix-wire-v2".toByteArray()
+        private val RESP_EXPORT_CONTEXT = "ifmix-wire-v2-res".toByteArray()
         private val RNG = SecureRandom()
 
         /**
          * 解析配置 `kid:base64私钥,kid:base64私钥`（env 友好，key 格式同 v2：X25519 32B raw base64）。
-         * 空串 → 无 key（isEnabled=false，v3 请求全部 400003 → 客户端降级明文 v1）。
+         * 空串 → 无 key（isEnabled=false；required 模式下 /api/…（api 前缀路径） 请求全部 400003 —— 启动配置错误会大声失败，这是有意的）。
          * 配置错误直接抛（启动期 fail-fast，区别于 payload 错误）。
          */
         fun parse(spec: String, maxDecompressedBytes: Int = DEFAULT_MAX_DECOMPRESSED_BYTES): WireCrypto =

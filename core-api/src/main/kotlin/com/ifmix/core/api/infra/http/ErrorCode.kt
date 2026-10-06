@@ -15,6 +15,8 @@ enum class ErrorCode(val externalCode: String, val status: HttpStatus) {
     APP_CONFIG_MISSING("400002", HttpStatus.BAD_REQUEST),
     /** x-wirep-version: 3 请求解密失败（格式/kid/认证/解压超限任一不通过，不区分原因）。明文返回，客户端据此降级明文重试。 */
     WIRE_DECRYPT_FAILED("400003", HttpStatus.BAD_REQUEST),
+    /** /customer/core/…（GraphQL 端点）请求未按 wire 协议加密（明文 / x-wirep-version 版本不符）。app 未上线无兼容负担：线上强制加密，无降级。400004 原为 ts 时效预留（已暂缓），改作此用。 */
+    WIRE_REQUIRED("400004", HttpStatus.BAD_REQUEST),
     AUTH_PROVIDER_FAILED("401001", ErrorCode.UNAUTHORIZED.status),
 
     /** access token 过期，客户端应调 refresh 重试 */
