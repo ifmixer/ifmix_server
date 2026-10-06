@@ -1,10 +1,12 @@
 package com.ifmix.core.api.dto.cs
 
+import io.mcarle.konvert.api.KonvertTo
 import java.util.UUID
 
 /**
  * 提交反馈协议入参（手写，字段与 schema/customer/cs.graphqls 的 `input SubmitFeedbackInput` 一致）。
  */
+@KonvertTo(SubmitFeedbackReq::class)
 data class SubmitFeedbackInput(
     /** 反馈来源主题。10=Scan, 20=DeepResearch, 30=App。 */
     val topic: Int,
@@ -20,15 +22,4 @@ data class SubmitFeedbackInput(
     /** 可选联系方式：手机号（回访用）。 */
     val phone: String? = null,
     val scanRecordId: UUID? = null,
-)
-
-/** → 业务层请求体（原 CsFetcher.toReq 语义：section 仅在 wire 上保留，不进 Req）。 */
-fun SubmitFeedbackInput.toReq() = SubmitFeedbackReq(
-    topic = topic,
-    reasons = reasons,
-    comment = comment,
-    email = email,
-    phone = phone,
-    scanRecordId = scanRecordId,
-    spm = spm,
 )

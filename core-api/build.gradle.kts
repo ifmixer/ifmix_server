@@ -63,6 +63,8 @@ dependencies {
     implementation("org.babyfish.jimmer:jimmer-spring-boot-starter:$jimmerVersion")
     implementation("org.babyfish.jimmer:jimmer-sql-kotlin:$jimmerVersion")
     ksp("org.babyfish.jimmer:jimmer-ksp:$jimmerVersion")
+    ksp("io.mcarle:konvert:4.5.1")
+    implementation("io.mcarle:konvert-api:4.5.1")
 
     // UUIDv7 generator (cursor pagination requires time-ordered IDs)
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")

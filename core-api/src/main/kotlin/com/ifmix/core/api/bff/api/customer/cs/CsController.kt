@@ -3,6 +3,8 @@ package com.ifmix.core.api.bff.api.customer.cs
 import com.ifmix.core.api.bff.api.customer.demo.DemoController
 import com.ifmix.core.api.dto.common.Page
 import com.ifmix.core.api.dto.cs.CreateSupportRequestInput
+import com.ifmix.core.api.dto.cs.toCreateSupportRequestReq
+import com.ifmix.core.api.dto.cs.toSubmitFeedbackReq
 import com.ifmix.core.api.dto.cs.CreateSupportRequestRes
 import com.ifmix.core.api.dto.cs.ListSupportRequestsInput
 import com.ifmix.core.api.dto.cs.ListSupportRequestsReq
@@ -10,7 +12,6 @@ import com.ifmix.core.api.dto.cs.SubmitFeedbackInput
 import com.ifmix.core.api.dto.cs.SubmitFeedbackRes
 import com.ifmix.core.api.dto.cs.SupportRequestByIdInput
 import com.ifmix.core.api.dto.cs.SupportRequestRes
-import com.ifmix.core.api.dto.cs.toReq
 import com.ifmix.core.api.dto.cs.toRes
 import com.ifmix.core.api.infra.http.ActionContextFactory
 import com.ifmix.core.api.infra.http.ApiRequestBody
@@ -57,7 +58,7 @@ class CsController(
     fun submitFeedback(request: HttpServletRequest, @RequestBody body: ApiRequestBody<SubmitFeedbackInput>): ResponseEntity<Envelope<SubmitFeedbackRes>> {
         val ctx = ctxFactory.fromRpc(request, ACTION_SUBMIT_FEEDBACK, isMutation = true, body = body)
         val input = body.requireInput()
-        val id = globalTx.withTx(ctx) { txCtx -> csService.submit(txCtx, input.toReq()) }
+        val id = globalTx.withTx(ctx) { txCtx -> csService.submit(txCtx, input.toSubmitFeedbackReq()) }
         return ResponseEntity.ok(Envelope.ok(ctx.requestId, SubmitFeedbackRes(id = id)))
     }
 
@@ -66,7 +67,7 @@ class CsController(
     fun createSupportRequest(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateSupportRequestInput>): ResponseEntity<Envelope<CreateSupportRequestRes>> {
         val ctx = ctxFactory.fromRpc(request, ACTION_CREATE_SUPPORT_REQUEST, isMutation = true, body = body)
         val input = body.requireInput()
-        val id = globalTx.withTx(ctx) { txCtx -> csService.createSupportRequest(txCtx, input.toReq()) }
+        val id = globalTx.withTx(ctx) { txCtx -> csService.createSupportRequest(txCtx, input.toCreateSupportRequestReq()) }
         return ResponseEntity.ok(Envelope.ok(ctx.requestId, CreateSupportRequestRes(id = id)))
     }
 
