@@ -1,0 +1,26 @@
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoControllerTest.kt
+  s_db31b686394892::t_aa015cc2c7fc15 315,333
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/media/MediaControllerTest.kt
+  s_db31b686394892::t_42820bd247513f 147,163,166-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19c4ba85f51668992141052fc5411cb21d452423",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_db31b686394892": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6715a16-be5b-4a46-8289-a357905e15c3",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
