@@ -1,0 +1,28 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/Envelope.kt
+  h_b17efd5c751f9f 3-4,6-9
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GlobalExceptionHandler.kt
+  h_b17efd5c751f9f 14,22,39-40,47,52-53,57-59,63,65-66,70,73-74
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCryptoFilter.kt
+  h_b17efd5c751f9f 28,52
+core-api/src/test/kotlin/com/ifmix/api/core/common/http/EnvelopeTest.kt
+  h_b17efd5c751f9f 3,6,9-13,17-21
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/ErrorExposureTest.kt
+  h_b17efd5c751f9f 13
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/WireCryptoTest.kt
+  h_b17efd5c751f9f 144,183,187,192,215
+docs/design/infra/wire-encryption.md
+  h_b17efd5c751f9f 101
+docs/guide/ARCHITECTURE.md
+  h_b17efd5c751f9f 173,282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24e9c141d1a608f1ae47771a3dfe0038f72fb1b5",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
