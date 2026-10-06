@@ -17,7 +17,7 @@ class GraphQlHttpStatusFilterChainTest {
 
     @Test
     fun `error body 400000 sets status 400 on greq path`() {
-        val req = MockHttpServletRequest("POST", "/customer/core/greq/m_media_media_presignUpload")
+        val req = MockHttpServletRequest("POST", "/customer/core/greq/m_media_file_presignUpload")
         val res = MockHttpServletResponse()
 
         // 模拟 GraphQL handler：写 200 + error body
@@ -52,7 +52,7 @@ class GraphQlHttpStatusFilterChainTest {
     /** 复现：RequestLoggingFilter 作为 INNER filter（自己也 ContentCachingResponseWrapper + copyBodyToResponse）。 */
     @Test
     fun `works when an inner filter also wraps and copies body`() {
-        val req = MockHttpServletRequest("POST", "/customer/core/greq/m_media_media_presignUpload")
+        val req = MockHttpServletRequest("POST", "/customer/core/greq/m_media_file_presignUpload")
         val res = MockHttpServletResponse()
 
         // inner filter：模拟 RequestLoggingFilter —— 包一层 ContentCachingResponseWrapper 并 copyBodyToResponse

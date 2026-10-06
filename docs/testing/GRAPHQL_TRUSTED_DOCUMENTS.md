@@ -100,7 +100,7 @@ graphql:
 }
 ```
 
-key = reqName（2026-10-06 起四段式；39 个存量 reqName 已全量改名，总表见 `docs/design/proposals/rpc-rollout-client.md` §1），value = 完整 query 文本。**GraphQL operationName（顶层 field，`@DgsQuery/@DgsMutation` 的 field）2026-10-06 起同步改为四段式**，规则与 reqName 相同：customer 作用域动作在动词后插 `My`（如 `q_ai_scan_getMyById`、`m_demo_todo_deleteMyOne`）；`create` 天然作用于自己不加 `My`（如 `m_demo_todo_createOne`）；专名动词（`me/login/verify/run/getStatus/getDefault/add/attest/recover` 等）与 install/session 这类设备/会话作用域也不加。因此当前 reqName == GraphQL 顶层 field name（39 条一一对应）。**由前端 build 时从 `graphql.ts` 的 query const 提取生成并提交进本 repo**。
+key = reqName（2026-10-06 起四段式；39 个存量 reqName 已全量改名，39 条全量名单即本 allowlist 的 key 集合），value = 完整 query 文本。**GraphQL operationName（顶层 field，`@DgsQuery/@DgsMutation` 的 field）2026-10-06 起同步改为四段式**，规则与 reqName 相同：customer 作用域动作在动词后插 `My`（如 `q_ai_scan_getMyById`、`m_demo_todo_deleteMyOne`）；`create` 天然作用于自己不加 `My`（如 `m_demo_todo_createOne`）；专名动词（`me/login/verify/run/getStatus/getDefault/add/attest/recover` 等）与 install/session 这类设备/会话作用域也不加。因此当前 reqName == GraphQL 顶层 field name（39 条一一对应）。**由前端 build 时从 `graphql.ts` 的 query const 提取生成并提交进本 repo**。
 
 ## 前端改动（待做）
 

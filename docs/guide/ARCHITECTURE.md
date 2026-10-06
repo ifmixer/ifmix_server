@@ -192,7 +192,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
   - 均需 `x-project-id` header
 - **GraphiQL**: `/apidocs/core/customer/gql`
 - **HTTP 状态码**: 有 error 时按 `errors[0].extensions.code` 前 3 位设 HTTP status（`GraphQlHttpStatusFilter`）；无 errors → 200。详见 [Trusted Documents](../testing/GRAPHQL_TRUSTED_DOCUMENTS.md#http-状态码映射)
-- **reqName 四段命名**: `{q|m}_{namespace}_{resource}_{action}`（2026-10-06 定稿：namespace 目前=module，resource 可为聚合根；如 `q_ai_scan_list`、`m_auth_session_login`）；同时作为 GReq 的 reqName（path 末段）。RPC 迁移定稿后 `POST /customer/core/greq/{reqName}` 即 RPC 最终路径（原 `/api/customer/core` 方案废弃，见 [RPC 迁移计划](../design/proposals/graphql-to-http-rpc-openapi.md)）
+- **reqName 四段命名**: `{q|m}_{namespace}_{resource}_{action}`（2026-10-06 定稿：namespace 目前=module，resource 可为聚合根；如 `q_ai_scan_list`、`m_auth_session_login`）；同时作为 GReq 的 reqName（path 末段）。RPC 迁移定稿后 `POST /customer/core/greq/{reqName}` 即 RPC 最终路径
 - **DateTime**: ISO-8601 UTC 字符串（输入接受 ISO 或 epoch millis）
 - **input 全链路透传**: Fetcher→Facade→Handler 直传 input 对象
 - **Update 语义**: set/unset 防 null vs undefined 歧义

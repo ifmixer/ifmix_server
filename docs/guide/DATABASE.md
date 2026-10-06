@@ -33,7 +33,7 @@
 > 设计与触点见 [design/ai/api-key-pool](../design/ai/api-key-pool.md)「表结构」。
 | pay | `core_pay_subscription` | project | Subscription |
 | pay | `core_pay_store_notification` | project | StoreNotification |
-| media | `core_media_upload_record` | project | UploadRecord |
+| media | `core_media_file_record` | project | UploadRecord |
 | cs | `core_cs_feedback` | project | Feedback |
 | cs | `core_cs_support_request` | project | SupportRequest |
 | install | `core_install` | project | Install |
