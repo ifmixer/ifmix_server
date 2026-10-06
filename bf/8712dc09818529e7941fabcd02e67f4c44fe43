@@ -1,0 +1,19 @@
+core-api/src/main/resources/application.yml
+  s_db31b686394892::t_90c4dc4a4e9326 2,84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf8712dc09818529e7941fabcd02e67f4c44fe43",
+  "prompts": {},
+  "sessions": {
+    "s_db31b686394892": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6715a16-be5b-4a46-8289-a357905e15c3",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
