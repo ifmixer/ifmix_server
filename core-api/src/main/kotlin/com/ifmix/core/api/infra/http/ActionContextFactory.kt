@@ -68,6 +68,9 @@ class ActionContextFactory(
                     if (spec.actor == ActorRequirement.CUSTOMER)
                         throw ApiError(ErrorCode.UNAUTHORIZED, "customer authentication required")
                 } else {
+                    // customer token 也携带 iid claim（对齐 GraphQL RequestParser.parseTokenInstallId：
+                    // install/customer 两类 token 都提取，否则 RPC 下 mustGetTokenInstallId 恒 401000）。
+                    tokenInstallId = verified.installId?.let { tryUuid(it) }
                     val actorId = verified.actorId?.let { tryUuid(it) }
                         ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: missing or invalid subject")
                     actor = Actor(

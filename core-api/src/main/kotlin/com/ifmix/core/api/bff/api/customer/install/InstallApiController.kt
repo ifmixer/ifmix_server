@@ -1,17 +1,24 @@
-package com.ifmix.core.api.bff.graphql.customer.install
+package com.ifmix.core.api.bff.api.customer.install
 
+import com.ifmix.core.api.dto.install.AttestChallengeRes
+import com.ifmix.core.api.dto.install.AttestExistingInput
+import com.ifmix.core.api.dto.install.AttestExistingRes
+import com.ifmix.core.api.dto.install.CreateInstallInput
+import com.ifmix.core.api.dto.install.CreateInstallRes
+import com.ifmix.core.api.dto.install.RecoverInstallInput
+import com.ifmix.core.api.dto.install.UpdateInstallInput
+import com.ifmix.core.api.dto.install.UpdateInstallRes
 import com.ifmix.core.api.entity.install.AttestationStatuses
-import com.ifmix.core.api.generated.types.AttestChallengeResult
-import com.ifmix.core.api.generated.types.AttestExistingResult
-import com.ifmix.core.api.generated.types.CreateInstallResult
-import com.ifmix.core.api.generated.types.UpdateInstallResult
 import com.ifmix.core.api.infra.attest.AttestChallengeCodec
 import com.ifmix.core.api.infra.attest.AttestGuard
 import com.ifmix.core.api.infra.attest.AppAttestVerification
 import com.ifmix.core.api.infra.auth.AuthJwtService
-import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ActionContext
+import com.ifmix.core.api.infra.http.ActionContextFactory
+import com.ifmix.core.api.infra.http.ActionSpec
 import com.ifmix.core.api.infra.http.ApiError
+import com.ifmix.core.api.infra.http.ApiRequestBody
+import com.ifmix.core.api.infra.http.Envelope
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
 import com.ifmix.core.api.infra.ratelimit.RateLimiter
@@ -19,42 +26,54 @@ import com.ifmix.core.api.infra.ratelimit.RateLimitResult
 import com.ifmix.core.api.infra.ratelimit.Window
 import com.ifmix.core.api.infra.tx.GlobalTxRunner
 import com.ifmix.core.api.modules.install.InstallFacade
-import com.netflix.graphql.dgs.DgsComponent
+import com.ifmix.core.api.modules.project.ProjectServerConfigFacade
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
-import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
-import com.netflix.graphql.dgs.DgsMutation
-import com.netflix.graphql.dgs.InputArgument
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import tools.jackson.databind.ObjectMapper
 import java.util.Base64
 
 /**
- * Install mutation（规格 §5.1/§4.6/§6.7）。
+ * install 模块 API controller（rollout M2）。
  *
- * createInstall 新流程顺序（§4.6 伪代码，Guard 阶段 400/403/503 不扣日额度）：
- * 1. IP 短窗口 100/60s → 429000(retryAfterSec=窗口剩余)
- * 2. proof/proofStatus 组合校验（§5.1 表）→ 400000
- * 3. verifyProof → decideCreateInstall（ENFORCE+INVALID → 403001；ENFORCE+无 proof/UNAVAILABLE → 403001/503002；OBSERVE 全放行）
- * 4. 日窗口（VALID→attested 1000；否则 unverified 100）→ 429002(retryAfterSec=到 UTC 零点)
- * 5. consume（replay → 403001）
- * 6. globalTx { createInstallWithProof }（key_reused 在事务阶段，额度不退）
- * attestationStatus 映射：VALID 绑定成功=10；OBSERVE 下 INVALID/带了 proof 未绑定=20；没带 proof 或服务端未校验=30。
+ * 五个 action 的编排（IP 限流 / proof 校验 / attest 决策 / 日窗口 / challenge 消费 / 事务边界）
+ * 自 InstallFetcher **逐行平移**，仅替换传输层：`fromDfe(dfe, requireActorType = null)` →
+ * [ActionContextFactory.fromRpc]（meta.accessToken 自验；token 要求由既有内部校验精确执行）。
+ * 语义红线：错误码 401000/403001/403002/409001/404001/429000/429002 与 retryAfterSec 逐一保留。
  */
-@DgsComponent
-class InstallFetcher(
+@RestController
+@RequestMapping("/api/customer/core", produces = [MediaType.APPLICATION_JSON_VALUE])
+@Tag(name = "Install API", description = "install 模块（身份引导/attestation）")
+class InstallApiController(
     private val installFacade: InstallFacade,
     private val globalTx: GlobalTxRunner,
-    private val ctxProvider: ActionContextProvider,
+    private val ctxFactory: ActionContextFactory,
     private val rateLimiter: RateLimiter,
     private val rlProps: RateLimitProperties,
     private val attestGuard: AttestGuard,
-    private val serverConfigFacade: com.ifmix.core.api.modules.project.ProjectServerConfigFacade,
+    private val serverConfigFacade: ProjectServerConfigFacade,
+    private val objectMapper: ObjectMapper,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @DgsMutation(field = "m_install_createInstall")
-    fun createInstall(dfe: DgsDataFetchingEnvironment, @InputArgument input: Map<String, Any?>?): CreateInstallResult {
-        val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
+    /** 缺 input 段 → 空 object node（对齐 DemoController.input()）；非法 input 由 Spring 边界映射 400000。 */
+    private fun <T> input(body: ApiRequestBody, clazz: Class<T>): T =
+        objectMapper.convertValue(body.input ?: objectMapper.createObjectNode(), clazz)
+
+    @Operation(operationId = "m_install_install_create")
+    @PostMapping("m_install_install_create", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun createInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<CreateInstallRes>> {
+        val ctx = ctxFactory.fromRpc(request, InstallSpecs.CREATE_INSTALL, body.meta)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
+        val input = input(body, CreateInstallInput::class.java)
 
         // 1. 入口短窗口 100/60s/IP（验签前，保护验签消耗的 CPU）
         when (val rl = rateLimiter.check(
@@ -67,17 +86,11 @@ class InstallFetcher(
                 throw ApiError(ErrorCode.RATE_LIMITED, "too many createInstall", retryAfterSec = rl.retryAfterSec)
         }
 
-        @Suppress("UNCHECKED_CAST")
-        val deviceInfo = input?.get("deviceInfo") as? Map<String, Any?>
-        @Suppress("UNCHECKED_CAST")
-        val storeType = (input?.get("storeType") as? Number)?.toInt()
-
-        // 2. proof / proofStatus 组合校验（§5.1 表：两者同时非空 → 400000；proofStatus ∉ {null,20} → 400000；输入上限 §5.7）
-        val proofStatus = (input?.get("proofStatus") as? Number)?.toInt()
-        val bundle = attestGuard.parseProofInput(input, proofStatus)
+        // 2. proof / proofStatus 组合校验（§5.1 表：两者同时非空 → 400000；proofStatus ∉ {null,20} → 400000）
+        val bundle = attestGuard.parseProofInput(mapOf("proof" to input.proof), input.proofStatus)
 
         // 3. 纯技术验证（不套 mode）→ 套 §4.3 矩阵（ENFORCE+INVALID → 403001；ENFORCE+无 proof/UNAVAILABLE → 403001/503002）
-        val verification = attestGuard.verifyProof(ctx, bundle, proofStatus)
+        val verification = attestGuard.verifyProof(ctx, bundle, input.proofStatus)
         val mode = configMode(ctx)
         val decision = attestGuard.decideCreateInstall(verification, mode)
 
@@ -94,14 +107,14 @@ class InstallFetcher(
                 throw ApiError(ErrorCode.INSTALL_DAILY_LIMITED, "too many createInstall", retryAfterSec = rl.retryAfterSec)
         }
 
-        // 5. 一次性消费 challenge（日窗口通过后才消费，§4.6；replay → 403001；DEGRADED 放行由 guard 打 attest.redis_degraded）
+        // 5. 一次性消费 challenge（日窗口通过后才消费，§4.6；replay → 403001）
         attestGuard.consume(verification)
 
         // 6. 事务内绑定（§5.3；key_reused / 并发唯一冲突在事务阶段，已扣额度不退——§4.6）
         val verifiedProof = (verification as? AttestGuard.Verification.Valid)?.proof
         val res = try {
             globalTx.withTx(ctx) { txCtx ->
-                installFacade.createInstallWithProof(txCtx, deviceInfo, storeType, verifiedProof)
+                installFacade.createInstallWithProof(txCtx, input.deviceInfo, input.storeType, verifiedProof)
             }
         } catch (e: org.springframework.dao.DataIntegrityViolationException) {
             // §5.3：并发同 keyId（两个不同 challenge）唯一约束兜底 → 失败方回滚 → 403001(key_reused)，客户端转 recover
@@ -109,8 +122,8 @@ class InstallFetcher(
         }
 
         // §5.9：VALID 且 storeType 交叉不一致 → 只打日志不拒绝（OBSERVE/ENFORCE 同）
-        if (verifiedProof != null && verifiedProof.provider == AttestGuard.PROVIDER_IOS && storeType != null && storeType != 10) {
-            attestGuard.logStoreMismatch(pid, verifiedProof.provider, storeType)
+        if (verifiedProof != null && verifiedProof.provider == AttestGuard.PROVIDER_IOS && input.storeType != null && input.storeType != 10) {
+            attestGuard.logStoreMismatch(pid, verifiedProof.provider, input.storeType)
         }
 
         val attestationStatus = when (decision) {
@@ -118,39 +131,39 @@ class InstallFetcher(
             AttestGuard.CreateInstallDecision.NOT_PERSISTED -> 20 // 带了 proof 但没绑定（OBSERVE 下 INVALID 等）
             AttestGuard.CreateInstallDecision.NOT_ATTEMPTED -> 30 // 没带 proof / 服务端未校验
         }
-        return CreateInstallResult(installId = res.installId, installToken = res.installToken, attestationStatus = attestationStatus)
+        return ResponseEntity.ok(Envelope.ok(CreateInstallRes(installId = res.installId, installToken = res.installToken, attestationStatus = attestationStatus)).copy(reqId = ctx.requestId))
     }
 
     /** 读 project 级 mode（§4.3 单一 mode，作用于所有已配置 provider；null = 未配置）。 */
     private fun configMode(ctx: ActionContext) =
         serverConfigFacade.findAttestConfig(ctx.mustGetProjectId())?.mode
 
-    @DgsMutation(field = "m_install_updateInstall")
-    fun updateInstall(dfe: DgsDataFetchingEnvironment, @InputArgument input: Map<String, Any?>): UpdateInstallResult {
-        // 需 token（install 或 customer），取 iid
-        val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
+    @Operation(operationId = "m_install_install_updateOne")
+    @PostMapping("m_install_install_updateOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun updateInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<UpdateInstallRes>> {
+        val ctx = ctxFactory.fromRpc(request, InstallSpecs.UPDATE_INSTALL, body.meta)
         val installId = ctx.tokenInstallId
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "install token required")
-        @Suppress("UNCHECKED_CAST")
-        val deviceInfo = input["deviceInfo"] as? Map<String, Any?>
+        val input = input(body, UpdateInstallInput::class.java)
         val ok = globalTx.withTx(ctx) { txCtx ->
             installFacade.updateInstall(
                 txCtx, installId,
-                input["firebaseInstallId"] as? String,
-                input["fcmToken"] as? String,
-                deviceInfo,
-                (input["scanResultNotiEnabled"] as? Boolean),
-                (input["deepResearchNotiEnabled"] as? Boolean),
+                input.firebaseInstallId,
+                input.fcmToken,
+                input.deviceInfo,
+                input.scanResultNotiEnabled,
+                input.deepResearchNotiEnabled,
             )
         }
-        return UpdateInstallResult(success = ok)
+        return ResponseEntity.ok(Envelope.ok(UpdateInstallRes(success = ok)).copy(reqId = ctx.requestId))
     }
 
-    // ===== m_install_createAttestChallenge（§5.1：无鉴权；100/60s/IP；纯计算不碰 Redis）=====
+    // ===== m_install_install_createAttestChallenge（§5.1：无鉴权；100/60s/IP；纯计算不碰 Redis）=====
 
-    @DgsMutation(field = "m_install_createAttestChallenge")
-    fun createAttestChallenge(dfe: DgsDataFetchingEnvironment): AttestChallengeResult {
-        val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
+    @Operation(operationId = "m_install_install_createAttestChallenge")
+    @PostMapping("m_install_install_createAttestChallenge", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun createAttestChallenge(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<AttestChallengeRes>> {
+        val ctx = ctxFactory.fromRpc(request, InstallSpecs.CREATE_ATTEST_CHALLENGE, body.meta)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
         // 短窗口 100/60s/IP（挑战是纯 HMAC 计算，与 createInstall 入口对齐，避免 CGNAT 瓶颈）
@@ -164,23 +177,25 @@ class InstallFetcher(
                 throw ApiError(ErrorCode.RATE_LIMITED, "too many createAttestChallenge", retryAfterSec = rl.retryAfterSec)
         }
 
-        // enabled = 全局开关 && 配置可解析 && mode!=OFF && x-client-platform header 对应平台子对象存在（§5.1 v5 注）
+        // enabled = 全局开关 && 配置可解析 && mode!=OFF && x-client-platform meta 对应平台子对象存在（§5.1 v5 注）
         val enabled = attestGuard.isChallengeEnabled(pid, ctx.clientPlatform)
         if (!enabled) {
             // 客户端据此不生成 key，直接走 no-proof createInstall
-            return AttestChallengeResult(enabled = false, challenge = null, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)
+            return ResponseEntity.ok(Envelope.ok(AttestChallengeRes(enabled = false, challenge = null, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)).copy(reqId = ctx.requestId))
         }
         val challenge = attestGuard.issueChallenge(pid)
-        return AttestChallengeResult(enabled = true, challenge = challenge, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)
+        return ResponseEntity.ok(Envelope.ok(AttestChallengeRes(enabled = true, challenge = challenge, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)).copy(reqId = ctx.requestId))
     }
 
-    // ===== m_install_recoverInstall（§3.3：无鉴权；10/60s/IP；与 mode/全局开关无关——决策 9）=====
+    // ===== m_install_install_recover（§3.3：无鉴权；10/60s/IP；与 mode/全局开关无关——决策 9）=====
 
-    @DgsMutation(field = "m_install_recoverInstall")
-    fun recoverInstall(dfe: DgsDataFetchingEnvironment, @InputArgument input: Map<String, Any?>): CreateInstallResult {
-        val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
+    @Operation(operationId = "m_install_install_recover")
+    @PostMapping("m_install_install_recover", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun recoverInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<CreateInstallRes>> {
+        val ctx = ctxFactory.fromRpc(request, InstallSpecs.RECOVER_INSTALL, body.meta)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
+        val input = input(body, RecoverInstallInput::class.java)
         when (val rl = rateLimiter.check(
             Window.MINUTE,
             "ratelimit:$pid:recover-install:ip:min:$clientIp",
@@ -191,10 +206,6 @@ class InstallFetcher(
                 throw ApiError(ErrorCode.RATE_LIMITED, "too many recoverInstall", retryAfterSec = rl.retryAfterSec)
         }
 
-        val keyId = input["keyId"] as? String ?: throw ApiError(ErrorCode.INVALID_REQUEST, "keyId is required")
-        val assertion = (input["assertion"] as? String) ?: throw ApiError(ErrorCode.INVALID_REQUEST, "assertion is required")
-        val challenge = input["challenge"] as? String ?: throw ApiError(ErrorCode.INVALID_REQUEST, "challenge is required")
-
         // recover 只要求 ios 配置存在（未配置 → 400000，决策 9：与 mode/全局开关无关）
         val config = serverConfigFacade.findAttestConfig(pid)
             ?: throw ApiError(ErrorCode.INVALID_REQUEST, "ios attest config not set for this project")
@@ -202,13 +213,13 @@ class InstallFetcher(
 
         // a. challenge 签名/时效（secret 缺失 → 503002；challenge 无效 → 403001；GuardError 直接外抛，保留 retryAfterSec 语义）
         try {
-            attestGuard.checkRecoverChallenge(pid, challenge)
+            attestGuard.checkRecoverChallenge(pid, input.challenge)
         } catch (e: AttestGuard.GuardError) {
             throw e
         }
 
         // b. 只读查绑定（事务外预查；最终结果以事务内条件更新为准）
-        val binding = installFacade.findAttestationBySubject(ctx, AttestGuard.PROVIDER_IOS, keyId)
+        val binding = installFacade.findAttestationBySubject(ctx, AttestGuard.PROVIDER_IOS, input.keyId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "attestation key not bound")
         if (binding.status != AttestationStatuses.ACTIVE) {
             throw ApiError(ErrorCode.ATTEST_KEY_BLOCKED, "attestation key is not active (status=${binding.status})")
@@ -216,12 +227,12 @@ class InstallFetcher(
         val storedCounter = binding.signCount
 
         // c. WebAuthn4J 验 assertion（publicKey 公钥、rpIdHash、nonce=SHA256(authData‖SHA256(UTF8(clientData)))、counter>sign_count）
-        val clientData = "ifmix-install-recover-v1\n" + pid + "\n" + challenge
-        val assertionBytes = decodeBase64Flexible(assertion, "assertion")
+        val clientData = "ifmix-install-recover-v1\n" + pid + "\n" + input.challenge
+        val assertionBytes = decodeBase64Flexible(input.assertion, "assertion")
         val assertionSuccess = when (
             val v = attestGuard.appAttestVerifier
                 .verifyAssertion(
-                    keyId = keyId,
+                    keyId = input.keyId,
                     assertion = assertionBytes,
                     clientData = clientData.toByteArray(Charsets.UTF_8),
                     teamId = ios.teamId,
@@ -241,14 +252,14 @@ class InstallFetcher(
         // w4j 已保证 presented ≤ stored；counter > sign_count 的权威校验在事务内条件更新
         // （sign_count < :new；0 行 → 403001，§3.3-e），不在事务外 require（避免 presented==stored 时 500）。
         // d. 一次性消费（Redis 异常 → guard 打节流 ERROR attest.redis_degraded，跳过重放保护，可用性优先；replay → 403001）
-        attestGuard.consumeChallenge(challenge)
+        attestGuard.consumeChallenge(input.challenge)
 
         // e. 事务内条件更新 sign_count（0 行 → 403001 并发重放或期间被封禁/退役）+ 重签 installToken
         val res = globalTx.withTx(ctx) { txCtx ->
             installFacade.recoverInstall(txCtx, binding, assertionSuccess.newCounter)
         }
         recoverLog(ctx, "ok", null)
-        return CreateInstallResult(installId = res.installId, installToken = res.installToken, attestationStatus = 10)
+        return ResponseEntity.ok(Envelope.ok(CreateInstallRes(installId = res.installId, installToken = res.installToken, attestationStatus = 10)).copy(reqId = ctx.requestId))
     }
 
     /** §5.5/§2 决策 11：event=install.recover 日志补 mode/provider 字段（不打印 keyId/证明原文）。 */
@@ -257,11 +268,13 @@ class InstallFetcher(
         log.info("event=install.recover mode={} provider={} result={} reason={}", mode, AttestGuard.PROVIDER_IOS, result, reason)
     }
 
-    // ===== m_install_attestExisting（§6.7：严格只认 installToken；10/60s/IP + 3/install/UTC 日）=====
+    // ===== m_install_install_attest（§6.7：严格只认 installToken；10/60s/IP + 3/install/UTC 日）=====
 
-    @DgsMutation(field = "m_install_attestExisting")
-    fun attestExisting(dfe: DgsDataFetchingEnvironment, @InputArgument input: Map<String, Any?>): AttestExistingResult {
-        val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
+    @Operation(operationId = "m_install_install_attest")
+    @PostMapping("m_install_install_attest", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun attestExisting(request: HttpServletRequest, @RequestBody body: ApiRequestBody): ResponseEntity<Envelope<AttestExistingRes>> {
+        val ctx = ctxFactory.fromRpc(request, InstallSpecs.ATTEST_EXISTING, body.meta)
+        val input = input(body, AttestExistingInput::class.java)
 
         // 1. 鉴权：严格只认 installToken（type=5 && actorId==null && tokenInstallId!=null，否则 401000）
         val ok = when {
@@ -287,28 +300,26 @@ class InstallFetcher(
 
         // 3. 服务端未启用（OFF / 未配置 / 全局开关关）→ 30（NOT_EVALUATED，客户端废弃 key 等下次启动）
         if (!attestGuard.isAttestationEnabled(pid)) {
-            return AttestExistingResult(attestationStatus = 30)
+            return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 30)).copy(reqId = ctx.requestId))
         }
 
         // 4. verifyProof（§5.1 组合校验 + §5.7 输入上限；INVALID → 20；UNAVAILABLE → 503002）
         val proofStatus: Int? = null
-        @Suppress("UNCHECKED_CAST")
-        val proofMap = input["proof"] as? Map<String, Any?>
-        val bundle = attestGuard.parseProofInput(mapOf("proof" to proofMap), proofStatus)
+        val bundle = attestGuard.parseProofInput(mapOf("proof" to input.proof), proofStatus)
         val verification = attestGuard.verifyProof(ctx, bundle, proofStatus)
         when (verification) {
             is AttestGuard.Verification.Valid -> Unit
             is AttestGuard.Verification.Invalid -> {
                 // INVALID 与 mode 无关（ENFORCE 也一样）：返回 20，不报错、不写记录
-                return AttestExistingResult(attestationStatus = 20)
+                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 20)).copy(reqId = ctx.requestId))
             }
             is AttestGuard.Verification.Unavailable ->
                 throw ApiError(ErrorCode.ATTESTATION_UNAVAILABLE, "attestation verification temporarily unavailable (${verification.reason.code})")
             is AttestGuard.Verification.NotEvaluated ->
-                return AttestExistingResult(attestationStatus = 30)
+                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 30)).copy(reqId = ctx.requestId))
             is AttestGuard.Verification.Disabled,
             is AttestGuard.Verification.NoProof ->
-                return AttestExistingResult(attestationStatus = 30)
+                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 30)).copy(reqId = ctx.requestId))
         }
         val verified = (verification as AttestGuard.Verification.Valid).proof
 
@@ -317,7 +328,7 @@ class InstallFetcher(
         when {
             precheck != null && precheck.installId == installId && precheck.status == AttestationStatuses.ACTIVE -> {
                 // 同 install ACTIVE → 幂等 10，**跳过额度与消费**（不占新 key 额度、不消费 challenge）
-                return AttestExistingResult(attestationStatus = 10)
+                return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = 10)).copy(reqId = ctx.requestId))
             }
             precheck != null && precheck.status != AttestationStatuses.ACTIVE ->
                 throw ApiError(ErrorCode.ATTEST_KEY_BLOCKED, "attestation key is not active (status=${precheck.status})")
@@ -341,10 +352,10 @@ class InstallFetcher(
         attestGuard.consume(verification)
 
         // 8. 事务内权威判定（§6.7）：锁 install 行（404001）→ 锁内重查 → 幂等/403002/409001/满 5 把 retire + 插入
-        val txResult: AttestExistingResult = try {
+        val txResult: Int = try {
             globalTx.withTx(ctx) { txCtx ->
                 installFacade.attestExisting(txCtx, installId, verified).let { _ ->
-                    AttestExistingResult(attestationStatus = 10)
+                    10
                 }
             }
         } catch (e: org.springframework.dao.DataIntegrityViolationException) {
@@ -353,13 +364,13 @@ class InstallFetcher(
                 installFacade.attestExistingRecheckAfterConflict(txCtx, installId, verified.provider, verified.subject)
             }
             if (recheck) {
-                AttestExistingResult(attestationStatus = 10)
+                10
             } else {
                 throw ApiError(ErrorCode.ATTEST_KEY_BOUND_TO_OTHER_INSTALL, "attestation key is bound to another install")
             }
         }
         attestLog(ctx, "ok", null)
-        return txResult
+        return ResponseEntity.ok(Envelope.ok(AttestExistingRes(attestationStatus = txResult)).copy(reqId = ctx.requestId))
     }
 
     /** §5.5：event=install.attest 日志（attestExisting 路径；与 Guard 内的纯技术日志分开，带 action 语义）。 */
@@ -368,7 +379,7 @@ class InstallFetcher(
         log.info("event=install.attest_existing mode={} provider={} result={} reason={}", mode, AttestGuard.PROVIDER_IOS, result, reason)
     }
 
-    /** base64（标准或 url 字母表）解码，失败 → 400000（§5.7 输入上限：assertion ≤ 4KB 由 schema 侧校验）。 */
+    /** base64（标准或 url 字母表）解码，失败 → 400000（§5.7 输入上限：assertion ≤ 4KB）。 */
     private fun decodeBase64Flexible(raw: String, field: String): ByteArray = try {
         Base64.getDecoder().decode(raw)
     } catch (_: IllegalArgumentException) {
