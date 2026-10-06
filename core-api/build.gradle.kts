@@ -3,7 +3,6 @@ plugins {
     kotlin("plugin.spring")
     id("org.springframework.boot")
     id("io.spring.dependency-management")
-    id("com.netflix.dgs.codegen")
     id("com.google.devtools.ksp")
 }
 
@@ -94,10 +93,7 @@ dependencies {
     testImplementation("com.h2database:h2")
 
     // GraphQL (Netflix DGS Framework 12.x)
-    implementation(platform("com.netflix.graphql.dgs:graphql-dgs-platform-dependencies:12.0.1"))
-    implementation("com.netflix.graphql.dgs:graphql-dgs-spring-graphql-starter")
     implementation("com.jayway.jsonpath:json-path:3.0.0")  // DGS 12 Jackson3 需要 json-path 3.x
-    testImplementation("com.netflix.graphql.dgs:graphql-dgs-client")
 }
 
 kotlin {
@@ -136,50 +132,6 @@ ksp {
     // input DTO 中 nullable 属性默认使用 dynamic 修饰（不传=不修改）
     arg("jimmer.dto.defaultNullableInputModifier", "fuzzy")
 }
-
-// DGS Codegen — 从 .graphqls schema 生成 Kotlin input/payload/enum types
-tasks.withType<com.netflix.graphql.dgs.codegen.gradle.GenerateJavaTask> {
-    // 生成代码的包名
-    packageName = "com.ifmix.core.api.generated"
-    language = "kotlin"
-    generateClient = true       // 生成类型安全 client（测试用）
-    generateDataTypes = true    // 生成 input/type data classes
-    snakeCaseConstantNames = true
-
-    // schema 文件位置（包含 common + customer 目录）
-    schemaPaths = mutableListOf(
-        "${projectDir}/src/main/resources/schema/common",
-        "${projectDir}/src/main/resources/schema/customer",
-    )
-
-    // 类型映射：GraphQL output type → Domain Model data class（不生成 data class）
-    // input types / payload types / enums 不在此映射，由 codegen 生成
-    typeMapping = mutableMapOf(
-        // Scalars
-        "UUID" to "java.util.UUID",
-        "DateTime" to "java.time.Instant",
-        "JSON" to "kotlin.Any",
-        // Entity output types → Domain Model data classes
-        "Customer" to "com.ifmix.core.api.entity.customer.Customer",
-        "Todo" to "com.ifmix.core.api.entity.demo.Todo",
-        "TodoItem" to "com.ifmix.core.api.entity.demo.TodoItem",
-        "ScanRecord" to "com.ifmix.core.api.entity.ai.ScanRecord",
-        "ScanCollection" to "com.ifmix.core.api.entity.ai.ScanCollection",
-        "ScanCollectionItem" to "com.ifmix.core.api.entity.ai.ScanCollectionItem",
-        "ImageRef" to "com.ifmix.core.api.entity.ai.ImageRef",
-        // ActionResult: 手写类型，不再由 codegen 生成
-        "ActionResult" to "com.ifmix.core.api.dto.common.ActionResult",
-        // PageInfo: 手写类型
-        "PageInfo" to "com.ifmix.core.api.dto.common.PageInfo",
-        // Page types → 通用 Page<T>
-        "TodoPage" to "com.ifmix.core.api.dto.common.Page",
-        "ScanRecordPage" to "com.ifmix.core.api.dto.common.Page",
-        "ScanCollectionItemPage" to "com.ifmix.core.api.dto.common.Page",
-    )
-}
-
-
-
 
 // Flyway migrate — 手动执行数据库迁移（app 启动不再自动 migrate）。
 // 用法: ./gradlew :core-api:flywayMigrate

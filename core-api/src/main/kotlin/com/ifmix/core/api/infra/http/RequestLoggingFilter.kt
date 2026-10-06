@@ -19,7 +19,7 @@ import org.springframework.web.util.ContentCachingResponseWrapper
  * - 错误响应（4xx/5xx）：WARN 级别额外打印响应体，方便排查问题。
  */
 @Component
-// 最外层：必须包住 GraphQlHttpStatusFilter，日志里的 httpStatus 才是它改写后、客户端实际收到的值；
+// 最外层：日志里的 httpStatus 即客户端实际收到的值（错误 status 由 GlobalExceptionHandler 直接输出）。
 // 也让 reqId/MDC 尽早建立，内层 filter 的日志同样带 rid。
 @Order(Ordered.HIGHEST_PRECEDENCE + 5)
 class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFilter() {

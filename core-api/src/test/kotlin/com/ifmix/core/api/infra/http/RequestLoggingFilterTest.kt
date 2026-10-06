@@ -10,16 +10,15 @@ import org.mockito.kotlin.mock
 import org.springframework.mock.web.MockFilterChain
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
-import tools.jackson.databind.json.JsonMapper
 
 /**
- * filter 嵌套顺序：RequestLoggingFilter（外）→ GraphQlHttpStatusFilter（内）→ handler。
- * 内层按 errors[0].extensions.code 改写的 status 要传到外层（日志读到的 httpStatus 即客户端收到的），body 不丢。
+ * RequestLoggingFilter 行为：写 REQ_ID 响应头、body 透传；root / health 路径跳过日志。
+ * （旧链中的 GraphQlHttpStatusFilter 已随 GraphQL 引擎删除——错误 status 由
+ * GlobalExceptionHandler 直接输出，无需内层改写。）
  */
 class RequestLoggingFilterTest {
 
     private val logging = RequestLoggingFilter(mock<RequestParser>())
-    private val status = GraphQlHttpStatusFilter(JsonMapper.builder().build())
     private val body = """{"errors":[{"message":"x","extensions":{"code":"503000"}}]}"""
 
     private fun run(path: String): MockHttpServletResponse {
@@ -30,14 +29,14 @@ class RequestLoggingFilterTest {
                 rs.writer.write(body)
             }
         }
-        logging.doFilter(req, res, MockFilterChain(handler, status))
+        logging.doFilter(req, res, MockFilterChain(handler))
         return res
     }
 
     @Test
-    fun `inner status rewrite reaches outer logging filter and client, body intact`() {
-        val res = run("/customer/core/greq/m_x")
-        assertThat(res.status).isEqualTo(503)
+    fun `body passes through and req id header reaches client`() {
+        val res = run("/api/customer/core/m_demo_todo_getById")
+        assertThat(res.status).isEqualTo(200)
         assertThat(res.contentAsString).isEqualTo(body)
         assertThat(res.getHeader(RequestHeaders.REQ_ID)).isNotNull()
     }
