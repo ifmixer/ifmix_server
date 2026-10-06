@@ -154,6 +154,38 @@ class RequestParserTest {
         val a = parser.parseActor(req(RequestMeta(projectId = projectId, accessToken = "Bearer tok")), requireActorType = ActorTypes.CUSTOMER)!!
         assertThat(a.actorId).isEqualTo(UUID.fromString(actorId))
     }
+    @Test fun `lowercase bearer prefix is accepted`() {
+        bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.CUSTOMER, anonymous = true))
+        assertThat(parser.parseActor(req(RequestMeta(projectId = projectId, accessToken = "bearer tok")), requireActorType = ActorTypes.CUSTOMER)).isNotNull
+        assertThat(parser.parseActor(req(RequestMeta(projectId = projectId), "Authorization" to "bearer tok"), requireActorType = ActorTypes.CUSTOMER)).isNotNull
+    }
+    @Test fun `bare Bearer scheme without token is treated as absent`() {
+        // 纯 "Bearer" 无凭证 → 按未提供处理（需登录时 UNAUTHORIZED，非 invalid token）
+        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestMeta(projectId = projectId), "Authorization" to "Bearer"), requireActorType = ActorTypes.CUSTOMER) }
+        assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
+        assertThat(ex.message).contains("authentication required")
+    }
+    @Test fun `token falls back to Authorization header when meta accessToken is absent (plain dev channel)`() {
+        bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.CUSTOMER, anonymous = true))
+        val a = parser.parseActor(req(RequestMeta(projectId = projectId), "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER)!!
+        assertThat(a.actorId).isEqualTo(UUID.fromString(actorId))
+    }
+    @Test fun `meta accessToken wins over Authorization header`() {
+        bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.CUSTOMER, anonymous = true))
+        // meta 带 valid token（"tok"），header 带过期 token（"header-tok"）→ 只验 meta 的，正常返回
+        whenever(jwt.verify("header-tok")).thenThrow(TokenExpiredException())
+        val a = parser.parseActor(
+            req(RequestMeta(projectId = projectId, accessToken = "tok"), "Authorization" to "Bearer header-tok"),
+            requireActorType = ActorTypes.CUSTOMER,
+        )!!
+        assertThat(a.actorId).isEqualTo(UUID.fromString(actorId))
+
+        // 反向：meta 无 token 时回落 header（过期 → TOKEN_EXPIRED）
+        val ex = assertThrows<ApiError> {
+            parser.parseActor(req(null, "Authorization" to "Bearer header-tok"), requireActorType = ActorTypes.CUSTOMER)
+        }
+        assertThat(ex.errorCode).isEqualTo(ErrorCode.TOKEN_EXPIRED)
+    }
     @Test fun `expired token throws TOKEN_EXPIRED regardless of require`() {
         whenever(jwt.verify("tok")).thenThrow(TokenExpiredException())
         val ex = assertThrows<ApiError> { parser.parseActor(req(RequestMeta(accessToken = "tok")), requireActorType = null) }

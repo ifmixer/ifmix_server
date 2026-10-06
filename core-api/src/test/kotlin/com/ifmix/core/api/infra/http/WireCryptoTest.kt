@@ -350,6 +350,21 @@ class WireCryptoTest {
                 """{"query":"","variables":{"a":1}}""")
     }
 
+    /** 加密 body 顶层 authorization 带 Bearer 前缀 → 剥前缀进 meta.accessToken。 */
+    @Test
+    fun `encrypted authorization Bearer prefix is stripped into accessToken`() {
+        val client = TestClient(crypto.publicKey(1)!!, kid = 1)
+        val payload = """{"authorization":"Bearer bare-token","query":""}"""
+        val req = MockHttpServletRequest("POST", "/customer/core/greq/q_demo_todo_listMy").apply {
+            addHeader(RequestHeaders.WIREP_VERSION, "2")
+            contentType = "application/octet-stream"
+            setContent(client.sealRequest(payload.toByteArray(), ts = System.currentTimeMillis()))
+        }
+        val res = runFilter(wireFilter(), req)
+        assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
+            .contains(";auth=bare-token")
+    }
+
     /** meta attribute 是唯一上下文信源：x-* 真实请求头（旧的 x-locale/x-req-id 通道）已不再被读取。 */
     @Test
     fun `meta attribute is the only context source, legacy headers ignored`() {

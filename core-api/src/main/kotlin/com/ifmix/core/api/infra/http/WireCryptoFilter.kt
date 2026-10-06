@@ -164,7 +164,11 @@ class WireCryptoFilter(
         val auth = root.remove("authorization")
         val accessToken = when (auth) {
             null -> meta.accessToken
-            is String -> auth.trim().removePrefix("Bearer ").trim().takeIf { it.isNotEmpty() } ?: meta.accessToken
+            is String -> auth.trim()
+                .takeIf { it.isNotEmpty() }
+                ?.takeUnless { it.equals("Bearer", ignoreCase = true) }
+                ?.let { if (it.startsWith("Bearer ", ignoreCase = true)) it.substring(7).trim().takeIf { s -> s.isNotEmpty() } else it }
+                ?: meta.accessToken
             else -> throw BadMetaException("authorization must be a string")
         }
         val merged = if (accessToken == null) meta else meta.copy(accessToken = accessToken)

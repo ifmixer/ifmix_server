@@ -71,8 +71,8 @@ class RequestParser(
     }
 
     /**
-     * 解析并校验主体（actor）——遇到问题**直接抛**（不经中间状态）。token 来源是 meta.accessToken
-     *（wire 顶层 authorization / 明文 `x-req-meta` 合并而来，不带 Authorization 请求头）：
+     * 解析并校验主体（actor）——遇到问题**直接抛**（不经中间状态）。token 信源见 [extractTokenOrNull]
+     *（meta.accessToken 优先，明文 dev 通道缺省回落 Authorization header）：
      * - 没带 token：requireActorType!=null（需登录）→ UNAUTHORIZED；否则返回 null。
      * - 带了 token：过期→TOKEN_EXPIRED；验签失败→UNAUTHORIZED（invalid token: signature…）；
      *   跨 app（aud≠meta.projectId）→ UNAUTHORIZED（invalid token: app mismatch）；缺 subject→UNAUTHORIZED。
@@ -82,14 +82,11 @@ class RequestParser(
     fun parseActor(request: HttpServletRequest, requireActorType: ActorType?): Actor? {
         (request.getAttribute(ATTR_ACTOR) as? Actor)?.let { return checkActorType(it, requireActorType) }
 
-        val raw = metaOf(request).accessToken?.trim()?.takeIf { it.isNotEmpty() }
-        if (raw == null) {
+        val token = extractTokenOrNull(request)
+        if (token == null) {
             if (requireActorType != null) throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
             return null
         }
-        val token = raw.removePrefix("Bearer ").trim()
-        if (token.isEmpty())
-            throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: empty")
 
         val verified = try {
             jwt.verify(token)
@@ -227,11 +224,22 @@ class RequestParser(
         return verified.tokenType
     }
 
-    /** 软取 token（带 Bearer 前缀容错）：缺失/空白 → null。 */
+    /** 软取 token：meta.accessToken 优先（加密 body 顶层 authorization / x-req-meta），
+     * 缺省回落标准 Authorization header（仅明文 dev 调试通道——prod 加密请求 token 只进 body，header 上无 token）。
+     * 两条信源都剥 `Bearer ` 前缀（大小写不敏感；纯 "Bearer" 无凭证视为未提供）。缺失/空白 → null。 */
     private fun extractTokenOrNull(request: HttpServletRequest): String? {
-        val raw = metaOf(request).accessToken?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        val token = raw.removePrefix("Bearer ").trim()
-        return if (token.isEmpty()) null else token
+        val fromMeta = metaOf(request).accessToken?.let(::stripBearer)
+        if (fromMeta != null) return fromMeta
+        return request.getHeader("Authorization")?.let(::stripBearer)
+    }
+
+    /** 剥 Bearer scheme：`Bearer xxx` / `bearer xxx` → `xxx`；裸 token 原样；纯 scheme / 空白 → null。 */
+    private fun stripBearer(raw: String): String? {
+        val t = raw.trim()
+        if (t.isEmpty()) return null
+        if (t.equals("Bearer", ignoreCase = true)) return null
+        if (t.startsWith("Bearer ", ignoreCase = true)) return t.substring(7).trim().takeIf { it.isNotEmpty() }
+        return t
     }
 
     /** 通用 meta 字符串字段：required 且缺失→抛；有值则经 normalize 规范化+校验（非法在 normalize 内抛或按软校验返回 null）。 */
