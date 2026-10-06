@@ -1,0 +1,16 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GraphQlErrorBody.kt
+  h_b17efd5c751f9f 3-13,15-17
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/GraphQlErrorBodyTest.kt
+  h_b17efd5c751f9f 3-4,7,10-14,18-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07661b758ecd04737b96b95e002aa1fd2c969f55",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
