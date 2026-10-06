@@ -4,7 +4,9 @@
 # 生产密钥/连接串由环境变量注入（/opt/app/env，见 docs/ops/DEPLOY.md）；个别不便用 env 的项放 application-prod.yml。
 spring:
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE}
+    # 未设置 SPRING_PROFILES_ACTIVE 时默认激活 local（本地开发直接启动可用）；
+    # 生产由 /opt/app/env 注入 SPRING_PROFILES_ACTIVE=prod（见 docs/ops/DEPLOY.md）。
+    active: ${SPRING_PROFILES_ACTIVE:local}
   threads:
     virtual:
       enabled: true
@@ -83,8 +85,8 @@ app:
   # max-decompressed-bytes：请求 gunzip 后明文上限（防 zip-bomb，超限 400003），默认 1MB，可 env 覆盖。
   wire-crypto:
       mode: required   # /customer/core/** 强制加密（明文/版本不符 → 400004）；optional 仅 local/dev 调试
-    keys: ${WIRE_CRYPTO_KEYS:}
-    max-decompressed-bytes: ${WIRE_MAX_DECOMPRESSED_BYTES:1048576}
+      keys: ${WIRE_CRYPTO_KEYS:}
+      max-decompressed-bytes: ${WIRE_MAX_DECOMPRESSED_BYTES:1048576}
   storage:
     # 连接/密钥（endpoint/access-key/secret-key）由各环境自行配置（local 写死、prod 环境变量）。
     # buckets 按需由环境覆盖 app.storage.buckets.<id>（默认空 map，主配置不留 {} 占位——
