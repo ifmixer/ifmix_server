@@ -1,6 +1,5 @@
 package com.ifmix.core.api.dto.ai
 
-import com.ifmix.core.api.generated.types.NewScanImageInput
 import java.time.Instant
 import java.util.UUID
 

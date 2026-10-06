@@ -3,8 +3,8 @@ package com.ifmix.core.api.modules.ai
 import assertk.assertThat
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
-import com.ifmix.core.api.generated.types.NewScanImageInput
-import com.ifmix.core.api.generated.types.NewScanInput
+import com.ifmix.core.api.dto.ai.NewScanImageInput
+import com.ifmix.core.api.dto.ai.NewScanInput
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.storage.ObjectStorage
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler

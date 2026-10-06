@@ -1,14 +1,15 @@
 package com.ifmix.core.api.modules.ai
 
 import com.ifmix.core.api.dto.ai.AiScanResult
+import com.ifmix.core.api.dto.ai.BatchUpdateScanInput
 import com.ifmix.core.api.dto.ai.DeepResearchTaskContext
 import com.ifmix.core.api.dto.common.Page
+import com.ifmix.core.api.dto.ai.NewScanInput
+import com.ifmix.core.api.dto.ai.RunDeepResearchInput
 import com.ifmix.core.api.dto.ai.ScanStatusSnapshot
 import com.ifmix.core.api.dto.ai.ScanTaskContext
+import com.ifmix.core.api.dto.ai.UpdateScanInput
 import com.ifmix.core.api.dto.common.CommonFindOptions
-import com.ifmix.core.api.generated.types.NewScanInput
-import com.ifmix.core.api.generated.types.RunDeepResearchInput
-import com.ifmix.core.api.generated.types.UpdateScanInput
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
@@ -28,6 +29,10 @@ class AiFacade(
 
     fun findMyScans(actionCtx: ActionContext, findOptions: CommonFindOptions?): Page<ScanRecord> =
         scanHandler.findMyScans(mcFactory.forProject(actionCtx), findOptions)
+
+    /** 批量按 id 取 scan 列表视图（owner-scoped，不加载 basicResult 大字段；对齐 ScanRecordsDataLoader 用法）。 */
+    fun findScanRecordsListViewByIds(actionCtx: ActionContext, ids: Collection<UUID>): List<ScanRecord> =
+        scanHandler.findScanRecordsListViewByIds(mcFactory.forProject(actionCtx), ids)
 
     /** AI 调用在事务外 */
     fun runAiScan(actionCtx: ActionContext, input: NewScanInput): AiScanResult =
@@ -70,7 +75,7 @@ class AiFacade(
     fun updateScan(actionCtx: ActionContext, input: UpdateScanInput): Boolean =
         scanHandler.updateScan(mcFactory.forProject(actionCtx), input)
 
-    fun batchUpdateScan(actionCtx: ActionContext, input: com.ifmix.core.api.generated.types.BatchUpdateScanInput): Int =
+    fun batchUpdateScan(actionCtx: ActionContext, input: BatchUpdateScanInput): Int =
         scanHandler.batchUpdateScan(mcFactory.forProject(actionCtx), input)
 
     fun deleteScan(actionCtx: ActionContext, id: UUID): Boolean =

@@ -24,9 +24,8 @@ import com.ifmix.core.api.entity.ai.updatedAt
 import com.ifmix.core.api.entity.ai.userDisplayName
 import com.ifmix.core.api.entity.ai.userNotes
 import com.ifmix.core.api.dto.common.CommonFindOptions
-import com.ifmix.core.api.generated.types.ScanUnsetField
 import org.babyfish.jimmer.sql.kt.ast.expression.lt
-import com.ifmix.core.api.generated.types.UpdateScanInput
+import com.ifmix.core.api.dto.ai.UpdateScanInput
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
 import org.babyfish.jimmer.sql.ast.mutation.DeleteMode
@@ -76,18 +75,18 @@ class ScanRecordRepository(dataSource: DataSource) {
             where(table.projectId eq projectId)
             where(table.customerId eq customerId)
             where(table.id eq id)
-            // unset 优先：如果字段同时出现在 set 和 unset，以 unset 为准
-            if (ScanUnsetField.USER_DISPLAY_NAME in unset) {
+            // unset 优先：如果字段同时出现在 set 和 unset，以 unset 为准（协议字符串 = 原 ScanUnsetField 枚举名）
+            if ("USER_DISPLAY_NAME" in unset) {
                 set(table.userDisplayName, null as String?)
             } else {
                 req.set?.userDisplayName?.let { set(table.userDisplayName, it) }
             }
-            if (ScanUnsetField.USER_NOTES in unset) {
+            if ("USER_NOTES" in unset) {
                 set(table.userNotes, null as String?)
             } else {
                 req.set?.userNotes?.let { set(table.userNotes, it) }
             }
-            if (ScanUnsetField.USER_DISPLAY_NAME !in unset && ScanUnsetField.USER_NOTES !in unset) {
+            if ("USER_DISPLAY_NAME" !in unset && "USER_NOTES" !in unset) {
                 req.set?.collected?.let { set(table.collected, it) }
             }
             req.set?.isPublic?.let { set(table.isPublic, it) }

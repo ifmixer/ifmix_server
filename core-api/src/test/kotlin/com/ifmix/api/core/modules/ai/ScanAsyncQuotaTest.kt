@@ -4,8 +4,8 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isTrue
 import com.ifmix.core.api.dto.ai.ScanTaskContext
-import com.ifmix.core.api.generated.types.NewScanImageInput
-import com.ifmix.core.api.generated.types.NewScanInput
+import com.ifmix.core.api.dto.ai.NewScanImageInput
+import com.ifmix.core.api.dto.ai.NewScanInput
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig
