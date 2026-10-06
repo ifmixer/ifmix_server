@@ -1,0 +1,24 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCryptoFilter.kt
+  h_b17efd5c751f9f 37-38,49-50,53-54,64-69
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 70-71
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/WireCryptoTest.kt
+  h_b17efd5c751f9f 288-301
+docs/design/infra/wire-encryption.md
+  h_b17efd5c751f9f 271-278
+docs/design/proposals/graphql-to-http-rpc-openapi.md
+  h_b17efd5c751f9f 5,27-37,64,84,88-99
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 10,14,17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f07c9e2652b8e17e5a1e80bab5bd6bb99679dd5",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
