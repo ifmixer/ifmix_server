@@ -1,0 +1,19 @@
+docs/design/proposals/graphql-to-http-rpc-openapi.md
+  s_db31b686394892::t_14059fe350a161 31-33,46,54,74-83,118,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de110003a9191394cb96dcaa470d1cc72f5aaccd",
+  "prompts": {},
+  "sessions": {
+    "s_db31b686394892": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6715a16-be5b-4a46-8289-a357905e15c3",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
