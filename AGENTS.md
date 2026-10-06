@@ -50,9 +50,9 @@ docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一
 | notification | [push-feature-flag](docs/design/notification/push-feature-flag.md)（✅ 已实现） | 前端 hard code flag + mutation 传参（非后端 kill switch） |
 | infra | [wire-encryption](docs/design/infra/wire-encryption.md)（v2 已实现未发布；§10 v3 HPKE 提案已定稿，v1.0.6 前实施） | wire 加密：v2 → v3（RFC 9180 HPKE）、降级模型、安全模型与演进决策 |
 | infra | [idempotency](docs/design/infra/idempotency.md)（✅ 决策完成） | 创建接口幂等性评估：不建通用幂等，语义幂等 + 业务唯一键 |
-| proposals | [graphql-to-http-rpc-openapi](docs/design/proposals/graphql-to-http-rpc-openapi.md)（🔄 demo 试点实施中） | GraphQL → HTTP RPC + OpenAPI 迁移计划；§一 = RPC 协议定稿（信封/meta/header/命名） |
-| proposals | [rpc-pilot-server](docs/design/proposals/rpc-pilot-server.md) / [rpc-pilot-client](docs/design/proposals/rpc-pilot-client.md)（🚧 实施中） | demo 试点实现计划（前后端各一份，客户端已验收） |
-| proposals | [rpc-rollout-client](docs/design/proposals/rpc-rollout-client.md)（📝 R0 待启动） | demo 后客户端全量迁移计划（R0–R5、39 个 action 新名总表、四个 gate） |
+| proposals | [graphql-to-http-rpc-openapi](docs/design/proposals/graphql-to-http-rpc-openapi.md)（✅ 已实施 2026-10-06，GraphQL 引擎已删除） | GraphQL → HTTP API + OpenAPI 迁移计划；§一 = API 协议定稿（信封/meta/header/命名） |
+| proposals | [rpc-pilot-server](docs/design/proposals/rpc-pilot-server.md) / [rpc-pilot-client](docs/design/proposals/rpc-pilot-client.md)（✅ 已完成） | demo 试点实现计划（前后端各一份） |
+| proposals | [rpc-rollout-client](docs/design/proposals/rpc-rollout-client.md)（📝 R1 待启动） | demo 后客户端全量迁移计划（R0–R5、39 个 action 新名总表、四个 gate；R0 完成，待跟进 /api、wire v2、强制加密） |
 
 已归档删除（git 历史可查）：`superpowers/specs/2026-10-02-…r2-versioning`（作废，理由在 deep-research-async §1.1）、`…install-attestation-impl-plan`（任务全 done，遗留项在设计文档头部）、`superpowers/plans/2026-09-29-install-tracking`（结论已沉淀）、`design/api-key-table`（并入 api-key-pool「表结构」）。
 

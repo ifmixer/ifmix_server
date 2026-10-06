@@ -14,7 +14,7 @@ demo 试点（S1–S6）：客户端已验收；服务端若未完成，**先按
 ## 1. 契约速查（最新定稿，覆盖 pilot 文档的过时处）
 
 ```
-URL:      POST /rpc/customer/core/{actionName}
+URL:      POST /api/customer/core/{actionName}
           actionName = {q|m}_{module}_{resource}_{action}（四段下划线；总表见 rpc-rollout-client.md §1）
 请求体:   {"meta": {...}, "input": {...}}（wire v3 加密时 octet-stream；meta 字段见 pilot §0.1）
 响应体:   {"reqId": "...", "code": "200000", "msg": "success", "data": {...}}   ← reqId 为本次新增

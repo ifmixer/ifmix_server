@@ -10,7 +10,7 @@
 ## 0. 现状与总览
 
 - demo 8 个 action 客户端已走 RPC（`rpc.ts`/`rpcDemo.ts`/`client.ts` `todo*Rpc` 方法），但用的是**旧命名**（`m_demo_createTodo`），本计划 R0 统一改为四段新命名。
-- URL 已定稿：`POST /rpc/customer/core/{actionName}`，`actionName = {q|m}_{module}_{resource}_{action}`（proposal §一；module=resource 重叠允许，如 `m_install_install_*`）。
+- URL 已定稿：`POST /api/customer/core/{actionName}`（2026-10-06 服务端定稿：rpc→api），`actionName = {q|m}_{module}_{resource}_{action}`（proposal §一；module=resource 重叠允许，如 `m_install_install_*`）。
 - 迁移模式与 pilot 完全一致：每 action 一条 `rpcOp` 封装 + `client.ts` 加 `*Rpc` 方法（走 `guarded()`）+ 手写类型 + mock fetch 测试；gql 版本保留到 R5。
 - 服务端按模块出规格文档（Controller/DTO/测试），**action 名以本文件 §1 的表为单一真相**；两端冲突以本表为准并回改文档。
 
@@ -123,3 +123,12 @@
 ## 4. 明确不做
 
 - 不删 gqlOp/trusted documents/codegen（R5 才删，且与服务端阶段 7 同步）；不动 webhook；不改 session.ts/installCoordinator 状态机语义（只换传输）；不加新原生依赖；不做请求层幂等/重试新机制；app 业务层（features/）在本计划内不动（切 SDK 方法内部实现，调用面不变）。
+
+---
+
+## 2026-10-06 服务端定稿追加（客户端必须跟进的变更）
+
+1. **URL**：`/rpc/customer/core/…` → `/api/customer/core/…`（R0 改名时一并迁移）。
+2. **wire 版本 2**：协议版本号 3→2（历史 2/3 草案合并）；`wireCrypto.ts` 的 `WIRE_VERSION`、信封 ver 字节、info `"ifmix-wire-v2"`、exporter `"ifmix-wire-v2-res"`、头值全部改为 2；`wire-vectors.json` 重新生成。
+3. **强制加密、无降级**：服务端 required 模式下明文请求 → 400 400004（WIRE_REQUIRED）。客户端删除 415/400003 明文重发降级逻辑（`sendMaybeEncrypted` 简化为仅加密路径）；`getWireKey` 缺失时本地环境直接拒绝调用（fail-fast），不再静默明文。local/dev 服务端可配 `optional` 模式供 curl 调试。
+4. **wire 私钥配置缺失 = 配置错误**：不再有"未配 key 降级明文"的行为分支与测试。
