@@ -1,0 +1,98 @@
+AGENTS.md
+  h_b17efd5c751f9f 9,34,64,73,76,80
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/auth/AuthApiController.kt
+  h_b17efd5c751f9f 19-21
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/auth/CustomerController.kt
+  h_b17efd5c751f9f 37-38,106
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoQueryService.kt
+  h_b17efd5c751f9f 10
+core-api/src/main/kotlin/com/ifmix/core/api/dto/common/CommonDto.kt
+  h_b17efd5c751f9f 12
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/DemoApiMappers.kt
+  h_b17efd5c751f9f 6
+core-api/src/main/kotlin/com/ifmix/core/api/dto/demo/TodoViews.kt
+  h_b17efd5c751f9f 26
+core-api/src/main/kotlin/com/ifmix/core/api/entity/common/StringIdProps.kt
+  h_b17efd5c751f9f 7
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/Locales.kt
+  h_b17efd5c751f9f 1-58
+core-api/src/main/kotlin/com/ifmix/core/api/infra/config/WebConfig.kt
+  h_b17efd5c751f9f 10-11
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionContext.kt
+  h_b17efd5c751f9f 12-13,16,88,103,107,109,111,126
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionContextFactory.kt
+  h_b17efd5c751f9f 6,17,19-21,23,31-32,51,94-95,105-106,122,194,204,206,208,211
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActorRequirement.kt
+  h_b17efd5c751f9f 4
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/DevRpcHeaderAdapter.kt
+  h_b17efd5c751f9f 1-90
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/DevRpcOpenApiConfig.kt
+  h_b17efd5c751f9f 1-66
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestHeaders.kt
+  h_b17efd5c751f9f 25-30
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilter.kt
+  h_b17efd5c751f9f 24,107,109,120
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestMeta.kt
+  h_b17efd5c751f9f 15
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/AuthRequests.kt
+  h_b17efd5c751f9f 1-14
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/handler/AuthAggHandler.kt
+  h_b17efd5c751f9f 30-32,307
+core-api/src/main/kotlin/com/ifmix/core/api/modules/demo/TodoItemCounts.kt
+  h_b17efd5c751f9f 1-8
+core-api/src/main/kotlin/com/ifmix/core/api/modules/demo/repo/TodoItemRepository.kt
+  h_b17efd5c751f9f 3
+core-api/src/main/resources/application-prod.yml
+  h_b17efd5c751f9f 14
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/LocalesTest.kt
+  h_b17efd5c751f9f 1-42
+core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/AuthRefreshInstallTest.kt
+  h_b17efd5c751f9f 4-5
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/auth/AuthApiControllerTest.kt
+  h_b17efd5c751f9f 29,200-241
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/auth/CustomerControllerTest.kt
+  h_b17efd5c751f9f 48
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoControllerTest.kt
+  h_b17efd5c751f9f 4,290-299
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoQueryServiceTest.kt
+  h_b17efd5c751f9f 16
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilterTest.kt
+  h_b17efd5c751f9f 19
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/api/DevRpcHeaderAdapterTest.kt
+  h_b17efd5c751f9f 1-10,12,14,16-17,20-21,24,28-31,33,35,37,40,42-46,49-53,56,58-70,73-80,82-88,91-95,97-104,106-111,113-118,120-129,132-136,139,141-142,144,146-147,150,152-200
+docs/design/attest/install-attestation.md
+  h_b17efd5c751f9f 11-12
+docs/design/infra/wire-encryption.md
+  h_b17efd5c751f9f 36,269,271-274,276-277
+docs/design/install/install-customer-hardening.md
+  h_b17efd5c751f9f 14-15
+docs/design/install/install-tracking.md
+  h_b17efd5c751f9f 10-11
+docs/design/notification/deep-research-push.md
+  h_b17efd5c751f9f 9-10
+docs/design/notification/scan-async-notification-push.md
+  h_b17efd5c751f9f 9-10
+docs/design/proposals/graphql-to-http-rpc-openapi.md
+  h_b17efd5c751f9f 73,78-79,81
+docs/design/proposals/rpc-pilot-server.md
+  h_b17efd5c751f9f 21,52,391
+docs/design/proposals/rpc-refactor-controller-mapper.md
+  h_b17efd5c751f9f 89
+docs/design/proposals/rpc-rollout-server.md
+  h_b17efd5c751f9f 22,127
+docs/guide/ARCHITECTURE.md
+  h_b17efd5c751f9f 16,30-31,45,62,71,78,81,98-99,109-115,118,122-123,126,130-132,134-136,142,163,172-175,177,181,183-202,204-206,239-241,246-249,253-254,278,281-295,299-300,308-309,313-314,325-326,350,385
+docs/guide/CODING_GUIDE.md
+  h_b17efd5c751f9f 6-8,13-15,19-22,59,62-66,92,95-98,100,103-114,117-121,126-128,184-186,189-195,255,264,269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6ccd3335e119121c5ee84ba9443f7dfd2e9e5315",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
