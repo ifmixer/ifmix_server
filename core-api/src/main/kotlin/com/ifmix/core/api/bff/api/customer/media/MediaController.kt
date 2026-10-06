@@ -38,22 +38,22 @@ class MediaController(
     companion object {
         // media 模块 action 常量（原 MediaSpecs 机械搬移；CUSTOMER + requireProjectId=true，
         // 对照原 StorageFetcher `fromDfe(dfe)` 全默认实参）。
-        const val ACTION_PRESIGN_UPLOAD = "m_media_media_presignUpload"
-        const val ACTION_PRESIGN_DOWNLOAD = "m_media_media_presignDownload"
+        const val REQNAME_PRESIGN_UPLOAD = "m_media_media_presignUpload"
+        const val REQNAME_PRESIGN_DOWNLOAD = "m_media_media_presignDownload"
     }
 
-    @Operation(operationId = ACTION_PRESIGN_UPLOAD)
-    @PostMapping(ACTION_PRESIGN_UPLOAD, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = REQNAME_PRESIGN_UPLOAD)
+    @PostMapping(REQNAME_PRESIGN_UPLOAD, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun presignUpload(request: HttpServletRequest, @RequestBody body: ApiRequestBody<PresignUploadInput>): ResponseEntity<Envelope<PresignUploadResult>> {
-        val ctx = ctxFactory.fromRpc(request, ACTION_PRESIGN_UPLOAD, isMutation = true, body = body)
+        val ctx = ctxFactory.fromRpc(request, REQNAME_PRESIGN_UPLOAD, isMutation = true, body = body)
         val input = body.requireInput()
         return ResponseEntity.ok(Envelope.ok(ctx.requestId, facade.presignUpload(ctx, input)))
     }
 
-    @Operation(operationId = ACTION_PRESIGN_DOWNLOAD)
-    @PostMapping(ACTION_PRESIGN_DOWNLOAD, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = REQNAME_PRESIGN_DOWNLOAD)
+    @PostMapping(REQNAME_PRESIGN_DOWNLOAD, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun presignDownload(request: HttpServletRequest, @RequestBody body: ApiRequestBody<PresignDownloadInput>): ResponseEntity<Envelope<PresignDownloadResult>> {
-        val ctx = ctxFactory.fromRpc(request, ACTION_PRESIGN_DOWNLOAD, isMutation = true, body = body)
+        val ctx = ctxFactory.fromRpc(request, REQNAME_PRESIGN_DOWNLOAD, isMutation = true, body = body)
         val input = body.requireInput()
         return ResponseEntity.ok(Envelope.ok(ctx.requestId, facade.presignDownload(ctx, input)))
     }

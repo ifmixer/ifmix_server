@@ -1,0 +1,18 @@
+export com.ifmix.core.api.entity.ai.ScanRecord
+    -> package com.ifmix.core.api.dto.ai
+
+ScanRecordLite {
+    id
+    images
+    status
+    errorCode
+    locale
+    country
+    currency
+    userDisplayName
+    userNotes
+    collected
+    isPublic
+    createdAt
+    updatedAt
+}

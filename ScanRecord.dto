@@ -1,0 +1,7 @@
+package com.ifmix.core.api.dto.ai
+
+export ScanRecordListRes
+    id
+    status
+    createdAt
+    updatedAt

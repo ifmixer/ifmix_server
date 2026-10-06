@@ -419,7 +419,7 @@ class AiControllerTest {
             assertEquals("ai", segs[1], "module segment must be ai: " + n)
         }
         // companion 常量与路由 path 同源
-        assertEquals("q_ai_scan_getById", AiController.ACTION_SCAN_GET_BY_ID)
-        assertEquals("m_ai_scan_updateMany", AiController.ACTION_SCAN_UPDATE_MANY)
+        assertEquals("q_ai_scan_getById", AiController.REQNAME_SCAN_GET_BY_ID)
+        assertEquals("m_ai_scan_updateMany", AiController.REQNAME_SCAN_UPDATE_MANY)
     }
 }

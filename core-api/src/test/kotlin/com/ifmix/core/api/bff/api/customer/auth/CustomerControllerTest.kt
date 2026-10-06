@@ -229,6 +229,6 @@ class CustomerControllerTest {
         assertEquals("auth", segs[1], "module segment (customer 段在 auth 包下，以 action 名第 2 段为准)")
         assertEquals("customer", segs[2], "resource segment")
         // companion 常量与路由 path 同源
-        assertEquals("m_auth_customer_createAnonymous", CustomerController.ACTION_CREATE_ANONYMOUS)
+        assertEquals("m_auth_customer_createAnonymous", CustomerController.REQNAME_CREATE_ANONYMOUS)
     }
 }

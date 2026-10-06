@@ -33,13 +33,13 @@ class ActionContextFactory(
     /**
      * 从 RPC 请求构造 ActionContext。body.meta 缺失时按空 [RequestMeta] 处理（明文 curl 调试场景）。
      *
-     * 显式传 [isMutation] 时校验与 [actionName] 前缀的一致性（`m_` ⇔ 写）——
+     * 显式传 [isMutation] 时校验与 [reqName] 前缀的一致性（`m_` ⇔ 写）——
      * 不一致即抛 [IllegalStateException]（运行时锁死「前缀 ⇔ 读写」关系）。
      * 省略（null）时由 `actionName` 的 `m_` 前缀兜底推导。
      */
     fun fromRpc(
         request: HttpServletRequest,
-        actionName: String,
+        reqName: String,
         isMutation: Boolean? = null,
         body: ApiRequestBody<*>,
         requireActorType: ActorRequirement = ActorRequirement.CUSTOMER,
@@ -48,10 +48,10 @@ class ActionContextFactory(
         val m = body?.meta ?: RequestMeta()
 
         // 前缀 ⇔ 读写一致性（取代原反射一致性测试的「path ⇔ isMutation」断言，实施单 §1.2-1）。
-        val effectiveMutation = isMutation ?: actionName.startsWith("m_")
-        if (isMutation != null && actionName.startsWith("m_") != isMutation)
+        val effectiveMutation = isMutation ?: reqName.startsWith("m_")
+        if (isMutation != null && reqName.startsWith("m_") != isMutation)
             throw IllegalStateException(
-                "actionName prefix mismatch: $actionName vs isMutation=$isMutation",
+                "actionName prefix mismatch: $reqName vs isMutation=$isMutation",
             )
 
         // ===== token（自含，直接吃 meta.accessToken；纯 token，无 Bearer 前缀）=====
@@ -180,7 +180,7 @@ class ActionContextFactory(
             deviceModel = deviceModel,
             osVersion = osVersion,
             meta = m,
-            actionName = actionName,
+            actionName = reqName,
             isMutation = effectiveMutation,
             preferReader = !effectiveMutation,
         )

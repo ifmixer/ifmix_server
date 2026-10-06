@@ -67,17 +67,17 @@ class InstallApiController(
         // install 模块 action 常量（原 InstallSpecs 机械搬移）：全部 requireActorType = NONE
         //（唯一依据 = InstallFetcher 各 action 的 `fromDfe(dfe, requireActorType = null)` 实参；
         // token 要求由各 endpoint 的既有内部校验精确执行）。
-        const val ACTION_CREATE_INSTALL = "m_auth_install_create"
-        const val ACTION_UPDATE_INSTALL = "m_auth_install_updateOne"
-        const val ACTION_ATTEST_EXISTING = "m_auth_install_attest"
-        const val ACTION_RECOVER_INSTALL = "m_auth_install_recover"
-        const val ACTION_CREATE_ATTEST_CHALLENGE = "m_auth_install_createAttestChallenge"
+        const val REQNAME_CREATE_INSTALL = "m_auth_install_create"
+        const val REQNAME_UPDATE_INSTALL = "m_auth_install_updateOne"
+        const val REQNAME_ATTEST_EXISTING = "m_auth_install_attest"
+        const val REQNAME_RECOVER_INSTALL = "m_auth_install_recover"
+        const val REQNAME_CREATE_ATTEST_CHALLENGE = "m_auth_install_createAttestChallenge"
     }
 
-    @Operation(operationId = ACTION_CREATE_INSTALL)
-    @PostMapping(ACTION_CREATE_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = REQNAME_CREATE_INSTALL)
+    @PostMapping(REQNAME_CREATE_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> {
-        val ctx = ctxFactory.fromRpc(request, ACTION_CREATE_INSTALL, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
+        val ctx = ctxFactory.fromRpc(request, REQNAME_CREATE_INSTALL, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
         val input = body.requireInput()
@@ -145,10 +145,10 @@ class InstallApiController(
     private fun configMode(ctx: ActionContext) =
         serverConfigFacade.findAttestConfig(ctx.mustGetProjectId())?.mode
 
-    @Operation(operationId = ACTION_UPDATE_INSTALL)
-    @PostMapping(ACTION_UPDATE_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = REQNAME_UPDATE_INSTALL)
+    @PostMapping(REQNAME_UPDATE_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun updateInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<UpdateInstallInput>): ResponseEntity<Envelope<UpdateInstallRes>> {
-        val ctx = ctxFactory.fromRpc(request, ACTION_UPDATE_INSTALL, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
+        val ctx = ctxFactory.fromRpc(request, REQNAME_UPDATE_INSTALL, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
         val installId = ctx.tokenInstallId
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "install token required")
         val input = body.requireInput()
@@ -167,10 +167,10 @@ class InstallApiController(
 
     // ===== m_auth_install_createAttestChallenge（§5.1：无鉴权；100/60s/IP；纯计算不碰 Redis）=====
 
-    @Operation(operationId = ACTION_CREATE_ATTEST_CHALLENGE)
-    @PostMapping(ACTION_CREATE_ATTEST_CHALLENGE, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = REQNAME_CREATE_ATTEST_CHALLENGE)
+    @PostMapping(REQNAME_CREATE_ATTEST_CHALLENGE, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createAttestChallenge(request: HttpServletRequest, @RequestBody body: ApiRequestBody<NoInput>): ResponseEntity<Envelope<AttestChallengeRes>> {
-        val ctx = ctxFactory.fromRpc(request, ACTION_CREATE_ATTEST_CHALLENGE, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
+        val ctx = ctxFactory.fromRpc(request, REQNAME_CREATE_ATTEST_CHALLENGE, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
         // 短窗口 100/60s/IP（挑战是纯 HMAC 计算，与 createInstall 入口对齐，避免 CGNAT 瓶颈）
@@ -196,10 +196,10 @@ class InstallApiController(
 
     // ===== m_auth_install_recover（§3.3：无鉴权；10/60s/IP；与 mode/全局开关无关——决策 9）=====
 
-    @Operation(operationId = ACTION_RECOVER_INSTALL)
-    @PostMapping(ACTION_RECOVER_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = REQNAME_RECOVER_INSTALL)
+    @PostMapping(REQNAME_RECOVER_INSTALL, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun recoverInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<RecoverInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> {
-        val ctx = ctxFactory.fromRpc(request, ACTION_RECOVER_INSTALL, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
+        val ctx = ctxFactory.fromRpc(request, REQNAME_RECOVER_INSTALL, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
         val clientIp = ctx.clientIp ?: "unknown"
         val pid = ctx.mustGetProjectId()
         val input = body.requireInput()
@@ -277,10 +277,10 @@ class InstallApiController(
 
     // ===== m_auth_install_attest（§6.7：严格只认 installToken；10/60s/IP + 3/install/UTC 日）=====
 
-    @Operation(operationId = ACTION_ATTEST_EXISTING)
-    @PostMapping(ACTION_ATTEST_EXISTING, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = REQNAME_ATTEST_EXISTING)
+    @PostMapping(REQNAME_ATTEST_EXISTING, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun attestExisting(request: HttpServletRequest, @RequestBody body: ApiRequestBody<AttestExistingInput>): ResponseEntity<Envelope<AttestExistingRes>> {
-        val ctx = ctxFactory.fromRpc(request, ACTION_ATTEST_EXISTING, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
+        val ctx = ctxFactory.fromRpc(request, REQNAME_ATTEST_EXISTING, isMutation = true, body = body, requireActorType = ActorRequirement.NONE)
         val input = body.requireInput()
 
         // 1. 鉴权：严格只认 installToken（type=5 && actorId==null && tokenInstallId!=null，否则 401000）

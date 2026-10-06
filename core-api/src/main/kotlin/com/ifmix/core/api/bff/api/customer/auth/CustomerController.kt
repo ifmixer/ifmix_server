@@ -56,17 +56,17 @@ class CustomerController(
         // customer 模块 action 常量（原 CustomerSpecs 机械搬移）：原 CustomerFetcher
         // `fromDfe(dfe, requireActorType = null)` → INSTALL_OR_CUSTOMER（不要求登录、token 照校验、
         // install/customer token 皆可；createAnonymous 只要求可信 iid）。
-        const val ACTION_CREATE_ANONYMOUS = "m_auth_customer_createAnonymous"
+        const val REQNAME_CREATE_ANONYMOUS = "m_auth_customer_createAnonymous"
     }
 
-    @Operation(operationId = ACTION_CREATE_ANONYMOUS)
-    @PostMapping(ACTION_CREATE_ANONYMOUS, consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = REQNAME_CREATE_ANONYMOUS)
+    @PostMapping(REQNAME_CREATE_ANONYMOUS, consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createAnonymousCustomer(
         request: HttpServletRequest,
         @RequestBody body: ApiRequestBody<NoInput>,
     ): ResponseEntity<Envelope<CreateAnonymousRes>> {
         val ctx = ctxFactory.fromRpc(
-            request, ACTION_CREATE_ANONYMOUS, isMutation = true, body = body,
+            request, REQNAME_CREATE_ANONYMOUS, isMutation = true, body = body,
             requireActorType = ActorRequirement.INSTALL_OR_CUSTOMER,
         )
         // 只要求携带有效可信 iid（token 类型不限）；legacy fallback 关闭后无 token iid → 这里即 401000
