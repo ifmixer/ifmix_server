@@ -1,0 +1,20 @@
+core-api/build.gradle.kts
+  h_b17efd5c751f9f 66-67
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/cs/CsController.kt
+  h_b17efd5c751f9f 6-7,61,70
+core-api/src/main/kotlin/com/ifmix/core/api/dto/cs/CreateSupportRequestInput.kt
+  h_b17efd5c751f9f 4,10
+core-api/src/main/kotlin/com/ifmix/core/api/dto/cs/SubmitFeedbackInput.kt
+  h_b17efd5c751f9f 3,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2038bdb4424dd996e2498cc1ec12afc341dbc7d",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
