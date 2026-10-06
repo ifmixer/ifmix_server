@@ -1,0 +1,32 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ErrorCode.kt
+  s_d489703e020e2b::t_15461b42694e1b 18-19
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GlobalExceptionHandler.kt
+  s_d489703e020e2b::t_34309fe7bcfad2 43
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCrypto.kt
+  s_d489703e020e2b::t_84ab7c5d879b19 15,21,28,32-33,100,120,140-141,146
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCryptoFilter.kt
+  s_d489703e020e2b::t_ec0e3039a7f999 25,27-36,38-39,46,51,53,55,58-76,81,93,99-104,137-140
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/WireCryptoTest.kt
+  s_d489703e020e2b::t_8e5c6b775a5ec8 176,219-222,242-243,247,250,256-262,267-274,278-316,320-325,334-336,346-347,352,380,382-383,397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1501df9999fb71d42eb7bec629cfd4fa511d240",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_d489703e020e2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af90b0a784c0dc12b",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
