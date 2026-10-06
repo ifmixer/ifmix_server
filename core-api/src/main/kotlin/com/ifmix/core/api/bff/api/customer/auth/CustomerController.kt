@@ -1,4 +1,4 @@
-package com.ifmix.core.api.bff.api.customer.customer
+package com.ifmix.core.api.bff.api.customer.auth
 
 import com.ifmix.core.api.bff.api.customer.demo.DemoController
 import com.ifmix.core.api.dto.customer.CreateAnonymousRes
@@ -51,8 +51,8 @@ class CustomerController(
     private val rlProps: RateLimitProperties,
 ) {
 
-    @Operation(operationId = "m_customer_customer_createAnonymous")
-    @PostMapping("m_customer_customer_createAnonymous", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = "m_auth_customer_createAnonymous")
+    @PostMapping("m_auth_customer_createAnonymous", consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createAnonymousCustomer(
         request: HttpServletRequest,
         @RequestBody body: ApiRequestBody<NoInput>,

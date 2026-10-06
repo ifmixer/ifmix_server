@@ -1,4 +1,4 @@
-package com.ifmix.core.api.bff.api.customer.customer
+package com.ifmix.core.api.bff.api.customer.auth
 
 import com.ifmix.core.api.dto.customer.CreateAnonymousRes
 import com.ifmix.core.api.entity.common.ActorTypes
@@ -215,7 +215,7 @@ class CustomerControllerTest {
         val spec = CustomerSpecs.CREATE_ANONYMOUS
         assertEquals(true, spec.isMutation)
         assertEquals("m_", spec.reqName.take(2))
-        assertEquals("customer", spec.reqName.split("_")[1])
+        assertEquals("auth", spec.reqName.split("_")[1])
 
         val postings = CustomerController::class.declaredMemberFunctions
             .filter { it.annotations.any { a -> a is org.springframework.web.bind.annotation.PostMapping } }

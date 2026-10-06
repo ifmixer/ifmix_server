@@ -1,4 +1,4 @@
-package com.ifmix.core.api.bff.api.customer.customer
+package com.ifmix.core.api.bff.api.customer.auth
 
 import com.ifmix.core.api.infra.http.ActionSpec
 import com.ifmix.core.api.infra.http.ActorRequirement
@@ -13,7 +13,7 @@ import com.ifmix.core.api.infra.http.ActorRequirement
  */
 object CustomerSpecs {
     val CREATE_ANONYMOUS = ActionSpec(
-        "m_customer_customer_createAnonymous",
+        "m_auth_customer_createAnonymous",
         isMutation = true,
         actor = ActorRequirement.INSTALL_OR_CUSTOMER,
     )

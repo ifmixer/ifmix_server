@@ -1,4 +1,4 @@
-package com.ifmix.core.api.bff.api.customer.install
+package com.ifmix.core.api.bff.api.customer.auth
 
 import com.ifmix.core.api.dto.install.AttestExistingInput
 import com.ifmix.core.api.dto.install.CreateInstallInput
@@ -187,7 +187,7 @@ class InstallApiControllerTest {
         )
         assertEquals(5, specs.size)
         specs.forEach { spec ->
-            assertTrue(spec.reqName.startsWith("m_install_"), "${spec.reqName} must be m_ (all install actions are mutations)")
+            assertTrue(spec.reqName.startsWith("m_auth_"), "${spec.reqName} must be m_ (all install actions are mutations)")
             assertTrue(spec.isMutation)
             assertTrue(spec.reqName.count { it == '_' } == 3, "four-segment name required: ${spec.reqName}")
         }

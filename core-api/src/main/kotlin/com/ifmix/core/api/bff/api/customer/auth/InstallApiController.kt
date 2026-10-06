@@ -1,4 +1,4 @@
-package com.ifmix.core.api.bff.api.customer.install
+package com.ifmix.core.api.bff.api.customer.auth
 
 import com.ifmix.core.api.dto.install.AttestChallengeRes
 import com.ifmix.core.api.dto.install.AttestExistingInput
@@ -63,8 +63,8 @@ class InstallApiController(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Operation(operationId = "m_install_install_create")
-    @PostMapping("m_install_install_create", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = "m_auth_install_create")
+    @PostMapping("m_auth_install_create", consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<CreateInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> {
         val ctx = ctxFactory.fromRpc(request, InstallSpecs.CREATE_INSTALL, body.meta)
         val clientIp = ctx.clientIp ?: "unknown"
@@ -134,8 +134,8 @@ class InstallApiController(
     private fun configMode(ctx: ActionContext) =
         serverConfigFacade.findAttestConfig(ctx.mustGetProjectId())?.mode
 
-    @Operation(operationId = "m_install_install_updateOne")
-    @PostMapping("m_install_install_updateOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = "m_auth_install_updateOne")
+    @PostMapping("m_auth_install_updateOne", consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun updateInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<UpdateInstallInput>): ResponseEntity<Envelope<UpdateInstallRes>> {
         val ctx = ctxFactory.fromRpc(request, InstallSpecs.UPDATE_INSTALL, body.meta)
         val installId = ctx.tokenInstallId
@@ -154,10 +154,10 @@ class InstallApiController(
         return ResponseEntity.ok(Envelope.ok(UpdateInstallRes(success = ok)).copy(reqId = ctx.requestId))
     }
 
-    // ===== m_install_install_createAttestChallenge（§5.1：无鉴权；100/60s/IP；纯计算不碰 Redis）=====
+    // ===== m_auth_install_createAttestChallenge（§5.1：无鉴权；100/60s/IP；纯计算不碰 Redis）=====
 
-    @Operation(operationId = "m_install_install_createAttestChallenge")
-    @PostMapping("m_install_install_createAttestChallenge", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = "m_auth_install_createAttestChallenge")
+    @PostMapping("m_auth_install_createAttestChallenge", consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun createAttestChallenge(request: HttpServletRequest, @RequestBody body: ApiRequestBody<NoInput>): ResponseEntity<Envelope<AttestChallengeRes>> {
         val ctx = ctxFactory.fromRpc(request, InstallSpecs.CREATE_ATTEST_CHALLENGE, body.meta)
         val clientIp = ctx.clientIp ?: "unknown"
@@ -183,10 +183,10 @@ class InstallApiController(
         return ResponseEntity.ok(Envelope.ok(AttestChallengeRes(enabled = true, challenge = challenge, expiresInSec = AttestChallengeCodec.CHALLENGE_CLIENT_TTL_SEC)).copy(reqId = ctx.requestId))
     }
 
-    // ===== m_install_install_recover（§3.3：无鉴权；10/60s/IP；与 mode/全局开关无关——决策 9）=====
+    // ===== m_auth_install_recover（§3.3：无鉴权；10/60s/IP；与 mode/全局开关无关——决策 9）=====
 
-    @Operation(operationId = "m_install_install_recover")
-    @PostMapping("m_install_install_recover", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = "m_auth_install_recover")
+    @PostMapping("m_auth_install_recover", consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun recoverInstall(request: HttpServletRequest, @RequestBody body: ApiRequestBody<RecoverInstallInput>): ResponseEntity<Envelope<CreateInstallRes>> {
         val ctx = ctxFactory.fromRpc(request, InstallSpecs.RECOVER_INSTALL, body.meta)
         val clientIp = ctx.clientIp ?: "unknown"
@@ -264,10 +264,10 @@ class InstallApiController(
         log.info("event=install.recover mode={} provider={} result={} reason={}", mode, AttestGuard.PROVIDER_IOS, result, reason)
     }
 
-    // ===== m_install_install_attest（§6.7：严格只认 installToken；10/60s/IP + 3/install/UTC 日）=====
+    // ===== m_auth_install_attest（§6.7：严格只认 installToken；10/60s/IP + 3/install/UTC 日）=====
 
-    @Operation(operationId = "m_install_install_attest")
-    @PostMapping("m_install_install_attest", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(operationId = "m_auth_install_attest")
+    @PostMapping("m_auth_install_attest", consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun attestExisting(request: HttpServletRequest, @RequestBody body: ApiRequestBody<AttestExistingInput>): ResponseEntity<Envelope<AttestExistingRes>> {
         val ctx = ctxFactory.fromRpc(request, InstallSpecs.ATTEST_EXISTING, body.meta)
         val input = body.requireInput()
