@@ -1,7 +1,8 @@
 export com.ifmix.core.api.entity.ai.ScanRecord
     -> package com.ifmix.core.api.dto.ai
 
-ScanRecordLite {
+// Jimmer DTO 生成类命名约定：一律带 Dto 后缀（投影语义名 + Dto，如 ScanRecordListDto）。
+ScanRecordListDto {
     id
     images
     status
