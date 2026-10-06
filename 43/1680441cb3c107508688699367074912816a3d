@@ -1,0 +1,22 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/ai/AiController.kt
+  h_b17efd5c751f9f 11-12,109-113
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/ai/AiQueryService.kt
+  h_b17efd5c751f9f 43-45,47-48
+core-api/src/main/kotlin/com/ifmix/core/api/dto/ai/AiInputs.kt
+  h_b17efd5c751f9f 96-113
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/ai/AiControllerTest.kt
+  h_b17efd5c751f9f 151-155,322,329-346
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "431680441cb3c107508688699367074912816a3d",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
