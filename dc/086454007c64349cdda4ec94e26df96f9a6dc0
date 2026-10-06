@@ -1,0 +1,53 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/ai/AiController.kt
+  s_7ad9bd5bb9e056::t_e7f1a346a428f2 58,82-99,102-103,105,111-112,114,119-120,122,131-132,134,160-161,163,172-173,175,179-180,182,192-193,195,204-205,207,214-215,217,240-241,243,254-255,257,263-264,266
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/auth/AuthApiController.kt
+  s_7ad9bd5bb9e056::t_6a2ec671b0ba5a 12,49-62,64,75-76,78,89-90,92,107-108,110,118-119,121
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/auth/CustomerController.kt
+  s_7ad9bd5bb9e056::t_7e70fda186c07e 7,55-63,68-71
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/auth/InstallApiController.kt
+  s_7ad9bd5bb9e056::t_28fda23a27fbcd 18,66-78,80,148-149,151,170-171,173,199-200,202,280-281,283
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/cs/CsController.kt
+  s_7ad9bd5bb9e056::t_fe1a727a242b05 46-56,58,64-65,67,73-74,76,81-82,84
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoController.kt
+  s_7ad9bd5bb9e056::t_ca9b65c79903a2 59-73,75,82-83,85,90-91,93,98-99,101,110-111,113,121-122,124,130-131,133,139-140,142
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/media/MediaController.kt
+  s_7ad9bd5bb9e056::t_3f9a5fc35d265a 38-46,48,53-54,56
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/pay/PayController.kt
+  s_7ad9bd5bb9e056::t_1a439f048ff4a2 38-45,47
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionContext.kt
+  s_7ad9bd5bb9e056::t_f5c80904f4e66b 63-74
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ActionContextFactory.kt
+  s_7ad9bd5bb9e056::t_8fa68e5096711e 33-55,65,88,105,113,182-185
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/ai/AiControllerTest.kt
+  s_7ad9bd5bb9e056::t_23c70015ebafa4 392,395,397-402,408,410-419,421-423
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/auth/CustomerControllerTest.kt
+  s_7ad9bd5bb9e056::t_c8fa13ac014ef9 211-214,217-218,223-232
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/auth/InstallApiControllerTest.kt
+  s_7ad9bd5bb9e056::t_5750247b8ed564 26,181-182,185-189,191-198,200-210
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/cs/CsControllerTest.kt
+  s_7ad9bd5bb9e056::t_625aaf268a46d4 205-209,214,216-218,220-226,228-230,232-234
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoControllerTest.kt
+  s_7ad9bd5bb9e056::t_f91ef7eb469cb1 297-298,301-306,311,313-323,325-326
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/media/MediaControllerTest.kt
+  s_7ad9bd5bb9e056::t_6a524d4e748136 146-147,151,153-163,165-167
+core-api/src/test/kotlin/com/ifmix/core/api/bff/api/customer/pay/PayControllerTest.kt
+  s_7ad9bd5bb9e056::t_bb2ac067f46fa7 121-123,127-142
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/api/ActionContextFactoryTest.kt
+  s_7ad9bd5bb9e056::t_1ca79f5f2c46d9 7,14,79-81,102,112,130,143,159,170,183,196,206,219-225,231,242-244,256,268,281-284,296,308-311,322,331,340-342,351,359,371-374,381,389-390,400-402,411-417,427,437,451,464,473,482,496,500-550
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc086454007c64349cdda4ec94e26df96f9a6dc0",
+  "prompts": {},
+  "sessions": {
+    "s_7ad9bd5bb9e056": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afd66ab96c61cb2ba",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
