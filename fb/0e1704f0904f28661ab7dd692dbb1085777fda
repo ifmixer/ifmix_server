@@ -1,0 +1,36 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/media/StorageFetcher.kt
+  h_b17efd5c751f9f 20,32
+core-api/src/main/kotlin/com/ifmix/core/api/entity/media/UploadRecord.kt
+  h_b17efd5c751f9f 15
+core-api/src/main/resources/db/migration/V16__rename_media_file_record.sql
+  h_b17efd5c751f9f 1-4
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 2-40
+core-api/src/main/resources/schema/customer/media.graphqls
+  h_b17efd5c751f9f 25-26
+core-api/src/test/kotlin/com/ifmix/api/core/common/http/GraphQlHttpStatusFilterChainTest.kt
+  h_b17efd5c751f9f 20,55
+docs/guide/ARCHITECTURE.md
+  h_b17efd5c751f9f 195
+docs/guide/AUTH_DESIGN.md
+  h_b17efd5c751f9f 21
+docs/guide/DATABASE.md
+  h_b17efd5c751f9f 36
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 35-36
+docs/ops/release.md
+  h_b17efd5c751f9f 48
+docs/testing/GRAPHQL_TRUSTED_DOCUMENTS.md
+  h_b17efd5c751f9f 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb0e1704f0904f28661ab7dd692dbb1085777fda",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
