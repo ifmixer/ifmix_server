@@ -4,6 +4,20 @@
 > - 仓库：/Users/jason/orca/workspaces/ifmix_server/server-graphql-to-rpc（分支 `feature/graphql-to-rpc`）。Konvert 4.5.1 已引入且 cs 试点已通过（commit `b2038bd`，见 `dto/cs/SubmitFeedbackInput.kt` 的 `@KonvertTo` 用法）。
 > - 注解包名：`io.mcarle.konvert.api.*`（**不是** `.annotations`）。语法细节以官方文档校准：https://mcarleio.github.io/konvert/annotations/mapping.html
 > - 硬边界：不改 wire 契约字段；不改 Handler/Repository 行为；不动 demo/auth 之外的 wire 类型；每个 K 阶段独立 commit（前缀 `[konvert][K*]`）并跑 `./gradlew :core-api:test` 全绿。
+> - **进度（2026-10-06）**：K1 收敛为语法校准（见 §1，不产码）；K2 ✅ 已实施（commit `11e5debf`，entity 接口源验证通过）。**K3（ai）、K4（auth）、§5.3（pay 检查）待实施**——实施前必读 §0.5 语法校准，文中与本节冲突的旧写法一律以 §0.5 为准。
+
+## 0.5 语法校准（2026-10-06 实测定稿，覆盖正文中的旧写法）
+
+以下事实经官方文档 + konvert-api/converter 4.5.1 jar 反编译 + 上游源码 + K2 编译实测验证，**直接采信，勿再试正文里的旧语法**：
+
+1. **`@Konverter` 只能标注 interface**，生成 `XxxImpl` object（KDoc 参照 `dto/demo/DemoKonvertMappers.kt`，K2 成品）。
+2. **接口函数只支持单参数**（"exactly one parameter"）。正文 K2/K3 里的多参数聚合函数（`toRes(source, items, counts)`、`toDetailRes(source, latestDeepResearch)`）**语法上不成立**。定式：单源单参数生成映射，编排字段（items/counts/latestDeepResearch）在接口内用 `@Konvert(mappings = [Mapping(target = "…", constant = "emptyList()/*或 0/null*/")])` 占位，调用方 `.copy(…)` 补齐（K2 的 `DemoQueryService.assemble()` 是成品范例）。
+3. **`@Mapping` 直接标注在 @Konverter 接口函数上不生效**（processor 静默忽略，报 `PropertyMappingNotExistingException` 且吞掉 root cause）。per-target 定制必须写 `@Konvert(mappings = [Mapping(...), ...])` 标在函数上。
+4. **`qualifiedNames`/`qualifiedBy` 不存在**（MapStruct 概念）。启用内置 TypeConverter 用 `@Mapping(enable = [CONSTANT_NAME])`，常量在 `io.mcarle.konvert.api.converter`（如 `LONG_EPOCH_MILLIS_TO_INSTANT_CONVERTER`）。
+5. **`@KonvertTo`/`@KonvertFrom` 只能标注 class**，不能标注函数——正文 §1 K1 的转换器函数写法不成立。
+6. **Instant → String 内置自动**：`InstantToStringConverter` 默认启用，生成 `field.toString()`（ISO-8601），与手写一致，无需任何注解。**Long(epoch millis) → Instant** 需 `Mapping(enable = [LONG_EPOCH_MILLIS_TO_INSTANT_CONVERTER])` 显式启用（`XToTemporal` 系默认 `enabledByDefault=false`），生成 `Instant.ofEpochMilli(it)`。
+7. **`constant` 的值按代码原样插入**（`constant = "null"` 生成 `x = null`；`"emptyList()"` 生成 `items = emptyList()`），不是字符串字面量。
+8. **entity 接口源已验证可行**（K2 `TodoItem` 一次通过，生成同名字段直取 + 时间 `toString()`）；**List 元素映射自动组合已验证**（声明元素级映射函数后，`List<X> → List<Y>` 生成 `x?.map { toRes(it) }`，null 透传）。
 
 ## 0. 目标与原则
 
@@ -13,7 +27,11 @@
 - Konvert 对 **Jimmer entity（接口）作为源** 的支持未验证 → K2 的第一个任务就是验证它（`TodoItem` 源）。**若编译不过或生成代码语义错误**：demo/ai 的 entity 源映射全部回退手写（恢复被删文件），只保留 data-class→data-class 的 Konvert（K1/K4），并在报告里记录"Konvert 不支持接口源"。
 - Konvert 生成代码会读取**所有**映射属性 → 对稀疏 Jimmer 实体（部分 fetch）会抛 UnloadedException。因此本计划中所有 entity→Res 的映射，其 `@Mapping` 声明必须与该查询的 fetch 形状严格一致（每个 K 阶段已逐条写明）。
 
-## 1. K1：全局自定义转换器（新建 `dto/common/KonvertConverters.kt`）
+## 1. K1：全局自定义转换器（✅ 收敛为 §0.5 语法校准，不产码）
+
+**结论（2026-10-06）**：Konvert 4.5.1 不支持本节设计（`@KonvertTo` 标函数 + `qualifiedNames`）——自定义 TypeConverter 是 SPI 级机制，须挂 KSP processor classpath，项目源码里写不了。且内置转换器已覆盖本节全部语义（§0.5 第 6 条：Instant→String 默认自动；Long millis→Instant 按需 enable）。**`dto/common/KonvertConverters.kt` 不创建**，K1 无独立 commit。转换器语义（Instant→ISO-8601 字符串、epoch millis→Instant）由 §0.5 承接。
+
+<details><summary>原方案（已作废，留档）</summary>
 
 全项目唯一的手写转换器文件，供 Konvert 经 `qualifiedBy` 复用：
 
@@ -34,8 +52,13 @@ fun Long.toInstantFromMillis(): Instant = Instant.ofEpochMilli(this)
 ```
 
 （若 `@KonvertFrom(Long::class)` 的实际语法与此不符——例如需要 `@Konverter` 内声明——按官方文档校正语法，**转换器语义不变**。）
+</details>
 
-## 2. K2：demo 模块（第一个 entity 源试点 + 多参数聚合）
+## 2. K2：demo 模块（✅ 已实施，commit `11e5debf`）
+
+**实际走向**：entity 接口源一次通过（生成同名字段直取 + 时间 `toString()`）；List/嵌套自动组合生效（`recItems?.map { toRes(it) }` / `recommend?.let { toRes(it) }`）；多参数聚合按 §0.5 第 2 条定式——`Todo→TodoRes` 单源 + items/counts `constant` 占位（`emptyList()`/`0`），调用方 `assemble()` 内 `.copy(items = …, itemCount = …, …)` 补齐；测试为新建 `DemoKonvertMappersTest.kt`（正文假设的 DemoApiMappersTest 并不存在），460 用例全绿。成品范例：`dto/demo/DemoKonvertMappers.kt` + `DemoQueryService.assemble()`，**K3/K4 实施前先读这两个文件**。
+
+<details><summary>原方案（已按校准实施完毕，留档）</summary>
 
 ### 2.1 新建 `dto/demo/DemoKonvertMappers.kt`
 
@@ -72,8 +95,16 @@ interface DemoKonvertMappers {
 
 ### 2.3 验收
 `:core-api:test` 全绿；`TodoRes`/`TodoItemRes` 字段与手写版逐字段一致（测试断言保证）；commit `[konvert][K2]`。
+</details>
 
-## 3. K3：ai 模块
+## 3. K3：ai 模块（待实施——先读 §0.5 语法校准 + K2 成品）
+
+**实施定式（按校准改写正文伪码）**：`@Konverter interface AiKonvertMappers` 全部单参数——
+- `ImageRef → ImageRefRes`、`ScanDeepResearch → ScanDeepResearchRes`：纯单源自动映射。
+- `ScanRecord → ScanRecordRes` 两个函数 `toDetailRes`/`toLiteRes` + `ScanRecord → ScanRecordListRes` 的 `toListRes`：单源；`latestDeepResearch` 用 `@Konvert(mappings = [Mapping(target = "latestDeepResearch", constant = "null")])` 占位，调用方 `.copy(latestDeepResearch = …)` 补齐；`basicResult` 在 toLiteRes/toListRes 必须 `constant = "null"`（toDetailRes 自动读，详情查询已加载）。
+- 字段清单、调用方改造、测试要求按下方原文（测试为新建，参照 `DemoKonvertMappersTest.kt` 写法）。
+
+<details><summary>原方案（部分写法已被 §0.5 校准取代，留档）</summary>
 
 ### 3.1 新建 `dto/ai/AiKonvertMappers.kt`
 
@@ -117,8 +148,9 @@ interface AiKonvertMappers {
 
 ### 3.3 验收
 `:core-api:test` 全绿；commit `[konvert][K3]`。
+</details>
 
-## 4. K4：auth 模块
+## 4. K4：auth 模块（未实施；实施前先读 §0.5 语法校准——expiresAt 的 Long→Instant 需 `Mapping(enable = [LONG_EPOCH_MILLIS_TO_INSTANT_CONVERTER])` 显式启用，原文「K1 的 millis-instant」不存在）
 
 - `bff/api/customer/auth/AuthApiController.kt` 的私有 `LoginRes.toWire()`：删除，改为 Konvert。**注意同名类型**：module `LoginRes`（modules.auth.handler）与 wire `LoginRes`（dto.auth）同名——用 `@Konverter` 接口时参数类型写全名 `com.ifmix.core.api.modules.auth.handler.LoginRes`，返回 `com.ifmix.core.api.dto.auth.LoginRes`：
   ```kotlin
