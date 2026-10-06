@@ -1,0 +1,37 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/ai/AiController.kt
+  s_7ad9bd5bb9e056::t_cb8ad1c20feabd 108,116,126,155,166,175,188,200,208,234,249,258,267
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/auth/AuthApiController.kt
+  s_7ad9bd5bb9e056::t_73b31b60796c87 72,86,102,114,125
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/auth/CustomerController.kt
+  s_7ad9bd5bb9e056::t_5a1edc81c57c01 122,130
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/auth/InstallApiController.kt
+  s_7ad9bd5bb9e056::t_05e76807a0bb81 141,165,191,194,269,310,321,326,329,338,380
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/cs/CsController.kt
+  s_7ad9bd5bb9e056::t_c36f7b69885a55 61,70,78,89
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/demo/DemoController.kt
+  s_7ad9bd5bb9e056::t_5bb5e3ba5c5899 45,79,87,95,107,118,127,136,145
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/media/MediaController.kt
+  s_7ad9bd5bb9e056::t_21ad0cb61e2c79 50,58
+core-api/src/main/kotlin/com/ifmix/core/api/bff/api/customer/pay/PayController.kt
+  s_7ad9bd5bb9e056::t_e508340fb57547 51,56
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/Envelope.kt
+  s_7ad9bd5bb9e056::t_e84a6e11710094 13-14
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GlobalExceptionHandler.kt
+  s_7ad9bd5bb9e056::t_1e81e51450e689 47-53,84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b61f106f5b7bf152e5550d370759f17ac5360823",
+  "prompts": {},
+  "sessions": {
+    "s_7ad9bd5bb9e056": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afd66ab96c61cb2ba",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
