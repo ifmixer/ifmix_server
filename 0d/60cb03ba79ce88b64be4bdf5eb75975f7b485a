@@ -1,0 +1,14 @@
+docs/design/proposals/graphql-to-http-rpc-openapi.md
+  h_b17efd5c751f9f 125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d60cb03ba79ce88b64be4bdf5eb75975f7b485a",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
