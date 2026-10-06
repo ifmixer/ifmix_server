@@ -173,7 +173,7 @@ class WireCryptoTest {
         val tampered = c7.sealRequest("x".toByteArray()).also { it[it.size - 1] = (it.last() + 1).toByte() }
         assertThrows<WireCryptoException> { crypto.open(tampered) }
         // 乱序/过短 payload
-        val badVer = c7.sealRequest("x".toByteArray()).also { it[0] = 2 }
+        val badVer = c7.sealRequest("x".toByteArray()).also { it[0] = 3 }
         assertThrows<WireCryptoException> { crypto.open(badVer) }
         assertThrows<WireCryptoException> { crypto.open(ByteArray(40)) }
     }
@@ -216,8 +216,10 @@ class WireCryptoTest {
 
     // ---- filter ----
 
-    private fun v3Filter(keys: String = "1:${Base64.getEncoder().encodeToString(HEX.parseHex(SERVER_PRIV_HEX))}") =
-        WireCryptoFilter(keys, WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES)
+    private fun wireFilter(
+        keys: String = "1:${Base64.getEncoder().encodeToString(HEX.parseHex(SERVER_PRIV_HEX))}",
+        mode: String = "required",
+    ) = WireCryptoFilter(keys, WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, mode)
 
     /** 内层 servlet 回显看到的 content-type / body，便于断言解密包装；status 可指定。 */
     private fun runFilter(filter: WireCryptoFilter, req: MockHttpServletRequest, status: Int = 200): MockHttpServletResponse {
@@ -237,49 +239,90 @@ class WireCryptoTest {
     @Test
     fun `filter decrypts request, encrypts response, keeps status`() {
         val client = TestClient(crypto.publicKey(1)!!, kid = 1)
-        val req = MockHttpServletRequest("POST", "/customer/core/greq/m_x").apply {
-            addHeader(RequestHeaders.WIREP_VERSION, "3")
+        val req = MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_getById").apply {
+            addHeader(RequestHeaders.WIREP_VERSION, "2")
             contentType = "application/octet-stream"
             setContent(client.sealRequest("""{"q":1}""".toByteArray(), ts = System.currentTimeMillis()))
         }
-        val res = runFilter(v3Filter(), req, status = 401)
+        val res = runFilter(wireFilter(), req, status = 401)
         assertThat(res.status).isEqualTo(401)
         assertThat(res.contentType).isEqualTo("application/octet-stream")
-        assertThat(res.getHeader(RequestHeaders.WIREP_VERSION)).isEqualTo("3")
+        assertThat(res.getHeader(RequestHeaders.WIREP_VERSION)).isEqualTo("2")
         assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
             .isEqualTo("ct=application/json;hdr=application/json;body=${"{\"q\":1}"}")
     }
 
     @Test
-    fun `filter bad payload returns plain 400003, empty config too, v1 passes through untouched`() {
-        val bad = runFilter(v3Filter(), MockHttpServletRequest("POST", "/x").apply {
-            addHeader(RequestHeaders.WIREP_VERSION, "3"); contentType = "application/octet-stream"; setContent(ByteArray(80))
-        })
+    fun `filter bad payload returns plain 400003, empty config fails loud, plaintext rejected when required`() {
+        val bad = runFilter(
+            wireFilter(),
+            MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_deleteOne").apply {
+                addHeader(RequestHeaders.WIREP_VERSION, "2"); contentType = "application/octet-stream"; setContent(ByteArray(80))
+            },
+        )
         assertThat(bad.status).isEqualTo(400)
         assertThat(bad.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
         assertThat(bad.getHeader(RequestHeaders.WIREP_VERSION)).isNull()
 
-        // 未配 key：合法 v3 请求同样 400003（isEnabled=false → 客户端降级明文）
-        val noKeys = runFilter(WireCryptoFilter("", WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES), MockHttpServletRequest("POST", "/x").apply {
-            addHeader(RequestHeaders.WIREP_VERSION, "3"); contentType = "application/octet-stream"
-            setContent(TestClient(crypto.publicKey(1)!!, kid = 1).sealRequest("{}".toByteArray(), ts = System.currentTimeMillis()))
-        })
+        // 未配 key：required 模式下 /api/** 请求全部 400003（配置错误大声失败，无明文降级）
+        val noKeys = runFilter(
+            WireCryptoFilter("", WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, "required"),
+            MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_deleteOne").apply {
+                addHeader(RequestHeaders.WIREP_VERSION, "2"); contentType = "application/octet-stream"
+                setContent(TestClient(crypto.publicKey(1)!!, kid = 1).sealRequest("{}".toByteArray(), ts = System.currentTimeMillis()))
+            },
+        )
         assertThat(noKeys.status).isEqualTo(400)
         assertThat(noKeys.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
 
-        val plain = runFilter(v3Filter(), MockHttpServletRequest("POST", "/x").apply { contentType = "application/json"; setContent("{}".toByteArray()) })
+        // required 模式：/api/** 明文请求 → 400 400004（无明文降级）
+        val plain = runFilter(
+            wireFilter(),
+            MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_deleteOne").apply {
+                contentType = "application/json"; setContent("{}".toByteArray())
+            },
+        )
+        assertThat(plain.status).isEqualTo(400)
+        assertThat(plain.contentAsString).isEqualTo("""{"code":"400004","msg":"wire encryption required","data":null}""")
+
+        // required 模式：x-wirep-version 版本不符 → 400 400004（无版本协商）
+        val wrongVer = runFilter(
+            wireFilter(),
+            MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_deleteOne").apply {
+                addHeader(RequestHeaders.WIREP_VERSION, "1"); contentType = "application/octet-stream"; setContent(ByteArray(80))
+            },
+        )
+        assertThat(wrongVer.status).isEqualTo(400)
+        assertThat(wrongVer.contentAsString).isEqualTo("""{"code":"400004","msg":"unsupported x-wirep-version: 1","data":null}""")
+
+        // required 模式：旧头名 x-proto-version 不识别；octet-stream 内容按密文处理 → 解密失败 400003
+        val oldName = runFilter(
+            wireFilter(),
+            MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_deleteOne").apply {
+                addHeader("x-proto-version", "2"); contentType = "application/octet-stream"; setContent(ByteArray(80))
+            },
+        )
+        assertThat(oldName.status).isEqualTo(400)
+        assertThat(oldName.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
+    }
+
+    @Test
+    fun `optional mode passes plaintext through on api paths`() {
+        val plain = runFilter(
+            wireFilter(mode = "optional"),
+            MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_deleteOne").apply {
+                contentType = "application/json"; setContent("{}".toByteArray())
+            },
+        )
         assertThat(plain.contentAsString).isEqualTo("ct=application/json;hdr=application/json;body={}")
         assertThat(plain.getHeader(RequestHeaders.WIREP_VERSION)).isNull()
 
-        val v1 = runFilter(v3Filter(), MockHttpServletRequest("POST", "/x").apply {
-            addHeader(RequestHeaders.WIREP_VERSION, "1"); contentType = "application/json"; setContent("{}".toByteArray())
-        })
-        assertThat(v1.contentAsString).isEqualTo("ct=application/json;hdr=application/json;body={}")
-        // 旧 v2 头名不再识别（v2 从未上线，不做兼容）：按 v1 明文放行
-        val oldName = runFilter(v3Filter(), MockHttpServletRequest("POST", "/x").apply {
-            addHeader("x-proto-version", "2"); contentType = "application/octet-stream"; setContent(ByteArray(80))
-        })
-        assertThat(oldName.contentAsString).contains("body=") // 明文原样回显
+        // optional 模式：信封外路径（webhook 等）即便 required 也原样放行
+        val outside = runFilter(
+            wireFilter(),
+            MockHttpServletRequest("POST", "/webhook/r2").apply { contentType = "application/json"; setContent("{}".toByteArray()) },
+        )
+        assertThat(outside.contentAsString).isEqualTo("ct=application/json;hdr=application/json;body={}")
     }
 
     /**
@@ -288,9 +331,9 @@ class WireCryptoTest {
      * 此测试防止未来被改成那种走不通的路。
      */
     @Test
-    fun `filter v3 header with empty body returns plain 400003`() {
-        val res = runFilter(v3Filter(), MockHttpServletRequest("POST", "/x").apply {
-            addHeader(RequestHeaders.WIREP_VERSION, "3"); contentType = "application/octet-stream"
+    fun `filter encrypted header with empty body returns plain 400003`() {
+        val res = runFilter(wireFilter(), MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_deleteOne").apply {
+            addHeader(RequestHeaders.WIREP_VERSION, "2"); contentType = "application/octet-stream"
         })
         assertThat(res.status).isEqualTo(400)
         assertThat(res.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
@@ -300,13 +343,13 @@ class WireCryptoTest {
     @Test
     fun `filter clock skew over 5min is warn-only, request still processed`() {
         val client = TestClient(crypto.publicKey(1)!!, kid = 1)
-        val req = MockHttpServletRequest("POST", "/customer/core/greq/m_x").apply {
-            addHeader(RequestHeaders.WIREP_VERSION, "3")
+        val req = MockHttpServletRequest("POST", "/api/customer/core/m_demo_todo_getById").apply {
+            addHeader(RequestHeaders.WIREP_VERSION, "2")
             contentType = "application/octet-stream"
             // ts = 1 小时前（> 5min 偏差）
             setContent(client.sealRequest("""{"q":1}""".toByteArray(), ts = System.currentTimeMillis() - 3_600_000L))
         }
-        val res = runFilter(v3Filter(), req)
+        val res = runFilter(wireFilter(), req)
         assertThat(res.status).isEqualTo(200)
         assertThat(res.contentType).isEqualTo("application/octet-stream")
         assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
@@ -334,10 +377,10 @@ private class TestClient(private val serverPub: ByteArray, private val kid: Int)
     /** 每次 sealRequest 新建独立 sender context（seq 从 0）；BC base-mode context 每 seal 推进 seq，
      *  跨调用复用会让 nonce 漂移，与 wire v3 每请求独立 ephemeral 语义不符。resKey 亦从新 context 导出。 */
     private fun freshSender(): HPKEContextWithEncapsulation =
-        hpke.setupBaseS(hpke.deserializePublicKey(serverPub), "ifmix-wire-v3".toByteArray(), eph)
+        hpke.setupBaseS(hpke.deserializePublicKey(serverPub), "ifmix-wire-v2".toByteArray(), eph)
 
-    /** 响应 resKey：HPKE-Export(context, "ifmix-wire-v3-res", 32)。新 context 的 Export 与任意已用 seq 的 context 相同（导出 secret 只依赖 shared secret）。 */
-    private val resKey: ByteArray = freshSender().export("ifmix-wire-v3-res".toByteArray(), 32)
+    /** 响应 resKey：HPKE-Export(context, "ifmix-wire-v2-res", 32)。新 context 的 Export 与任意已用 seq 的 context 相同（导出 secret 只依赖 shared secret）。 */
+    private val resKey: ByteArray = freshSender().export("ifmix-wire-v2-res".toByteArray(), 32)
     val enc: ByteArray = freshSender().encapsulation
 
     /** ver|kid|enc|flags|HPKE-Seal(aad=前35B, pt)；[inner] 供无 ts 等边界用例。每次独立 sender context。 */
@@ -351,7 +394,7 @@ private class TestClient(private val serverPub: ByteArray, private val kid: Int)
         val compressed = pt.size > GZIP_THRESHOLD
         val flags = if (compressed) 1 else 0
         val payload = if (compressed) pt.gzip() else pt
-        val header = byteArrayOf(3, kid.toByte()) + cws.encapsulation + byteArrayOf(flags.toByte())
+        val header = byteArrayOf(WireCrypto.VERSION.toByte(), kid.toByte()) + cws.encapsulation + byteArrayOf(flags.toByte())
         // 请求 AAD = 前 35B（ver‖kid‖enc‖flags）
         val sealed = cws.seal(header, payload)
         return header + sealed

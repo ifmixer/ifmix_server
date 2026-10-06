@@ -78,10 +78,12 @@ app:
   # header 格式软校验：生产默认 false（非法→WARN 当缺失，不影响请求）；local 覆盖为 true 尽早暴露客户端 bug。
   header-validation:
     strict: ${APP_HEADER_VALIDATION_STRICT:false}
-  # x-wirep-version: 3 wire 加密私钥（RFC 9180 HPKE；X25519 原始 32 字节 base64），格式 `kid:base64,kid:base64`，多 kid 并存以便轮换。
+  # wire 加密（x-wirep-version: 2，RFC 9180 HPKE；X25519 原始 32 字节 base64），格式 `kid:base64,kid:base64`，多 kid 并存以便轮换。
+  # mode: required = /api/** 强制加密（明文/版本不符 → 400004）；optional = 明文放行（仅 local/dev 调试用，线上必须 required）
   # 空 = 不支持 v3（v3 请求返回 400003，客户端自动降级明文）。生产用 env WIRE_CRYPTO_KEYS 注入，见 WireCrypto。
   # max-decompressed-bytes：请求 gunzip 后明文上限（防 zip-bomb，超限 400003），默认 1MB，可 env 覆盖。
   wire-crypto:
+    mode: required
     keys: ${WIRE_CRYPTO_KEYS:}
     max-decompressed-bytes: ${WIRE_MAX_DECOMPRESSED_BYTES:1048576}
   storage:
