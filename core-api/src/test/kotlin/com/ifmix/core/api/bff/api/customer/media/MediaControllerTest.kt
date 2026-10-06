@@ -163,7 +163,7 @@ class MediaControllerTest {
             assertEquals("media", segs[2], "resource segment: " + n)
         }
         // companion 常量与路由 path 同源
-        assertEquals("m_media_media_presignUpload", MediaController.PRESIGN_UPLOAD)
-        assertEquals("m_media_media_presignDownload", MediaController.PRESIGN_DOWNLOAD)
+        assertEquals("m_media_media_presignUpload", MediaController.ACTION_PRESIGN_UPLOAD)
+        assertEquals("m_media_media_presignDownload", MediaController.ACTION_PRESIGN_DOWNLOAD)
     }
 }

@@ -15,6 +15,14 @@ spring:
 server:
   port: 3001
 
+# base 默认关 swagger（生产安全）；local 打开供探索。
+# 端点路径用 base 的 /core/... 覆盖值（application.yml springdoc.path），无需在此重复。
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 app:
   expose-errors: true
   # 本地 header 格式严格：非法即整个请求报错，尽早暴露客户端 bug（base 默认 false）。

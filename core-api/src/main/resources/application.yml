@@ -4,7 +4,10 @@
 # 生产密钥/连接串由环境变量注入（/opt/app/env，见 docs/ops/DEPLOY.md）；个别不便用 env 的项放 application-prod.yml。
 spring:
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE}
+    # 未注入 env 时兜底 local（本地开发不显式设 SPRING_PROFILES_ACTIVE 即可起 local）；
+    # prod 由 /opt/app/env 显式 SPRING_PROFILES_ACTIVE=prod 覆盖（见 docs/ops/DEPLOY.md）。
+    # 无默认值（${SPRING_PROFILES_ACTIVE}）会让 env 缺失时启动直接失败，已踩坑。
+    active: ${SPRING_PROFILES_ACTIVE:local}
   threads:
     virtual:
       enabled: true

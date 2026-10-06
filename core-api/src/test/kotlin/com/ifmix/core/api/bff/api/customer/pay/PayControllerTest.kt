@@ -139,6 +139,6 @@ class PayControllerTest {
             assertEquals("iap", segs[2], "resource segment: " + n)
         }
         // companion 常量与路由 path 同源
-        assertEquals("m_pay_iap_verify", PayController.IAP_VERIFY)
+        assertEquals("m_pay_iap_verify", PayController.ACTION_IAP_VERIFY)
     }
 }

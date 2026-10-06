@@ -226,8 +226,8 @@ class CsControllerTest {
             assertTrue(segs[2] in setOf("feedback", "supportRequest"), "resource segment: " + n)
         }
         // companion 常量与路由 path 同源
-        assertEquals("m_cs_feedback_createOne", CsController.SUBMIT_FEEDBACK)
-        assertEquals("q_cs_supportRequest_list", CsController.MY_SUPPORT_REQUESTS)
+        assertEquals("m_cs_feedback_createOne", CsController.ACTION_SUBMIT_FEEDBACK)
+        assertEquals("q_cs_supportRequest_list", CsController.ACTION_MY_SUPPORT_REQUESTS)
     }
 
     // 原「spec matches original fromDfe arguments」对照测试删除：ActionSpec 已撤销，

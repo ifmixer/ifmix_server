@@ -323,7 +323,7 @@ class DemoControllerTest {
             assertEquals("todo", segs[2], "resource segment: $n")
         }
         // companion 常量与路由 path 同源
-        assertEquals("q_demo_todo_getById", DemoController.FIND_TODO_BY_ID)
+        assertEquals("q_demo_todo_getById", DemoController.ACTION_FIND_TODO_BY_ID)
     }
 
 }

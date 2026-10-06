@@ -206,8 +206,8 @@ class InstallApiControllerTest {
             assertTrue(segs[2] == "install", "resource segment (install 段在 auth 包下，以 action 名第 2 段为准): " + n)
         }
         // companion 常量与路由 path 同源
-        assertEquals("m_auth_install_create", InstallApiController.CREATE_INSTALL)
-        assertEquals("m_auth_install_createAttestChallenge", InstallApiController.CREATE_ATTEST_CHALLENGE)
+        assertEquals("m_auth_install_create", InstallApiController.ACTION_CREATE_INSTALL)
+        assertEquals("m_auth_install_createAttestChallenge", InstallApiController.ACTION_CREATE_ATTEST_CHALLENGE)
     }
 }
 
