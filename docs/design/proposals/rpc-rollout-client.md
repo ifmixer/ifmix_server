@@ -129,6 +129,6 @@
 ## 2026-10-06 服务端定稿追加（客户端必须跟进的变更）
 
 1. **URL**：`/rpc/customer/core/…` → `/api/customer/core/…`（R0 改名时一并迁移）。
-2. **wire 版本 2**：协议版本号 3→2（历史 2/3 草案合并）；`wireCrypto.ts` 的 `WIRE_VERSION`、信封 ver 字节、info `"ifmix-wire-v2"`、exporter `"ifmix-wire-v2-res"`、头值全部改为 2；`wire-vectors.json` 重新生成。
+2. **wire 版本 2**：协议版本号 3→2（历史 2/3 草案合并）；`wireCrypto.ts` 的 `WIRE_VERSION`、信封 ver 字节、info `"ifmix-wire-v2"`、exporter `"ifmix-wire-v2-res"`、头值全部改为 2。~~`wire-vectors.json` 重新生成~~（实施核对：实际文件为 `hpke-vectors.json`，内容是 RFC 9180 官方向量的 suite 子集，与协议版本号无关，**无需重生成**）。
 3. **强制加密、无降级**：服务端 required 模式下明文请求 → 400 400004（WIRE_REQUIRED）。客户端删除 415/400003 明文重发降级逻辑（`sendMaybeEncrypted` 简化为仅加密路径）；`getWireKey` 缺失时本地环境直接拒绝调用（fail-fast），不再静默明文。local/dev 服务端可配 `optional` 模式供 curl 调试。
 4. **wire 私钥配置缺失 = 配置错误**：不再有"未配 key 降级明文"的行为分支与测试。
