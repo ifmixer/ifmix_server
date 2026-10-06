@@ -28,9 +28,9 @@
 
 - 所有移动端 action 使用 `POST /api/customer/core/{actionName}`（2026-10-06 定稿：概念更名 rpc→api，`/api/` 提前，CF/WAF 按 `/api/customer/*` 一条规则覆盖）。
 - **actionName 四段结构 `{q|m}_{module}_{resource}_{action}`**（2026-10-06 定稿）：`q/m` 表读/写意图，`module` 为业务模块，`resource` 为资源名，`action` 为标准动词（`getById / getByIds / list / createOne / createMany / updateOne / updateMany / deleteOne / deleteMany`，特殊子资源操作用具体名词如 `updateItems`；不兼容形状变更加 `V2` 后缀）。示例：`q_demo_todo_getById`、`m_demo_todo_createOne`。
-  - **前缀是权限的表达，不是权限的来源**：路径客户端可见可填，裁决仍由 ActionSpec（actor 要求）+ 业务所有权校验承担；`{module, resource} × {read, write}` 前缀矩阵的价值在 manager 表面的粗粒度授权、审计与边缘规则。
-  - **一致性由测试锁死**：路由表扫描——path 以 `m_` 开头 ⇔ `ActionSpec.isMutation=true`；module 段与 controller 所属模块一致。
-- **URL 不带 resourceId**（2026-10-06 定稿）：边缘/WAF 规则是模式级的，action 粒度由 actionName 承载，具体资源 ID 是攻击者可轮换的高基数字段、对边缘决策无价值；且 ID 属业务载荷，应留在加密 body 内。路径统一一种形状，ActionSpec 路由/测试/OpenAPI 均单套处理。
+  - **前缀是权限的表达，不是权限的来源**：路径客户端可见可填，裁决仍由 endpoint 的 `requireActorType` 声明 + 业务所有权校验承担；`{module, resource} × {read, write}` 前缀矩阵的价值在 manager 表面的粗粒度授权、审计与边缘规则。
+  - **一致性由测试锁死**：controller 的 `@PostMapping` path 扫描——`m_` 前缀 ⇔ `fromRpc` 的 `isMutation` 实参；module 段与 controller 所属模块一致。
+- **URL 不带 resourceId**（2026-10-06 定稿）：边缘/WAF 规则是模式级的，action 粒度由 actionName 承载，具体资源 ID 是攻击者可轮换的高基数字段、对边缘决策无价值；且 ID 属业务载荷，应留在加密 body 内。路径统一一种形状，路由/测试/OpenAPI 均单套处理。
 - reqName 保持现状，例如 `q_ai_findMyScans`、`m_auth_login`，减少前后端重命名成本。
 - 成功和失败统一返回 `Envelope<T> = { code, msg, data }`。
 - HTTP status 必须等于 `code` 前三位；成功为 `200000` / HTTP 200。
@@ -43,7 +43,7 @@
 - 加密前的请求 JSON 载荷统一为 `{"meta": {…}, "input": {…}}` 两段结构：`input` 为业务入参（每个 action 的 `XxxRequest`），`meta` 为非业务语义的请求属性（所有 action 共用的 `RequestMeta` OpenAPI 组件，不进各 action 的类型）。
 - 不沿用 GraphQL 的 `variables`：那是"模板替换参数"的词汇，RPC 没有 query 模板，载荷本身就是请求；客户端从 OpenAPI 重新生成，保留旧名零收益。命名采用业界通行的 `meta`（gRPC metadata、JSON:API 先例）；不用 `header`（与 HTTP header 纠缠）、不用 `context`（与服务端 ActionContext 冲突，两层必须不同名）。
 - 响应维持 `Envelope{code, msg, data}`，`data` 为各 action 的 `XxxResponse`；Envelope 预留 `meta` 字段暂不启用，首个候选是 `serverTime`（客户端对时，wire §9 ts 时效决策的前置条件）。
-- meta 在 Kotlin 侧为 typed `RequestMeta` data class，不做 `Map<String, String>` 透传；字段全可空，必填性由 `ActionSpec` 按 action 声明；新增字段属协议变更，走设计评审。
+- meta 在 Kotlin 侧为 typed `RequestMeta` data class，不做 `Map<String, String>` 透传；字段全可空，必填性由 endpoint 的 `requireActorType` / `requireProjectId` 参数声明（2026-10-06 实施修订：ActionSpec 撤销，见 rpc-rollout-server §3.3）；新增字段属协议变更，走设计评审。
 
 **RequestMeta 字段清单**（2026-10-06 讨论定稿）：
 
@@ -51,7 +51,7 @@
 |---|---|
 | `reqId` | 客户端自供、缺省服务端补 UUID（对齐现有 `x-req-id` 语义）；与 CF 自动注入的 `cf-ray` 互补——后者边缘可见，负责 CF↔源站日志关联，服务端日志两者都打 |
 | `projectId` | 客户端声明操作哪个 project，服务端校验访问权 |
-| `accessToken` | 唯一凭证字段，纯 token 字符串（不带 `Bearer` 前缀）；type claim 自描述 install(5)/customer(10)/manager(20)，沿用现有单 token 模型（拆 install/customer 两个字段会与 type claim 形成双信源，且覆盖不了第三种类型） |
+| `accessToken` | 唯一凭证字段，纯 token 字符串（不带 `Bearer` 前缀）；type claim 自描述 install(5)/customer(10)/manager(20)，沿用现有单 token 模型（拆 install/customer 两个字段会与 type claim 形成双信源，且覆盖不了第三种类型）。**2026-10-06 二次讨论：拟移出 meta、独立凭证槽位（见下节「凭证与 meta 分离」），定稿前本行仍为现状** |
 | `locale` / `currency` / `country` | 用户偏好；平铺，不加前缀不嵌套（typed 对象本身就是命名空间）。`meta.country` 是用户设置，与 CF 从 IP 推导的 `cf-ipcountry`（header）并存不冗余 |
 | `userTz` | 可选，IANA 时区名（如 `Asia/Shanghai`），不用 float offset（丢 DST 规则且 offset 不唯一定位时区）；无具体服务端消费方（如通知按本地时间发送）前可不实现 |
 | `appVersion` / `otaVersion` / `clientPlatform` / `deviceModel` / `osVersion` | 遥测/诊断；服务端逻辑与分析以这些结构化字段为权威信源，UA 头只作边缘 advisory，不解析 UA 字符串 |
@@ -70,6 +70,16 @@
 - customerId/installId 等身份字段不出现在 meta（客户端声称的身份不是身份，见 wire-encryption.md §9 结论）；业务代码只读 ActionContext。
 
 meta 字段对未来的边缘网关**不可见，且这是设计使然**（wire 私钥永不下发中间层）：需要解密前做的决策走 header advisory，可信决策一律在服务端解密后做；将来网关若确需某 meta 字段做路由/降级，按 header 留守原则加明文 advisory 头副本。
+
+### 凭证与 meta 分离（2026-10-06 二次讨论：方向定稿，细节待定稿）
+
+**动机**：凭证与请求属性是两个概念。meta.accessToken 拆出后，meta 不含任何敏感信息、可整段进日志（不再依赖脱敏黑名单）；HTTP 语义上 Authorization 本来就是凭证的标准位置。
+
+- **方向**：`RequestMeta` 去掉 `accessToken`；请求信封改三段 `{"meta": {...}, "input": {...}, "authorization": "<裸 token>"}`（**字段名待定稿**）。token 仍走 type claim 自描述（install/customer/manager 同一槽位）。
+- **dev 态输入适配（Swagger/curl 调试）**：local/dev profile 注册合并逻辑——`Authorization` header（剥 Bearer 前缀）与 `x-req-meta`（JSON 字符串，不含凭证）作底、body 字段级优先，单点实现；prod 不注册。Swagger 侧用标准 securityScheme（Authorize 一次全局生效）。
+- **prod 不认 Authorization header**：token 进 header 即进边缘/访问日志，破坏 wire「凭证对中间层不可见」的设计（header 留守原则 §「Authorization 不为 WAF 留守」仍然成立）。Swagger 之外的调试走明文 body 直填槽位。
+- **浏览器未来**：HttpOnly cookie + CSRF（JS 全程不接触 token，防 XSS 窃取；代价是 CSRF 成为攻击面、且 cookie 对边缘可见）或直接用 SDK wire 信封（client-sdk 零原生依赖、web 可跑）——独立会话协议设计，另行评审，不在本节范围。
+- **连锁**：定稿后两端同步——server `RequestMeta`/`ActionContextFactory`/dev 适配器 + proposal 本节与 header 留守原则的 Authorization 表述；client `ApiMeta` 去 accessToken、token 装配走新槽位、README/AGENTS「凭证只在 meta.accessToken」表述；wire/信封相关测试。实施为独立 commit。
 
 ### header 留守原则与限流职责边界（2026-10-06 定稿）
 
@@ -105,7 +115,7 @@ XxxController
 ### ActionContext 与数据访问策略
 
 - 新增协议无关的 `ActionContextFactory`，直接从 `HttpServletRequest` 和 action spec 构造上下文。
-- 每个 endpoint 用服务端 `ActionSpec` 声明：是否需要 project、actor 类型、locale/country/currency，以及 query/mutation 属性。
+- 每个 endpoint 在 `fromRpc` 调用处声明：requireActorType、requireProjectId（query/mutation 属性由 actionName 前缀承载；2026-10-06 实施修订：ActionSpec 撤销，见 rpc-rollout-server §3.3）。
 - 数据访问策略放在服务端上下文中：
   - `preferReader`：优先 reader 或强制 writer；
   - `cacheRead`：是否允许读取 Redis；
@@ -137,7 +147,7 @@ XxxController
 主要修改：
 
 - `infra/http/ActionContext.kt`
-- 新增 `infra/http/ActionContextFactory.kt`、`ActionSpec.kt`
+- 新增 `infra/http/ActionContextFactory.kt`（ActionSpec 撤销：actionName 常量在 controller，`isMutation` 显式实参 + `m_` 前缀兜底）
 - `infra/auth/RequestParser.kt`
 - `infra/http/Envelope.kt`、`GlobalExceptionHandler.kt`
 - `infra/db/ModuleCtxFactory.kt`

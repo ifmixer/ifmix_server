@@ -7,7 +7,7 @@
 
 ## 0. 现状与总览
 
-demo 试点（S1–S6）：客户端已验收；服务端若未完成，**先按 `rpc-pilot-server.md` 完成**，并叠加本文件的四处契约修订（§2）。之后按 M1–M5 迁移其余 31 个 action，模式与 pilot 完全一致：每模块一组 DTO + Konvert/手写 mapper + Controller（ActionSpec 查表）+ 合约测试；gql 版本保留到 M5。
+demo 试点（S1–S6）：客户端已验收；服务端若未完成，**先按 `rpc-pilot-server.md` 完成**，并叠加本文件的四处契约修订（§2）。之后按 M1–M5 迁移其余 31 个 action，模式与 pilot 完全一致：每模块一组 DTO + 手写 companion factory mapper + Controller（companion 常量 actionName + fromRpc 参数）+ 合约测试；gql 版本保留到 M5。
 
 **并行纪律（用户约束：subagent ≤ 3）**：每个阶段内最多 3 个并行 subagent（各自 git worktree，按文件所有权矩阵工作，rebase 回主分支）；无并行价值时串行。任何 WP 严禁改动所有权之外的文件。
 
@@ -21,7 +21,7 @@ URL:      POST /api/customer/core/{actionName}
           reqId = 回显 meta.reqId（缺省用服务端生成值）；HTTP status = code 前三位
 header:   Content-Type / x-wirep-version: 3 / User-Agent / CF 注入头 / x-req-id（继续回显，客户端日志依赖）
 AAD:      wire v3 请求 AAD = ver(1)‖kid(1)‖enc(32)‖flags(1) = 35 字节（文档笔误已修正；若按 36B 起草过，丢弃重写）
-mapper:   Konvert 优先，手写兜底（§3.2）
+mapper:   手写 companion factory + Res 字段无默认值（§3.2；敏感字段 mask 用值类型，同节）
 ```
 
 ## 2. 四处契约修订（若 pilot 未完成，落地在 pilot 内；已完成则在 M0 补）
@@ -29,35 +29,78 @@ mapper:   Konvert 优先，手写兜底（§3.2）
 1. **AAD 35 字节**：`wire-encryption.md §10.1` / `wire-v3-plan-server.md` / `wire-v3-plan-client.md` 已修正。检查 S1 产出：AAD 拼装必须 `ver‖kid‖enc‖flags` 共 35B。
 2. **recItems 打戳**：`TodoRecItemInputDto` 无 createdAt/updatedAt 字段；mapper 转 generated 时 `createdAt = Instant.now().toString()`、`updatedAt = null`（pilot 文档 §4.2/4.4 已更新）。
 3. **Envelope 顶层 reqId**（本文件 §3.1）。
-4. **Konvert 优先的 mapper 规则**（本文件 §3.2，proposal §一 已修订；pilot 的 `DemoRpcMappers` 纯手写部分按此改造）。
+4. **mapper 规则修订：手写 companion factory（弃 Konvert）**（本文件 §3.2；与 proposal §一「默认不引入 Konvert」对齐）。
 
 ## 3. 全量通用规范
 
 ### 3.1 Envelope 加 reqId
 
 1. `infra/http/Envelope.kt`：`data class Envelope<out T>(val code, val msg, val data, val reqId: String? = null)`——追加可空字段，既有 `ok()/error()` 不变（reqId=null 兼容 GraphQL 路径与其他调用点）。
-2. 成功路径（RPC controller 统一）：`Envelope.ok(data).copy(reqId = ctx.requestId)`。
+2. 成功路径（RPC controller 统一）：`Envelope.ok(reqId = ctx.requestId, data)`（2026-10-06 实施讨论定稿的 overload，免逐点 `.copy(reqId=...)`；待实施，落地时全量替换）。
 3. 错误路径：`ActionContextFactory.fromRpc` 在计算 requestId 后立即 `request.setAttribute("com.ifmix.parsed.reqId", requestId)`（attr 常量放 RequestHeaders companion）；`GlobalExceptionHandler.handleApiError` 与 `handleGeneric` 的 body 构造改为带 reqId：`request?.getAttribute(ATTR) as? String ?: request?.getHeader(RequestHeaders.REQ_ID)`。factory 抛出的异常发生在 setAttribute 之后，天然带值；factory 之前挂掉的（如 body 不可读）用 header 兜底，再没有就 null。
 4. 测试：成功响应体含 `reqId` 且与请求 `meta.reqId` 同值；401/429/500 错误响应体含 reqId；无任何 reqId 来源（明文 curl 不带）时字段为 null 不报错。
 
-### 3.2 mapper 规则：Konvert 优先
+### 3.2 mapper 规则：手写 companion factory（2026-10-06 实施讨论定稿，弃 Konvert）
 
-依赖：`build.gradle.kts` 加 Konvert KSP（选 KSP2 兼容的最新稳定版，以官方文档为准）+ `konvert-api`。
+弃 Konvert/convertValue 类反射映射的理由：entity 字段改名 → 输出**静默**变 null（编译期零提示），且 Jimmer unload 风险（读未加载属性抛 UnloadedException）只是从 mapper 代码挪进序列化路径，排查更难。手写样板买的是编译期安全。
 
-| 场景 | 做法 |
-|---|---|
-| 入参 DTO ↔ generated input 纯字段同名搬运（含嵌套） | Konvert `@Mapper` 生成 |
-| 涉及类型转换/打戳/枚举转换（unset String→TodoUnsetField、recItems createdAt 打戳、FilterOp 字符串→枚举） | 手写，或 Konvert 生成主干 + 手写 `@Mapping` 表达式——以可读性定，不硬凑 |
-| entity → 视图 DTO（含 `Instant → String`、items/counts 批量组装） | 手写（组装逻辑本就是业务代码） |
-| Jimmer DTO language 产物（`toEntity()`、实体视图构造） | 直接用，不套 Konvert |
+规则：
 
-KSP 生成失败/生成代码不可读时允许该处回退手写，但必须在 WP 报告里列出回退点。每个模块的 mapper 测试要求：Konvert 生成路径与手写路径的输出逐字段断言。
+1. **出参 Res DTO 字段一律不给默认值**（null 语义除外）：新增字段必须同步 factory，漏写即编译错误——这是「深度嵌套加字段静默丢失」的护栏，靠纪律维持。
+2. **mapper = DTO 的 companion factory**（`XxxRes.of(...)`）：代码贴着 DTO，加字段时 IDE 直接在 factory 标红；不再新增独立 `XxxApiMappers` object（存量迁过来）。
+3. 聚合组装仍由调用方批量取好传入：先根分页 → 收集 IDs 批量查 items/counts/关联 → Map 组装，禁循环 findById。
+4. **观众相关变换（如手机号 mask）用值类型收口，策略全系统一处**。不用自定义 serializer：serializer 是 `(value, provider)` 纯函数，拿不到请求/用户；构造期决策把「观众」消在 DTO 创建处，序列化层零魔法（mask 发生在 wire 加密前，天然不冲突）：
 
-### 3.3 Controller / ActionSpec 迁移规则（与 pilot 相同，三处强调）
+   ```kotlin
+   @JvmInline
+   value class PhoneRes(private val value: String) {
+       companion object {
+           /** mask 策略唯一落点；展示语义，不进 entity/repo 层（raw 手机号短信/风控还要用）。 */
+           fun of(raw: String?, viewer: Viewer): PhoneRes? =
+               raw?.let { PhoneRes(if (viewer.seeRawPhone) it else mask(it)) }
+           private fun mask(p: String) = p.take(3) + "****" + p.takeLast(4)
+       }
+   }
 
-1. Controller 模板 = `DemoController`：`@RequestMapping("/rpc/customer/core")` + 每 action `@PostMapping("/{actionName}")` + `ActionContextFactory.fromRpc` + mutation 包 `GlobalTxRunner` + `Envelope.ok(data).copy(reqId=...)`；不 import repo/handler。请求体为泛型 `ApiRequestBody<T>`（input 类型由 endpoint 签名声明、Spring 边界反序列化，必填用 `requireInput()`，无入参用 `NoInput`；实施修订 2026-10-06）。
-2. **ActionSpec 的唯一依据是现有 DataFetcher 的 `fromDfe(...)` 实参**：迁移某 action 时，逐字段把该 fetcher 里 `ctxProvider.fromDfe(dfe, requireAppId=…, requireActorType=…, requireLocale=…)` 的实参搬进 `ActionSpec`（映射：requireActorType=ACTOR_CUSTOMER → CUSTOMER；null → NONE 或 INSTALL_OR_CUSTOMER 按 token 语义），并在该模块测试里加一张「actionName ↔ fromDfe 实参」对照断言。**禁止凭感觉填**。
-3. **命名一致性测试**（每模块）：反射扫描该模块全部 ActionSpec——path 段 `m_` ⇔ `isMutation=true`；module 段 = 所属模块；resource/action 在 rpc-rollout-client.md §1 表内。
+   /** 观众可见性：从 ActionContext 派生的唯一判定点（新增可见性维度只改这里）。 */
+   data class Viewer(val seeRawPhone: Boolean) {
+       companion object {
+           fun of(ctx: ActionContext): Viewer =
+               Viewer(seeRawPhone = ctx.actor?.actorType == ActorTypes.MANAGER)
+       }
+   }
+
+   data class CustomerDetailRes(
+       val id: UUID,
+       val nickname: String,
+       val phone: PhoneRes?,                       // mask 与否由构造时的 viewer 决定
+       val items: List<CustomerItemRes>,
+       val createdAt: String,
+   ) {
+       companion object {
+           /** viewer 必填：漏传是编译错误，不静默。聚合由调用方批量取好传入。 */
+           fun of(customer: Customer, items: List<CustomerItem>, viewer: Viewer): CustomerDetailRes =
+               CustomerDetailRes(
+                   id = customer.id,
+                   nickname = customer.nickname,
+                   phone = PhoneRes.of(customer.phone, viewer),
+                   items = items.map(CustomerItemRes::of),
+                   createdAt = customer.createdAt.toString(),
+               )
+       }
+   }
+   ```
+
+   演进：若「观众相关变换」将来泛滥（多角色 × 多字段 × 频繁新增），再评估 `@JsonView` + `provider.getActiveView()` 通道（Spring 原生支持 handler 级声明；需先实测 DEFAULT_VIEW_INCLUSION 在 Jackson 3 的默认值，激活 view 后未标注属性可能被整体排除）。
+5. **配套 repo 纪律**：每个 Res 对应固定全字段 Fetcher，不做动态裁剪——service 从全字段改成部分字段时，mapper 读 unloaded 属性是**显式抛错**，不是静默错值。
+
+### 3.3 Controller 迁移规则（2026-10-06 实施修订：ActionSpec 撤销，常量上 controller）
+
+1. **actionName 常量定义在 controller 的 companion object**（`const val SCAN_GET_BY_ID = "q_ai_scan_getById"`，Kotlin const 可直接用于注解），`@PostMapping` / `@Operation(operationId=)` / `fromRpc` 三处引用同一常量；8 个 `XxxSpecs.kt` 删除。
+2. fromRpc 签名：`fromRpc(request, actionName, isMutation: Boolean? = null, body, requireActorType = CUSTOMER, requireProjectId = true)`——actionName/isMutation 的唯一依据仍是迁移对象 DataFetcher 的 `fromDfe(...)` 实参，逐字段核对，**禁止凭感觉填**；isMutation 省略时由 actionName 的 `m_` 前缀兜底；**body 整体透传**（factory 自取 meta，并把 raw RequestMeta 挂上 ActionContext：`ctx.meta.xxx` 直读透传字段，新增 meta 字段只改 RequestMeta 一处；有校验/归一逻辑的字段仍由 factory 出派生字段）。
+3. 请求体为泛型 `ApiRequestBody<T>`（input 类型由 endpoint 签名声明、Spring 边界反序列化，必填 `requireInput()`，无入参 `NoInput`）；mutation 包 `GlobalTxRunner`；不 import repo/handler。
+4. **命名一致性测试**（每模块，缩减）：反射扫 controller 的 @PostMapping path——四段格式合法、`m_` 前缀 ⇔ endpoint 的 isMutation 实参、module 段 = 所属模块、action 在 rpc-rollout-client.md §1 表内。
+5. 限流样板（install 层 → IP 层 → legacy、拒绝不退款）目前三处手抄——**暂不动**，等 customer/install 并入 auth 的重构落地后统一收口成共享机制。
 
 ## 4. 阶段计划（与客户端 R0–R5 对齐）
 
@@ -76,7 +119,7 @@ S1–S6 未完成的先完成；已完成的把 §2 的 2/3/4 三处修订补进
 
 3 个 subagent 上限用满：install / customer+auth 两个 WP 并行 + 第三个做共享测试基建（错误码矩阵）。
 
-- **ActionSpec 对照是本阶段核心**：`m_install_*` 全部为 install-token/bootstrap 语义（`fromDfe` 实参逐个核对，特别是 createInstall 的匿名允许、refresh 的 `requireActorType=null`——access token 过期不拦截 refresh，refreshToken 在 input）；`m_auth_login` 的 `mustGetLoginInstallId` 语义进 controller 断言；`q_auth_session_me` = CUSTOMER。
+- **requireActorType 对照是本阶段核心**：`m_install_*` 全部为 install-token/bootstrap 语义（`fromDfe` 实参逐个核对，特别是 createInstall 的匿名允许、refresh 的 `requireActorType=null`——access token 过期不拦截 refresh，refreshToken 在 input）；`m_auth_login` 的 `mustGetLoginInstallId` 语义进 controller 断言；`q_auth_session_me` = CUSTOMER。
 - 语义红线：IP 限流（customer 创建）、install/customer 绑定、token iid、账号合并行为不得改变；refresh 的 401003、install 的 403001/403002/409001/404001 错误码逐一保留。
 - 全局事务：login/refresh/logout/createAnonymous/createInstall/updateInstall 保留现有 `GlobalTxRunner` 边界（对照各 fetcher）。
 - 验收：身份链路合约测试 + 与客户端 R2 联调（含明文降级下引导链可用）→ **gate 2**。
