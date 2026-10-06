@@ -30,19 +30,17 @@ data class ActionContext(
     val country: String? = null,
     val clientPlatform: ClientPlatform? = null,
     val clientIp: String? = null,
-    /** 安装标识（x-install-id header）。客户端生成，仅记录用于分析，不用于鉴权。 */
-    val installId: String? = null,
-    /** token 的 iid claim（可信 installId）。install token 或 customer token 携带；无则 null。用于关系维护/updateInstall。 */
+    /** token 的 iid claim（可信 installId）。install token 与 customer token 都可能携带。无 token iid 即无 install 上下文。 */
     val tokenInstallId: UUID? = null,
     /** token 的 type claim：5=install / 10=customer / 20=manager。无 token 时 null。 */
     val tokenType: Int? = null,
-    /** 请求 id（客户端 x-req-id 原值，或服务端生成的 UUID；客户端 x-req-id 或服务端生成，响应头 x-req-id 返回）。 */
+    /** 请求 id（meta.reqId 原值，或服务端生成的 UuidV7；响应 Envelope.reqId 回传）。 */
     val requestId: String? = null,
     /** Cloudflare bot score（cf-bot-score header，1-99，越低越像 bot）。仅记录用途。 */
     val botScore: Int? = null,
-    /** 客户端版本（x-app-version / x-ota-version）。仅记录用途，格式软校验。 */
+    /** 客户端版本（meta.appVersion / meta.otaVersion）。仅记录用途，格式软校验。 */
     val appVersion: String? = null,
-    /** x-ota-version：热更新版本号，形如 `1-23-3`（runtimeVersion-buildNumber-otaSeq）。原样透传。 */
+    /** meta.otaVersion：热更新版本号，形如 `1-23-3`（runtimeVersion-buildNumber-otaSeq）。原样透传。 */
     val otaVersion: String? = null,
     // ===== 操作元信息 =====
     val actionName: String? = null,
@@ -79,18 +77,18 @@ data class ActionContext(
         "cty" to country,
     )
 
-    fun mustGetProjectId() = projectId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "x-project-id is required")
+    fun mustGetProjectId() = projectId ?: throw ApiError(ErrorCode.INVALID_REQUEST, "projectId is required")
     fun mustGetActorId() = actorId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
 
     /**
-     * 可信 installId（token iid）。Customer 业务写入统一走此，绝不用可伪造的 x-install-id。
+     * 可信 installId（token iid）。客户写入统一走此，唯一信源（v1.0.6 起不可信 header 已删）。
      * createAnonymous / refresh 也走此：只要求携带有效可信 iid（token 类型不限——install token 或
      * 含 iid 的 customer token 皆可），无有效 iid → UNAUTHORIZED。
      * 无有效 token iid → UNAUTHORIZED（缺少可信 install 上下文，拒绝写入）。
      */
     fun mustGetTokenInstallId() = installIdOrNull() ?: throw ApiError(ErrorCode.UNAUTHORIZED, "trusted install id required")
 
-    /** token 的可信 iid。v1.0.6 起 legacy fallback（x-install-id header 回退）已删除，无 iid 即拒绝写入。 */
+    /** token 的可信 iid。v1.0.6 起不可信 install-id 信源已删，无 iid 即拒绝写入。 */
     fun installIdOrNull(): UUID? = tokenInstallId
 
     /**

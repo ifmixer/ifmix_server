@@ -3,7 +3,7 @@ package com.ifmix.core.api.infra.auth
 import com.ifmix.core.api.entity.common.ActorTypes
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
-import com.ifmix.core.api.infra.http.RequestHeaders
+import com.ifmix.core.api.infra.http.RequestMeta
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -14,6 +14,7 @@ import java.util.UUID
 
 /**
  * RequestParser 单测：解析 + 校验（抛错）全在 parser 内。
+ * 输入是 [RequestMeta]（由 WireCryptoFilter 挂到 request attribute），不再是 x-* 请求头。
  */
 class RequestParserTest {
     private val jwt = mock<AuthJwtService>()
@@ -23,14 +24,18 @@ class RequestParserTest {
     private val projectId = "test-app"
     private val actorId = "00000000-0000-0000-0000-000000000001"
 
-    private fun req(vararg headers: Pair<String, String>) =
-        MockHttpServletRequest().apply { headers.forEach { (k, v) -> addHeader(k, v) } }
+    /** 构造带 meta 的 request（模拟 WireCryptoFilter 已挂 attribute）。 */
+    private fun req(meta: RequestMeta? = null, vararg headers: Pair<String, String>) =
+        MockHttpServletRequest().apply {
+            headers.forEach { (k, v) -> addHeader(k, v) }
+            meta?.let { setAttribute(RequestMeta.ATTR_META, it) }
+        }
 
     private fun bearer(v: VerifiedToken?) = whenever(jwt.verify("tok")).thenReturn(v)
 
     // ── projectId ──
     @Test fun `projectId valid`() {
-        assertThat(parser.parseProjectId(req(RequestHeaders.PROJECT_ID to projectId), required = true)).isEqualTo(projectId)
+        assertThat(parser.parseProjectId(req(RequestMeta(projectId = projectId)), required = true)).isEqualTo(projectId)
     }
     @Test fun `projectId required missing throws required`() {
         val ex = assertThrows<ApiError> { parser.parseProjectId(req(), required = true) }
@@ -38,16 +43,26 @@ class RequestParserTest {
         assertThat(ex.message).contains("required")
     }
     @Test fun `projectId malformed throws invalid format (even not required)`() {
-        val ex = assertThrows<ApiError> { parser.parseProjectId(req(RequestHeaders.PROJECT_ID to "1bad"), required = false) }
+        val ex = assertThrows<ApiError> { parser.parseProjectId(req(RequestMeta(projectId = "1bad")), required = false) }
         assertThat(ex.message).contains("invalid")
     }
     @Test fun `projectId absent not required returns null`() {
         assertThat(parser.parseProjectId(req(), required = false)).isNull()
     }
+    @Test fun `projectId result cached on request`() {
+        val r = req(RequestMeta(projectId = projectId))
+        assertThat(parser.parseProjectId(r, required = true)).isEqualTo(projectId)
+        // 第二次直接读缓存
+        r.setAttribute(RequestMeta.ATTR_META, RequestMeta(projectId = "tampered"))
+        assertThat(parser.parseProjectId(r, required = true)).isEqualTo(projectId)
+    }
 
     // ── clientPlatform ──
     @Test fun `clientPlatform malformed throws`() {
-        assertThrows<ApiError> { parser.parseClientPlatform(req(RequestHeaders.CLIENT_PLATFORM to "BOGUS")) }
+        assertThrows<ApiError> { parser.parseClientPlatform(req(RequestMeta(clientPlatform = "BOGUS"))) }
+    }
+    @Test fun `clientPlatform valid normalized`() {
+        assertThat(parser.parseClientPlatform(req(RequestMeta(clientPlatform = "android")))).isNotNull
     }
     @Test fun `clientPlatform absent null`() {
         assertThat(parser.parseClientPlatform(req())).isNull()
@@ -55,93 +70,98 @@ class RequestParserTest {
 
     // ── locale / currency / country：规范化 + 校验，非法抛 ──
     @Test fun `currency normalized to uppercase`() {
-        assertThat(parser.parseCurrency(req(RequestHeaders.CURRENCY to "usd"))).isEqualTo("USD")
+        assertThat(parser.parseCurrency(req(RequestMeta(currency = "usd")))).isEqualTo("USD")
     }
     @Test fun `currency malformed throws`() {
-        assertThrows<ApiError> { parser.parseCurrency(req(RequestHeaders.CURRENCY to "usdd")) }
+        assertThrows<ApiError> { parser.parseCurrency(req(RequestMeta(currency = "usdd"))) }
     }
     @Test fun `country normalized to uppercase`() {
-        assertThat(parser.parseCountry(req(RequestHeaders.COUNTRY to "cn"))).isEqualTo("CN")
+        assertThat(parser.parseCountry(req(RequestMeta(country = "cn")))).isEqualTo("CN")
     }
     @Test fun `country malformed throws`() {
-        assertThrows<ApiError> { parser.parseCountry(req(RequestHeaders.COUNTRY to "CHN")) }
+        assertThrows<ApiError> { parser.parseCountry(req(RequestMeta(country = "CHN"))) }
     }
     @Test fun `locale normalized to supported set`() {
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-cn"))).isEqualTo("zh-CN")
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "en-US"))).isEqualTo("en")
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "pt-BR"))).isEqualTo("pt")
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ja-JP"))).isEqualTo("ja")
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "zh-cn")))).isEqualTo("zh-CN")
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "en-US")))).isEqualTo("en")
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "pt-BR")))).isEqualTo("pt")
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "ja-JP")))).isEqualTo("ja")
     }
     @Test fun `locale chinese simplified vs traditional`() {
         // 简体
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh"))).isEqualTo("zh-CN")
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-Hans"))).isEqualTo("zh-CN")
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-SG"))).isEqualTo("zh-CN")
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "zh")))).isEqualTo("zh-CN")
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "zh-Hans")))).isEqualTo("zh-CN")
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "zh-SG")))).isEqualTo("zh-CN")
         // 繁体
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-TW"))).isEqualTo("zh-TW")
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-HK"))).isEqualTo("zh-TW")
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "zh-Hant-HK"))).isEqualTo("zh-TW")
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "zh-TW")))).isEqualTo("zh-TW")
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "zh-HK")))).isEqualTo("zh-TW")
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "zh-Hant-HK")))).isEqualTo("zh-TW")
     }
     @Test fun `locale unsupported returns null (not throw)`() {
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ko"))).isNull()
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ru-RU"))).isNull()
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "ko")))).isNull()
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "ru-RU")))).isNull()
     }
-    @Test fun `optional header absent returns null`() {
+    @Test fun `optional field absent returns null`() {
         assertThat(parser.parseCurrency(req())).isNull()
     }
 
     // ── version 原样透传（不校验格式，任何环境都不抛）──
-    @Test fun `version headers pass through as-is`() {
-        assertThat(parser.parseAppVersion(req(RequestHeaders.APP_VERSION to "0.1.1"))).isEqualTo("0.1.1")
-        // x-ota-version 形如 runtimeVersion-buildNumber-otaSeq，照样透传
-        assertThat(parser.parseOtaVersion(req(RequestHeaders.OTA_VERSION to "1-23-3"))).isEqualTo("1-23-3")
+    @Test fun `version fields pass through as-is`() {
+        assertThat(parser.parseAppVersion(req(RequestMeta(appVersion = "0.1.1")))).isEqualTo("0.1.1")
+        // otaVersion 形如 runtimeVersion-buildNumber-otaSeq，照样透传
+        assertThat(parser.parseOtaVersion(req(RequestMeta(otaVersion = "1-23-3")))).isEqualTo("1-23-3")
         // 任意格式都不校验
-        assertThat(parser.parseAppVersion(req(RequestHeaders.APP_VERSION to "v1.2-beta"))).isEqualTo("v1.2-beta")
+        assertThat(parser.parseAppVersion(req(RequestMeta(appVersion = "v1.2-beta")))).isEqualTo("v1.2-beta")
         assertThat(parser.parseAppVersion(req())).isNull()
     }
 
     // ── 线上（strict=false）：格式非法不报错，返回 null（打 WARN log）──
     @Test fun `lenient mode does not throw on bad format, returns null`() {
-        assertThat(lenient.parseCurrency(req(RequestHeaders.CURRENCY to "usdd"))).isNull()
-        assertThat(lenient.parseCountry(req(RequestHeaders.COUNTRY to "CHN"))).isNull()
-        assertThat(lenient.parseLocale(req(RequestHeaders.LOCALE to "!!bad"))).isNull()
+        assertThat(lenient.parseCurrency(req(RequestMeta(currency = "usdd")))).isNull()
+        assertThat(lenient.parseCountry(req(RequestMeta(country = "CHN")))).isNull()
+        assertThat(lenient.parseLocale(req(RequestMeta(locale = "!!bad")))).isNull()
     }
     @Test fun `lenient mode still returns valid values normally`() {
-        assertThat(lenient.parseCurrency(req(RequestHeaders.CURRENCY to "usd"))).isEqualTo("USD")
-        assertThat(lenient.parseLocale(req(RequestHeaders.LOCALE to "zh-cn"))).isEqualTo("zh-CN")
+        assertThat(lenient.parseCurrency(req(RequestMeta(currency = "usd")))).isEqualTo("USD")
+        assertThat(lenient.parseLocale(req(RequestMeta(locale = "zh-cn")))).isEqualTo("zh-CN")
     }
     @Test fun `strict mode throws on malformed locale`() {
         // 无法解析出 language subtag → 格式非法 → strict 抛
-        assertThrows<ApiError> { parser.parseLocale(req(RequestHeaders.LOCALE to "!!bad")) }
+        assertThrows<ApiError> { parser.parseLocale(req(RequestMeta(locale = "!!bad"))) }
     }
     @Test fun `unsupported-but-valid locale returns null even in strict (not a format bug)`() {
         // ko/ru 是合法 BCP 47，只是不支持 → 任何环境都 null，不抛
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ko"))).isNull()
-        assertThat(parser.parseLocale(req(RequestHeaders.LOCALE to "ru-RU"))).isNull()
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "ko")))).isNull()
+        assertThat(parser.parseLocale(req(RequestMeta(locale = "ru-RU")))).isNull()
     }
 
-    // ── parseActor：抛错全在此 ──
+    // ── parseActor：抛错全在此（token 来自 meta.accessToken）──
     @Test fun `no token and requireActorType (login required) throws UNAUTHORIZED`() {
-        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId), requireActorType = ActorTypes.CUSTOMER) }
+        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestMeta(projectId = projectId)), requireActorType = ActorTypes.CUSTOMER) }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
     @Test fun `no token and not required returns null`() {
-        assertThat(parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId), requireActorType = null)).isNull()
+        assertThat(parser.parseActor(req(RequestMeta(projectId = projectId)), requireActorType = null)).isNull()
     }
     @Test fun `valid token returns Actor`() {
         bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.CUSTOMER, anonymous = true))
-        val a = parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER)!!
+        val a = parser.parseActor(req(RequestMeta(projectId = projectId, accessToken = "tok"), "Authorization" to "ignored"), requireActorType = ActorTypes.CUSTOMER)!!
         assertThat(a.actorId).isEqualTo(UUID.fromString(actorId))
         assertThat(a.anonymous).isTrue()
     }
+    @Test fun `accessToken with Bearer prefix is accepted`() {
+        bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.CUSTOMER, anonymous = true))
+        val a = parser.parseActor(req(RequestMeta(projectId = projectId, accessToken = "Bearer tok")), requireActorType = ActorTypes.CUSTOMER)!!
+        assertThat(a.actorId).isEqualTo(UUID.fromString(actorId))
+    }
     @Test fun `expired token throws TOKEN_EXPIRED regardless of require`() {
         whenever(jwt.verify("tok")).thenThrow(TokenExpiredException())
-        val ex = assertThrows<ApiError> { parser.parseActor(req("Authorization" to "Bearer tok"), requireActorType = null) }
+        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestMeta(accessToken = "tok")), requireActorType = null) }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.TOKEN_EXPIRED)
     }
     @Test fun `invalid token throws UNAUTHORIZED`() {
         bearer(null)
-        val ex = assertThrows<ApiError> { parser.parseActor(req("Authorization" to "Bearer tok"), requireActorType = null) }
+        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestMeta(accessToken = "tok")), requireActorType = null) }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
 
@@ -155,7 +175,7 @@ class RequestParserTest {
         ))
 
         assertThat(parser.parseActor(
-            req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"),
+            req(RequestMeta(projectId = projectId, accessToken = "tok")),
             requireActorType = null,
         )).isNull()
     }
@@ -171,7 +191,7 @@ class RequestParserTest {
 
         val ex = assertThrows<ApiError> {
             parser.parseActor(
-                req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"),
+                req(RequestMeta(projectId = projectId, accessToken = "tok")),
                 requireActorType = ActorTypes.CUSTOMER,
             )
         }
@@ -179,23 +199,23 @@ class RequestParserTest {
     }
 
     @Test fun `token aud mismatch (cross-app) throws UNAUTHORIZED`() {
-        // token.aud != header x-project-id → INVALID → 401000（防跨 app 重放）
+        // token.aud != meta.projectId → UNAUTHORIZED（防跨 app 重放）
         bearer(VerifiedToken(actorId = actorId, projectId = "other-app", actorType = ActorTypes.CUSTOMER))
         val ex = assertThrows<ApiError> {
-            parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER)
+            parser.parseActor(req(RequestMeta(projectId = projectId, accessToken = "tok")), requireActorType = ActorTypes.CUSTOMER)
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
     @Test fun `wrong actorType throws FORBIDDEN`() {
         bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.MANAGER))
-        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok"), requireActorType = ActorTypes.CUSTOMER) }
+        val ex = assertThrows<ApiError> { parser.parseActor(req(RequestMeta(projectId = projectId, accessToken = "tok")), requireActorType = ActorTypes.CUSTOMER) }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
     }
 
     // ── peekActorId：不抛 ──
     @Test fun `peekActorId returns actorId for valid, null otherwise`() {
         bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.CUSTOMER))
-        assertThat(parser.peekActorId(req(RequestHeaders.PROJECT_ID to projectId, "Authorization" to "Bearer tok")))
+        assertThat(parser.peekActorId(req(RequestMeta(projectId = projectId, accessToken = "tok"))))
             .isEqualTo(UUID.fromString(actorId))
         assertThat(parser.peekActorId(req())).isNull()
     }

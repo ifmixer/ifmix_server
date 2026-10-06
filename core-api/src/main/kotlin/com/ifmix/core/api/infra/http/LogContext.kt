@@ -19,19 +19,19 @@ object LogContext {
     private const val ATTR_REQUEST_ID = "com.ifmix.logContext.requestId"
 
     /**
-     * 请求入口（filter）调用：取 reqId（header x-req-id 有值就直接用，没有则生成 UuidV7）存到 request 上，
-     * 并先把 `rid=…` 绑到当前线程，保证构造出 ActionContext 之前的日志也有 rid。返回 reqId 供写响应头。
+     * 请求入口（filter）调用：取 reqId（wire meta.reqId 有值就直接用，没有则生成 UuidV7）存到 request 上，
+     * 并先把 `rid=…` 绑到当前线程，保证构造出 ActionContext 之前的日志也有 rid。返回 reqId 供日志/信封回传。
      */
     fun start(request: HttpServletRequest): String {
-        val rid = request.getHeader(RequestHeaders.REQ_ID)?.let(::sanitize)?.takeIf { it.isNotEmpty() }
+        val rid = (request.getAttribute(RequestMeta.ATTR_META) as? RequestMeta)?.reqId
+            ?.filterNot { it.isISOControl() }?.trim()?.take(MAX_LEN)?.takeIf { it.isNotEmpty() }
             ?: com.ifmix.core.api.infra.db.UuidV7.generate().toString()
         request.setAttribute(ATTR_REQUEST_ID, rid)
         MDC.put("rid", rid)
         return rid
     }
 
-    /** 客户端值原样采用，只做最低限度清洗：去控制字符（换行等，防伪造日志行/响应头注入）、去首尾空白、限长。 */
-    private fun sanitize(raw: String): String = raw.filterNot { it.isISOControl() }.trim().take(MAX_LEN)
+    /** 客户端 meta.reqId 原样采用，只做最低限度清洗：去控制字符（换行等，防伪造日志行注入）、去首尾空白、限长。 */
     private const val MAX_LEN = 128
 
     /** 本请求的 reqId（filter 未经过时为 null）。 */

@@ -19,9 +19,6 @@ import tools.jackson.core.JacksonException
 import tools.jackson.databind.ObjectMapper
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
-import java.util.Collections
-import java.util.Enumeration
-import kotlin.math.abs
 
 /**
  * `x-wirep-version: 2` 请求/响应 body 加密（RFC 9180 HPKE，线格式见 [WireCrypto]）。
@@ -33,13 +30,20 @@ import kotlin.math.abs
  * - `required`（默认，线上）：`/customer/core/…（GraphQL 端点）` 请求必须加密——明文/版本不符 → 明文 400 + [ErrorCode.WIRE_REQUIRED]；
  *   密文解密失败 → 明文 400 + [ErrorCode.WIRE_DECRYPT_FAILED]。`/customer/core/…（GraphQL 端点）` 之外的路径
  *   （webhook / wellknown / actuator / docs）不加密，原样放行。
- * - `optional`（仅 local/dev 调试）：明文请求原样放行（带 [RequestHeaders.REQ_META] 时合并为伪 header，见下），加密请求照常处理。
+ * - `optional`（仅 local/dev 调试）：明文请求原样放行（带 [RequestHeaders.REQ_META] 时解析为 [RequestMeta]
+ *   挂到 request attribute 上，见下），加密请求照常处理。
  *
- * **header 进 body（wire 设计 §9 v2.1）**：加密 payload 的 JSON 为 `{meta, authorization, query, variables}`；
- * 解密后本 filter 把 `meta`（header 名为 key，仅白名单键）与顶层 `authorization`（完整 header 值，如
- * `Bearer xxx`）注入为伪 header（body 值优先于真实 header），AuthInterceptor / RequestParser 无感知。
- * 白名单外的 meta 键一律忽略——CF 注入头（cf-bot-score、真实 IP）与 `x-req-id` 永远只能来自真实 header，
- * 不会被 body 伪造。payload 违反结构（meta 非对象 / 值非字符串 / 超长）按 400003 拒绝。
+ * **meta 进 body（wire 设计 §9）**：加密 payload 的 JSON 为 `{meta, authorization, query, variables}`；
+ * meta 段是 [RequestMeta] 结构（key 为普通字段名：`projectId` / `locale` / `clientPlatform` …，**不是**
+ * header 名，全部字符串值，未知字段忽略）。解密后本 filter 把顶层 `authorization` 剥掉 `Bearer ` 前缀
+ * 存入 `RequestMeta.accessToken`，连同 meta 段一起合并为一个 [RequestMeta] 实例挂到 request attribute
+ *（[RequestParser.ATTR_META]），RequestParser 直接取对象——**不再回写请求头、不做伪 header**；
+ * 解密后的内层 body 只剩 `query`/`variables` 等剩余键。meta 段整体大小超限（解压后 > [MAX_META_BYTES]）
+ * 按 400003 拒绝；authorization 必须是字符串。
+ *
+ * 明文 dev 通道（optional 模式）：`x-req-meta` header 值为同一个 [RequestMeta] JSON（key 同上，不含
+ * 凭证——token 走标准 `Authorization` header，RequestParser 解析时 meta.accessToken 优先、缺省回落
+ * Authorization）。超长同样拒绝。`x-req-id` 永远只能来自真实 header。
  *
  * 挂在最外层（[RequestLoggingFilter] +5 之外）：内层 filter / 日志 / 业务看到的都是明文，业务零改动。
  * - 设备时钟偏差 > 5min 只 warn 不拒绝（ts 仅用于观测，不做防重放）。
@@ -78,19 +82,19 @@ class WireCryptoFilter(
                 return
             }
         } else {
-            // optional 模式 + 明文：原样放行（本地 curl 调试）。带 x-req-meta 时解析并合并为伪 header
-            //（加密请求不需要它——meta 在加密 body 里，见 extractMeta）。
+            // optional 模式 + 明文：原样放行。带 x-req-meta 时解析为 RequestMeta 挂到 request attribute
+            //（加密请求不需要它——meta 在加密 body 里，见 parsePayloadMeta）。
             val rawMeta = request.getHeader(RequestHeaders.REQ_META)
             if (rawMeta.isNullOrBlank()) {
                 chain.doFilter(request, response)
             } else {
                 val meta = try {
-                    parseMetaObject(rawMeta)
-                } catch (e: BadMetaException) {
+                    mapper.readValue(rawMeta, RequestMeta::class.java)
+                } catch (e: JacksonException) {
                     reject(response, ErrorCode.INVALID_REQUEST, "invalid ${RequestHeaders.REQ_META}: ${e.message}")
                     return
                 }
-                chain.doFilter(MetaHeaderRequest(request, meta), response)
+                chain.doFilter(WithMeta(request, meta), response)
             }
             return
         }
@@ -103,10 +107,10 @@ class WireCryptoFilter(
             return
         }
         val skewMs = System.currentTimeMillis() - opened.clientTsMs
-        if (abs(skewMs) > MAX_SKEW_MS) log.warn("wire.clock.skew path={} kid={} skewMs={}", request.requestURI, opened.kid, skewMs)
+        if (kotlin.math.abs(skewMs) > MAX_SKEW_MS) log.warn("wire.clock.skew path={} kid={} skewMs={}", request.requestURI, opened.kid, skewMs)
 
         val (meta, innerBody) = try {
-            splitMeta(opened.body)
+            parsePayloadMeta(opened.body)
         } catch (e: BadMetaException) {
             log.warn("wire.payload.bad path={} kid={} reason={}", request.requestURI, opened.kid, e.message)
             reject(response, ErrorCode.WIRE_DECRYPT_FAILED, "bad encrypted payload")
@@ -131,68 +135,51 @@ class WireCryptoFilter(
     }
 
     /**
-     * 解密后 payload（`{meta, authorization, query, variables}`）拆分：取白名单内 meta + 顶层
-     * authorization 为伪 header 映射，剩余键（query/variables/operationName/…）原样重序列化为内层 body。
-     * 结构违规（非 JSON 对象 / meta 非对象 / 值非字符串 / 超长）抛 [BadMetaException] → 400003。
+     * 解密后 payload（`{meta, authorization, query, variables}`）拆分：meta 段绑定为 [RequestMeta]
+     *（Jackson 原生映射，未知字段忽略），顶层 `authorization` 剥 `Bearer ` 前缀存入 [RequestMeta.accessToken]；
+     * 剩余键（query/variables/operationName/…）原样重序列化为内层 body。
+     * 结构违规（payload 非对象 / meta 非对象 / 授权非字符串 / meta 段超长）抛 [BadMetaException] → 400003。
      */
-    @Suppress("UNCHECKED_CAST")
-    private fun splitMeta(body: ByteArray): Pair<Map<String, String>, ByteArray> {
+    private fun parsePayloadMeta(body: ByteArray): Pair<RequestMeta, ByteArray> {
         val root: MutableMap<String, Any> = try {
             mapper.readValue(body, MutableMap::class.java) as MutableMap<String, Any>
         } catch (_: JacksonException) {
             throw BadMetaException("payload is not a JSON object")
         }
-        val meta = LinkedHashMap<String, String>()
-        when (val rawMeta = root.remove("meta")) {
-            null -> {}
-            is Map<*, *> -> collectMeta(meta, rawMeta)
+        val meta = when (val rawMeta = root.remove("meta")) {
+            null -> RequestMeta()
+            is Map<*, *> -> {
+                // meta 段（key+值）总大小上限，防把 meta 当垃圾场（量级对齐 Tomcat 8KB 请求头区）
+                val size = rawMeta.entries.sumOf { it.key.toString().length + it.value.toString().length }
+                if (size > MAX_META_BYTES) throw BadMetaException("meta too large")
+                try {
+                    mapper.convertValue(rawMeta, RequestMeta::class.java)
+                } catch (e: JacksonException) {
+                    // 值非字符串（如嵌套对象/数字）→ 结构违规，与 x-req-meta 通道一致按 400003 拒绝
+                    throw BadMetaException("meta value must be a string")
+                }
+            }
             else -> throw BadMetaException("meta must be an object")
         }
-        when (val auth = root.remove("authorization")) {
-            null -> {}
-            is String -> if (auth.isNotEmpty()) meta["authorization"] = auth
+        val auth = root.remove("authorization")
+        val accessToken = when (auth) {
+            null -> meta.accessToken
+            is String -> auth.trim().removePrefix("Bearer ").trim().takeIf { it.isNotEmpty() } ?: meta.accessToken
             else -> throw BadMetaException("authorization must be a string")
         }
-        return meta to mapper.writeValueAsBytes(root)
-    }
-
-    /** `x-req-meta` header 值（明文 dev 通道）解析为伪 header 映射；结构与超长约束同 [splitMeta]。 */
-    @Suppress("UNCHECKED_CAST")
-    private fun parseMetaObject(raw: String): Map<String, String> {
-        if (raw.length > MAX_META_CHARS) throw BadMetaException("meta too large")
-        val root: MutableMap<String, Any> = try {
-            mapper.readValue(raw, MutableMap::class.java) as MutableMap<String, Any>
-        } catch (_: JacksonException) {
-            throw BadMetaException("not a JSON object")
-        }
-        val meta = LinkedHashMap<String, String>()
-        collectMeta(meta, root)
-        return meta
-    }
-
-    /** 按 [META_ALLOWED] 白名单收集（key 不区分大小写，非白名单键忽略）；值必须全为字符串；超长拒绝。 */
-    private fun collectMeta(into: MutableMap<String, String>, raw: Map<*, *>) {
-        var size = 0
-        for ((k, v) in raw) {
-            val name = k.toString().lowercase()
-            if (name !in META_ALLOWED) continue
-            if (v !is String) throw BadMetaException("meta value must be a string: $name")
-            size += name.length + v.length
-            if (size > MAX_META_CHARS) throw BadMetaException("meta too large")
-            into[name] = v
-        }
+        val merged = if (accessToken == null) meta else meta.copy(accessToken = accessToken)
+        return merged to mapper.writeValueAsBytes(root)
     }
 
     /** meta/payload 结构违规。 */
     private class BadMetaException(message: String) : RuntimeException(message)
 
-    /** 明文 body 替换原密文；Content-Type/Length 还原为 JSON（客户端只加密 JSON body）；meta 注入为伪 header（body 值优先）。 */
+    /** 解密后 body 替换原密文；Content-Type/Length 还原为 JSON（客户端只加密 JSON body）。 */
     private class DecryptedRequest(
         req: HttpServletRequest,
         private val body: ByteArray,
-        private val meta: Map<String, String>,
+        private val meta: RequestMeta,
     ) : HttpServletRequestWrapper(req) {
-        private fun metaValue(name: String): String? = meta[name.lowercase()]
         override fun getInputStream(): ServletInputStream {
             val input = ByteArrayInputStream(body)
             return object : ServletInputStream() {
@@ -211,26 +198,16 @@ class WireCryptoFilter(
         override fun getHeader(name: String): String? = when {
             name.equals(HttpHeaders.CONTENT_TYPE, true) -> contentType
             name.equals(HttpHeaders.CONTENT_LENGTH, true) -> body.size.toString()
-            else -> metaValue(name) ?: super.getHeader(name)
+            else -> super.getHeader(name)
         }
-        override fun getHeaders(name: String): Enumeration<String> = when {
-            name.equals(HttpHeaders.CONTENT_TYPE, true) || name.equals(HttpHeaders.CONTENT_LENGTH, true) ->
-                Collections.enumeration(listOf(getHeader(name)))
-            else -> metaValue(name)?.let { Collections.enumeration(listOf(it)) } ?: super.getHeaders(name)
-        }
-        override fun getHeaderNames(): Enumeration<String> =
-            Collections.enumeration(super.getHeaderNames().toList() + meta.keys)
+        override fun getAttribute(name: String): Any? =
+            if (name == RequestMeta.ATTR_META) meta else super.getAttribute(name)
     }
 
-    /** 明文请求的 `x-req-meta` 合并包装：meta 值优先于同名真实 header（仅白名单键）。 */
-    private class MetaHeaderRequest(req: HttpServletRequest, private val meta: Map<String, String>) :
-        HttpServletRequestWrapper(req) {
-        private fun metaValue(name: String): String? = meta[name.lowercase()]
-        override fun getHeader(name: String): String? = metaValue(name) ?: super.getHeader(name)
-        override fun getHeaders(name: String): Enumeration<String> =
-            metaValue(name)?.let { Collections.enumeration(listOf(it)) } ?: super.getHeaders(name)
-        override fun getHeaderNames(): Enumeration<String> =
-            Collections.enumeration(super.getHeaderNames().toList() + meta.keys)
+    /** 明文 dev 通道的 `x-req-meta`：解析出的 [RequestMeta] 挂到 request attribute（后续 RequestParser 直接取）。 */
+    private class WithMeta(req: HttpServletRequest, private val meta: RequestMeta) : HttpServletRequestWrapper(req) {
+        override fun getAttribute(name: String): Any? =
+            if (name == RequestMeta.ATTR_META) meta else super.getAttribute(name)
     }
 
     companion object {
@@ -239,20 +216,7 @@ class WireCryptoFilter(
         const val GQL_PATH_PREFIX = "/customer/core/"
         /** 当前线协议版本（与 [WireCrypto.VERSION] 一致）。 */
         const val WIRE_VERSION_VALUE = "2"
-
-        /** 允许从加密 body.meta / x-req-meta 注入的 header 白名单（小写）。CF 注入头与 x-req-id 永远真实 header。 */
-        private val META_ALLOWED = setOf(
-            RequestHeaders.PROJECT_ID,
-            RequestHeaders.CLIENT_PLATFORM,
-            RequestHeaders.LOCALE,
-            RequestHeaders.CURRENCY,
-            RequestHeaders.COUNTRY,
-            RequestHeaders.APP_VERSION,
-            RequestHeaders.OTA_VERSION,
-            "authorization",
-        )
-
-        /** meta 键+值总字符数上限（量级对齐 Tomcat 8KB 请求头区；超限大声拒绝，防把 meta 当垃圾场）。 */
-        private const val MAX_META_CHARS = 8 * 1024
+        /** meta 段（key+值）总字符数上限；超限 400003 / 400000 大声拒绝。 */
+        private const val MAX_META_BYTES = 8 * 1024
     }
 }

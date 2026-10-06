@@ -6,15 +6,6 @@ object RequestHeaders {
      * 请求 id（请求头 + 响应头同名）：任意字符串（客户端自定，服务端不校验格式）；缺省由服务端生成 UUID。客户端可自带，能解析为 UUID 则直接用，
      * 否则服务端生成；响应头回传最终值，与日志里的 rid 一致。
      */
-    const val REQ_ID = "x-req-id"
-    const val PROJECT_ID = "x-project-id"
-    const val INSTALL_ID = "x-install-id"
-    const val LOCALE = "x-locale"
-    const val CURRENCY = "x-currency"
-    const val COUNTRY = "x-country"
-    const val APP_VERSION = "x-app-version"
-    const val OTA_VERSION = "x-ota-version"
-    const val CLIENT_PLATFORM = "x-client-platform"
     /**
      * 线协议版本：缺省/1 = 明文；3 = body 加密（RFC 9180 HPKE，见 WireCryptoFilter）。响应头同名回传 3 表示响应已加密。
      * 旧名 `x-proto-version`（v2 从未上线）已随 v2 一并移除，v3 用新名 `x-wirep-version`（客户端已同步实现）。

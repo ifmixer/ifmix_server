@@ -60,7 +60,6 @@ class ActionContextProvider(
             country = parser.parseCountry(servletRequest, requireCountry),
             clientPlatform = parser.parseClientPlatform(servletRequest),
             clientIp = parser.parseClientIp(servletRequest),
-            installId = parser.parseInstallId(servletRequest),
             tokenInstallId = parser.parseTokenInstallId(servletRequest),
             tokenType = parser.parseTokenType(servletRequest),
             botScore = parser.parseBotScore(servletRequest),

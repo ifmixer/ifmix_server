@@ -43,8 +43,10 @@ class LogContextTest {
     }
 
     @Test
-    fun `client x-req-id used as-is (control chars stripped), generated when absent or blank`() {
-        fun startWith(v: String?) = LogContext.start(org.springframework.mock.web.MockHttpServletRequest().apply { v?.let { addHeader("x-req-id", it) } })
+    fun `meta reqId used as-is (control chars stripped), generated when absent or blank`() {
+        fun startWith(v: String?) = LogContext.start(org.springframework.mock.web.MockHttpServletRequest().apply {
+            v?.let { setAttribute(RequestMeta.ATTR_META, RequestMeta(reqId = it)) }
+        })
         assertThat(startWith("app-AbC_123")).isEqualTo("app-AbC_123")
         assertThat(startWith("a b\nINFO fake")).isEqualTo("a bINFO fake")
         assertThat(startWith("x".repeat(500)).length).isEqualTo(128)

@@ -266,23 +266,30 @@ HTTPS 管传输（网络第三方）、wire 管设备持有者（HTTPS 终结后
 - 平台强制（iOS ATS / Android cleartext）与 CF 架构均按 HTTPS 建立；TLS 开销在 CF 终结 + 硬件 AES
   下微不足道，无可换的收益。
 
-### 已实现（2026-10-06）：header 进 body（收掉 token 在 header 的尾巴）
+### 已实现（2026-10-06）：meta 进 body（收掉 x-* 上下文 header 与 token 在 header 的尾巴）
 
 - **线协议不动**（ver=2 信封不变）：加密前的 JSON 载荷改为
-  `{"meta": {…上下文 header…}, "authorization": "Bearer …", "query": "", "variables": {…}}`；
-  `meta` 的 key 保留 header 名（`x-project-id` / `x-client-platform` / `x-locale` / `x-currency` /
-  `x-country` / `x-app-version` / `x-ota-version`），`authorization` 为完整 header 值。
-- 服务端 `WireCryptoFilter` 解密后把 `meta`（白名单键）与顶层 `authorization` 注入为**伪 header**
-  （body 值优先于同名真实 header），AuthInterceptor / RequestParser 无感知；`meta`/`authorization`
-  键从内层 body 剥离后重序列化。**白名单机制防伪造**：CF 注入头（`cf-bot-score`、真实 IP）与
-  `x-req-id` 永远只能来自真实 header；meta 键+值总量上限 8KB，结构违规（meta 非对象 / 值非字符串 /
-  authorization 非字符串）按 400003 拒绝。
+  `{"meta": {…}, "authorization": "…", "query": "", "variables": {…}}`。
+  `meta` 是 `RequestMeta` 结构，**key 为普通字段名（`projectId` / `clientPlatform` / `locale` /
+  `currency` / `country` / `appVersion` / `otaVersion` / `reqId`…，不再是 header 名）**，全部字符串值、
+  可空、未知字段忽略（Jackson `FAIL_ON_UNKNOWN_PROPERTIES` 3.x 默认关闭，客户端先行加字段不破坏老请求）；
+  `authorization` 为纯 token（约定无 `Bearer ` 前缀，服务端容错剥前缀）；服务端把 `authorization` 剥前缀后
+  存入 `meta.accessToken`。全部旧的 `x-*` 上下文 header（`x-project-id` / `x-client-platform` / `x-locale` /
+  `x-currency` / `x-country` / `x-app-version` / `x-ota-version` / `x-install-id` / `x-req-id`）**不再被服务端
+  读取**（`RequestHeaders` 对应常量已删）——上下文信源收敛为 meta 对象一条。
+- 服务端 `WireCryptoFilter` 解密后把 meta 段 + `authorization` 合并为一个 `RequestMeta` 实例挂到
+  **request attribute**（`RequestMeta.ATTR_META`），`RequestParser.metaOf(request)` 直接取对象解析——
+  不做伪 header 回写；`meta`/`authorization` 键从内层 body 剥离后重序列化（内层只剩 query/variables）。
+  **防伪造**：meta 段整体大小上限 8KB，结构违规（meta 非对象 / 值非字符串 / authorization 非字符串）
+  按 400003 拒绝；CF 注入头（`cf-bot-score`、真实 IP）永远只能来自真实 header（不在 meta 白名单内）。
 - **dev/调试双通道**（`app.wire-crypto.mode=optional` 仅 local/dev）：明文请求 meta 收进单个
-  `x-req-meta` JSON header（key 同 body.meta），authorization 走标准 `Authorization` header，服务端
-  `MetaHeaderRequest` 包装合并为伪 header；非法 `x-req-meta` → 400 400000。required 模式（线上）
-  下 `x-req-meta` 不生效。客户端两条通道由 `gqlOp` 按 `wire` 有无自动分发，业务无感。
+  `x-req-meta` JSON header（值为同一个 `RequestMeta` JSON，普通字段名，**不含凭证**——token 走标准
+  `Authorization` header，`RequestParser` 解析 meta.accessToken 优先、缺省回落 Authorization），
+  同样挂 request attribute；非法/超长 `x-req-meta` → 400 400000。required 模式（线上）下 `x-req-meta` 不生效。
+  `reqId`（meta.reqId，客户端自定）由 `LogContext.start` 取（缺失生成 UuidV7）进 MDC 与响应 Envelope，
+  不再走 `x-req-id` 响应头。
 - 永远留在 body 外的信封标记：`x-wirep-version` / `Content-Type`（服务端要先看到它才知道要解密——鸡生蛋）
-  与 CF 注入头（`cf-bot-score`、真实 IP——限流依赖）、`x-req-id`（日志关联 + 响应头回传）。
+  与 CF 注入头（`cf-bot-score`、真实 IP——限流依赖）。
 - 收益定位：对网络第三方无增益（HTTPS 已藏 header）；对设备持有者是收尾（token 本是其自有会话凭证）；
   调试收益：抓包/Charles 里 meta 在明文 header 可见，token 在 dev 仍走标准 header（工具友好）。
 

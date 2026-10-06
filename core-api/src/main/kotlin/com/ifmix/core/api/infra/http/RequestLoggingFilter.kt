@@ -45,8 +45,8 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
         val wrappedResponse = ContentCachingResponseWrapper(response)
 
         val start = System.currentTimeMillis()
-        // 先写响应头（body 提交前），日志里的 rid 与之相同
-        response.setHeader(RequestHeaders.REQ_ID, LogContext.start(wrappedRequest))
+        // 先建立日志 rid（wire meta.reqId 有值直接用，否则生成 UuidV7），内层 filter / 业务日志都带 rid
+        LogContext.start(wrappedRequest)
 
         try {
             filterChain.doFilter(wrappedRequest, wrappedResponse)
@@ -85,7 +85,7 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
                     .addKeyValue("path", uri + query)
                     .addKeyValue("httpStatus", status)
                     .addKeyValue("duration", duration)
-                    .apply { if (!hasCtx) addKeyValue("headers", importantHeaders(wrappedRequest)) }
+                    .apply { if (!hasCtx) addKeyValue("ctx", importantContext(wrappedRequest)) }
                     .addKeyValue("req", requestBody.truncate(max))
                     .addKeyValue("res", getBody(wrappedResponse.contentAsByteArray, wrappedResponse.characterEncoding).truncate(max))
                     .log("http.request.end")
@@ -105,18 +105,19 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
     }
 
     /**
-     * 汇总重要请求头 + clientIp + userId 用于排查。只输出存在的值，避免噪音；
+     * 汇总请求上下文（wire [RequestMeta] + clientIp + userId）用于排查。只输出存在的值，避免噪音；
      * Authorization 脱敏（只标存在与 scheme，绝不打 token 明文）。
-     * userId 取自 AuthInterceptor 解析后存入 request attribute 的 RequestContext.actorId。
      */
-    private fun importantHeaders(request: HttpServletRequest): String {
+    private fun importantContext(request: HttpServletRequest): String {
         val parts = mutableListOf<String>()
-        for (name in LOGGED_HEADERS) {
-            request.getHeader(name)?.takeIf { it.isNotBlank() }?.let { parts.add("$name=$it") }
-        }
         request.getHeader("Authorization")?.takeIf { it.isNotBlank() }?.let {
             val scheme = it.substringBefore(' ', it).take(16)
             parts.add("Authorization=$scheme ***")
+        }
+        // meta（WireCryptoFilter 已解析挂到 request 上；明文无 meta 时全空）
+        val meta = request.getAttribute(RequestMeta.ATTR_META) as? RequestMeta
+        if (meta != null) {
+            parts.add("meta={pid=${meta.projectId}, plat=${meta.clientPlatform}, locale=${meta.locale}, cur=${meta.currency}, cty=${meta.country}, av=${meta.appVersion}, ov=${meta.otaVersion}, req=${meta.accessToken != null}}")
         }
         // clientIp / userId 取自 RequestParser（token 幂等缓存，与 fromDfe 共享同一 request 缓存）
         parts.add("clientIp=${parser.parseClientIp(request)}")
@@ -127,18 +128,4 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
     private fun String.truncate(max: Int): String =
         if (length <= max) this else substring(0, max) + "...(truncated)"
 
-    companion object {
-        /** 排查用的重要请求头（不含 Authorization，后者单独脱敏处理）。 */
-        private val LOGGED_HEADERS = listOf(
-            RequestHeaders.PROJECT_ID,
-            RequestHeaders.INSTALL_ID,
-            RequestHeaders.CLIENT_PLATFORM,
-            RequestHeaders.CF_BOT_SCORE,
-            RequestHeaders.LOCALE,
-            RequestHeaders.CURRENCY,
-            RequestHeaders.COUNTRY,
-            RequestHeaders.APP_VERSION,
-            RequestHeaders.OTA_VERSION,
-        )
-    }
 }

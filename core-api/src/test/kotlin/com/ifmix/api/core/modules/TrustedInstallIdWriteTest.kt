@@ -38,14 +38,13 @@ import java.util.UUID
 
 /**
  * 可信 install_id：Feedback/Support/Collection 新写入的 install_id 必须来自已验签 token 的 iid
- * （ActionContext.mustGetTokenInstallId），伪造的 x-install-id header 不影响；缺失 token iid 时拒绝。
+ * （ActionContext.mustGetTokenInstallId，v1.0.6 起不可信 header 已删，token iid 是唯一信源）；缺失 token iid 时拒绝。
  */
 class TrustedInstallIdWriteTest {
 
     private val projectId = "test-app"
     private val actor = UUID.randomUUID()
     private val tokenIid = UUID.randomUUID()
-    private val forgedHeader = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
     private class CapturingFeedbackRepo : FeedbackRepository() {
         var saved: Feedback? = null
@@ -68,15 +67,14 @@ class TrustedInstallIdWriteTest {
         action = ActionContext(
             projectId = projectId,
             actorId = actor,
-            installId = forgedHeader,           // 伪造的 x-install-id
-            tokenInstallId = tokenInstallId,    // 可信 iid
+            tokenInstallId = tokenInstallId,    // 可信 iid（唯一 install 信源）
         ),
         sql = mock<KSqlClient>(),
     )
 
     // ---- Feedback ----
     @Test
-    fun `feedback write uses token iid, not forged x-install-id`() {
+    fun `feedback write uses token iid (only install source)`() {
         val repo = CapturingFeedbackRepo()
         FeedbackAggHandler(repo).submit(ctx(tokenIid), SubmitFeedbackReq(topic = 10, reasons = listOf(10)))
         assertThat(repo.saved!!.installId).isEqualTo(tokenIid)
@@ -92,7 +90,7 @@ class TrustedInstallIdWriteTest {
 
     // ---- Support ----
     @Test
-    fun `support write uses token iid, not forged x-install-id`() {
+    fun `support write uses token iid (only install source)`() {
         val repo = CapturingSupportRepo()
         SupportRequestAggHandler(repo).create(ctx(tokenIid), CreateSupportRequestReq(title = "t", message = "m"))
         assertThat(repo.saved!!.installId).isEqualTo(tokenIid)
@@ -108,7 +106,7 @@ class TrustedInstallIdWriteTest {
 
     // ---- Collection ----
     @Test
-    fun `default collection write uses token iid, not forged x-install-id`() {
+    fun `default collection write uses token iid (only install source)`() {
         val repo = CapturingCollectionRepo()
         val handler = ScanCollectionAggHandler(repo, mock<ScanCollectionItemRepository>(), mock<ScanRecordRepository>())
         handler.createDefaultCollection(ctx(tokenIid))
@@ -144,7 +142,7 @@ class TrustedInstallIdWriteTest {
     }
 
     @Test
-    fun `scan record write uses token iid, not forged x-install-id`() {
+    fun `scan record write uses token iid (only install source)`() {
         val repo = CapturingScanRepo()
         scanHandler(repo).saveNewScan(ctx(tokenIid), scanResult())
         assertThat(repo.saved!!.installId).isEqualTo(tokenIid)

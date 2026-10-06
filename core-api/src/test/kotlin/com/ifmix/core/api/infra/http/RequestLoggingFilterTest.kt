@@ -39,12 +39,24 @@ class RequestLoggingFilterTest {
         val res = run("/customer/core/greq/m_x")
         assertThat(res.status).isEqualTo(503)
         assertThat(res.contentAsString).isEqualTo(body)
-        assertThat(res.getHeader(RequestHeaders.REQ_ID)).isNotNull()
+        // filter 出口清理 ThreadLocal（虚拟线程池防泄漏）：本测试线程 MDC 里 rid 已被 clear
+        assertThat(org.slf4j.MDC.get("rid")).isNull()
     }
 
     @Test
     fun `root and health are not logged (filter skipped)`() {
-        assertThat(run("/").getHeader(RequestHeaders.REQ_ID)).isNull()
-        assertThat(run("/core/health").getHeader(RequestHeaders.REQ_ID)).isNull()
+        // 跳过路径：filter 直接透传，不建立 rid（LogContext.start 未被调用）
+        for (path in listOf("/", "/core/health")) {
+            val req = MockHttpServletRequest("POST", path)
+            val res = MockHttpServletResponse()
+            val handler = object : jakarta.servlet.http.HttpServlet() {
+                override fun service(rq: jakarta.servlet.ServletRequest, rs: jakarta.servlet.ServletResponse) {
+                    rs.writer.write("ok")
+                }
+            }
+            logging.doFilter(req, res, MockFilterChain(handler))
+            assertThat(LogContext.requestId(req)).isNull()
+            assertThat(res.contentAsString).isEqualTo("ok")
+        }
     }
 }

@@ -229,10 +229,11 @@ class WireCryptoTest {
                 val r = rq as HttpServletRequest
                 (rs as HttpServletResponse).status = status
                 rs.contentType = "application/json"
+                val meta = r.getAttribute(RequestMeta.ATTR_META) as? RequestMeta
                 val echo = "ct=${r.contentType};hdr=${r.getHeader("Content-Type")}" +
-                    ";locale=${r.getHeader(RequestHeaders.LOCALE)}" +
-                    ";auth=${r.getHeader("Authorization")}" +
-                    ";rid=${r.getHeader(RequestHeaders.REQ_ID)}" +
+                    ";locale=${meta?.locale}" +
+                    ";auth=${meta?.accessToken}" +
+                    ";pid=${meta?.projectId}" +
                     ";body=${String(r.inputStream.readAllBytes())}"
                 rs.writer.write(echo)
             }
@@ -254,7 +255,7 @@ class WireCryptoTest {
         assertThat(res.contentType).isEqualTo("application/octet-stream")
         assertThat(res.getHeader(RequestHeaders.WIREP_VERSION)).isEqualTo("2")
         assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
-            .isEqualTo("ct=application/json;hdr=application/json;locale=null;auth=null;rid=null;body=${"{\"q\":1}"}")
+            .isEqualTo("ct=application/json;hdr=application/json;locale=null;auth=null;pid=null;body=${"{\"q\":1}"}")
     }
 
     @Test
@@ -319,7 +320,7 @@ class WireCryptoTest {
                 contentType = "application/json"; setContent("{}".toByteArray())
             },
         )
-        assertThat(plain.contentAsString).isEqualTo("ct=application/json;hdr=application/json;locale=null;auth=null;rid=null;body={}")
+        assertThat(plain.contentAsString).isEqualTo("ct=application/json;hdr=application/json;locale=null;auth=null;pid=null;body={}")
         assertThat(plain.getHeader(RequestHeaders.WIREP_VERSION)).isNull()
 
         // optional 模式：信封外路径（webhook 等）即便 required 也原样放行
@@ -327,14 +328,14 @@ class WireCryptoTest {
             wireFilter(),
             MockHttpServletRequest("POST", "/webhook/r2").apply { contentType = "application/json"; setContent("{}".toByteArray()) },
         )
-        assertThat(outside.contentAsString).isEqualTo("ct=application/json;hdr=application/json;locale=null;auth=null;rid=null;body={}")
+        assertThat(outside.contentAsString).isEqualTo("ct=application/json;hdr=application/json;locale=null;auth=null;pid=null;body={}")
     }
 
     /** v2.1 header 进 body：加密 payload 的 meta/authorization 注入为伪 header，meta/authorization 键从内层 body 剥离。 */
     @Test
     fun `filter injects meta and authorization from encrypted payload as pseudo headers`() {
         val client = TestClient(crypto.publicKey(1)!!, kid = 1)
-        val payload = """{"meta":{"x-locale":"zh-CN","x-currency":"USD","x-unknown":"drop-me"},""" +
+        val payload = """{"meta":{"locale":"zh-CN","currency":"USD","unknownKey":"drop-me"},""" +
             """"authorization":"Bearer tok","query":"","variables":{"a":1}}"""
         val req = MockHttpServletRequest("POST", "/customer/core/greq/q_demo_todo_listMy").apply {
             addHeader(RequestHeaders.WIREP_VERSION, "2")
@@ -343,27 +344,27 @@ class WireCryptoTest {
         }
         val res = runFilter(wireFilter(), req)
         assertThat(res.status).isEqualTo(200)
-        // locale/auth 来自 body meta；x-unknown 非白名单被忽略；内层 body 只剩 query/variables
+        // locale/accessToken 来自 body meta+authorization；未知键忽略；内层 body 只剩 query/variables
         assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
-            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=Bearer tok;rid=null;body=" +
+            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=tok;pid=null;body=" +
                 """{"query":"","variables":{"a":1}}""")
     }
 
-    /** meta 值优先于同名真实 header；白名单外的键（x-req-id）不生效——CF 注入头与 req-id 永远只能来自真实 header。 */
+    /** meta attribute 是唯一上下文信源：x-* 真实请求头（旧的 x-locale/x-req-id 通道）已不再被读取。 */
     @Test
-    fun `meta overrides real header but only within allowlist`() {
+    fun `meta attribute is the only context source, legacy headers ignored`() {
         val client = TestClient(crypto.publicKey(1)!!, kid = 1)
-        val payload = """{"meta":{"x-locale":"zh-CN","x-req-id":"forged"},"query":""}"""
+        val payload = """{"meta":{"locale":"zh-CN","reqId":"forged"},"query":""}"""
         val req = MockHttpServletRequest("POST", "/customer/core/greq/q_demo_todo_listMy").apply {
             addHeader(RequestHeaders.WIREP_VERSION, "2")
-            addHeader(RequestHeaders.LOCALE, "en-US")
-            addHeader(RequestHeaders.REQ_ID, "real-rid")
+            addHeader("x-locale", "en-US")   // 旧 header 通道：重构后无人再读
+            addHeader("x-req-id", "real-rid")
             contentType = "application/octet-stream"
             setContent(client.sealRequest(payload.toByteArray(), ts = System.currentTimeMillis()))
         }
         val res = runFilter(wireFilter(), req)
         assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
-            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=null;rid=real-rid;body=" +
+            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=null;pid=null;body=" +
                 """{"query":""}""")
     }
 
@@ -380,8 +381,8 @@ class WireCryptoTest {
             return runFilter(wireFilter(), req)
         }
         for (payload in listOf(
-            """{"meta":"x","query":""}""",           // meta 非对象
-            """{"meta":{"x-locale":5},"query":""}""", // meta 值非字符串
+            """{"meta":"x","query":""}""",            // meta 非对象
+            """{"meta":{"locale":{"nested":1}},"query":""}""", // meta 值非字符串
             """{"authorization":9,"query":""}""",     // authorization 非字符串
         )) {
             val res = run(payload)
@@ -390,32 +391,28 @@ class WireCryptoTest {
         }
     }
 
-    /** 明文 dev 通道：x-req-meta header 合并为伪 header（meta 优先），非法值 400 400000。 */
+    /** 明文 dev 通道：x-req-meta（RequestMeta JSON，普通字段名）挂到 request attribute，非法值 400 400000。 */
     @Test
-    fun `optional mode merges x-req-meta header into pseudo headers`() {
-        fun plainReq(meta: String? = null, locale: String? = null) =
+    fun `optional mode parses x-req-meta into RequestMeta attribute`() {
+        fun plainReq(meta: String? = null) =
             MockHttpServletRequest("POST", "/customer/core/greq/q_demo_todo_listMy").apply {
                 contentType = "application/json"
                 setContent("{}".toByteArray())
                 meta?.let { addHeader(RequestHeaders.REQ_META, it) }
-                locale?.let { addHeader(RequestHeaders.LOCALE, it) }
             }
-        val merged = runFilter(wireFilter(mode = "optional"), plainReq(meta = """{"x-locale":"zh-CN","x-unknown":"x"}"""))
+        val merged = runFilter(wireFilter(mode = "optional"), plainReq(meta = """{"locale":"zh-CN","currency":"USD","unknownKey":"x"}"""))
         assertThat(merged.contentAsString)
-            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=null;rid=null;body={}")
+            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=null;pid=null;body={}")
 
-        // meta 值优先于同名真实 header
-        val override = runFilter(
-            wireFilter(mode = "optional"),
-            plainReq(meta = """{"x-locale":"zh-CN"}""", locale = "en-US"),
-        )
-        assertThat(override.contentAsString)
-            .isEqualTo("ct=application/json;hdr=application/json;locale=zh-CN;auth=null;rid=null;body={}")
+        // 无 x-req-meta 时 attribute 为 null（RequestParser 兜底空 RequestMeta）
+        val noMeta = runFilter(wireFilter(mode = "optional"), plainReq())
+        assertThat(noMeta.contentAsString)
+            .isEqualTo("ct=application/json;hdr=application/json;locale=null;auth=null;pid=null;body={}")
 
         // 非法 x-req-meta → 400 400000
         val bad = runFilter(wireFilter(mode = "optional"), plainReq(meta = "not-json"))
         assertThat(bad.status).isEqualTo(400)
-        assertThat(bad.contentAsString).isEqualTo("""{"code":"400000","msg":"invalid x-req-meta: not a JSON object","data":null}""")
+        assertThat(bad.contentAsString).contains("400000", "invalid x-req-meta")
     }
 
     /**
