@@ -1,0 +1,26 @@
+docs/design/proposals/rpc-pilot-server.md
+  s_20d0388cb4ec72::t_b42d12327f53e2 10,15,37,133,171,306,332,345,367
+docs/design/proposals/rpc-rollout-server.md
+  s_20d0388cb4ec72::t_5fd3d060786d83 1-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "756ad1f7163b4e8ed47273883e534f784e8c6edd",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_20d0388cb4ec72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3d7caac0d7760b57",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
