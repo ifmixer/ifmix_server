@@ -1,0 +1,14 @@
+docs/design/proposals/rpc-rollout-client.md
+  h_b17efd5c751f9f 132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62303a93cbf273d66b11b658dacb455f85a5d8a1",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
