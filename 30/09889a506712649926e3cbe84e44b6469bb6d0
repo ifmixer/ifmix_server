@@ -1,0 +1,19 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/webhooks/WebhookController.kt
+  s_7e13493905aa4e::t_56735e3b1d2450 15-16,64,69,75,90,96,98-99,102,117,123,132,145,151,153-154,157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3009889a506712649926e3cbe84e44b6469bb6d0",
+  "prompts": {},
+  "sessions": {
+    "s_7e13493905aa4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f4e8c09-c3bb-488f-8c56-aab172eb914b",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
