@@ -1,7 +1,7 @@
 package com.ifmix.core.api.bff.api.customer.demo
 
 import com.ifmix.core.api.dto.common.Page
-import com.ifmix.core.api.dto.demo.DemoApiMappers
+import com.ifmix.core.api.dto.demo.DemoKonvertMappersImpl
 import com.ifmix.core.api.dto.demo.TodoRes
 import com.ifmix.core.api.entity.demo.Todo
 import com.ifmix.core.api.entity.demo.TodoItem
@@ -63,10 +63,15 @@ class DemoQueryService(private val facade: DemoFacade) {
         val foundById = todos.associateBy { it.id }
         val sequence: List<Todo> = order?.distinct()?.mapNotNull { foundById[it] } ?: todos
         return sequence.map { todo ->
-            DemoApiMappers.toDto(
-                todo,
-                itemsByTodoId.getOrDefault(todo.id, emptyList()),
-                countsMap[todo.id] ?: ZERO_COUNTS,
+            // Konvert 只做单源映射（DemoKonvertMappersImpl.toRes），items/counts 编排在此补齐
+            //（konvert-rollout-server.md §2.1 注意事项 4 回退路径：多参数聚合不走 Konverter）。
+            val items = itemsByTodoId.getOrDefault(todo.id, emptyList()).map { DemoKonvertMappersImpl.toRes(it) }
+            val counts = countsMap[todo.id] ?: ZERO_COUNTS
+            DemoKonvertMappersImpl.toRes(todo).copy(
+                items = items,
+                itemCount = counts.itemCount,
+                pendingCount = counts.pendingCount,
+                finishCount = counts.finishCount,
             )
         }
     }
