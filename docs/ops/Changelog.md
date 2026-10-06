@@ -14,6 +14,7 @@
 - **wire 加密 v2（强制，无明文降级）**：X25519+HKDF+AES-256-GCM 请求/响应加密，版本头 `x-wirep-version: 2`，>4KB 响应 gzip；`/api/**` 明文请求 400004、解密失败 400003（无版本协商）。ts 偏差仅 warn（客户端时钟偏差不可控，强制时效暂缓——见 wire 设计 §9 决策修订）。请求 body 全局上限 5MB（`WIRE_MAX_REQUEST_BYTES`，超限 400000）。
 - **多维限流**：createInstall 入口 100/60s/IP + 验签后 IP 日窗口；createAnonymous / scan / DeepResearch install 层限流；阈值全部 `app.ratelimit.*` 配置、重启生效。
 - **`m_customer_deleteAccount`**（V7）：软删 + 解绑全部 install 关系 + 吊销全部 refresh token，事务内原子生效；`DeletionReasons` 码表。
+- **`q_ai_scan_getById` 入参新增可选 `include: ["latestDeepResearch"]`**（2026-10-06）：传了才加载 `data.latestDeepResearch`，不传该字段为 `null` 且不产生额外查询。**客户端默认要传**（保持原详情行为）；白名单外值 400000。
 - **actionName 修订（feature/graphql-to-rpc，2026-10-06）**：`m_demo_todo_updateOne → m_demo_todo_updateById`、`m_demo_todo_updateItems → m_demo_todoItem_updateMany`（resource 段定 todoItem）；media 资源定名 file：`m_media_media_presignUpload/Download → m_media_file_presignUpload/Download`，表 `core_media_upload_record` → `core_media_file_record`（V16，RENAME 保留数据）。
 - **createInstall 按平台拆分**（attest 规格 v6）：`m_auth_install_create` → `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`；自报 `meta.clientPlatform` 与 action 平台不一致（含缺失）→ 400000；proof.provider 与 action 交叉提交 → 400000；两 action 共享同一 IP 限流配额（key 不含平台段）；storeType 交叉校验泛化 110↔10 / 120↔20（只记日志）。限流配额总口径不变。
 - **legacy 兼容整体移除**（线上无 app，无需兼容）：`app.auth.legacy-install-id-fallback` 开关、`legacyInstallId` 死路径、legacy 限流计数器（anonymous/scan/DR 的 `legacy-ip-*` 独立阈值）全部删除；无可信 iid 一律 401000，scan/DR 无 iid 直接走大额 IP 层。

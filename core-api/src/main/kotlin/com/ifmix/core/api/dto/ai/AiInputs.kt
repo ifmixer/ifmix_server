@@ -93,7 +93,24 @@ data class DeepResearchFeatureFlagsInput(
 // ==================== 查询入参 ====================
 
 /** q_ai_scan_getById（旧 q_ai_findMyScanById(id)） */
-data class FindScanByIdInput(val id: UUID)
+data class FindScanByIdInput(
+    val id: UUID,
+    /** 可选加载项（2026-10-06）：传了才加载对应昂贵字段，缺省不加载。合法值见 [SCAN_INCLUDE_FIELDS]。 */
+    val include: List<String>? = null,
+)
+
+/** q_ai_scan_getById include 支持的可选加载项。 */
+const val SCAN_INCLUDE_LATEST_DEEP_RESEARCH = "latestDeepResearch"
+val SCAN_INCLUDE_FIELDS = setOf(SCAN_INCLUDE_LATEST_DEEP_RESEARCH)
+
+/** include 白名单校验：未知值 → INVALID_REQUEST（客户端 bug 尽早暴露；null/空 = 不加载任何可选项）。 */
+fun requireScanInclude(include: List<String>?) {
+    include?.find { it !in SCAN_INCLUDE_FIELDS }?.let {
+        throw com.ifmix.core.api.infra.http.ApiError(
+            com.ifmix.core.api.infra.http.ErrorCode.INVALID_REQUEST, "invalid include field: $it",
+        )
+    }
+}
 
 /** q_ai_scan_getStatus（旧 q_ai_getScanStatus(scanId)） */
 data class GetScanStatusInput(val scanId: UUID)

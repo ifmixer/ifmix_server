@@ -40,10 +40,12 @@ class AiQueryService(
     private val collectionService: ScanCollectionFacade,
 ) {
 
-    /** 单条详情：findById（全字段）+ latestDeepResearch 权威指针加载。miss → null（controller 裁决 NOT_FOUND）。 */
-    fun findScanById(ctx: ActionContext, id: UUID): ScanRecordRes? {
+    /** 单条详情：findById（全字段）+ latestDeepResearch 权威指针加载（includeLatestDeepResearch=false 时不查，
+     *  latestDeepResearch 置 null——q_ai_scan_getById 的 include 契约，2026-10-06）。miss → null（controller 裁决 NOT_FOUND）。 */
+    fun findScanById(ctx: ActionContext, id: UUID, includeLatestDeepResearch: Boolean = true): ScanRecordRes? {
         val record = aiService.findById(ctx, id) ?: return null
-        return toDetailRes(ctx, record)
+        return AiKonvertMappersImpl.toDetailRes(record)
+            .copy(latestDeepResearch = if (includeLatestDeepResearch) findLatestDeepResearch(ctx, record) else null)
     }
 
     /** 已加载的 ScanRecord → 详情视图（m_ai_scan_updateOne 写后读复用；latestDeepResearch 按权威指针加载）。 */

@@ -148,8 +148,11 @@ class AiControllerTest {
     @Test
     fun `q_ai_scan_getById success returns detail and bypasses tx`() {
         val id = UUID.randomUUID()
-        whenever(queryService.findScanById(any(), eq(id))).thenReturn(detailRes(id))
-        val resp = controller.findScanById(request(), body(mapOf("id" to id.toString())))
+        whenever(queryService.findScanById(any(), eq(id), eq(true))).thenReturn(detailRes(id))
+        val resp = controller.findScanById(
+            request(),
+            body(mapOf("id" to id.toString(), "include" to listOf("latestDeepResearch"))),
+        )
         assertEquals("200000", resp.body!!.code)
         assertEquals(id, resp.body!!.data?.id)
         assertEquals(reqId, resp.body!!.reqId, "Envelope.reqId must echo meta.reqId on success")
@@ -316,10 +319,28 @@ class AiControllerTest {
     @Test
     fun `q_ai_scan_getById miss throws NOT_FOUND 404000`() {
         val id = UUID.randomUUID()
-        whenever(queryService.findScanById(any(), eq(id))).thenReturn(null)
+        whenever(queryService.findScanById(any(), eq(id), eq(false))).thenReturn(null)
         val ex = assertThrows(ApiError::class.java) { controller.findScanById(request(), body(mapOf("id" to id.toString()))) }
         assertEquals(ErrorCode.NOT_FOUND, ex.errorCode)
         assertEquals("404000", ex.errorCode.externalCode)
+        LogContext.clear()
+    }
+
+    @Test
+    fun `q_ai_scan_getById without include passes includeLatestDeepResearch=false`() {
+        val id = UUID.randomUUID()
+        whenever(queryService.findScanById(any(), eq(id), eq(false))).thenReturn(detailRes(id))
+        val resp = controller.findScanById(request(), body(mapOf("id" to id.toString())))
+        assertEquals("200000", resp.body!!.code)
+        LogContext.clear()
+    }
+
+    @Test
+    fun `q_ai_scan_getById unknown include field rejected 400000`() {
+        val ex = assertThrows(ApiError::class.java) {
+            controller.findScanById(request(), body(mapOf("id" to UUID.randomUUID().toString(), "include" to listOf("basicResult"))))
+        }
+        assertEquals(ErrorCode.INVALID_REQUEST, ex.errorCode)
         LogContext.clear()
     }
 

@@ -8,6 +8,8 @@ import com.ifmix.core.api.dto.ai.CreateScanRes
 import com.ifmix.core.api.dto.ai.DeepResearchStatusRes
 import com.ifmix.core.api.dto.ai.DeleteScanRes
 import com.ifmix.core.api.dto.ai.FindScanByIdInput
+import com.ifmix.core.api.dto.ai.SCAN_INCLUDE_LATEST_DEEP_RESEARCH
+import com.ifmix.core.api.dto.ai.requireScanInclude
 import com.ifmix.core.api.dto.ai.GetDeepResearchStatusInput
 import com.ifmix.core.api.dto.ai.GetScanStatusInput
 import com.ifmix.core.api.dto.ai.ListCollectionItemsInput
@@ -104,7 +106,11 @@ class AiController(
     fun findScanById(request: HttpServletRequest, @RequestBody body: ApiRequestBody<FindScanByIdInput>): ResponseEntity<Envelope<ScanRecordRes>> {
         val ctx = ctxFactory.fromRpc(request, REQNAME_SCAN_GET_BY_ID, isMutation = false, body = body)
         val input = body.requireInput()
-        val record = queryService.findScanById(ctx, input.id) ?: throw ApiError(ErrorCode.NOT_FOUND)
+        requireScanInclude(input.include)
+        val record = queryService.findScanById(
+            ctx, input.id,
+            includeLatestDeepResearch = input.include?.contains(SCAN_INCLUDE_LATEST_DEEP_RESEARCH) == true,
+        ) ?: throw ApiError(ErrorCode.NOT_FOUND)
         return ResponseEntity.ok(Envelope.ok(ctx.requestId, record))
     }
 
