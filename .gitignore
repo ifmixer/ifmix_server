@@ -91,3 +91,4 @@ logs/
 .env.*
 !.env.*.example
 scripts/.attest_secret
+data_seed.sql
