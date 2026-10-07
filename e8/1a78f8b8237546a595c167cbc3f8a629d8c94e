@@ -1,0 +1,16 @@
+docs/guide/ARCHITECTURE.md
+  h_b17efd5c751f9f 167,170
+docs/guide/CODING_GUIDE.md
+  h_b17efd5c751f9f 193-195,199-203,210-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e81a78f8b8237546a595c167cbc3f8a629d8c94e",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
