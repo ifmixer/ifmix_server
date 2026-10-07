@@ -1,0 +1,24 @@
+docs/guide/AUTH_DESIGN.md
+  h_b17efd5c751f9f 119
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 17
+docs/guide/ARCHITECTURE.md
+  h_b17efd5c751f9f 194
+core-api/src/main/resources/schema/customer/auth.graphqls
+  h_b17efd5c751f9f 45
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/AuthFetcher.kt
+  h_b17efd5c751f9f 38
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "48114cbe6d7293b864eb4cd498c00a508c0b63cd",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
