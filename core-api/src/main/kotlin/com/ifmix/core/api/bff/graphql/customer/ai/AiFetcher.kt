@@ -60,7 +60,7 @@ class AiFetcher(
 ) {
     // --- Scan queries ---
 
-    @DgsQuery(field = "q_ai_scan_getById")
+    @DgsQuery(field = "q_ai_scan_getMyById")
     fun findById(dfe: DgsDataFetchingEnvironment, @InputArgument id: UUID): ScanRecord {
         val ctx = ctxProvider.fromDfe(dfe)
         return aiService.findById(ctx, id) ?: throw ApiError(ErrorCode.NOT_FOUND)

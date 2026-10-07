@@ -92,3 +92,6 @@ logs/
 !.env.*.example
 scripts/.attest_secret
 data_seed.sql
+scripts/deploy/db-init/data_seed.sql
+scripts/.wire_secret_prod
+scripts/.attest_secret_prod
