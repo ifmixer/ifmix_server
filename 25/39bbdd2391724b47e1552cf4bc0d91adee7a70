@@ -1,0 +1,32 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 14,47-48,285-290,309-313
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/CustomerFetcher.kt
+  h_b17efd5c751f9f 87-89
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/demo/TodoItemsResolver.kt
+  h_b17efd5c751f9f 5,12-13,50,52-59,74,76-79
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/ActionContextProvider.kt
+  h_b17efd5c751f9f 13,21,41-53,88-94,98-118
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/RequestActionContext.kt
+  h_b17efd5c751f9f 1,4-9,12-21,23-24,26-34,37-45
+core-api/src/main/resources/db/migration/V17__demo_todo_item_note.sql
+  h_b17efd5c751f9f 1-5
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 33-38
+docs/ops/release.md
+  h_b17efd5c751f9f 43,60-66
+docs/testing/E2E_TESTING.md
+  h_b17efd5c751f9f 83-92
+scripts/demo-e2e.mjs
+  h_b17efd5c751f9f 1-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2539bbdd2391724b47e1552cf4bc0d91adee7a70",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
