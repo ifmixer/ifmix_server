@@ -1,0 +1,72 @@
+docs/design/install/install-customer-hardening.md
+  h_b17efd5c751f9f 331
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 33
+docs/design/notification/scan-async-notification-push.md
+  h_b17efd5c751f9f 75,288
+docs/design/ai/deep-research-async.md
+  h_b17efd5c751f9f 91,285,290,323,356,360
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/ReqNamePathInterceptor.kt
+  h_b17efd5c751f9f 13
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/GReqRouterConfig.kt
+  h_b17efd5c751f9f 14
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 63
+docs/design/infra/idempotency.md
+  h_b17efd5c751f9f 296
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/PersistedQueryStore.kt
+  h_b17efd5c751f9f 27,39
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 39,56-59,63
+docs/testing/GRAPHQL_TRUSTED_DOCUMENTS.md
+  h_b17efd5c751f9f 103
+core-api/src/main/resources/schema/customer/ai.graphqls
+  h_b17efd5c751f9f 240,244
+core-api/src/test/kotlin/com/ifmix/api/core/graphql/trusted/ReqNamePathInterceptorTest.kt
+  h_b17efd5c751f9f 22
+.gitignore
+  h_b17efd5c751f9f 93
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestConfig.kt
+  h_b17efd5c751f9f 11,74-79,109,116,120-140,224,239-240
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestGuard.kt
+  h_b17efd5c751f9f 29-31,73,78-108,305-308,355,456,467
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/ErrorCode.kt
+  h_b17efd5c751f9f 16,18
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/RequestHeaders.kt
+  h_b17efd5c751f9f 6-7
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCrypto.kt
+  h_b17efd5c751f9f 15
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/WireCryptoFilter.kt
+  h_b17efd5c751f9f 22,24-27,45,67-73,77-79,146-147
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 83-85
+core-api/src/test/kotlin/com/ifmix/core/api/infra/attest/AttestConfigTest.kt
+  h_b17efd5c751f9f 238-277
+core-api/src/test/kotlin/com/ifmix/core/api/infra/attest/AttestGuardTest.kt
+  h_b17efd5c751f9f 351-416
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/WireCryptoTest.kt
+  h_b17efd5c751f9f 247,254-255,265,276,293-303,307,311,329,364,369,371
+docs/design/attest/install-attestation.md
+  h_b17efd5c751f9f 131,133-134,231,238
+docs/design/infra/wire-encryption.md
+  h_b17efd5c751f9f 297-298,392-394,399
+docs/guide/ARCHITECTURE.md
+  h_b17efd5c751f9f 304
+docs/guide/DATABASE.md
+  h_b17efd5c751f9f 224
+docs/ops/release.md
+  h_b17efd5c751f9f 25,47-48,86,89
+scripts/restart.sh
+  h_b17efd5c751f9f 33-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2eed4a3b093aa37ad401467328d7c6660296e3c7",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
