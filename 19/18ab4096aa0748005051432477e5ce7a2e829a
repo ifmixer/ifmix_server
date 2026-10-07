@@ -1,0 +1,18 @@
+scripts/deploy/db-init/schema.sql
+  h_b17efd5c751f9f 1-1058
+.gitignore
+  h_b17efd5c751f9f 94
+scripts/deploy/db-init/README.md
+  h_b17efd5c751f9f 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1918ab4096aa0748005051432477e5ce7a2e829a",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
