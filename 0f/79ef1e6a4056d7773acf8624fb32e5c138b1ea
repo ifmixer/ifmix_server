@@ -1,0 +1,18 @@
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 42-45
+docs/ops/release.md
+  h_b17efd5c751f9f 29,48
+scripts/deploy/db-init/README.md
+  h_b17efd5c751f9f 1,3-4,6,10-12,15,17-20,22-24,26,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f79ef1e6a4056d7773acf8624fb32e5c138b1ea",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
