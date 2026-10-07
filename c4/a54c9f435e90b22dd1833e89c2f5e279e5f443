@@ -1,0 +1,74 @@
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/InstallFetcher.kt
+  h_b17efd5c751f9f 124-126,129,137,374
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/customer/Customer.kt
+  h_b17efd5c751f9f 13
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/install/Install.kt
+  h_b17efd5c751f9f 12
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/install/InstallAttestation.kt
+  h_b17efd5c751f9f 11,19-30,34-37,41,44,56,92-98
+core-api/src/main/kotlin/com/ifmix/core/api/entity/auth/install/InstallCustomerRelation.kt
+  h_b17efd5c751f9f 14
+core-api/src/main/kotlin/com/ifmix/core/api/entity/common/InstallIdProps.kt
+  h_b17efd5c751f9f 8
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AppAttestVerifier.kt
+  h_b17efd5c751f9f 7,71-76,188-196,220-225
+core-api/src/main/kotlin/com/ifmix/core/api/infra/attest/AttestGuard.kt
+  h_b17efd5c751f9f 167,179,275-331
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/InstallFacade.kt
+  h_b17efd5c751f9f 38,40,57,59
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/handler/InstallAggHandler.kt
+  h_b17efd5c751f9f 4,9,42-44,47-49,57,63,107-108,114-118,123,125-130,136-140,147-154,194,201,216-217,247
+core-api/src/main/kotlin/com/ifmix/core/api/modules/auth/install/repo/InstallAttestationRepository.kt
+  h_b17efd5c751f9f 15-16,42,48,52,57,113
+core-api/src/main/resources/db/migration/V18__rename_install_tables_to_auth.sql
+  h_b17efd5c751f9f 1-7
+core-api/src/main/resources/db/migration/V19__attestation_verify_status.sql
+  h_b17efd5c751f9f 1-11
+core-api/src/main/resources/schema/customer/auth.graphqls
+  h_b17efd5c751f9f 120,127
+core-api/src/test/kotlin/com/ifmix/api/core/modules/auth/install/CreateInstallPkTest.kt
+  h_b17efd5c751f9f 19
+core-api/src/test/kotlin/com/ifmix/core/api/bff/graphql/customer/auth/InstallFetcherAttestTest.kt
+  h_b17efd5c751f9f 38,94-95,436,518
+core-api/src/test/kotlin/com/ifmix/core/api/infra/attest/AppAttestVerifierConverterTest.kt
+  h_b17efd5c751f9f 1-36
+core-api/src/test/kotlin/com/ifmix/core/api/modules/auth/install/handler/InstallAggHandlerAttestTest.kt
+  h_b17efd5c751f9f 4,109,127,152-189,213,221,229,236,243,250,260
+core-job/src/main/kotlin/com/ifmix/core/job/attest/AttestationRepo.kt
+  h_b17efd5c751f9f 56,78,98,116,126,141,158,173
+core-job/src/main/kotlin/com/ifmix/core/job/attest/EvidenceCleanupCleaner.kt
+  h_b17efd5c751f9f 10
+core-job/src/main/kotlin/com/ifmix/core/job/customer/AnonymousCleanupCleaner.kt
+  h_b17efd5c751f9f 96,116,164
+core-job/src/test/kotlin/com/ifmix/core/job/attest/AttestRepoTestDb.kt
+  h_b17efd5c751f9f 30,34,51-52,75,89,115,137,157,192
+docs/design/attest/install-attestation.md
+  h_b17efd5c751f9f 27,628,630-632,635,639,648-650,656-660,663,677,696,736,1015,1024,1030,1342,1372,1491
+docs/design/infra/idempotency.md
+  h_b17efd5c751f9f 216,220,225,297
+docs/design/install/install-customer-hardening.md
+  h_b17efd5c751f9f 22,26,63,103,125,129-131,140,612,669
+docs/design/install/install-tracking.md
+  h_b17efd5c751f9f 72,77,97,104,110-111,334
+docs/design/notification/deep-research-push.md
+  h_b17efd5c751f9f 37
+docs/design/notification/scan-async-notification-push.md
+  h_b17efd5c751f9f 196
+docs/guide/DATABASE.md
+  h_b17efd5c751f9f 20,39-41,53,208-211,213,219-220,223,230-231
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 42-49
+docs/ops/release.md
+  h_b17efd5c751f9f 26-27,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4a54c9f435e90b22dd1833e89c2f5e279e5f443",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
