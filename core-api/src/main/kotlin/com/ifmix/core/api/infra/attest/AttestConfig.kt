@@ -1,7 +1,7 @@
 package com.ifmix.core.api.infra.attest
 
 /**
- * App Attest 项目级配置（`core_project_server_config.app_attest_config` JSONB）。
+ * App Attest 项目级配置（`core_project_serverconfig.app_attest_config` JSONB）。
  *
  * 设计规格：`docs/design/attest/install-attestation.md` §4.1。
  *

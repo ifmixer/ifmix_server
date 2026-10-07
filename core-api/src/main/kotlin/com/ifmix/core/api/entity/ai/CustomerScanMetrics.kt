@@ -9,7 +9,7 @@ import java.util.UUID
  * customerId 为逻辑外键（跨模块，不用 @ManyToOne）。
  */
 @Entity
-@Table(name = "core_ai_customer_scan_metrics")
+@Table(name = "core_ai_scanmetrics")
 @KeyUniqueConstraint
 interface CustomerScanMetrics : BaseProjectEntity {
 

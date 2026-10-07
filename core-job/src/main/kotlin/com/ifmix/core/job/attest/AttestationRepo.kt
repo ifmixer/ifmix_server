@@ -53,7 +53,7 @@ class AttestationRepo(
         jdbc.sql(
             """
             SELECT id, project_id, subject, attestation_object, refresh_failure_count
-            FROM core_auth_install_attestation
+            FROM core_auth_installattestation
             WHERE provider = 110 AND status = 10
               AND receipt IS NULL AND attestation_object IS NOT NULL
               AND (next_refresh_at IS NULL OR next_refresh_at <= :now)
@@ -75,7 +75,7 @@ class AttestationRepo(
         jdbc.sql(
             """
             SELECT id, project_id, receipt, refresh_failure_count
-            FROM core_auth_install_attestation
+            FROM core_auth_installattestation
             WHERE provider = 110 AND status = 10
               AND receipt IS NOT NULL AND next_refresh_at <= :now
             ORDER BY next_refresh_at
@@ -95,7 +95,7 @@ class AttestationRepo(
     fun markBackfilled(id: UUID, receipt: ByteArray, nextRefreshAt: Instant): Int =
         jdbc.sql(
             """
-            UPDATE core_auth_install_attestation
+            UPDATE core_auth_installattestation
             SET receipt = :receipt,
                 next_refresh_at = :nextRefreshAt,
                 refresh_failure_count = 0,
@@ -113,7 +113,7 @@ class AttestationRepo(
     fun clearAttestationObject(id: UUID): Int =
         jdbc.sql(
             """
-            UPDATE core_auth_install_attestation
+            UPDATE core_auth_installattestation
             SET attestation_object = NULL, updated_at = :updatedAt
             WHERE id = :id AND status = 10
             """.trimIndent(),
@@ -123,7 +123,7 @@ class AttestationRepo(
     fun markBackoff(id: UUID, backoffUntil: Instant): Int =
         jdbc.sql(
             """
-            UPDATE core_auth_install_attestation
+            UPDATE core_auth_installattestation
             SET refresh_failure_count = refresh_failure_count + 1,
                 next_refresh_at = :backoffUntil,
                 updated_at = :updatedAt
@@ -138,7 +138,7 @@ class AttestationRepo(
     fun markFraudMetric(id: UUID, fraudMetric: Int, nextRefreshAt: Instant): Int =
         jdbc.sql(
             """
-            UPDATE core_auth_install_attestation
+            UPDATE core_auth_installattestation
             SET fraud_metric = :metric,
                 next_refresh_at = :nextRefreshAt,
                 refresh_failure_count = 0,
@@ -155,7 +155,7 @@ class AttestationRepo(
     fun markRefreshBackoff(id: UUID, backoffUntil: Instant): Int =
         jdbc.sql(
             """
-            UPDATE core_auth_install_attestation
+            UPDATE core_auth_installattestation
             SET refresh_failure_count = refresh_failure_count + 1,
                 next_refresh_at = :backoffUntil,
                 updated_at = :updatedAt
@@ -170,7 +170,7 @@ class AttestationRepo(
     fun clearOldEvidence(cutoff: Instant): Int =
         jdbc.sql(
             """
-            UPDATE core_auth_install_attestation
+            UPDATE core_auth_installattestation
             SET evidence = NULL, updated_at = :updatedAt
             WHERE evidence IS NOT NULL AND created_at < :cutoff
             """.trimIndent(),
@@ -179,7 +179,7 @@ class AttestationRepo(
             .update()
 
     /**
-     * per-project attest 配置（`core_project_server_config.app_attest_config` JSONB → 字符串解析 ios 段；
+     * per-project attest 配置（`core_project_serverconfig.app_attest_config` JSONB → 字符串解析 ios 段；
      * 行不存在 / NULL / 解析失败 → null）。
      *
      * H2 测试环境（PG 模式）经 JDBC 写 JSONB 列会存成 JSON 字符串字面量（多包一层引号），
@@ -187,7 +187,7 @@ class AttestationRepo(
      */
     fun loadIosConfig(projectId: String): AppAttestIosConfig? =
         jdbc.sql(
-            "SELECT app_attest_config FROM core_project_server_config WHERE project_id = :projectId",
+            "SELECT app_attest_config FROM core_project_serverconfig WHERE project_id = :projectId",
         ).param("projectId", projectId)
             .query { rs, _ ->
                 val raw = normalizeJsonBValue(rs.getString("app_attest_config"))

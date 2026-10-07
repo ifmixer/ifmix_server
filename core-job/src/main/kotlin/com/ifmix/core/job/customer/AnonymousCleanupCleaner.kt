@@ -43,9 +43,9 @@ class AnonymousCleanupCleaner(
         private const val MAX_BATCHES = 10_000
         /** 先删的资源表（均以 customer_id 关联），最后才删 customer。 */
         private val RESOURCE_TABLES = listOf(
-            "core_ai_scan_collection",
-            "core_ai_scan_record",
-            "core_ai_customer_scan_metrics",
+            "core_ai_scancollection",
+            "core_ai_scanrecord",
+            "core_ai_scanmetrics",
             "core_media_upload_record",
             "core_demo_todo",
             "core_cs_feedback",
@@ -151,8 +151,8 @@ class AnonymousCleanupCleaner(
 
         // 先删资源避免孤儿行，最后删 customer。
         jdbc.sql(
-            "DELETE FROM core_ai_scan_collection_item WHERE collection_id IN " +
-                "(SELECT id FROM core_ai_scan_collection WHERE customer_id IN (:ids))",
+            "DELETE FROM core_ai_scancollectionitem WHERE collection_id IN " +
+                "(SELECT id FROM core_ai_scancollection WHERE customer_id IN (:ids))",
         ).param("ids", toDelete).update()
 //        for (table in RESOURCE_TABLES) {
 //            jdbc.sql("DELETE FROM $table WHERE customer_id IN (:ids)").param("ids", toDelete).update()

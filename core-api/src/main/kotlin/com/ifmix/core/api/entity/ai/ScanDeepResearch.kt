@@ -11,7 +11,7 @@ import java.util.UUID
  * 结果（premium_result JSONB）直接存 PG；历史版本长期保留，归档策略见设计 §1.1（本期不做）。
  */
 @Entity
-@Table(name = "core_ai_scan_deep_research")
+@Table(name = "core_ai_deepresearch")
 interface ScanDeepResearch : BaseProjectEntity {
 
     @Column(name = "scan_record_id")

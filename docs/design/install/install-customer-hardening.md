@@ -23,7 +23,7 @@ core_auth_install.id
     = API installId
     = install token iid
     = customer token iid
-    = core_auth_install_customer_relation.install_id
+    = core_auth_install2customer.install_id
     = Customer 业务记录的可信 install_id
 ```
 
@@ -168,10 +168,10 @@ interface InstallIdProps {
 
 涉及表至少包括：
 
-- `core_ai_scan_record`
-- `core_ai_scan_collection`
+- `core_ai_scanrecord`
+- `core_ai_scancollection`
 - `core_cs_feedback`
-- `core_cs_support_request`
+- `core_cs_supportrequest`
 
 #### NOT NULL 迁移
 

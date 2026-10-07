@@ -16,7 +16,7 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * core_ai_customer_scan_metrics：每 customer 一行的扫描累计计数。行不存在 = 计数均为 0。
+ * core_ai_scanmetrics：每 customer 一行的扫描累计计数。行不存在 = 计数均为 0。
  * 写入统一「先懒建行（INSERT ... ON CONFLICT DO NOTHING）再单条 UPDATE」，
  * 「检查 + 自增」仍在单条 UPDATE 内完成，无并发窗口。
  */

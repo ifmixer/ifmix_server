@@ -4,7 +4,7 @@ import tools.jackson.databind.json.JsonMapper
 import tools.jackson.module.kotlin.KotlinModule
 
 /**
- * core-job 侧的 `core_project_server_config.app_attest_config` 最小解析 DTO。
+ * core-job 侧的 `core_project_serverconfig.app_attest_config` 最小解析 DTO。
  *
  * 决策（WP-E）：不放 core-common（core-job 无 core-common 之外对该 JSONB 的消费方），
  * 只取回填 / 刷新需要的 ios 段字段，逐字段可空 —— 缺失只影响对应任务并打日志（规格 §4.1 口径：

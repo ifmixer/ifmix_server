@@ -23,7 +23,7 @@ object AiApiKeyTypes {
  * （来源见 [ApiProviders]，当前唯一 provider 为 Agnes）。
  */
 @Entity
-@Table(name = "core_ai_api_key")
+@Table(name = "core_ai_apikey")
 interface AiApiKey : BaseEntity {
 
 

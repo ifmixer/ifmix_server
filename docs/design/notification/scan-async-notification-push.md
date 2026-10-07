@@ -87,18 +87,18 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 ### 4.4 数据模型变更
 
-**`core_ai_scan_record`**：
+**`core_ai_scanrecord`**：
 - `status`：复用现列，码表重定义为 10/20/30/40（现无人读，安全）。创建写 20，CAS 终态改 30/40。
 - 新增 `error_code: String?`、`error_details: jsonb?`。
 - **status 历史回填**（前端 agent #1）：V12 迁移前先统计线上 `status` 分布；已知旧完成记录 `20→30`、旧失败码 `30→40`；旧 `10/11` 必须先确认实际含义和数量再决定（保留/回填失败/按 basic_result 是否为空判断），**不盲改**。迁移主体：
   ```sql
-  UPDATE core_ai_scan_record SET status = CASE status
+  UPDATE core_ai_scanrecord SET status = CASE status
     WHEN 20 THEN 30  WHEN 30 THEN 40  ELSE status END
   WHERE status IN (20, 30);
   -- 旧 10/11 处理以线上预检为准
   ```
 
-**`core_ai_customer_scan_metrics`**：新增 `pending_scan_count integer NOT NULL DEFAULT 0`（额度预留，§4.5）。
+**`core_ai_scanmetrics`**：新增 `pending_scan_count integer NOT NULL DEFAULT 0`（额度预留，§4.5）。
 
 ### 4.5 配额预留模型（前端 agent #2，核心修正）
 
@@ -123,7 +123,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 1. **预留（创建端，同创建事务内）** —— `ensureRow` 后执行**单条条件 UPDATE**，不先 `findCounts` 再无条件 +1（READ COMMITTED 下先查后改仍有并发窗口）：
    ```sql
-   UPDATE core_ai_customer_scan_metrics
+   UPDATE core_ai_scanmetrics
    SET pending_scan_count = pending_scan_count + 1, updated_at = now()
    WHERE project_id = :projectId AND customer_id = :customerId
      AND scan_count + pending_scan_count < :scanQuota;
@@ -135,7 +135,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 2. **成功转移（CAS 20→30 赢家，同短事务）** —— 单条条件 UPDATE，`pending > 0` 显式约束（不用 GREATEST 掩盖）：
    ```sql
-   UPDATE core_ai_customer_scan_metrics
+   UPDATE core_ai_scanmetrics
    SET pending_scan_count = pending_scan_count - 1, scan_count = scan_count + 1, updated_at = now()
    WHERE project_id = :projectId AND customer_id = :customerId AND pending_scan_count > 0;
    ```
@@ -143,7 +143,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 3. **释放（CAS 20→40 赢家：失败/超时/submit 失败，同短事务）**：
    ```sql
-   UPDATE core_ai_customer_scan_metrics
+   UPDATE core_ai_scanmetrics
    SET pending_scan_count = pending_scan_count - 1, updated_at = now()
    WHERE project_id = :projectId AND customer_id = :customerId AND pending_scan_count > 0;
    ```
@@ -337,5 +337,5 @@ app:
 2. ~~FCM topic 订阅前提~~ **已由前端 agent #6 确认满足**：Antique 已上报 fcm_token、Firebase Installation ID、订阅 `install_${installId}`、具备前台/冷启动点击处理。topic 回退有效。
 3. updateInstall 现有结构支持新增 `scan_result_noti_enabled` 字段的部分更新。
 4. 后台任务 offline ActionContext 的 scanRunner 调用（同 DeepResearch 验证点）。
-5. **V12 迁移前必须线上预检** `core_ai_scan_record.status` 分布（§4.4）：确认旧 10/11 的实际含义与数量后再定回填策略，不盲改。
+5. **V12 迁移前必须线上预检** `core_ai_scanrecord.status` 分布（§4.4）：确认旧 10/11 的实际含义与数量后再定回填策略，不盲改。
 6. CustomerScanMetrics 的 pending/scan_count 原子方法用 Jimmer native `sql(...)` 表达（参考现有 `tryIncrementScanCount` 的 `%e/%v` 写法）。

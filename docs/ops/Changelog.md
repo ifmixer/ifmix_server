@@ -9,8 +9,8 @@
 ### Added
 - **install 体系**（V5/V6）：`m_auth_install_create` / `m_auth_install_updateOne`；JWT 新增 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（一 install 一 active customer）。老 app 兼容：`app.auth.legacy-install-id-fallback`（默认 true，token 无 iid 时退回 `x-install-id` header，仅读不写关系）。
 - **install attestation 一期**（iOS App Attest，V15，默认关）：createInstall 可带 proof；新增 `m_auth_install_createAttestChallenge` / `m_auth_install_recover` / `m_auth_install_attest`；错误码 403001/403002/409001/404001/429002/503002，429 必带 retryAfterSec。新 env：`APP_ATTEST_GLOBAL_ENABLED`、`APP_ATTEST_CHALLENGE_SECRET`。
-- **AI 扫描 / DeepResearch 异步化**（V10–V13）：mutation 秒回 task id，前端轮询状态，完成后 FCM push（`NotificationRequest` / per-project FirebaseAppRegistry / push feature flag）。配额改 `core_ai_customer_scan_metrics` 台账（V4/V9，成功才扣、CAS 原子）；`core_customer` 旧计数列暂留（后续迁移删除）。
-- **AI key 池**（V8）：`core_ai_agnes_key` → `core_ai_api_key`，多 key 轮询 + Redis 分布式冷却 + 禁用/probe-skip。
+- **AI 扫描 / DeepResearch 异步化**（V10–V13）：mutation 秒回 task id，前端轮询状态，完成后 FCM push（`NotificationRequest` / per-project FirebaseAppRegistry / push feature flag）。配额改 `core_ai_scanmetrics` 台账（V4/V9，成功才扣、CAS 原子）；`core_customer` 旧计数列暂留（后续迁移删除）。
+- **AI key 池**（V8）：`core_ai_agnes_key` → `core_ai_apikey`，多 key 轮询 + Redis 分布式冷却 + 禁用/probe-skip。
 - **wire 加密 v2**：X25519+HKDF+AES-256-GCM 请求/响应加密，>4KB 响应 gzip；明文 v1 永远放行（降级保留）。ts 偏差仅 warn（客户端时钟偏差不可控，强制时效暂缓——见 wire 设计 §9 决策修订）。
 - **多维限流**：createInstall 入口 100/60s/IP + 验签后 IP 日窗口；createAnonymous / scan / DeepResearch install 层限流；阈值全部 `app.ratelimit.*` 配置、重启生效。
 - **`m_auth_account_deleteMyOne`**（V7）：软删 + 解绑全部 install 关系 + 吊销全部 refresh token，事务内原子生效；`DeletionReasons` 码表。
@@ -39,13 +39,17 @@
 - **challenge secret 改为 per-project（服务端内部）**：`app_attest_config.challengeSecret`（`current[,previous]`，32 字节 base64）每 app 独立，解析优先于全局 env `APP_ATTEST_CHALLENGE_SECRET`（后者保留为回落，用于过渡期/本地 dev）；per-project 格式非法记入 problems（ENFORCE fail-closed）。单个 secret 泄露的伪造面收敛到单 app。设计 §3.1/§4.1 已同步。
 - **GraphQL 错误响应顶层注入 `code`/`msg`（客户端可见）**：`errors` 数组保留，顶层新增 `code`（= `errors[0].extensions.code`；GraphQL 校验/语法等框架级错误按 classification/errorType 推导兜底，推不出为 500000）与 `msg`（= `errors[0].message`），客户端统一按 `{code, msg, data}` 读取。由 `GraphQlHttpStatusFilter` 注入；兜底 code 不参与 HTTP status 映射（仍以 extensions.code 为准）。
 
+### 2026-10-07 增补（表名去重，V20）
+
+- **表名规则收紧（数据库可见）**：表名里 `_` 只保留层级作用（域前缀 `core_<域>_`），域内单词不再用 `_` 连接。16 张表改名：`core_ai_apikey` / `core_ai_scanmetrics` / `core_ai_scancollection(item)` / `core_ai_deepresearch` / `core_ai_scanrecord` / `core_auth_identity2idp` / `core_auth_installattestation` / `core_auth_install2customer` / `core_auth_project2idp` / `core_cs_supportrequest` / `core_demo_todoitem` / `core_media_filerecord` / `core_pay_storenotification` / `core_project_configrevision` / `core_project_serverconfig`；关系表用 `2`（=to）连接；两张长名简化（customer_scan_metrics→scanmetrics、scan_deep_research→deepresearch）。列名不动；实体 `@Table`、原生 SQL、文档已同步。曾短暂改 `core_org_project*`，最终保留 `core_project_*`（org 不是系统实体，词汇对齐 project）。
+
 ### 2026-10-07 增补（attestation 表改「带 proof 必留痕」，V19）
 
-- **`core_auth_install_attestation` 增 `verify_status`（数据库可见）**：10=VALID（验证通过并绑定）/ 20=INVALID（验证不通过）/ 30=NOT_EVALUATED（服务端未评估，如 Android 1b）。带 proof 的请求必留一行（此前失败尝试不入表）；INVALID/NOT_EVALUATED 行 `status`=40 NOT_BOUND 仅留痕，`evidence.reason` 记原因。原始 `attestation_object` 字节与新增 `challenge` 列全保留——后端算法修正后可写脚本离线重验、修正用户数据。唯一索引只约束 VALID 行；`attestationStatus` 返回值语义不变。`verify_status` 可空（NULL=尚无结论，无默认值）；证明材料输入上限从 16KB 放宽到 **1MB**（base64 入参 ≤1.4M 字符，请求体大小由请求层限制兜底）。
+- **`core_auth_installattestation` 增 `verify_status`（数据库可见）**：10=VALID（验证通过并绑定）/ 20=INVALID（验证不通过）/ 30=NOT_EVALUATED（服务端未评估，如 Android 1b）。带 proof 的请求必留一行（此前失败尝试不入表）；INVALID/NOT_EVALUATED 行 `status`=40 NOT_BOUND 仅留痕，`evidence.reason` 记原因。原始 `attestation_object` 字节与新增 `challenge` 列全保留——后端算法修正后可写脚本离线重验、修正用户数据。唯一索引只约束 VALID 行；`attestationStatus` 返回值语义不变。`verify_status` 可空（NULL=尚无结论，无默认值）；证明材料输入上限从 16KB 放宽到 **1MB**（base64 入参 ≤1.4M 字符，请求体大小由请求层限制兜底）。
 
 ### 2026-10-07 增补（customer/install 表挂 auth 域前缀，V18）
 
-- **表改名（V18，数据库可见）**：`core_customer` → `core_auth_customer`、`core_install` → `core_auth_install`、`core_install_customer_relation` → `core_auth_install_customer_relation`、`core_install_attestation` → `core_auth_install_attestation`（attest 凭证/绑定表随 install 走）。纯改名：无物理外键，索引名不变，无数据变更；v1.0.6 未发布，无兼容负担。实体 `@Table` 与所有原生 SQL（含 core-job 清理任务）已同步；历史条目中的旧表名不再回改，以本条为准。
+- **表改名（V18，数据库可见）**：`core_customer` → `core_auth_customer`、`core_install` → `core_auth_install`、`core_install_customer_relation` → `core_auth_install2customer`、`core_install_attestation` → `core_auth_installattestation`（attest 凭证/绑定表随 install 走）。纯改名：无物理外键，索引名不变，无数据变更；v1.0.6 未发布，无兼容负担。实体 `@Table` 与所有原生 SQL（含 core-job 清理任务）已同步；历史条目中的旧表名不再回改，以本条为准。
 
 ### 2026-10-07 增补（请求解析职责收敛：filter 只解密，parser 只解析）
 
@@ -57,7 +61,7 @@
 
 ### 2026-10-07 增补（demo E2E 走查修复）
 
-- **V17**：`core_demo_todo_item` 补 `note` 列——实体 `TodoItem.note` 与 schema 早已有该字段，建表迁移遗漏，任何写/读 note 的操作都会 500（column does not exist）。
+- **V17**：`core_demo_todoitem` 补 `note` 列——实体 `TodoItem.note` 与 schema 早已有该字段，建表迁移遗漏，任何写/读 note 的操作都会 500（column does not exist）。
 - **Fixed**：跨线程 ActionContext 传播（服务端内部）。DGS 虚拟线程模式下嵌套 resolver / DataLoader 在独立线程执行，ThreadLocal 不可靠：① `CreateAnonymousResult.customer` 嵌套 resolver 原 `ActionContextHolder.current()` 必炸 500；② 若在嵌套处重建 ctx，parent type 非 Mutation → `preferReader=true`，mutation 流程内的读会误走 reader 池。修复：删除 ThreadLocal 机制（`ActionContextHolder` 整体移除），新增 `RequestActionContext`（DGS custom context，随 DgsContext 进 GraphQLContext，与线程无关）作为唯一传播通道——每请求首个 `fromDfe` 构建后缓存复用，嵌套处拿到顶层原 ctx（isMutation/preferReader/actionName 保持原值），require* 仍逐项校验；4 个 DataLoader（todoItems/todoItemCounts/scanRecords/latestDeepResearch）改 `MappedBatchLoaderWithContext` 从 DgsContext 取 ctx。
 - **Added**：demo 全链路 E2E 脚本 `scripts/demo-e2e.mjs`（明文 dev 通道 `x-req-meta`；createIosInstall → updateInstall → createAnonymous → Todo CRUD 19 步）。
 
@@ -71,7 +75,7 @@
 - **GraphQL operationName 同步改四段式**（客户端 breaking）：`@DgsQuery/@DgsMutation` field 名同日全量改名，规则同 reqName 并叠加 `My`——customer 作用域 CRUD 动作动词后带 `My`（`getMyById / listMy / updateMyOne / deleteMyMany`），`create` 例外不加（`m_demo_todo_createOne`），专名动词（me/login/verify/run/getStatus/getDefault/add/attest/recover 等）与 install/session 作用域不加。例：`q_ai_findMyScanById → q_ai_scan_getById`、`q_auth_me → q_auth_session_me`、`m_media_presignUpload → m_media_file_presignUpload`。greq path 末段与 persisted query manifest（`customer.json`）随之更新，前端 client-sdk 已对齐。
 - **customer/install 并入 auth 模块**：服务端内部结构调整（`modules/auth/{install,customer}`、`entity/auth/`、fetcher 并入 `bff/graphql/customer/auth/`），随之相关 reqName 的 namespace 由 install/customer 改为 auth（`m_auth_install_*`、`m_auth_customer_*`）。
 - **RPC URL 定稿**：`POST /customer/core/greq/{reqName}`（与 GraphQL persisted query 同路径；gql raw 仍为 `/customer/core/gql`）；原 proposal 的 `POST /api/customer/core/{reqName}` 方案废弃，不再新增 `/api/` 前缀路径。
-- **media resource 改名 file**：`m_media_media_presignUpload/Download` → `m_media_file_presignUpload/Download`；表 `core_media_upload_record` → `core_media_file_record`（V16，纯 RENAME）。persisted query 文本内的 operation name 同步改为与 manifest key 一致（原 PascalCase 废弃）。
+- **media resource 改名 file**：`m_media_media_presignUpload/Download` → `m_media_file_presignUpload/Download`；表 `core_media_upload_record` → `core_media_filerecord`（V16，纯 RENAME）。persisted query 文本内的 operation name 同步改为与 manifest key 一致（原 PascalCase 废弃）。
 - **legacy 兼容整体删除**：`app.auth.legacy-install-id-fallback`（x-install-id header 回退）、`parseLegacyInstallId`、legacy 限流计数器（anonymous/scan/DR 独立严格阈值）、DateTime 标量 epoch millis 兼容。无可信 token iid 一律 401000；发布 env 不再需要 `APP_LEGACY_INSTALL_ID_FALLBACK`。
 - **createInstall 按平台拆分**（attest 规格 v6）：`m_auth_install_create` → `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`；入口强校验 `x-client-platform` 与 action 一致（400000）、proof.provider 与平台匹配（110/120）；底层限流/验证/绑定复用；attest 仍可选。Android 1b 前其 proof 在 ENFORCE 下 503002。
 - **wire v2.1：header 进 body**（客户端 breaking）：加密请求的上下文 meta（`x-project-id` / `x-client-platform` / `x-locale` / `x-currency` / `x-country` / `x-app-version` / `x-ota-version`）与 `Authorization` 收进加密 body（`{meta, authorization, query, variables}`），header 上不再出现 token。`x-wirep-version` / `Content-Type` / `x-req-id` / CF 注入头保持 header 不变；服务端在 `WireCryptoFilter` 解密后把 meta/authorization 合并为伪 header（白名单键 + 8KB 上限，业务无感），meta 结构违规按 400003 拒绝。dev/调试双通道：明文请求（`app.wire-crypto.mode=optional` 仅 local/dev）meta 走单个 `x-req-meta` JSON header + 标准 `Authorization` header，required 模式下 `x-req-meta` 不生效。详见 wire 设计 §9。

@@ -101,7 +101,7 @@ core_auth_install.id = API installId = JWT iid
 - `platform/app_version/ota_version/locale/country/currency` 从 header 获取；`device_info/firebase_install_id/fcm_token` 从 GraphQL input 获取，仅覆盖非空值。
 - `reg_ip` write-once，只记录首次注册来源。
 
-### 3.2 `core_auth_install_customer_relation` — 关系表
+### 3.2 `core_auth_install2customer` — 关系表
 
 | 列 | 类型 | 说明 |
 |----|------|------|
@@ -117,7 +117,7 @@ core_auth_install.id = API installId = JWT iid
 - 索引：`(project_id, install_id)`。
 - 「一个 install 同时只能绑一个 customer」由**业务逻辑**保证（见 §5），不是 DB 约束。
 
-> 与 `core_auth_identity_to_idpidentity_relation` 的差异：那张表用「部分唯一索引 `WHERE deleted_at IS NULL` + 每次插新行」；本表用「全局唯一 + 复用行翻转 deleted_at」。原因：本表要支持同一对反复 bind/unbind 而不产生噪音行。
+> 与 `core_auth_identity2idp` 的差异：那张表用「部分唯一索引 `WHERE deleted_at IS NULL` + 每次插新行」；本表用「全局唯一 + 复用行翻转 deleted_at」。原因：本表要支持同一对反复 bind/unbind 而不产生噪音行。
 
 ---
 
@@ -330,8 +330,8 @@ extend type Mutation {
 
 - **两层限流**：IP 层=系统防护（阈值大），install 层=防滥用（阈值小）；任一层超限即拒。（v1.0.6 起 legacy 第三层已删除。）createInstall（v6 拆分后的 createIosInstall / createAndroidInstall，共享同一 IP 配额）：入口 100/60s/IP；验签后日窗口按结果分桶 attested 1000/天/IP、unverified 100/天/IP（UTC 日，两个计数器独立）。下游 createAnonymous / scan / DeepResearch：install 层（small）→ IP 层（large）；无 token iid 的请求在 `mustGetTokenInstallId` 即 401000，到不了限流层（legacy 独立计数器已于 2026-10-06 随 fallback 删除）。
 - **错误码与 Retry-After**：GraphQL 错误 `extensions.retryAfterSec`（429000=短窗口剩余秒、429002=到 UTC 零点秒，均必带；503002 可选）。REST 不动。
-- **开关**：全局 kill switch env `APP_ATTEST_GLOBAL_ENABLED`（默认 false）；challenge secret env `APP_ATTEST_CHALLENGE_SECRET`（`current[,previous]`）；per-project `core_project_server_config.app_attest_config` JSONB（null=关），mode OFF/OBSERVE/ENFORCE（project 级单一 mode）。一期默认关、显式开、先观察后强制。
-- **新表 `core_auth_install_attestation`**（V15，只存 VALID 长期凭证/绑定；失败尝试不入表只进日志）+ `core_auth_install.store_type`（§5.9）。
+- **开关**：全局 kill switch env `APP_ATTEST_GLOBAL_ENABLED`（默认 false）；challenge secret env `APP_ATTEST_CHALLENGE_SECRET`（`current[,previous]`）；per-project `core_project_serverconfig.app_attest_config` JSONB（null=关），mode OFF/OBSERVE/ENFORCE（project 级单一 mode）。一期默认关、显式开、先观察后强制。
+- **新表 `core_auth_installattestation`**（V15，只存 VALID 长期凭证/绑定；失败尝试不入表只进日志）+ `core_auth_install.store_type`（§5.9）。
 
 ---
 

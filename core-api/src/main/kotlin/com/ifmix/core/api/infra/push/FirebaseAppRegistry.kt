@@ -15,7 +15,7 @@ import java.net.Proxy
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * 按 projectId 懒加载 + 缓存 FirebaseMessaging（设计：FCM 凭据项目级，存 core_project_server_config.fcm_config）。
+ * 按 projectId 懒加载 + 缓存 FirebaseMessaging（设计：FCM 凭据项目级，存 core_project_serverconfig.fcm_config）。
  *
  * - 首次请求某 project → 读 server config 的 fcm_config（service account JSON）→ initializeApp(name=projectId) → 缓存；
  * - project 无 fcm_config → 返回 null（该 project 不发 FCM push，调用方走 noop 效果）；

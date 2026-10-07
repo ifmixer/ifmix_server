@@ -20,11 +20,12 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 6. **DeepResearch AI 返回缺 `premium_result` 算失败**：走 key 池重试 N 次（与 scan 同 `attemptCount` 上限），耗尽后任务 FAILED，不允许成功落库 premium=null。详见 DR PG 版设计 §3.1。
 7. **发布允许短暂停机 ≤10min**（V6/V8 迁移要求旧实例先停）。
 8. **legacy 兼容整体删除（2026-10-06，v1.0.6 未发布无兼容负担）**：`app.auth.legacy-install-id-fallback` 开关 + `parseLegacyInstallId` + `ActionContext.legacyInstallId` 回退、legacy 限流计数器（anonymous/scan/DR 的 legacy-ip-* 独立计数）、DateTime 标量 epoch millis 兼容全部删除。无可信 token iid 的请求一律 401000；logout「缺 iid 只撤销会话」保留为防御分支。**发布不再需要 `APP_LEGACY_INSTALL_ID_FALLBACK` env**。
-9. **operationName 与 reqName 四段式统一（2026-10-06）**：39→40 个 GraphQL 顶层 field 全量改名（customer 作用域 CRUD 动词后带 `My`，create 例外；专名动词与 install/session 不加）；persisted query 文本内 operation name == manifest key == 顶层 field；media resource 改 **file**（`m_media_file_presignUpload/Download`，表 `core_media_upload_record` → `core_media_file_record`，V16）。
+9. **operationName 与 reqName 四段式统一（2026-10-06）**：39→40 个 GraphQL 顶层 field 全量改名（customer 作用域 CRUD 动词后带 `My`，create 例外；专名动词与 install/session 不加）；persisted query 文本内 operation name == manifest key == 顶层 field；media resource 改 **file**（`m_media_file_presignUpload/Download`，表 `core_media_upload_record` → `core_media_filerecord`，V16）。
 10. **createInstall 按平台拆分（2026-10-06，attest 规格 v6）**：`m_auth_install_create` → `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`。底层复用；入口强校验 `x-client-platform` 与 action 一致（400000）、proof.provider 与平台匹配（110/120）；限流 key 不含平台段（共享 IP 配额）。attest 仍可选（不带 proof 走 no-proof，ENFORCE 下由 mode 判定）。Android 1b（PlayIntegrityVerifier）实现前：ENFORCE 下 Android proof → 503002。
 11. **challenge secret 改 per-project（2026-10-07）**：`app_attest_config.challengeSecret`（`current[,previous]`，32 字节 base64）每 app 独立，优先于 env `APP_ATTEST_CHALLENGE_SECRET`（env 保留为回落，本地 dev/过渡期用）；per-project 格式非法记 problems（ENFORCE fail-closed）。**每个 app 上线前必须各自生成独立 secret 写入 DB**；决策依据与「iOS/Android 不拆分」的分析见设计 §3.1。
-12. **customer/install 表挂 auth 域前缀（2026-10-07，V18）**：`core_customer` → `core_auth_customer`、`core_install` → `core_auth_install`、`core_install_customer_relation` → `core_auth_install_customer_relation`、`core_install_attestation` → `core_auth_install_attestation`（attest 凭证/绑定表随 install 走）。纯改名（无物理外键、索引名不变）；历史增量段落中的旧表名以 V18 为准。
-13. **attestation 表改「带 proof 必留痕」（2026-10-07，V19）**：`core_auth_install_attestation` 增 `verify_status`（10 VALID / 20 INVALID / 30 NOT_EVALUATED，可空、无默认值）与 `challenge`；INVALID/NOT_EVALUATED 行 status=NOT_BOUND(40) 留痕，原始 attestation 字节与 challenge 全保留（后端算法修正后可离线重验）；唯一索引只约束 VALID 行；绑定语义查询（findBySubject/轮换/recover）只认 verify_status=10。证明材料上限 16KB → 1MB。设计 §5.4 已同步。
+12. **customer/install 表挂 auth 域前缀（2026-10-07，V18）**：`core_customer` → `core_auth_customer`、`core_install` → `core_auth_install`、`core_install_customer_relation` → `core_auth_install2customer`、`core_install_attestation` → `core_auth_installattestation`（attest 凭证/绑定表随 install 走）。纯改名（无物理外键、索引名不变）；历史增量段落中的旧表名以 V18 为准。
+13. **attestation 表改「带 proof 必留痕」（2026-10-07，V19）**：`core_auth_installattestation` 增 `verify_status`（10 VALID / 20 INVALID / 30 NOT_EVALUATED，可空、无默认值）与 `challenge`；INVALID/NOT_EVALUATED 行 status=NOT_BOUND(40) 留痕，原始 attestation 字节与 challenge 全保留（后端算法修正后可离线重验）；唯一索引只约束 VALID 行；绑定语义查询（findBySubject/轮换/recover）只认 verify_status=10。证明材料上限 16KB → 1MB。设计 §5.4 已同步。
+14. **表名去重（2026-10-07，V20）**：域前缀（`core_<域>_`）保留层级作用，域内单词不再用 `_` 连接（如 `core_ai_scan_record` → `core_ai_scanrecord`）；关系表用 `2`（=to）连接（`core_auth_install2customer` / `core_auth_identity2idp` / `core_auth_project2idp`）；两张长名简化（`core_ai_customer_scan_metrics` → `core_ai_scanmetrics`、`core_ai_scan_deep_research` → `core_ai_deepresearch`）。列名不动（`_` 的层级作用只限表名）。曾短暂改 `core_org_project*`，最终保留 `core_project_*`（org 不是系统实体，词汇对齐 project）。
 
 ### 发布前必须完成的修复（2026-10-05 code review，P1）
 
@@ -43,7 +44,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 
 1. 完成上述修复，全量 `./gradlew :core-api:test :core-job:test` 通过；本地 `:core-api:flywayMigrate` 从零库验证。
 2. **停服**（旧实例停止，≤10min 窗口）。
-3. `./gradlew :core-api:flywayMigrate`（V4–V19）。**V6 改 `install_id` 列类型（text→uuid）、V8 改 AI key 表名——迁移后旧代码写入即失败，必须先停机再迁移**（决策 7）。
+3. `./gradlew :core-api:flywayMigrate`（V4–V20）。**V6 改 `install_id` 列类型（text→uuid）、V8 改 AI key 表名——迁移后旧代码写入即失败，必须先停机再迁移**（决策 7）。
 4. 部署新 core-api（增量脚本 `scripts/deploy/sync-core-api.sh` + 健康检查），恢复流量。
 5. core-job 同步部署；三个 attest job **不配 cron**（决策 3）。
 6. env 核对：`AUTH_JWT_PRIVATE_KEY`（缺失启动即失败）、`APP_ATTEST_GLOBAL_ENABLED`（默认 false）。`APP_ATTEST_CHALLENGE_SECRET` 为**可选回落**——每个 app 的独立 secret 写 per-project `app_attest_config.challengeSecret`（发布时生成，勿多 app 复用）；两者都缺且全局开关开 → 503002 fail-closed。
@@ -54,7 +55,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 本组变更全部为客户端 breaking，需与客户端发布节奏协同：
 
 - **GraphQL operationName 与 reqName 统一四段式**：39 个顶层 field（`@DgsQuery/@DgsMutation`）全量改名（customer 作用域 CRUD 动词后带 `My`，create 例外；专名动词与 install/session 不加）；persisted query 文本内 operation name == manifest key == 顶层 field name。39 条全量名单即 `persisted-queries/customer/customer.json` 的 key。
-- **media resource 改名 file**：`m_media_media_*` → `m_media_file_presignUpload` / `m_media_file_presignDownload`；表 `core_media_upload_record` → `core_media_file_record`（V16，纯 RENAME，已在本地库验证）。
+- **media resource 改名 file**：`m_media_media_*` → `m_media_file_presignUpload` / `m_media_file_presignDownload`；表 `core_media_upload_record` → `core_media_filerecord`（V16，纯 RENAME，已在本地库验证）。
 - **createInstall 按平台拆分**（attest 规格 v6）：`m_auth_install_create` → `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`（决策 10）；客户端 SDK 按 `platform` 选 action，manifest 现 40 条。
 - **legacy 兼容整体删除**（决策 8）：fallback 开关链路 + legacy 限流计数器 + DateTime epoch millis。发布 env 不再需要 `APP_LEGACY_INSTALL_ID_FALLBACK`。
 - **customer/install 并入 auth 模块**：服务端内部结构（`modules/auth/{install,customer}`、`entity/auth/`）+ reqName namespace 变化（`m_auth_install_*`、`m_auth_customer_*`）。
@@ -66,7 +67,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 
 ### v1.0.6 增量（2026-10-07：demo E2E 走查修复）
 
-- **V17**：`core_demo_todo_item` 补 `note` 列（实体/schema 早已有，建表迁移遗漏）。
+- **V17**：`core_demo_todoitem` 补 `note` 列（实体/schema 早已有，建表迁移遗漏）。
 - 跨线程 ActionContext 传播改权威通道 `RequestActionContext`（DGS custom context，随 DgsContext 传递）：嵌套 resolver 复用顶层原 ctx（否则重建会把 mutation 内的读判成 preferReader=true 误走 reader 池）；4 个 DataLoader 改 `MappedBatchLoaderWithContext`。ThreadLocal 机制整体移除（`ActionContextHolder`/`ProjectScopedFilter.kt` 删除）。
 - 新增 demo E2E 脚本 `scripts/demo-e2e.mjs`（19 步全链路，19/19 通过；`:core-api:test :core-job:test` 全过）。
 - attest 无需新增绕过开关：`APP_ATTEST_GLOBAL_ENABLED` 默认 false 即全绕过（曾临时加 `APP_ATTEST_BYPASS`，与关掉全局开关无实质差异，已删除）。
@@ -86,7 +87,7 @@ install attestation 一期（1a，iOS App Attest）。设计见 `docs/design/att
 - **attestation（默认关）**：`m_auth_install_create` 新增 `proof` / `proofStatus` / `storeType` 入参 + `attestationStatus` 返回（10/20/30）；新增 3 个 mutation `m_auth_install_createAttestChallenge` / `m_auth_install_recover` / `m_auth_install_attest`（存量补证）。判定矩阵 / 错误码（403001/403002/409001/404001/429002/503002）/ retryAfterSec extensions（429000/429002 必带）见规格 §4.3/§4.4。
 - **限流阈值调整**：createInstall 入口 10/60s → **100/60s/IP**，验签后新增 IP 日窗口（attested 1000/天、unverified 100/天，UTC 日分桶）；下游 createAnonymous / scan / DeepResearch 增加 install 层限流（防滥用，小阈值）+ 上调 IP 层（系统防护，100/min + 1000/天），legacy 请求走独立旧严格阈值计数器；阈值全部 `app.ratelimit.*` 配置、**重启生效**（紧急降额需重启/发布，非即时 kill switch）。上线前需按规格 §4.6 核对 AI key 池容量。
 - **新 env 两个**：`APP_ATTEST_GLOBAL_ENABLED`（默认 false，全局 kill switch）、`APP_ATTEST_CHALLENGE_SECRET`（`current[,previous]`，32 字节 base64；全局开关开时缺失 = 配置无效 fail-closed → 503002 + 节流日志 `attest.config_invalid`）。**【2026-10-07 修订】challenge secret 迁为 per-project 字段 `app_attest_config.challengeSecret`（优先），env 降级为回落**——决策记录 11。
-- **DB 迁移 V14/V15**：`core_project_server_config.app_attest_config`（JSONB）；`core_install.store_type`（INT NULL）；新表 `core_install_attestation`（含 `attestation_object` 回填列）。先 `flywayMigrate` 再发新代码。
+- **DB 迁移 V14/V15**：`core_project_serverconfig.app_attest_config`（JSONB）；`core_install.store_type`（INT NULL）；新表 `core_install_attestation`（含 `attestation_object` 回填列）。先 `flywayMigrate` 再发新代码。
 - **core-job 三个新任务**（`--job.name`）：`attestReceiptBackfill`（Apple receipt 回填，attestation_object 换 receipt）、`attestFraudMetricRefresh`（DeviceCheck two bits，失败指数退避封顶 24h；deviceCheck 配置缺失跳过不报错）、`attestEvidenceCleanup`（evidence 90 天清理）。外部 cron 触发，频率见规格 §5.7/§5.8（backfill/refresh 建议每日，evidence 每日）。**【2026-10-05 运维决定】执行入口已注释（`AttestJobs` 三个 @Bean），线上暂不调度、不配 cron**——不影响 createInstall/recover/attestExisting（纯本地验证，不依赖 receipt/fraud_metric）；代价 = fraud_metric 缺失（二期策略需要时再恢复）+ `attestation_object` 列随 install 增长。恢复：取消 `AttestJobs.kt` 内注释 → 部署 → 配 cron（首次启用会回填全部历史行，注意对 Apple 的集中请求量）。
 - **发布顺序**：服务端（含 schema + allowlist）先上线（全局开关关、无 project 配置 → 现网零影响），客户端再发布（flag 默认关）；随后 `APP_ATTEST_GLOBAL_ENABLED=true` + project 写 `app_attest_config`（mode=OBSERVE 只配 ios + 独立 `challengeSecret`）→ 观察灰度指标（规格 §8）→ 满足 §4.5 后切 ENFORCE。
   - 上线前检查清单（规格 §9，不可跳过）：App ID 开 App Attest capability + 两套 profile；Archive `.app` codesign 确认 entitlement 值；TestFlight 真机冒烟（production verifier 跑通 create + recover）；平台发布清单（`app.config.js` 声明 platforms 含 android、EAS 有 android profile 时，1b 完成前**禁止切 ENFORCE**）。
@@ -97,8 +98,8 @@ install attestation 一期（1a，iOS App Attest）。设计见 `docs/design/att
 
 - **install 体系**：`m_auth_install_create` / `m_auth_install_updateOne`；token 增加 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（V5/V6）。
 - ~~**老 app 兼容**：`app.auth.legacy-install-id-fallback`~~ **2026-10-06 已删除**（决策 8）：v1.0.6 未发布，无兼容负担；installId 一律取 token 可信 iid。
-- **扫描计数迁表**：`core_customer.scan_count / deep_research_count` → `core_ai_customer_scan_metrics`（V9，旧列暂留，发布完成后另起迁移删除）。
-- **AI key 池**：轮询 + Redis 分布式冷却；`core_ai_agnes_key` → `core_ai_api_key`（V8）。
+- **扫描计数迁表**：`core_customer.scan_count / deep_research_count` → `core_ai_scanmetrics`（V9，旧列暂留，发布完成后另起迁移删除）。
+- **AI key 池**：轮询 + Redis 分布式冷却；`core_ai_agnes_key` → `core_ai_apikey`（V8）。
 - **错误透出**：线上（`app.expose-errors=false`）5xx 只返回通用文案。
 - **日志**：文件日志改为 JSON（logstash 格式，一行一条）；MDC 上下文字段 `rid pid iid cid ip bot plat av ov loc cur cty` 为顶层字段；请求日志 `method/path/httpStatus/duration(ms 数值)/req/res`；请求头/响应头 `x-req-id`。线上看日志需 `jq`，日志采集侧按 JSON 解析。
 

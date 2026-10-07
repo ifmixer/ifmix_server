@@ -4,11 +4,11 @@ import com.ifmix.core.api.entity.common.BaseProjectEntity
 import org.babyfish.jimmer.sql.*
 
 /**
- * 服务端专属项目配置（**绝不下发前端**，与 core_project_config_revision 分开正是为此）。
+ * 服务端专属项目配置（**绝不下发前端**，与 core_project_configrevision 分开正是为此）。
  * 每 project 一行（projectId 唯一）。存 FCM service account 等敏感凭据。
  */
 @Entity
-@Table(name = "core_project_server_config")
+@Table(name = "core_project_serverconfig")
 interface ProjectServerConfig : BaseProjectEntity {
 
     /**

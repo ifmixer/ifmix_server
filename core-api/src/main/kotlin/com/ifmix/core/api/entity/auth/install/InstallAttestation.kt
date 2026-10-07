@@ -8,7 +8,7 @@ import java.util.UUID
 /** attestation 状态编码（Int 全链路透传），码表见 [AttestationStatuses]。 */
 typealias AttestationStatus = Int
 
-/** core_auth_install_attestation.status 码表（10 起步长 10）。 */
+/** core_auth_installattestation.status 码表（10 起步长 10）。 */
 object AttestationStatuses {
     /** 有效：可 recover、可做新绑定。 */
     const val ACTIVE: AttestationStatus = 10
@@ -20,7 +20,7 @@ object AttestationStatuses {
     const val NOT_BOUND: AttestationStatus = 40
 }
 
-/** core_auth_install_attestation.verify_status 码表：服务端对该次 proof 的验证结论。 */
+/** core_auth_installattestation.verify_status 码表：服务端对该次 proof 的验证结论。 */
 object AttestationVerifyStatuses {
     /** 验证通过并已绑定（status=ACTIVE；唯一索引只约束此类行）。 */
     const val VALID: Int = 10
@@ -38,7 +38,7 @@ object AttestationVerifyStatuses {
  * signals / evidence 为 JSONB（@Serialized）；attestation_object 原文由 core-job 回填 receipt 成功后清空。
  */
 @Entity
-@Table(name = "core_auth_install_attestation")
+@Table(name = "core_auth_installattestation")
 interface InstallAttestation : BaseProjectEntity {
 
     /** 逻辑外键 core_auth_install.id。 */

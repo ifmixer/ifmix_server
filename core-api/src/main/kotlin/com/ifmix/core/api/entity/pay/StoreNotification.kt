@@ -6,7 +6,7 @@ import org.babyfish.jimmer.sql.*
 import java.time.Instant
 
 @Entity
-@Table(name = "core_pay_store_notification")
+@Table(name = "core_pay_storenotification")
 interface StoreNotification : BaseProjectEntity, SoftDeletableProps {
 
 

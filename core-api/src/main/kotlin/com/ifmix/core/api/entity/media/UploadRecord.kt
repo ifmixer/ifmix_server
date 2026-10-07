@@ -12,7 +12,7 @@ import java.util.UUID
  * 主体无关：以 actorId + actorType 关联（customer / 未来 manager）。
  */
 @Entity
-@Table(name = "core_media_file_record")
+@Table(name = "core_media_filerecord")
 interface UploadRecord : UUIDProps, ProjectScopedProps, CreatedAtProps {
 
     /** 逻辑外键 → 主体 id（customer / manager，跨模块） */

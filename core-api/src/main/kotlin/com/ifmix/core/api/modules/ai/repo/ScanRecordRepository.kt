@@ -238,7 +238,7 @@ class ScanRecordRepository(dataSource: DataSource) {
         promptVersion: String,
     ): Boolean {
         // 1) 行锁：串行化同一 scan 的最终写回（毫秒级持有，随事务提交释放）
-        jdbc.sql("SELECT id FROM core_ai_scan_record WHERE project_id = :projectId AND id = :id FOR UPDATE")
+        jdbc.sql("SELECT id FROM core_ai_scanrecord WHERE project_id = :projectId AND id = :id FOR UPDATE")
             .param("projectId", projectId)
             .param("id", scanRecordId)
             .query { rs, _ -> rs.getString("id") }

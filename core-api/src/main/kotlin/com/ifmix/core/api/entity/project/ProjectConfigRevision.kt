@@ -9,7 +9,7 @@ import org.babyfish.jimmer.sql.*
  * per-app 配置版本。追加式；enabled=true 的为当前生效版本。
  */
 @Entity
-@Table(name = "core_project_config_revision")
+@Table(name = "core_project_configrevision")
 interface ProjectConfigRevision : UUIDProps, ProjectScopedProps, CreatedAtProps {
     val appleBundleId: String?
     val androidPackageName: String?

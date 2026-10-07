@@ -6,7 +6,7 @@ Provider 无关的通用 key 池逻辑；Agnes 只是当前唯一 provider（`pr
 
 ## 背景与现状
 
-AI 扫描（`m_ai_scan_createOne` / `m_ai_deepResearch_run`）通过 `SpringAiScanRunner` 调用 AI API，key 池来自 `core_ai_api_key` 表（`enabled=true AND provider=10`，量级 ~3000，`rate_limit` 均为 -1）。
+AI 扫描（`m_ai_scan_createOne` / `m_ai_deepResearch_run`）通过 `SpringAiScanRunner` 调用 AI API，key 池来自 `core_ai_apikey` 表（`enabled=true AND provider=10`，量级 ~3000，`rate_limit` 均为 -1）。
 
 当前选 key 流程（2026-10 重构后）：
 
@@ -161,9 +161,9 @@ app:
 - 2026-10-01 五次评审修订：runner `init` 增加 **`scanDeadlineSec > callTimeoutSec` 启动校验**（deadline ≤ call-timeout 时每次扫描都会在首试前被拦下、静默全量 AI_UNAVAILABLE，现在启动即失败）+ 配套单测；确定取舍：默认 600/360 下**超时一次即结束**，换 key 重试仅对快速失败生效，写入「已知取舍」（扫描改异步后可重估，届时把 deadline 提到 call-timeout 的 2 倍以上）。
 - 2026-10-04 演进（**已实现**）：[401/403 永久禁用 + pick 全冷却跳窗口](api-key-disable-and-probe-skip.md)——坏 key 只冷却不禁用导致 1h 后自动回池周期性重烧；全冷却时游标推进 1、探测窗口重叠 4/5，局部连续冷却区卡掉整请求。独立成文，本文不重复实现细节。
 
-## 表结构（`core_ai_api_key`，V8 通用化，已完成）
+## 表结构（`core_ai_apikey`，V8 通用化，已完成）
 
-- `core_ai_agnes_key`（Agnes 专用）于 V8 改名为通用表 `core_ai_api_key`，新增 `provider smallint DEFAULT 10 NOT NULL`（码表 `ApiProviders`，10=AGNES；独立文件放 `entity/ai/`——Jimmer KSP 坑：`object` 与 `@Entity` 同文件会静默跳过实体生成），索引 `agnes_key_uq` → `api_key_uq`。
+- `core_ai_agnes_key`（Agnes 专用）于 V8 改名为通用表 `core_ai_apikey`，新增 `provider smallint DEFAULT 10 NOT NULL`（码表 `ApiProviders`，10=AGNES；独立文件放 `entity/ai/`——Jimmer KSP 坑：`object` 与 `@Entity` 同文件会静默跳过实体生成），索引 `agnes_key_uq` → `api_key_uq`。
 - `type` 列（10=PERSONAL / 20=ENTERPRISE，码表 `AiApiKeyTypes`）是 key 自身类型，与 `provider` 正交。实体 `entity/ai/AiApiKey.kt`（全局级，继承 `BaseEntity`）。
 - V8 对已有环境是原地改名（数据自然迁移），V1 不动（checksum + 3169 条 INSERT）；新环境 V1 旧名建表 → V8 改名，两条路径终态一致。导入脚本 `scripts/agnes_keys/import_from_register.sh` 已切换目标表（并修复其仍写 V2 前旧表名的潜伏 bug）。
 - 已知遗留：主键索引名仍为 `agnes_key_pkey`（纯命名，不值得单独迁移）。

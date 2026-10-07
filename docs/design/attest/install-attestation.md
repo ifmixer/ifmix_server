@@ -24,7 +24,7 @@
 
 | review 项 | 处理 |
 |---|---|
-| [阻断] receipt 无来源，fraud metric 链路断头 | attestation 对象不含 receipt；createInstall 保持纯本地验证，`core_auth_install_attestation` 增加 `attestation_object` 列，core-job 新增回填任务用 Apple `POST /v1/attestations` 换 receipt 后清空该列（§3.1、§5.4、§5.8）；`attest_data` 响应更正为 bit0/bit1/creationTimestamp（不含新 receipt、无「下次允许刷新」字段），`next_refresh_at` 改为服务端退避策略（§5.8） |
+| [阻断] receipt 无来源，fraud metric 链路断头 | attestation 对象不含 receipt；createInstall 保持纯本地验证，`core_auth_installattestation` 增加 `attestation_object` 列，core-job 新增回填任务用 Apple `POST /v1/attestations` 换 receipt 后清空该列（§3.1、§5.4、§5.8）；`attest_data` 响应更正为 bit0/bit1/creationTimestamp（不含新 receipt、无「下次允许刷新」字段），`next_refresh_at` 改为服务端退避策略（§5.8） |
 | [高] GraphQL 无 Retry-After 通道 | 错误 `extensions.retryAfterSec`（429000 / 429002 必带，503002 可选）；客户端 codes.ts / retry.ts / 调度器读取（§4.4、§4.6、§6.8、§7） |
 | [高] ENFORCE 配置校验口径 | API 路径必填仅 ios=`teamId/bundleId/env`、android=`packageName/certSha256Digests`；deviceCheck* 与 serviceAccount 可选，缺失只影响 core-job（§4.1） |
 | [中] 429002 归属 | 去掉「createInstall 专用」：也用于 attestExisting 的新 key 日额度（§4.4、§6.7） |
@@ -229,7 +229,7 @@ clientData = "ifmix-install-recover-v1\n" + projectId + "\n" + challengeStr
 |---|---|---|
 | 全局 kill switch | env `APP_ATTEST_GLOBAL_ENABLED` | false |
 | challenge 签名密钥 | per-project `app_attest_config.challengeSecret`（`current[,previous]`，32 字节 base64）；缺失回落 env `APP_ATTEST_CHALLENGE_SECRET` | 无；全局开关为 true 且两者都缺 → 配置无效 |
-| per-project | `core_project_server_config.app_attest_config`（JSONB，null = 关） | null |
+| per-project | `core_project_serverconfig.app_attest_config`（JSONB，null = 关） | null |
 | mode（project 级，单一） | `app_attest_config.mode`：OFF / OBSERVE / ENFORCE | OBSERVE |
 
 ```json
@@ -624,12 +624,12 @@ globalTx {
 ### 5.4 数据模型
 
 ```sql
-ALTER TABLE core_project_server_config ADD COLUMN app_attest_config JSONB NULL;
+ALTER TABLE core_project_serverconfig ADD COLUMN app_attest_config JSONB NULL;
 ALTER TABLE core_auth_install ADD COLUMN store_type INT NULL;   -- §5.9
 
 -- 「带 proof 的请求必留一行」（2026-10-07 修订）：VALID 行是长期凭证/绑定；
 -- INVALID / NOT_EVALUATED 行仅留痕（原始 proof 字节 + challenge 保留，供后端算法修正后离线重验）。
-CREATE TABLE core_auth_install_attestation (
+CREATE TABLE core_auth_installattestation (
     id                    UUID PRIMARY KEY,          -- UuidV7
     project_id            TEXT NOT NULL,
     install_id            UUID NOT NULL,             -- 逻辑外键 core_auth_install.id
@@ -653,11 +653,11 @@ CREATE TABLE core_auth_install_attestation (
     last_used_at          TIMESTAMPTZ NULL
 );
 CREATE UNIQUE INDEX uk_install_attestation_subject
-    ON core_auth_install_attestation (project_id, provider, subject) WHERE subject IS NOT NULL AND verify_status = 10;
-CREATE INDEX idx_install_attestation_install ON core_auth_install_attestation (project_id, install_id);
-CREATE INDEX idx_install_attestation_refresh ON core_auth_install_attestation (next_refresh_at) WHERE receipt IS NOT NULL;
-CREATE INDEX idx_install_attestation_backfill ON core_auth_install_attestation (created_at) WHERE receipt IS NULL AND attestation_object IS NOT NULL;
-CREATE INDEX idx_install_attestation_evidence ON core_auth_install_attestation (created_at) WHERE evidence IS NOT NULL;
+    ON core_auth_installattestation (project_id, provider, subject) WHERE subject IS NOT NULL AND verify_status = 10;
+CREATE INDEX idx_install_attestation_install ON core_auth_installattestation (project_id, install_id);
+CREATE INDEX idx_install_attestation_refresh ON core_auth_installattestation (next_refresh_at) WHERE receipt IS NOT NULL;
+CREATE INDEX idx_install_attestation_backfill ON core_auth_installattestation (created_at) WHERE receipt IS NULL AND attestation_object IS NOT NULL;
+CREATE INDEX idx_install_attestation_evidence ON core_auth_installattestation (created_at) WHERE evidence IS NOT NULL;
 ```
 
 - **【2026-10-07 修订，取代「失败尝试不入表」】带 proof 的请求（bundle != null）必留一行**，verify_status 区分结论（10 VALID 绑定 / 20 INVALID / 30 NOT_EVALUATED）；INVALID/NOT_EVALUATED 行 status=NOT_BOUND(40) 仅留痕，`evidence.reason` 记原因，不进 core-job 回填/刷新。原始 `attestation_object` 字节与 `challenge` 全部随行保留——后端算法有 bug 时可离线重验、修正用户数据。无 proof（bundle==null，含客户端声明 UNAVAILABLE）或 attest 全局关闭 → 不写行（无材料，仅日志）。`findBySubject` / 轮换 / recover 等绑定语义的查询一律只认 verify_status=10。
@@ -708,7 +708,7 @@ receipt 回填调用 `POST https://api-appattest.apple.com/v1/attestations`（`{
 | evidence（原始 verdict / 证书摘要） | **90 天**后清空（core-job 每日：`UPDATE ... SET evidence = NULL WHERE evidence IS NOT NULL AND created_at < now() - 90d`） |
 | integrityToken 原文 | 不存储（Redis 仅存 hash，TTL 600s） |
 
-- `app_attest_config` 含私钥与 service account，沿用 `core_project_server_config`「服务端专属、绝不下发」约束。
+- `app_attest_config` 含私钥与 service account，沿用 `core_project_serverconfig`「服务端专属、绝不下发」约束。
 - App Access Risk、Device Recall 仅用于反滥用。
 
 ### 5.8 core-job 任务
@@ -1021,7 +1021,7 @@ extend type Mutation {
        没有绑定：
          统计这个 install 的 ACTIVE key 数量；已有 5 把时，把最早的一把置为 RETIRED
            （ORDER BY created_at ASC, id ASC LIMIT 1）
-         插入新的 core_auth_install_attestation（ACTIVE）→ 10
+         插入新的 core_auth_installattestation（ACTIVE）→ 10
      subject 唯一约束冲突（另一个 install 并发绑定了同一把 key）→ 回滚，重新查绑定，再映射成 10 或 409001
 ```
 
@@ -1339,7 +1339,7 @@ cycle 失败：
 
 服务端：
 - challenge、createInstall（appAttest）、recoverInstall、attestExisting（存量补证）；
-- `core_auth_install_attestation` 表、结构化日志、§4.6 限流；
+- `core_auth_installattestation` 表、结构化日志、§4.6 限流；
 - core-job 的 fraud metric 刷新和 evidence 清理。
 
 客户端：iOS 状态机，以及 flag、initAttestation、协调器、proofStatus、503002 重试、日志脱敏。
@@ -1488,7 +1488,7 @@ mode 设为 OBSERVE。`app_attest_config` 只配 `ios`。Android 客户端在这
 | `core-api/src/main/resources/schema/customer/install.graphqls` | createInstall 的描述改为新的限流规则（入口 100/60s；未验证 100/天、VALID 1000/天，按 IP）；新增 `proof` / `proofStatus` / `storeType` / `attestationStatus` 字段，以及 createAttestChallenge / recoverInstall / attestExisting |
 | `core-api/src/main/resources/schema/customer/customer.graphqls` | createAnonymous 的描述改为：每 install 5 次/天；每 IP 100 次/60s、1000 次/天 |
 | `docs/design/install/install-tracking.md` | createInstall 的限流说明；新增 attestation 一节，内容引用本规格 |
-| `docs/guide/DATABASE.md` | 新表 `core_auth_install_attestation`；`core_auth_install.store_type`；`core_project_server_config.app_attest_config` |
+| `docs/guide/DATABASE.md` | 新表 `core_auth_installattestation`；`core_auth_install.store_type`；`core_project_serverconfig.app_attest_config` |
 | `docs/ops/release.md` | 未发布变更：attestation（默认关）、限流阈值调整、新 env（`APP_ATTEST_GLOBAL_ENABLED`、`APP_ATTEST_CHALLENGE_SECRET`） |
 | `antique/docs/install-tracking-frontend-api.md` | 限流说明；proof / proofStatus / storeType 字段；recover 流程；403001 / 503002 错误码；`retryAfterSec` extensions 契约 |
 | `ifmix_server/.../persisted-queries/customer/customer.json` + `antique/apps/shared/src/api/graphql.ts` | CreateInstall 的 selection set 加上 `attestationStatus`；新增三个 operation；按 §6.6 的发布顺序合入 |

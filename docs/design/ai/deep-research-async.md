@@ -21,7 +21,7 @@
 >
 > archive 的**运行约束**（未来实现时必须满足，P2）：归档/删除某条 premium_result 前，必须确认它**不再是任一 scan 的 `latest_deep_research_id` 指向对象**，或读路径具备 archive fallback；否则置空/删除 JSONB 会让详情页结果消失。
 >
-> **PG 成本不是零（P2）**：R2 省掉的是操作费，但写入成本转移到了 PG。需保留监控：`premium_result` JSONB 大小、`core_ai_scan_deep_research` 表/索引膨胀、WAL 与备份增长。这些指标是未来决定何时启动 archive 的依据。
+> **PG 成本不是零（P2）**：R2 省掉的是操作费，但写入成本转移到了 PG。需保留监控：`premium_result` JSONB 大小、`core_ai_deepresearch` 表/索引膨胀、WAL 与备份增长。这些指标是未来决定何时启动 archive 的依据。
 
 ## 2. 关键设计决策（已确认）
 
@@ -100,7 +100,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 - **唯一权威指针**：`scan_record.latest_deep_research_id`（nullable UUID）。
 - **latest 定义**：发起时间最新且成功，比较用 `(created_at, id)`（id 兜底同时间）。
 - **成功回写（单短事务，对同一 scan 行加行锁串行化）**：
-  1. CAS：`UPDATE core_ai_scan_deep_research SET status=30, premium_result=? WHERE id=? AND status=20`。affected=0 → 已被终结，放弃（不扣配额）。
+  1. CAS：`UPDATE core_ai_deepresearch SET status=30, premium_result=? WHERE id=? AND status=20`。affected=0 → 已被终结，放弃（不扣配额）。
   2. **`SELECT ... FOR UPDATE` 锁住对应 `scan_record` 行**，在锁内读当前 `latest_deep_research_id`、按 `(created_at,id)` 比较：
      - **当前任务更新**：同一事务更新 `scan_record.basic_result / has_deep_search / prompt_version / latest_deep_research_id = 当前id`，配额 +1（封顶）。
      - **当前任务较旧**：仅保留为成功历史，不动 scan_record，不扣配额。
@@ -116,7 +116,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 ## 4. 数据模型变更
 
-### 4.1 `core_ai_scan_deep_research` 表
+### 4.1 `core_ai_deepresearch` 表
 
 | 字段 | 变更 | 说明 |
 |------|------|------|
@@ -129,7 +129,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 > **不新增** `file_key` / `doc_version`（无 R2 doc）。**不新增** `is_latest` 列（权威用指针）。
 
-### 4.2 `core_ai_scan_record` 表
+### 4.2 `core_ai_scanrecord` 表
 
 | 字段 | 变更 | 说明 |
 |------|------|------|
@@ -137,7 +137,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 ### 4.3 索引变更（**兼容性关键**）
 
-- **删除** `scan_record_id` 唯一索引。V1 建索引时表名为 `ai_scan_deep_research`、索引名 `ai_scan_deep_research_scan_record_id_uidx`；V2 `RENAME TO core_ai_scan_deep_research` **不改索引名**，故线上索引仍为旧名。
+- **删除** `scan_record_id` 唯一索引。V1 建索引时表名为 `ai_scan_deep_research`、索引名 `ai_scan_deep_research_scan_record_id_uidx`；V2 `RENAME TO core_ai_deepresearch` **不改索引名**，故线上索引仍为旧名。
   - **解法：§4.5 的迁移用 DO 块「按列（scan_record_id）+ 唯一 + 非主键」动态定位删除**，不依赖硬编码索引名、无需人工 `\d` 核实。否则若唯一约束未解除，第二次 insert 同 scanRecordId 会撞唯一约束（核心功能「一 scan 多历史版本」直接崩）。
 - **新增**普通索引 `(scan_record_id, created_at)`：查某 scan 历史、按序比较 latest 用。
 
@@ -156,9 +156,9 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
 
 ```sql
 -- 1) 回滚 R2 版 V10 加的结构（只在本机 dev 执行）
-ALTER TABLE public.core_ai_scan_record  DROP COLUMN IF EXISTS latest_deep_research_id;
+ALTER TABLE public.core_ai_scanrecord  DROP COLUMN IF EXISTS latest_deep_research_id;
 DROP INDEX IF EXISTS public.ai_scan_deep_research_scan_record_created_idx;
-ALTER TABLE public.core_ai_scan_deep_research
+ALTER TABLE public.core_ai_deepresearch
     DROP COLUMN IF EXISTS status,
     DROP COLUMN IF EXISTS doc_version,
     DROP COLUMN IF EXISTS file_key,
@@ -177,13 +177,13 @@ DELETE FROM public.flyway_schema_history WHERE version = '10';
 ```sql
 -- V10: DeepResearch 异步化 + 历史版本（PG premium_result 存储；取代作废的 R2 方案）
 
-ALTER TABLE public.core_ai_scan_deep_research
+ALTER TABLE public.core_ai_deepresearch
     ADD COLUMN status smallint NOT NULL DEFAULT 30,   -- DEFAULT 仅为旧行回填
     ADD COLUMN error_code character varying(64),
     ADD COLUMN error_details jsonb;
 
 -- 回填完成后去掉 DEFAULT：避免未来漏设 status 时静默生成 SUCCESS（P2#1）
-ALTER TABLE public.core_ai_scan_deep_research ALTER COLUMN status DROP DEFAULT;
+ALTER TABLE public.core_ai_deepresearch ALTER COLUMN status DROP DEFAULT;
 
 -- 按「列 + 唯一 + 非主键」定位删除旧唯一索引（V2 改表名未改索引名，不依赖硬编码名）
 DO $$
@@ -195,7 +195,7 @@ BEGIN
         JOIN pg_index ix ON t.oid = ix.indrelid
         JOIN pg_class i ON i.oid = ix.indexrelid
         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
-        WHERE t.relname = 'core_ai_scan_deep_research'
+        WHERE t.relname = 'core_ai_deepresearch'
           AND a.attname = 'scan_record_id'
           AND ix.indisunique AND NOT ix.indisprimary
     LOOP
@@ -204,17 +204,17 @@ BEGIN
 END $$;
 
 CREATE INDEX ai_scan_deep_research_scan_record_created_idx
-    ON public.core_ai_scan_deep_research USING btree (scan_record_id, created_at);
+    ON public.core_ai_deepresearch USING btree (scan_record_id, created_at);
 
-ALTER TABLE public.core_ai_scan_record
+ALTER TABLE public.core_ai_scanrecord
     ADD COLUMN latest_deep_research_id uuid;
 
 -- 回填指针：每 scan 取 (created_at,id) 最新一条（DISTINCT ON，兼容潜在「一 scan 多条」）
-UPDATE public.core_ai_scan_record r
+UPDATE public.core_ai_scanrecord r
 SET latest_deep_research_id = d.id
 FROM (
     SELECT DISTINCT ON (scan_record_id) id, scan_record_id
-    FROM public.core_ai_scan_deep_research
+    FROM public.core_ai_deepresearch
     ORDER BY scan_record_id, created_at DESC, id DESC
 ) d
 WHERE d.scan_record_id = r.id;
@@ -406,6 +406,6 @@ type ScanDeepResearch {
 ## 12. 实现期验证点
 
 1. §6.1 后台构造脱离请求的 ActionContext 供 `scanRunner.run` 调用的具体方式。
-2. §3.4 成功回写的 `SELECT ... FOR UPDATE`：确认 Jimmer KSqlClient 的行锁写法（`forUpdate()`）在 writer 事务内正确锁 `core_ai_scan_record` 行；并确认该回写事务走 writer（isMutation=true）。
+2. §3.4 成功回写的 `SELECT ... FOR UPDATE`：确认 Jimmer KSqlClient 的行锁写法（`forUpdate()`）在 writer 事务内正确锁 `core_ai_scanrecord` 行；并确认该回写事务走 writer（isMutation=true）。
 3. §5.3 `getDeepResearchStatus` 的惰性超时 CAS 必须走 writer：确认 `globalTx.withTx` 对 query ctx（`isMutation=false`）是否强制 writer，或改为该查询显式用 writer / 单独 writer 事务。
 4. 旧唯一索引删除已改为**按列定位**（§4.5 的 DO 块），不再依赖硬编码索引名——无需人工 `\d` 核实。

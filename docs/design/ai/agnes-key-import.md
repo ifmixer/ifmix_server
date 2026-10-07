@@ -2,7 +2,7 @@
 
 把 Agnes AI 的 API key 导入 `core_api_local.core_ai_agnes_key` 表。脚本位于 `scripts/agnes_keys/`。
 
-## 目标表 `core_ai_api_key`（infra 级全局资源，不按 project 隔离）
+## 目标表 `core_ai_apikey`（infra 级全局资源，不按 project 隔离）
 
 > 2026-10-01 由 `core_ai_agnes_key` 通用化改名（V8 迁移），脚本已同步切换。设计见 [api-key-pool](api-key-pool.md)「表结构」一节。
 
@@ -76,8 +76,8 @@ SRC_DB=agnes_register DST_DB=core_api PGHOST=some-host PGUSER=admin PGPASSWORD=s
 
 ```sql
 -- 按 provider / type 分组
-SELECT provider, type, count(*) FROM core_ai_api_key GROUP BY provider, type ORDER BY provider, type;
+SELECT provider, type, count(*) FROM core_ai_apikey GROUP BY provider, type ORDER BY provider, type;
 -- 重复 key（应为 0）
-SELECT count(*) FROM (SELECT key FROM core_ai_api_key GROUP BY key HAVING count(*)>1) d;
+SELECT count(*) FROM (SELECT key FROM core_ai_apikey GROUP BY key HAVING count(*)>1) d;
 -- 源 key 是否全部落库（在源库导出 key 列表后跨库比对，missing 应为 0）
 ```

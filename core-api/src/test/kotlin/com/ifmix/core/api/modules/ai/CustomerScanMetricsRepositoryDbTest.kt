@@ -19,7 +19,7 @@ import org.testcontainers.containers.PostgreSQLContainer
 import java.util.UUID
 
 /**
- * core_ai_customer_scan_metrics 真库验证：V9 迁移 + Jimmer INSERT_IF_ABSENT 懒建行 + 带上限原子自增。
+ * core_ai_scanmetrics 真库验证：V9 迁移 + Jimmer INSERT_IF_ABSENT 懒建行 + 带上限原子自增。
  * 不起 Spring 上下文，只用 PG + Flyway + KSqlClient。
  * 库来源：环境变量 TEST_PG_URL（指向一个空库，如 jdbc:postgresql://localhost:5432/tmp?user=postgres），
  * 否则起 Testcontainers（V1 baseline 需 PG17+）；两者都没有则跳过。

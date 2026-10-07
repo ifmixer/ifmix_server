@@ -173,12 +173,12 @@ attempt3: [k10..k14] 命中 k12 → 游标 +1，返回 k12      # 3 次 attempt 
 - **message 兜底命中的真失效 key 只冷却不禁用**：该 key 每 1h 回池一次烧最多 4 次尝试，直到下次被类型化异常命中才禁用。换取的是不误杀好 key——与 `classify` 删除纯数字匹配同源的风险权衡。
 - **禁用与 300s 列表缓存的窗口不填新机制**：靠 Redis 1h 冷却覆盖（1h > 300s）；Redis 同时故障的窗口内靠禁用幂等 + `MAX_ATTEMPTS_PER_MODEL=4` 上界兜住。
 - **不引入禁用阈值/开关配置**：一次类型化 401 即禁用，行为简单可预测；阈值化（如连续 N 次）属 YAGNI，且会引入跨 attempt/请求的计数状态。
-- **provider 鉴权故障会级联禁用整个池**：鉴权服务故障 / 网关误配 / 本机 IP 被封时，全池 key 会被类型化 401/403 逐个永久禁用。影响自限（此时池子本就不可用，扫描同样在失败）；ERROR 总量以池大小为上界（每 key 至多一次禁用 + 一条日志，~3000 条）；恢复是一次 `UPDATE core_ai_api_key SET enabled=true`（或按 updatedAt 圈定误杀时段的行）。接受此风险换取实现简单，不加熔断/阈值。
+- **provider 鉴权故障会级联禁用整个池**：鉴权服务故障 / 网关误配 / 本机 IP 被封时，全池 key 会被类型化 401/403 逐个永久禁用。影响自限（此时池子本就不可用，扫描同样在失败）；ERROR 总量以池大小为上界（每 key 至多一次禁用 + 一条日志，~3000 条）；恢复是一次 `UPDATE core_ai_apikey SET enabled=true`（或按 updatedAt 圈定误杀时段的行）。接受此风险换取实现简单，不加熔断/阈值。
 
 ## 关联
 
 - 基线（轮询 + 打乱 + Redis 冷却 + 降级）：[api-key-pool.md](api-key-pool.md)
-- 表结构（`core_ai_api_key` + `provider` 列）：见 [api-key-pool.md](api-key-pool.md)「表结构」一节
+- 表结构（`core_ai_apikey` + `provider` 列）：见 [api-key-pool.md](api-key-pool.md)「表结构」一节
 - 实体：`entity/ai/AiApiKey.kt`（`enabled` / `unavailableUntil`）
 
 ## 修订记录
