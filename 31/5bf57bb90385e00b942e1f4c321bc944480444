@@ -1,0 +1,22 @@
+.gitignore
+  h_b17efd5c751f9f 94-95
+scripts/deploy/db-init/README.md
+  h_b17efd5c751f9f 1-39
+scripts/deploy/db-init/data_seed.sql
+  h_b17efd5c751f9f 1-3222
+scripts/deploy/db-init/schema.sql
+  h_b17efd5c751f9f 1-1058
+scripts/deploy/wirev2/k.pem
+  h_b17efd5c751f9f 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "315bf57bb90385e00b942e1f4c321bc944480444",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
