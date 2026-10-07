@@ -14,7 +14,7 @@
   "m_auth_install_createIosInstall": "mutation m_auth_install_createIosInstall($input: CreateInstallInput) { result: m_auth_install_createIosInstall(input: $input) { installId installToken attestationStatus } }",
   "m_auth_install_recover": "mutation m_auth_install_recover($input: RecoverInstallInput!) { result: m_auth_install_recover(input: $input) { installId installToken attestationStatus } }",
   "m_auth_install_updateOne": "mutation m_auth_install_updateOne($input: UpdateInstallInput!) { result: m_auth_install_updateOne(input: $input) { success } }",
-  "m_auth_session_login": "mutation m_auth_session_login($input: IdpLoginInput!) { result: m_auth_session_login(input: $input) { accessToken refreshToken expiresIn user { id email } } }",
+  "m_auth_login": "mutation m_auth_login($input: IdpLoginInput!) { result: m_auth_login(input: $input) { accessToken refreshToken expiresIn user { id email } } }",
   "m_auth_session_logout": "mutation m_auth_session_logout($input: LogoutInput!) { result: m_auth_session_logout(input: $input) { success } }",
   "m_auth_session_refresh": "mutation m_auth_session_refresh($input: RefreshInput!) { result: m_auth_session_refresh(input: $input) { accessToken refreshToken expiresIn } }",
   "m_cs_feedback_createOne": "mutation m_cs_feedback_createOne($input: SubmitFeedbackInput!) { result: m_cs_feedback_createOne(input: $input) { id } }",

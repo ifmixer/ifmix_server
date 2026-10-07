@@ -116,7 +116,7 @@ input IdpLoginInput {
 }
 
 extend type Mutation {
-    m_auth_session_login(input: IdpLoginInput!): LoginResult!
+    m_auth_login(input: IdpLoginInput!): LoginResult!
     m_auth_session_refresh(input: RefreshInput!): RefreshResult!
     m_auth_session_logout(input: LogoutInput!): ActionResult!
     m_auth_account_deleteMyOne: ActionResult!

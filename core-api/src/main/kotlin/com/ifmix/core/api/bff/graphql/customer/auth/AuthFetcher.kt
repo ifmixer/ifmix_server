@@ -35,7 +35,7 @@ class AuthFetcher(
         )
     }
 
-    @DgsMutation(field = "m_auth_session_login")
+    @DgsMutation(field = "m_auth_login")
     fun login(dfe: DgsDataFetchingEnvironment, @InputArgument input: IdpLoginInput): LoginResult {
         // login 不要求 customer actor；允许两类上下文：当前 customer token（保留 promote/merge）或 installToken（无现有 session）。
         // 两者都必须携带可信 iid；manager/无 token/无 iid 拒绝（在进入事务前）。
