@@ -190,17 +190,29 @@ class TodoRepository {
 ### DataLoader（关联字段）
 
 ```kotlin
+// 必须用 WithContext 变体：DataLoader 在独立线程执行，ThreadLocal 不可靠（已整体移除）。
+// ctx 经 DgsContext（RequestActionContext）传播，是顶层 fetcher 构建的原 ctx
+//（isMutation/preferReader/actionName 保持原值）。
 @DgsDataLoader(name = "todoItems", caching = false)
 class TodoItemsDataLoader(
     private val demoFacade: DemoFacade,  // 通过 Facade，不直接注入 repo
-) : MappedBatchLoader<UUID, List<TodoItem>> {
-    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, List<TodoItem>>> {
-        val actionCtx = ActionContextHolder.current()
+) : MappedBatchLoaderWithContext<UUID, List<TodoItem>> {
+    override fun load(ids: Set<UUID>, env: BatchLoaderEnvironment): CompletionStage<Map<UUID, List<TodoItem>>> {
+        val actionCtx = requireNotNull(RequestActionContext.fromBatchLoader(env)?.actionContext) {
+            "No ActionContext in batch loader"
+        }
         val items = demoFacade.findItemsByTodoIds(actionCtx, ids)
         return CompletableFuture.completedFuture(items.groupBy { it.todoId })
     }
 }
 ```
+
+### 嵌套 resolver（@DgsData）
+
+嵌套 fetcher 同样在独立线程执行：**必须经 `ctxProvider.fromDfe(dfe, …)` 取 ctx**——它复用本请求
+首个调用构建的原 ctx（RequestActionContext 缓存，require* 仍校验）。禁止在嵌套处自行重建
+ActionContext（会把 mutation 内的读判成 preferReader=true 误走 reader 池），也没有
+ThreadLocal 可取。
 
 ## Entity 设计
 

@@ -164,11 +164,10 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   ├── db/                     # ModuleCtx, ModuleCtxFactory, ClusterRouter, ClusterSqlPair, UuidV7
 │   ├── tx/                     # TxRunner, GlobalTxRunner, TxPropagation
 │   ├── jimmer/                 # ClusterRegistry, ClusterProperties, JimmerConfig
-│   │                           # ReadWriteRoutingDataSource, ProjectScopedFilter, TimestampDraftInterceptor
-│   │                           # ActionContextHolder
+│   │                           # ReadWriteRoutingDataSource, TimestampDraftInterceptor
 │   ├── repo/                   # CrudRepoTemplate, ProjectCrudRepoTemplate, FilterGroupResolver
 │   ├── codec/                  # Base58 (UUID ↔ 22-char URL-safe)
-│   ├── graphql/                # ActionContextProvider, GraphQLExceptionHandler, EndpointConfig, scalars/
+│   ├── graphql/                # ActionContextProvider, RequestActionContext（请求级 ctx 跨线程传播）, GraphQLExceptionHandler, EndpointConfig, scalars/
 │   │                           # trusted/ (GReq persisted query: ReqNamePathInterceptor, GReqRouterConfig, TrustedDocumentProvider)
 │   ├── http/                   # ActionContext, RequestContext, ApiError, ErrorCode, Envelope, Interceptors
 │   ├── auth/                   # AuthInterceptor, AuthJwtService, AuthJwtKeys, Hashing
