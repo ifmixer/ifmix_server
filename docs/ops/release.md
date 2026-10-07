@@ -26,6 +26,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 12. **customer/install 表挂 auth 域前缀（2026-10-07，V18）**：`core_customer` → `core_auth_customer`、`core_install` → `core_auth_install`、`core_install_customer_relation` → `core_auth_install2customer`、`core_install_attestation` → `core_auth_installattestation`（attest 凭证/绑定表随 install 走）。纯改名（无物理外键、索引名不变）；历史增量段落中的旧表名以 V18 为准。
 13. **attestation 表改「带 proof 必留痕」（2026-10-07，V19）**：`core_auth_installattestation` 增 `verify_status`（10 VALID / 20 INVALID / 30 NOT_EVALUATED，可空、无默认值）与 `challenge`；INVALID/NOT_EVALUATED 行 status=NOT_BOUND(40) 留痕，原始 attestation 字节与 challenge 全保留（后端算法修正后可离线重验）；唯一索引只约束 VALID 行；绑定语义查询（findBySubject/轮换/recover）只认 verify_status=10。证明材料上限 16KB → 1MB。设计 §5.4 已同步。
 14. **表名去重（2026-10-07，V20）**：域前缀（`core_<域>_`）保留层级作用，域内单词不再用 `_` 连接（如 `core_ai_scan_record` → `core_ai_scanrecord`）；关系表用 `2`（=to）连接（`core_auth_install2customer` / `core_auth_identity2idp` / `core_auth_project2idp`）；两张长名简化（`core_ai_customer_scan_metrics` → `core_ai_scanmetrics`、`core_ai_scan_deep_research` → `core_ai_deepresearch`）。列名不动（`_` 的层级作用只限表名）。曾短暂改 `core_org_project*`，最终保留 `core_project_*`（org 不是系统实体，词汇对齐 project）。
+15. **迁移历史收敛为单一 V1（2026-10-07）**：历史 V1–V20 按最终 schema 状态固化为 `V1__init.sql`（pg_dump 快照去除 psql 元命令），旧迁移文件删除；线上初始化 = 空库 `flywayMigrate` 应用 V1 + 导入种子数据（`scripts/deploy/db-init/`，含 Flyway 历史后无需 baseline）。后续变更从 V2 递增。
 
 ### 发布前必须完成的修复（2026-10-05 code review，P1）
 
@@ -44,7 +45,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 
 1. 完成上述修复，全量 `./gradlew :core-api:test :core-job:test` 通过；本地 `:core-api:flywayMigrate` 从零库验证。
 2. **停服**（旧实例停止，≤10min 窗口）。
-3. `./gradlew :core-api:flywayMigrate`（V4–V20）。**V6 改 `install_id` 列类型（text→uuid）、V8 改 AI key 表名——迁移后旧代码写入即失败，必须先停机再迁移**（决策 7）。
+3. 线上 DB 初始化：空库 `./gradlew :core-api:flywayMigrate`（应用收敛后的 V1，决策 15）+ `psql -f data_seed.sql` 种子数据（见 `scripts/deploy/db-init/README.md`）。历史版本的停机迁移注意事项（V6/V8）已随历史收敛失效，后续新迁移如涉及破坏性变更照旧先停机。
 4. 部署新 core-api（增量脚本 `scripts/deploy/sync-core-api.sh` + 健康检查），恢复流量。
 5. core-job 同步部署；三个 attest job **不配 cron**（决策 3）。
 6. env 核对：`AUTH_JWT_PRIVATE_KEY`（缺失启动即失败）、`APP_ATTEST_GLOBAL_ENABLED`（默认 false）。`APP_ATTEST_CHALLENGE_SECRET` 为**可选回落**——每个 app 的独立 secret 写 per-project `app_attest_config.challengeSecret`（发布时生成，勿多 app 复用）；两者都缺且全局开关开 → 503002 fail-closed。

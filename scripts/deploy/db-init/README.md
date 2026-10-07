@@ -1,39 +1,28 @@
-# 线上初始 DB（schema + 种子数据）
+# 线上 DB 初始化（Flyway V1 + 种子数据）
 
-来源：本地 `core_api_local`（v1.0.6，V1–V20 全部应用后的最终 schema），2026-10-07 导出。
+迁移已收敛为单一 `V1__init.sql`（历史 V1–V20 固化为初始 schema，见 release.md 决策 15）。
+线上初始化**直接走 Flyway**，与本地同一份文件 → checksum 天然一致，无需 baseline。
 
-## 文件
-
-- `schema.sql` — 纯表结构（26 张业务表，**不含** `flyway_schema_history`）
-- `data_seed.sql` — 保留数据的 3 张表：
-  - `core_ai_apikey`（AI key 池，真实 key，3169 行）
-  - `core_project_info`（app 定义，1 行：antique）
-  - `core_project_serverconfig`（per-project 服务端配置，1 行）
-
-其余表为运行时数据（install/customer/scan/…），不随初始版本导入。
-
-## 导入（空库，按顺序）
+## 步骤（空库）
 
 ```bash
 createdb <目标库>
-psql -d <目标库> -f schema.sql
-psql -d <目标库> -f data_seed.sql   # COPY 格式，必须在 psql 里执行
+# 在仓库根执行（DB 连接指向线上库）：
+./gradlew :core-api:flywayMigrate        # 应用 V1，建 26 张表 + flyway_schema_history
+psql -d <目标库> -f data_seed.sql        # 种子数据（COPY 格式，必须用 psql）
 ```
 
-## ⚠️ 导入后必须处理的本地开发值（core_project_serverconfig）
+## data_seed.sql（含敏感数据，已 gitignore，勿提交）
 
-| 字段 | 本地值 | 线上动作 |
-|---|---|---|
-| `app_attest_config.challengeSecret` | 本地生成的 dev secret | **替换**：`openssl rand -base64 32` 生成线上独立值，勿复用 |
-| `app_attest_config.ios.env` | `development` | 按构建类型改：TestFlight/App Store=`production` |
-| `fcm_config` | 本机 Firebase 凭据 | 替换为线上项目的 FCM 凭据 |
+保留数据的 3 张表：
+- `core_ai_apikey`（AI key 池，真实 key）
+- `core_project_info`（app 定义）
+- `core_project_serverconfig`（per-project 配置）
 
-## Flyway 后续迁移
+**已预置线上值**：`challengeSecret`（线上独立值，备份在 `scripts/.attest_secret_prod`）、
+`ios.env=production`、`fcm_config`（ifmix-antique 服务账号）。
+导入后核对这三项；后续变更直接改线上 DB（进程内缓存，重启生效）。
 
-线上库 schema 已是 V20 终态、无 `flyway_schema_history`。后续发布用 `flywayMigrate` 前先 baseline：
+## 后续发布
 
-```
-spring.flyway.baseline-on-migrate=true（或手动 baseline-version=20）
-```
-
-否则 Flyway 会尝试从 V1 重放导致冲突。
+正常追加 `V2__xxx.sql` 递增迁移，`flywayMigrate` 两边（本地/线上）应用同一文件，无需任何 baseline。

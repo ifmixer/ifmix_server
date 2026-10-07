@@ -39,6 +39,10 @@
 - **challenge secret 改为 per-project（服务端内部）**：`app_attest_config.challengeSecret`（`current[,previous]`，32 字节 base64）每 app 独立，解析优先于全局 env `APP_ATTEST_CHALLENGE_SECRET`（后者保留为回落，用于过渡期/本地 dev）；per-project 格式非法记入 problems（ENFORCE fail-closed）。单个 secret 泄露的伪造面收敛到单 app。设计 §3.1/§4.1 已同步。
 - **GraphQL 错误响应顶层注入 `code`/`msg`（客户端可见）**：`errors` 数组保留，顶层新增 `code`（= `errors[0].extensions.code`；GraphQL 校验/语法等框架级错误按 classification/errorType 推导兜底，推不出为 500000）与 `msg`（= `errors[0].message`），客户端统一按 `{code, msg, data}` 读取。由 `GraphQlHttpStatusFilter` 注入；兜底 code 不参与 HTTP status 映射（仍以 extensions.code 为准）。
 
+### 2026-10-07 增补（迁移历史收敛为单一 V1）
+
+- **Flyway 重置（服务端内部）**：历史 V1–V20 按最终 schema 固化为 `V1__init.sql`，旧迁移文件删除；本地库已重建（schema + 种子数据还原）。线上初始化改为空库直接 `flywayMigrate` 应用 V1 + `data_seed.sql` 种子数据，无需 pg_dump 导 schema、无需 baseline。后续变更从 V2 递增。配套修复：`AiFetcher` 的 `q_ai_scan_getMyById` → `q_ai_scan_getById`（2eed4a3b 改名时被旧文件覆盖，导致启动失败）。
+
 ### 2026-10-07 增补（表名去重，V20）
 
 - **表名规则收紧（数据库可见）**：表名里 `_` 只保留层级作用（域前缀 `core_<域>_`），域内单词不再用 `_` 连接。16 张表改名：`core_ai_apikey` / `core_ai_scanmetrics` / `core_ai_scancollection(item)` / `core_ai_deepresearch` / `core_ai_scanrecord` / `core_auth_identity2idp` / `core_auth_installattestation` / `core_auth_install2customer` / `core_auth_project2idp` / `core_cs_supportrequest` / `core_demo_todoitem` / `core_media_filerecord` / `core_pay_storenotification` / `core_project_configrevision` / `core_project_serverconfig`；关系表用 `2`（=to）连接；两张长名简化（customer_scan_metrics→scanmetrics、scan_deep_research→deepresearch）。列名不动；实体 `@Table`、原生 SQL、文档已同步。曾短暂改 `core_org_project*`，最终保留 `core_project_*`（org 不是系统实体，词汇对齐 project）。
