@@ -48,10 +48,10 @@
 | [低] ATTESTED_PENDING 写失败的孤儿 key | §6.4 打 `pending_state_persist_failed`；fraud metric 分析剔除（§8） |
 | （用户决定）Redis 故障放行，可用性优先 | 限流：放行，打 `ratelimit.degraded`（§4.6）。attest：challenge 改为 HMAC 签名的无状态格式，签发和校验不依赖 Redis；一次性消费和 Android 去重在 Redis 故障时跳过，放行并打 `attest.redis_degraded`（§3.1、§4.3）。ERROR 日志都做了节流 |
 | （用户决定）install 来源商店 | 新增 `storeType`：10=APP_STORE / 20=GOOGLE_PLAY，客户端上报，write-once，仅用于统计（§5.9） |
-| （用户决定）限流 | 两层：IP 层做系统防护（阈值大），install 层防滥用（阈值小），任一层超限即拒绝。createInstall：入口 100/60s/IP；未验证 100/天/IP；VALID 1000/天/IP。createAnonymous：5/install/天 + 100/60s + 1000/天/IP。scan 与 DeepResearch：5/min + 100/install/天 + 100/min + 1000/天/IP。install 层只认 `tokenInstallId`，不区分是否已验证，不需要 att claim。每个 action 显式配置，重启生效（§4.6） |
+| （用户决定）限流 | 两层：IP 层做系统防护（阈值大），install 层防滥用（阈值小），任一层超限即拒绝。createInstall：入口 100/60s/IP；未验证 100/天/IP；VALID 1000/天/IP。createAnonymous：5/install/天 + 100/60s + 1000/天/IP。scan 与 DeepResearch：5/min + 100/install/天 + 100/min + 1000/天/IP。install 层只认 `installId`，不区分是否已验证，不需要 att claim。每个 action 显式配置，重启生效（§4.6） |
 | （review）真机 fixture 方案 | 严格限定 dev 使用；遵守 key 生命周期；使用生产协议；导出版本化 JSON 并用 expo-sharing 传输；JUnit 固定 Apple 根证书 + development 模式；带 Tag，不进默认 CI（§10.1） |
-| （review）att 信任链 | 认可了该模型（只认 `tokenInstallId`；claim 经 VerifiedToken → Actor → ActionContext 传递；`signAccess` 加不变量），但**整套 att 下游放宽已整体移出本期**（模型说明放在 §8「以后」），本期不保留任何代码入口 |
-| （review）限流结构：双层「per-install + IP 聚合」、VALID 高位上限、不放宽旧客户端、去掉"立即生效" | **VALID 高位上限：采纳**（1000/IP/天）。**不放宽旧客户端：后被用户决定覆盖**（下游 IP 阈值按产品决定上调，不是兼容需要；见上面的「用户决定」行）。**"立即生效"：采纳**，改为重启生效。**双层 per-install + IP：采纳**（用户决定）。所有下游请求按 `tokenInstallId` 做 install 层限流，再叠加 IP 层；install 层不区分是否已验证（§4.6） |
+| （review）att 信任链 | 认可了该模型（只认 `installId`；claim 经 VerifiedToken → Actor → ActionContext 传递；`signAccess` 加不变量），但**整套 att 下游放宽已整体移出本期**（模型说明放在 §8「以后」），本期不保留任何代码入口 |
+| （review）限流结构：双层「per-install + IP 聚合」、VALID 高位上限、不放宽旧客户端、去掉"立即生效" | **VALID 高位上限：采纳**（1000/IP/天）。**不放宽旧客户端：后被用户决定覆盖**（下游 IP 阈值按产品决定上调，不是兼容需要；见上面的「用户决定」行）。**"立即生效"：采纳**，改为重启生效。**双层 per-install + IP：采纳**（用户决定）。所有下游请求按 `installId` 做 install 层限流，再叠加 IP 层；install 层不区分是否已验证（§4.6） |
 | （review）状态机与 rollout 闭环 | 采纳：`CreateInstallResult.attestationStatus`（10/20/30），只有 10 能进 REGISTERED；challenge 返回 `enabled`，服务端 OFF 时客户端不生成 key；新增 UNSUPPORTED 终态；429 分成 429000（验签前）和 429002（验签后，新增），客户端分别处理；attest / assertion 加超时和 attemptId，迟到结果丢弃；challenge 改为日窗口通过后再消费；`sign_count NOT NULL DEFAULT 0`；`AppAttestTrustAnchors`（固定 Apple 根证书指纹）；验签加进程内信号量；补充 Redis 全故障的影响范围；expiresInSec 改为 270；清理残留表述。**存量 install：用户选择补证（方案 A），新增 `m_auth_install_attest`（§6.7）** |
 | （review）前端实现对照 | 采纳：§6.6 更正，createInstall 的 operation 文本一定会变，补充了发布顺序和契约测试；`attestReady` 改为惰性、幂等的 `initAttestation(ctx)`，`_layout` 按 loadEnvOverride → initAttestation → ensureInstallWhenOnline 串行执行；客户端日志脱敏（同时修复了 installToken 本来就没有脱敏的问题）；`next()` 改为传入 `InstallSnapshot`，凭证丢失但状态是 REGISTERED 时走 recover，所有清除路径都收口到协调器；发布门槛：capability 和 profile、codesign 检查 entitlement、TestFlight 上用 production 跑通 create 和 recover、平台发布清单（声明了 Android 就必须先过这一项才能切 ENFORCE）（§4.5、§6.3、§6.6、§6.8、§9） |
 | （review）环境切换 / mutex 边界 | 采纳：切换 API 环境时直接清掉 SecureStore 里的 install 和 session（ponytail：开发场景可以接受，按环境分开存列为升级路径）；硬规则：mutex 从不跨外部 IO 持有，用「短临界区 + epoch / attemptId 的 CAS 提交」，404 恢复中的创建和 refresh 都在锁外；`wipeLocalUserData` 改为「精确 + 前缀」两种保留规则；fixture 改用 `pauseAndDrain` + finally 恢复；`next()` 显式传入 purpose 和 targetInstallId；补充真实存储 key、404 集成和并发、不死锁这几类测试（§6.8、§7） |
@@ -397,7 +397,7 @@ OBSERVE 下各种 proof 结果归入哪个计数器：
 
 **下游接口的 install 层**
 
-- install 只认 token 里签名过的 `action.tokenInstallId`：
+- install 只认 token 里签名过的 `action.installId`：
   - createAnonymous 用的是 installToken 里的 iid；
   - scan 和 DeepResearch 用的是 customer token 里的 iid。
 - **不能**用 `mustGetTokenInstallId()` 或 `installIdOrNull()`，因为它们会回退到可伪造的 `x-install-id`。
@@ -405,9 +405,9 @@ OBSERVE 下各种 proof 结果归入哪个计数器：
 
   | 情况 | 限流 |
   |---|---|
-  | 有 `tokenInstallId` | install 层（额度小）→ IP 层（额度大，系统阀） |
-  | 没有 `tokenInstallId`，兼容期仍走 legacy fallback | **legacy IP 层**：沿用现在的严格阈值，并且用单独的计数器，不占用上面那个大额 IP 计数器 |
-  | 已关闭 legacy fallback 后，仍然没有 `tokenInstallId` | 在业务之前直接拒绝（401000。现有的 `mustGetTokenInstallId()` 在 fallback 关闭后本来就会这样拒绝） |
+  | 有 `installId` | install 层（额度小）→ IP 层（额度大，系统阀） |
+  | 没有 `installId`，兼容期仍走 legacy fallback | **legacy IP 层**：沿用现在的严格阈值，并且用单独的计数器，不占用上面那个大额 IP 计数器 |
+  | 已关闭 legacy fallback 后，仍然没有 `installId` | 在业务之前直接拒绝（401000。现有的 `mustGetTokenInstallId()` 在 fallback 关闭后本来就会这样拒绝） |
 
   这样 OBSERVE 兼容期内，旧客户端的攻击面不会被放大：legacy 请求的额度维持现状，拿不到新的大额 IP 阈值。
 - **执行顺序：install 层 → IP 层 → 业务**。先挡住单个 install 的滥用，再占用共享的系统额度：
@@ -451,7 +451,7 @@ app:
       ip-minute: 10
       install-day: 3
     anonymous:
-      legacy-ip-minute: 10       # 没有 tokenInstallId 的请求：沿用现有阈值
+      legacy-ip-minute: 10       # 没有 installId 的请求：沿用现有阈值
       ip-minute: 100
       ip-day: 1000
       install-day: 5
@@ -992,7 +992,7 @@ extend type Mutation {
 
 ```
 1. 鉴权（严格只认 installToken，和 updateInstall 一致）：
-     action.tokenType == TOKEN_TYPE_INSTALL && action.actorId == null && action.tokenInstallId != null
+     action.tokenType == TOKEN_TYPE_INSTALL && action.actorId == null && action.installId != null
      不满足 → 401000（customer token、legacy x-install-id 都不行）
 2. IP 短窗口：10/60s/IP
 3. 服务端没启用（OFF / 未配置）→ 返回 30
@@ -1253,7 +1253,7 @@ cycle 失败：
   - 下游两层（数值都从配置读取）：
     - createAnonymous：同一个 install 第 6 次被拒；同一个 IP 60 秒内第 101 次、一天内第 1001 次被拒；
     - scan / DeepResearch：同一个 install 每分钟第 6 次、每天第 101 次被拒；同一个 IP 每分钟第 101 次、每天第 1001 次被拒；scan 和 DR 分别计数；
-    - install 层只认 `tokenInstallId`：伪造 `x-install-id`（走 legacy fallback）时不会按那个 iid 计数，只受 IP 层限制；没有 iid 的旧 token 只受 IP 层限制；
+    - install 层只认 `installId`：伪造 `x-install-id`（走 legacy fallback）时不会按那个 iid 计数，只受 IP 层限制；没有 iid 的旧 token 只受 IP 层限制；
     - 同一个 install 下的多个匿名 customer 共用一份 install 额度；换 IP 不影响 install 计数。
   - `attest.config_invalid` 日志：同一个 projectId + configHash 首次打 ERROR，之后每分钟最多一条；配置修复后打一条 recovered。
   - 限流 Redis 降级：放行并打 `ratelimit.degraded` ERROR；同一个 subject 前缀每分钟最多一条；恢复后打 recovered。
@@ -1276,7 +1276,7 @@ cycle 失败：
   - install 行不存在 → 404001（不是 404000）；
   - 服务端 OFF → 30。
 - `attestExisting`：
-  - 没有 tokenInstallId（包括伪造 `x-install-id` 走 legacy 的情况）→ 401000；
+  - 没有 installId（包括伪造 `x-install-id` 走 legacy 的情况）→ 401000；
   - VALID → 10，新增一条 attestation 记录；
   - INVALID → 20，不报错；
   - 补证之后，用这把 key 可以 recover 成功。

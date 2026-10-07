@@ -14,17 +14,18 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.context.request.ServletRequestAttributes
 
+/**
+ * 从 DGS DataFetchingEnvironment 解析请求并构造 ActionContext。
+ * 解析 + 校验合一：按 require* 即时校验，失败抛 ApiError（→ GraphQLExceptionHandler → 统一 GraphQL 错误格式）。
+ * 无中间 error 状态：token 过期/无效在此处直接抛。
+ * meta/authorization/token 的解析全在 [RequestParser]（parseMeta / parseToken 等），本类只组装。
+ */
 @Component
 class ActionContextProvider(
     private val parser: RequestParser,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    /**
-     * 从 DGS DataFetchingEnvironment 解析请求并构造 ActionContext。
-     * 解析 + 校验合一：按 require* 即时校验，失败抛 ApiError（→ GraphQLExceptionHandler → 统一 GraphQL 错误格式）。
-     * 无中间 error 状态：token 过期/无效在此处直接抛。
-     */
     fun fromDfe(
         dfe: DgsDataFetchingEnvironment,
         requireAppId: Boolean = true,
@@ -56,35 +57,42 @@ class ActionContextProvider(
         val servletRequest = (requestData.webRequest as? ServletRequestAttributes)?.request
             ?: throw ApiError(ErrorCode.INTERNAL, "Native HTTP request not found")
 
-        // 全部解析与校验（含抛错）在 RequestParser 内完成；此处只按 require 调用 + 组装，无抛错/分支逻辑。
-        val projectId = parser.parseProjectId(servletRequest, requireAppId)
-        val actor = parser.parseActor(servletRequest, requireActorType)
+        val meta = parser.parseMeta(servletRequest)
+        val verified = parser.parseToken(servletRequest, requireActorType)
+        // 登录主体（customer/manager）：有 sub。install token 的 VerifiedToken 只带凭证
+        //（installId/tokenType，sub=null），不算登录主体——actorType 保持 null 与旧行为一致。
+        val isInstall = verified?.tokenType == AuthJwtService.TOKEN_TYPE_INSTALL
+        val principal = verified?.takeUnless { isInstall }
 
         val isMutation = dfe.executionStepInfo.parent?.type?.let {
             (it as? GraphQLObjectType)?.name == "Mutation"
         } ?: false
 
         val ctx = ActionContext(
-            projectId = projectId,
-            actorId = actor?.actorId,
-            actorType = actor?.actorType,
-            anonymous = actor?.anonymous ?: false,
-            sessionId = actor?.sessionId,
-            locale = parser.parseLocale(servletRequest, requireLocale),
-            currency = parser.parseCurrency(servletRequest, requireCurrency),
-            country = parser.parseCountry(servletRequest, requireCountry),
-            clientPlatform = parser.parseClientPlatform(servletRequest),
+            projectId = meta.projectId,
+            actorId = principal?.actorId?.toUuidOrNull(),
+            actorType = principal?.actorType,
+            anonymous = principal?.anonymous ?: false,
+            sessionId = principal?.sessionId,
+            locale = meta.locale,
+            currency = meta.currency,
+            country = meta.country,
+            clientPlatform = meta.clientPlatform?.let { p ->
+                // parseMeta 已硬校验过合法值，此处必然成功
+                runCatching { com.ifmix.core.api.infra.http.ClientPlatform.fromHeader(p) }.getOrNull()
+            },
             clientIp = parser.parseClientIp(servletRequest),
-            tokenInstallId = parser.parseTokenInstallId(servletRequest),
-            tokenType = parser.parseTokenType(servletRequest),
+            installId = verified?.installId?.toUuidOrNull(),
+            tokenType = verified?.tokenType,
             botScore = parser.parseBotScore(servletRequest),
             requestId = com.ifmix.core.api.infra.http.LogContext.requestId(servletRequest),
-            appVersion = parser.parseAppVersion(servletRequest),
-            otaVersion = parser.parseOtaVersion(servletRequest),
+            appVersion = meta.appVersion,
+            otaVersion = meta.otaVersion,
             actionName = dfe.field?.name,
             isMutation = isMutation,
             preferReader = !isMutation,
         )
+        checkRequire(ctx, requireAppId, requireActorType, requireLocale, requireCountry, requireCurrency)
         // 缓存进请求级容器（RequestActionContext，随 DgsContext 跨线程）——这是 ActionContext
         // 唯一的传播通道；不再有 ThreadLocal。
         RequestActionContext.fromDfe(dfe)?.actionContext = ctx
@@ -96,7 +104,7 @@ class ActionContextProvider(
         return ctx
     }
 
-    /** 复用缓存 ctx 时对 require* 的等价校验（与 RequestParser 首次构建的语义对齐）。 */
+    /** require* 的硬校验（构建后 + 复用缓存时都过一遍；actor 部分在 RequestParser.checkActorRequirement）。 */
     private fun checkRequire(
         ctx: ActionContext,
         requireAppId: Boolean,
@@ -108,12 +116,13 @@ class ActionContextProvider(
         if (requireAppId && ctx.projectId == null) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "projectId is required")
         }
-        requireActorType?.let {
-            if (ctx.actorId == null) throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
-            if (ctx.actorType != it) throw ApiError(ErrorCode.FORBIDDEN, "actor type not allowed for this endpoint")
-        }
+        parser.checkActorRequirement(ctx.actorId, ctx.actorType, requireActorType)
         if (requireLocale && ctx.locale == null) throw ApiError(ErrorCode.INVALID_REQUEST, "locale is required")
         if (requireCountry && ctx.country == null) throw ApiError(ErrorCode.INVALID_REQUEST, "country is required")
         if (requireCurrency && ctx.currency == null) throw ApiError(ErrorCode.INVALID_REQUEST, "currency is required")
     }
+
+    /** VerifiedToken 的 sub/iid 是字符串 claim → UUID（非法格式视为缺失）。 */
+    private fun String.toUuidOrNull(): java.util.UUID? =
+        try { java.util.UUID.fromString(this) } catch (_: Exception) { null }
 }

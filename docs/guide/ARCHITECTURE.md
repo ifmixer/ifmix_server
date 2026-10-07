@@ -280,23 +280,31 @@ DB (via Jimmer KSqlClient)
 - JWKS: `GET /.well-known/jwks`
 - REST 响应: `Envelope<T>` (`{code, msg, data}`)
 
-### 请求头
+### 请求上下文（meta）
 
-| Header | 格式 | 说明 |
-|--------|------|------|
-| `x-project-id` | UUID | 应用 ID（必填） |
-| `x-install-id` | UUID | 仅日志/分析字段（不可信）；关系维护和业务归属只认已验签 token 的 `iid`。legacy fallback 已删除，此 header 不再参与任何逻辑 |
-| `x-locale` | IETF BCP 47 | 用户语言偏好。归一到受支持集，不支持则视为未提供（null）。支持 10 种：`en`, `zh-CN`, `zh-TW`, `ja`, `fr`, `es`, `pt`, `de`, `it`, `nl`（归一规则见下方「locale 归一」） |
-| `x-country` | ISO 3166-1 alpha-2, 大写 | 用户所在国家，如 `US`, `GB`, `JP`, `MY`, `SG`, `CN` |
-| `x-currency` | ISO 4217, 大写 | 用户货币偏好，如 `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD` |
-| `x-client-platform` | `ios` \| `android` | 客户端平台 |
-| `x-app-version` | 字符串 | App 版本号，如 `1.2.3`；原样透传，不校验格式 |
-| `x-ota-version` | 字符串 | 热更新版本号，形如 `${runtimeVersion}-${buildNumber}-${otaSeq}`，如 `1-23-3`；原样透传，不校验格式 |
-| `x-js-version` | 字符串 | JS Bundle 版本号 |
+上下文不再走 `x-*` header（2026-10-06 收进 body；`RequestHeaders` 旧常量已删）。信源二选一（`RequestParser.parseMeta`）：
+
+- **加密通道（线上，`app.wire-crypto.mode=required`）**：加密 body 信封 `{authorization, meta, query, variables}` 的 `meta` 段；`authorization`（顶层，非 meta 成员）为凭证。headers 一律不参与解析。
+- **明文 dev 通道（仅 `optional`，local/debug）**：`x-req-meta` JSON header（同一 `RequestMeta` 结构）+ 标准 `Authorization` header（凭证）。required 模式下这两个 header 一律不读。
+
+`meta` 字段（`WireCryptoFilter` 只解密；解析/校验全在 `RequestParser.parseMeta`，调用方直接取字段）：
+
+| 字段 | 格式 | 说明 |
+|------|------|------|
+| `projectId` | slug（小写开头，3-30 字符） | 应用 ID（必填，硬校验） |
+| `clientPlatform` | `ios` \| `android` \| `web` | 客户端平台（硬校验，参与限流分桶） |
+| `locale` | IETF BCP 47 | **全语言支持**：归一集内的语言做归并/分简繁，其余合法值原样透传（见下方「locale 归一」） |
+| `country` | ISO 3166-1 alpha-2, 大写 | 如 `US`, `GB`, `JP`, `MY`, `SG`, `CN` |
+| `currency` | ISO 4217, 大写 | 如 `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `MYR`, `SGD` |
+| `appVersion` | 字符串 | App 版本号，如 `1.2.3`；原样透传，不校验格式 |
+| `otaVersion` | 字符串 | 热更新版本号，形如 `${runtimeVersion}-${buildNumber}-${otaSeq}`，如 `1-23-3`；原样透传，不校验格式 |
+| `reqId` | 字符串 | 客户端请求 id，服务端清洗（去控制字符/限长 128）后进 MDC（`rid`）与响应 Envelope |
+
+永远留在 body 外的真实 header：`x-wirep-version` / `Content-Type`（wire 信封标记）与 CF 注入头（`cf-bot-score`、真实 IP——限流依赖）。
 
 #### 格式软校验（严格 / 宽松）
 
-`x-locale` / `x-country` / `x-currency`
+`locale` / `country` / `currency`
 带了值但**格式非法**时的处理由 `app.header-validation.strict` 开关决定（`RequestParser`）：
 
 | 环境 | `strict` | 行为 |
@@ -305,20 +313,17 @@ DB (via Jimmer KSqlClient)
 | 线上 | `false` | 打 `warn` log 并当作未提供（`null`），请求照常处理 |
 
 线上通过环境变量 `APP_HEADER_VALIDATION_STRICT=false` 切换。
-注意：此开关只作用于「带了值但格式非法」的软校验；`required` 缺失、`x-project-id`、token 等硬校验**任何环境都抛**，不受影响。
-`x-locale` 特例：合法 BCP 47 但不在支持集（如 `ko`/`ru`）**任何环境都返回 `null` 不抛**（不算格式 bug，见下方「locale 归一」）；只有无法解析出 language subtag 的畸形输入才走上表软校验。
+注意：此开关只作用于「带了值但格式非法」的软校验；`required` 缺失、`projectId`/`clientPlatform`（meta 字段，参与路由/分桶）、token 等硬校验**任何环境都抛**，不受影响。
+locale 特例：所有合法 BCP 47 都接受（见下方「locale 归一」）；只有无法解析出 language subtag 的畸形输入才走上表软校验。
 
-#### locale 归一
+#### locale 归一（全语言支持，只归一部分）
 
-`x-locale` 在 `RequestParser.parseLocale` 入口归一到受支持集，落库/透传的一律是规范值或 `null`（不支持不抛错，视为未提供，由下游各自兜底）。以后加语言只改 `RequestParser.normalizeLocale`。
-
-支持集（10 种）：`en`, `zh-CN`, `zh-TW`, `ja`, `fr`, `es`, `pt`, `de`, `it`, `nl`
-
-- 非中文按 language subtag 归并：`en-US`/`en-GB` → `en`，`pt-BR` → `pt`，`ja-JP` → `ja`，依此类推。
+`meta.locale` 在 `RequestParser.parseMeta` 入口归一：所有合法 BCP 47 语言都被接受——
+- 归一集（`en`, `ja`, `fr`, `es`, `pt`, `de`, `it`, `nl`）按 language subtag 归并：`en-US`/`en-GB` → `en`，`pt-BR` → `pt`，`ja-JP` → `ja`，依此类推。
 - 中文按 script/region 分简繁：
   - 简体：`zh` / `zh-Hans*` / `zh-CN` / `zh-SG` / `zh-MY` → `zh-CN`（裸 `zh` 默认简体）
   - 繁体：`zh-TW` / `zh-HK` / `zh-MO` / `zh-Hant*` → `zh-TW`
-- 其它合法但不支持的语言（`ko`/`ru`/…）→ `null`（任何环境都不抛，视为未提供）
+- 其它合法语言（`ko`、`ru-RU`、`th-TH`…）**原样透传**，不归并不丢弃（下游 i18n 按 fallback 兜底）
 - 无法解析出 language subtag 的畸形输入（如 `!!bad`）→ 走「格式软校验」：`strict` 抛、线上 WARN
 
 > 内部用 `normalizeLocaleResult` 区分 `Ok` / `Unsupported`（合法但不支持）/ `Malformed`（畸形）；旧的 `normalizeLocale` 保留为薄封装（只关心是否命中支持集时用）。

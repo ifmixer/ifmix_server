@@ -7,47 +7,122 @@ import com.ifmix.core.api.infra.http.ClientPlatform
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.http.RequestMeta
 import com.ifmix.core.api.infra.http.RequestHeaders
+import com.ifmix.core.api.infra.http.WireCryptoFilter
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpHeaders
 import org.springframework.stereotype.Component
+import tools.jackson.databind.ObjectMapper
 import java.util.UUID
 
-/** 解析成功的主体（token 校验通过）。 */
-data class Actor(
-    val actorId: UUID,
-    val actorType: ActorType,
-    val anonymous: Boolean,
-    /** sessionId（token sid claim）。为将来 Redis session 预留，可能为 null（旧 token）。 */
-    val sessionId: String? = null,
-)
-
 /**
- * 逐字段解析请求 meta（[RequestMeta]），结果缓存到 request attribute（同请求多 action 复用）。
+ * 请求解析的唯一入口，只提供两个方法：
+ * - [parseMeta]：请求元信息（[RequestMeta]）。信源：解密 body 的 `meta` 段（加密通道）；
+ *   无加密 body 且 wire mode=optional（明文 dev 通道）→ 回落 `x-req-meta` header；required 模式不读 headers。
+ *   各字段的格式校验/归一（projectId 正则、locale 归一、currency/country 大写、clientPlatform 枚举）
+ *   **在 parseMeta 内一次做完**——调用方拿到 meta 直接取字段，不再有逐字段 parse 方法。
+ * - [parseAuthorization]：凭证（裸 token）。信源：解密 body 顶层 `authorization`；无加密 body 且
+ *   mode=optional → 回落标准 `Authorization` header；required 模式不读 headers。
  *
- * meta 由 [com.ifmix.core.api.infra.http.WireCryptoFilter] 解析好挂到 request 上
- *（加密 body 的 meta 段 / 明文 dev 通道的 `x-req-meta` header，key 为普通字段名如 `projectId`），
- * 本类经 [metaOf] 直接取对象，**不再解析 x-* 请求头**；校验与抛错全部在本类内完成（风格统一）。
- *
- * 格式软校验（locale/currency/country/各 version）的严格程度由 [strict] 控制：
+ * meta/authorization 的结构违规（非对象、值非字符串、meta 段超限）一律 [ApiError]（400000）。
+ * 格式软校验（locale/currency/country）的严格程度由 [strict] 控制：
  *  - strict=true（测试环境默认）：格式非法 → 抛 ApiError，整个请求报错，尽早暴露客户端 bug。
  *  - strict=false（线上）：格式非法 → 打 WARN log + 当作缺失（null），不影响请求。
  * 通过 `app.header-validation.strict` 配置（默认 true；prod profile 覆盖为 false）。
- * 注意：required 缺失、token、projectId 等硬校验不受此开关影响，任何环境都抛。
+ * 注意：projectId/clientPlatform 等参与路由/分桶的字段是硬校验，不受此开关影响，任何环境都抛。
+ *
+ * 结果按 request 缓存（同请求多次调用零重复解析）；token 校验（[parseToken]）同样按 request 缓存。
  */
 @Component
 class RequestParser(
     private val jwt: AuthJwtService,
+    private val mapper: ObjectMapper,
+    @param:Value("\${app.wire-crypto.mode:required}") private val wireMode: String = "required",
     @param:Value("\${app.header-validation.strict:true}") private val strict: Boolean = true,
 ) {
     private val log = LoggerFactory.getLogger(RequestParser::class.java)
+    private val headerFallbackAllowed = wireMode != "required"
+
+    // ===== meta =====
 
     /**
-     * 取本请求的 [RequestMeta]（[com.ifmix.core.api.infra.http.WireCryptoFilter] 已挂到 request 上；
-     * 未经该 filter 的路径/测试直接构造 request 时返回空实例，全部字段为 null）。
+     * 本请求的 [RequestMeta]（各字段已归一/校验）。结果缓存在 request 上（[RequestMeta.ATTR_META]）。
+     * 未经 filter 的路径/测试（无加密 body、无 header）返回空实例，全部字段为 null。
      */
-    fun metaOf(request: HttpServletRequest): RequestMeta =
-        request.getAttribute(RequestMeta.ATTR_META) as? RequestMeta ?: RequestMeta()
+    fun parseMeta(request: HttpServletRequest): RequestMeta {
+        (request.getAttribute(RequestMeta.ATTR_META) as? RequestMeta)?.let { return it }
+        val meta = when (val root = payloadRoot(request)) {
+            null -> headerMeta(request)
+            else -> bodyMeta(root, "body meta")
+        } ?: RequestMeta()
+        request.setAttribute(RequestMeta.ATTR_META, meta)
+        return meta
+    }
+
+    /** 解密 body 的 meta 段 → 归一/校验；无 body 或 meta 段缺失 → null（调用方兜底空实例）。 */
+    private fun bodyMeta(root: Map<String, Any?>, source: String): RequestMeta? {
+        val raw = root[KEY_META] ?: return null
+        val map = raw as? Map<*, *> ?: throw ApiError(ErrorCode.INVALID_REQUEST, "invalid $source: must be an object")
+        val size = map.entries.sumOf { it.key.toString().length + it.value.toString().length }
+        if (size > MAX_META_BYTES) throw ApiError(ErrorCode.INVALID_REQUEST, "invalid $source: too large")
+        val plain = linkedMapOf<String, String?>()
+        for ((k, v) in map) {
+            if (v == null) continue
+            plain[k.toString()] = v as? String
+                ?: throw ApiError(ErrorCode.INVALID_REQUEST, "invalid $source: value must be a string")
+        }
+        return normalize(RequestMeta(
+            reqId = plain["reqId"],
+            projectId = plain["projectId"],
+            locale = plain["locale"],
+            currency = plain["currency"],
+            country = plain["country"],
+            appVersion = plain["appVersion"],
+            otaVersion = plain["otaVersion"],
+            clientPlatform = plain["clientPlatform"],
+        ), source)
+    }
+
+    /** 明文 dev 通道：`x-req-meta` header（仅 optional 模式）。缺失 → null；非法 JSON/结构 → 400000。 */
+    private fun headerMeta(request: HttpServletRequest): RequestMeta? {
+        if (!headerFallbackAllowed) return null
+        val raw = request.getHeader(RequestHeaders.REQ_META)?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val meta = try {
+            mapper.readValue(raw, RequestMeta::class.java)
+        } catch (e: JacksonException) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid ${RequestHeaders.REQ_META}: ${e.message}")
+        }
+        return normalize(meta, RequestHeaders.REQ_META)
+    }
+
+    /** 逐字段归一/校验（parseMeta 一次做完，调用方直接取字段）。 */
+    private fun normalize(meta: RequestMeta, source: String): RequestMeta = RequestMeta(
+        reqId = meta.reqId?.sanitizeReqId(),
+        projectId = meta.projectId?.trim()?.takeIf { it.isNotEmpty() }?.also {
+            if (!it.matches(PROJECT_ID_RE)) throw ApiError(ErrorCode.INVALID_REQUEST, "invalid projectId format")
+        },
+        locale = meta.locale?.trim()?.takeIf { it.isNotEmpty() }?.let { normalizeLocaleField(it, source) },
+        currency = meta.currency?.trim()?.takeIf { it.isNotEmpty() }?.let { normalizeCodeField(it, "currency", CURRENCY_RE, source) },
+        country = meta.country?.trim()?.takeIf { it.isNotEmpty() }?.let { normalizeCodeField(it, "country", COUNTRY_RE, source) },
+        appVersion = meta.appVersion?.trim()?.takeIf { it.isNotEmpty() },
+        otaVersion = meta.otaVersion?.trim()?.takeIf { it.isNotEmpty() },
+        clientPlatform = meta.clientPlatform?.trim()?.takeIf { it.isNotEmpty() }?.also {
+            // 平台参与限流分桶，硬校验（不做软校验）
+            runCatching { ClientPlatform.fromHeader(it) }
+                .onFailure { throw ApiError(ErrorCode.INVALID_REQUEST, "invalid clientPlatform") }
+        },
+    )
+
+    /** locale：全语言支持——归一集内的语言做归并/分简繁，其余合法 BCP 47 原样透传；解析不出 language subtag 才走软校验。 */
+    private fun normalizeLocaleField(raw: String, source: String): String? =
+        normalizeLocale(raw) ?: onBadFormat("locale", raw, "invalid format ($source)")
+
+    /** ISO 码（currency 3 字母 / country 2 字母）规范化大写；非法走软校验。 */
+    private fun normalizeCodeField(raw: String, name: String, re: Regex, source: String): String? {
+        val up = raw.uppercase()
+        return if (up.matches(re)) up else onBadFormat(name, raw, "invalid format ($source)")
+    }
 
     /** 格式软校验失败的统一处理：strict 抛错；否则打 WARN 并返回 null（当作未提供）。 */
     private fun onBadFormat(field: String, raw: String, reason: String): Nothing? {
@@ -56,33 +131,63 @@ class RequestParser(
         return null
     }
 
-    /** meta.projectId：缺失(required)→抛 required；带了值但格式非法→抛 invalid；required=false 且缺失→null。 */
-    fun parseProjectId(request: HttpServletRequest, required: Boolean): String? {
-        (request.getAttribute(ATTR_APP_ID) as? String)?.let { return it }
-        val raw = metaOf(request).projectId?.trim()?.takeIf { it.isNotEmpty() }
-        if (raw == null) {
-            if (required) throw ApiError(ErrorCode.INVALID_REQUEST, "projectId is required")
-            return null
-        }
-        if (!raw.matches(PROJECT_ID_RE))
-            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid projectId format")
-        request.setAttribute(ATTR_APP_ID, raw)
-        return raw
-    }
+    // ===== authorization =====
 
     /**
-     * 解析并校验主体（actor）——遇到问题**直接抛**（不经中间状态）。token 信源见 [extractTokenOrNull]
-     *（meta.accessToken 优先，明文 dev 通道缺省回落 Authorization header）：
+     * 凭证（裸 token，已剥 `Bearer ` 前缀；大小写不敏感；纯 scheme / 空白视为未提供 → null）。
+     * 加密 body 顶层 `authorization` 优先；无加密 body 且 optional 模式 → 回落 `Authorization` header。
+     */
+    fun parseAuthorization(request: HttpServletRequest): String? {
+        payloadRoot(request)?.let { root ->
+            return when (val auth = root[KEY_AUTHORIZATION]) {
+                null -> null
+                is String -> stripBearer(auth)
+                else -> throw ApiError(ErrorCode.INVALID_REQUEST, "invalid authorization: must be a string")
+            }
+        }
+        if (!headerFallbackAllowed) return null
+        return request.getHeader(HttpHeaders.AUTHORIZATION)?.let(::stripBearer)
+    }
+
+    /** 解密 body 缓存（[WireCryptoFilter.ATTR_DECRYPTED_BODY]）→ JSON Map，结果缓存复用；无加密 body → null。 */
+    @Suppress("UNCHECKED_CAST")
+    private fun payloadRoot(request: HttpServletRequest): Map<String, Any?>? {
+        (request.getAttribute(ATTR_ROOT) as? Map<String, Any?>)?.let { return it }
+        val body = request.getAttribute(WireCryptoFilter.ATTR_DECRYPTED_BODY) as? ByteArray ?: return null
+        val root: Map<String, Any?> = try {
+            mapper.readValue(body, Map::class.java) as Map<String, Any?>
+        } catch (_: JacksonException) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid decrypted payload: not a JSON object")
+        }
+        request.setAttribute(ATTR_ROOT, root)
+        return root
+    }
+
+    /** 剥 Bearer scheme：`Bearer xxx` / `bearer xxx` → `xxx`；裸 token 原样；纯 scheme / 空白 → null。 */
+    private fun stripBearer(raw: String): String? {
+        val t = raw.trim()
+        if (t.isEmpty()) return null
+        if (t.equals("Bearer", ignoreCase = true)) return null
+        if (t.startsWith("Bearer ", ignoreCase = true)) return t.substring(7).trim().takeIf { it.isNotEmpty() }
+        return t
+    }
+
+    // ===== token（信源 = parseAuthorization）=====
+
+    /**
+     * 解析并校验 token——遇到问题**直接抛**（不经中间状态）。直接返回 JWT 的 [VerifiedToken]，不做二次包装：
      * - 没带 token：requireActorType!=null（需登录）→ UNAUTHORIZED；否则返回 null。
      * - 带了 token：过期→TOKEN_EXPIRED；验签失败→UNAUTHORIZED（invalid token: signature…）；
-     *   跨 app（aud≠meta.projectId）→ UNAUTHORIZED（invalid token: app mismatch）；缺 subject→UNAUTHORIZED。
-     * - valid：requireActorType 不匹配→FORBIDDEN。
-     * 客户端约定 accessToken 为裸 token；带 `Bearer ` 前缀也容错剥掉。
+     *   跨 app（aud≠meta.projectId）→ UNAUTHORIZED（invalid token: app mismatch）；
+     *   非 install token 缺 subject→UNAUTHORIZED。
+     * - requireActorType != null：install token（无 sub，只带 iid）→ UNAUTHORIZED（customer authentication
+     *   required）；actorType 不符 → FORBIDDEN。
+     * install token 在 requireActorType==null 时也返回（sub=null，iid/type 可用）。结果按 request 缓存。
      */
-    fun parseActor(request: HttpServletRequest, requireActorType: ActorType?): Actor? {
-        (request.getAttribute(ATTR_ACTOR) as? Actor)?.let { return checkActorType(it, requireActorType) }
+    fun parseToken(request: HttpServletRequest, requireActorType: ActorType?): VerifiedToken? {
+        (request.getAttribute(ATTR_TOKEN) as? VerifiedToken)?.let { return checkToken(it, requireActorType) }
 
-        val token = extractTokenOrNull(request)
+        val token = parseAuthorization(request)
         if (token == null) {
             if (requireActorType != null) throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
             return null
@@ -95,102 +200,44 @@ class RequestParser(
         } ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: signature verification failed")
 
         // aud 校验：token 的 projectId(aud) 必须与 meta.projectId 一致，防跨 app 重放 token。
-        val metaAppId = parseProjectId(request, required = false)
+        val metaAppId = parseMeta(request).projectId
         val tokenAppId = verified.projectId
         if (metaAppId != null && tokenAppId != metaAppId)
             throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: app mismatch")
 
-        // install token 只提供可信 iid，不是 actor，也没有 sub。actor 可选的端点
-        // 允许继续组装 ActionContext；需要 actor 的业务端点仍明确拒绝。
-        if (verified.tokenType == AuthJwtService.TOKEN_TYPE_INSTALL) {
-            if (requireActorType != null)
-                throw ApiError(ErrorCode.UNAUTHORIZED, "customer authentication required")
-            request.setAttribute(ATTR_TOKEN_TYPE, verified.tokenType)
-            verified.installId?.let { tryUuid(it) }?.let { request.setAttribute(ATTR_TOKEN_IID, it) }
-            return null
-        }
+        // install token 只提供可信 iid（无 sub）；customer/manager token 必须有 sub。
+        if (verified.tokenType != AuthJwtService.TOKEN_TYPE_INSTALL && verified.actorId == null)
+            throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: missing or invalid subject")
 
-        val actorId = verified.actorId?.let { tryUuid(it) }
-            ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: missing or invalid subject")
-
-        val actor = Actor(
-            actorId = actorId,
-            actorType = verified.actorType,
-            anonymous = verified.anonymous,
-            sessionId = verified.sessionId,
-        )
-        request.setAttribute(ATTR_ACTOR, actor)
-        return checkActorType(actor, requireActorType)
+        request.setAttribute(ATTR_TOKEN, verified)
+        return checkToken(verified, requireActorType)
     }
 
-    private fun checkActorType(actor: Actor, requireActorType: ActorType?): Actor {
-        if (requireActorType != null && actor.actorType != requireActorType)
+    private fun checkToken(token: VerifiedToken, requireActorType: ActorType?): VerifiedToken {
+        if (requireActorType == null) return token
+        if (token.tokenType == AuthJwtService.TOKEN_TYPE_INSTALL)
+            throw ApiError(ErrorCode.UNAUTHORIZED, "customer authentication required")
+        if (token.actorType != requireActorType)
             throw ApiError(ErrorCode.FORBIDDEN, "actor type not allowed for this endpoint")
-        return actor
-    }
-
-    /** 供日志等只读场景：不抛，仅当 token 有效时返回 actorId（复用 parseActor，吞掉校验异常）。 */
-    fun peekActorId(request: HttpServletRequest): UUID? =
-        runCatching { parseActor(request, requireActorType = null)?.actorId }.getOrNull()
-
-    /** meta.clientPlatform：android/ios/web；非法 → 抛 INVALID_REQUEST（平台参与限流分桶，不做软校验）。 */
-    fun parseClientPlatform(request: HttpServletRequest): ClientPlatform? {
-        val raw = metaOf(request).clientPlatform
-        if (raw.isNullOrBlank()) return null
-        return try {
-            ClientPlatform.fromHeader(raw)
-        } catch (_: IllegalArgumentException) {
-            throw ApiError(ErrorCode.INVALID_REQUEST, "invalid clientPlatform")
-        }
+        return token
     }
 
     /**
-     * meta.locale：归一到受支持的语言集（方案 B）。不在支持集内 / 无法识别 → null（不抛错）。
-     *
-     * 支持集（10 种，BCP 47）：en, zh-CN, zh-TW, ja, fr, es, pt, de, it, nl。
-     * 归一规则：按 language subtag 归并（en-US→en、pt-BR→pt…）；中文按 script/region 分简繁
-     * （zh / zh-Hans* / zh-SG / zh-MY → zh-CN；zh-TW / zh-HK / zh-MO / zh-Hant* → zh-TW）。
-     * 以后加语言只改 [normalizeLocale]。
+     * 已组装 ctx 的 require* 硬校验（语义与 [parseToken] 一致，供复用缓存 ctx 的路径复检）：
+     * 需要登录但没有主体 → UNAUTHORIZED；类型不符 → FORBIDDEN。
      */
-    fun parseLocale(request: HttpServletRequest, required: Boolean = false): String? {
-        val raw = metaOf(request).locale?.trim()?.takeIf { it.isNotEmpty() }
-        if (raw == null) {
-            if (required) throw ApiError(ErrorCode.INVALID_REQUEST, "locale is required")
-            return null
-        }
-        // 区分两种「返回 null」：
-        //  - 格式非法（无法解析出 language subtag）：软校验，strict 抛 / 线上 WARN。
-        //  - 合法 BCP 47 但不在支持集（如 ko、ru）：任何环境都静默返回 null（不是格式 bug）。
-        return when (val r = normalizeLocaleResult(raw)) {
-            is LocaleResult.Ok -> r.value
-            LocaleResult.Malformed -> onBadFormat("locale", raw, "invalid format")
-            LocaleResult.Unsupported -> if (required) onBadFormat("locale", raw, "unsupported") else null
+    fun checkActorRequirement(actorId: UUID?, actorType: ActorType?, requireActorType: ActorType?) {
+        requireActorType?.let {
+            if (actorId == null) throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
+            if (actorType != it) throw ApiError(ErrorCode.FORBIDDEN, "actor type not allowed for this endpoint")
         }
     }
 
-    /** meta.currency：ISO 4217 三字母，规范化大写；非法走软校验（strict 抛 / 线上 WARN）。 */
-    fun parseCurrency(request: HttpServletRequest, required: Boolean = false): String? =
-        parseMetaStringField(request, "currency", required) { raw ->
-            val up = raw.uppercase()
-            if (up.matches(CURRENCY_RE)) up
-            else onBadFormat("currency", raw, "invalid format")
-        }
+    /** 供日志等只读场景：不抛，仅当 token 有效时返回 actorId（复用 parseToken，吞掉校验异常）。 */
+    fun peekActorId(request: HttpServletRequest): UUID? =
+        runCatching { parseToken(request, requireActorType = null)?.actorId?.let(::tryUuid) }.getOrNull()
 
-    /** meta.country：ISO 3166-1 alpha-2 两字母，规范化大写；非法走软校验（strict 抛 / 线上 WARN）。 */
-    fun parseCountry(request: HttpServletRequest, required: Boolean = false): String? =
-        parseMetaStringField(request, "country", required) { raw ->
-            val up = raw.uppercase()
-            if (up.matches(COUNTRY_RE)) up
-            else onBadFormat("country", raw, "invalid format")
-        }
-
-    /** meta.appVersion：客户端 App 版本号，原样透传（仅记录用途，不校验格式）。 */
-    fun parseAppVersion(request: HttpServletRequest, required: Boolean = false): String? =
-        parseMetaStringField(request, "appVersion", required) { it }
-
-    /** meta.otaVersion：客户端热更新版本号，形如 `${'$'}{runtimeVersion}-${'$'}{buildNumber}-${'$'}{otaSeq}`（如 `1-23-3`），原样透传（仅记录用途，不校验格式）。 */
-    fun parseOtaVersion(request: HttpServletRequest, required: Boolean = false): String? =
-        parseMetaStringField(request, "otaVersion", required) { it }
+    // ===== 非 meta 的真实 header =====
 
     fun parseClientIp(request: HttpServletRequest): String = ClientIpResolver.resolve(request)
 
@@ -198,118 +245,46 @@ class RequestParser(
     fun parseBotScore(request: HttpServletRequest): Int? =
         request.getHeader(RequestHeaders.CF_BOT_SCORE)?.trim()?.toIntOrNull()?.takeIf { it in 1..99 }
 
-    /**
-     * 从 meta.accessToken 取可信 installId（token iid claim）。无 token / 无 iid / 过期 / 无效 → null（软取，不抛）。
-     * install token（type=5）与 customer token（type=10）都可能携带 iid。用于关系维护/updateInstall。
-     */
-    fun parseTokenInstallId(request: HttpServletRequest): UUID? {
-        (request.getAttribute(ATTR_TOKEN_IID) as? UUID)?.let { return it }
-        val token = extractTokenOrNull(request) ?: return null
-        val verified = try { jwt.verify(token) } catch (_: TokenExpiredException) { return null } ?: return null
-        request.setAttribute(ATTR_TOKEN_TYPE, verified.tokenType)
-        val iid = verified.installId?.let { tryUuid(it) } ?: return null
-        request.setAttribute(ATTR_TOKEN_IID, iid)
-        return iid
-    }
-
-    /**
-     * 从 meta.accessToken 取 type claim（5=install / 10=customer / 20=manager）。
-     * 无 token / 过期 / 无效 → null（软取，不抛）。用于区分 bootstrap 凭证类型。
-     */
-    fun parseTokenType(request: HttpServletRequest): Int? {
-        (request.getAttribute(ATTR_TOKEN_TYPE) as? Int)?.let { return it }
-        val token = extractTokenOrNull(request) ?: return null
-        val verified = try { jwt.verify(token) } catch (_: TokenExpiredException) { return null } ?: return null
-        request.setAttribute(ATTR_TOKEN_TYPE, verified.tokenType)
-        return verified.tokenType
-    }
-
-    /** 软取 token：meta.accessToken 优先（加密 body 顶层 authorization / x-req-meta），
-     * 缺省回落标准 Authorization header（仅明文 dev 调试通道——prod 加密请求 token 只进 body，header 上无 token）。
-     * 两条信源都剥 `Bearer ` 前缀（大小写不敏感；纯 "Bearer" 无凭证视为未提供）。缺失/空白 → null。 */
-    private fun extractTokenOrNull(request: HttpServletRequest): String? {
-        val fromMeta = metaOf(request).accessToken?.let(::stripBearer)
-        if (fromMeta != null) return fromMeta
-        return request.getHeader("Authorization")?.let(::stripBearer)
-    }
-
-    /** 剥 Bearer scheme：`Bearer xxx` / `bearer xxx` → `xxx`；裸 token 原样；纯 scheme / 空白 → null。 */
-    private fun stripBearer(raw: String): String? {
-        val t = raw.trim()
-        if (t.isEmpty()) return null
-        if (t.equals("Bearer", ignoreCase = true)) return null
-        if (t.startsWith("Bearer ", ignoreCase = true)) return t.substring(7).trim().takeIf { it.isNotEmpty() }
-        return t
-    }
-
-    /** 通用 meta 字符串字段：required 且缺失→抛；有值则经 normalize 规范化+校验（非法在 normalize 内抛或按软校验返回 null）。 */
-    private fun parseMetaStringField(
-        request: HttpServletRequest,
-        name: String,
-        required: Boolean,
-        normalize: (String) -> String?,
-    ): String? {
-        val raw = when (name) {
-            "currency" -> metaOf(request).currency
-            "country" -> metaOf(request).country
-            "appVersion" -> metaOf(request).appVersion
-            "otaVersion" -> metaOf(request).otaVersion
-            else -> null
-        }
-        if (raw.isNullOrBlank()) {
-            if (required) throw ApiError(ErrorCode.INVALID_REQUEST, "$name is required")
-            return null
-        }
-        return normalize(raw)
-    }
+    /** reqId 清洗：去控制字符（防伪造日志行注入）、去首尾空白、限长。 */
+    private fun String.sanitizeReqId(): String? =
+        filterNot { it.isISOControl() }.trim().take(MAX_REQ_ID_LEN).takeIf { it.isNotEmpty() }
 
     private fun tryUuid(s: String): UUID? = try { UUID.fromString(s) } catch (_: Exception) { null }
 
     companion object {
-        private const val ATTR_APP_ID = "com.ifmix.parsed.projectId"
-        private const val ATTR_ACTOR = "com.ifmix.parsed.actor"
-        private const val ATTR_TOKEN_IID = "com.ifmix.parsed.tokenInstallId"
-        private const val ATTR_TOKEN_TYPE = "com.ifmix.parsed.tokenType"
+        private const val ATTR_ROOT = "com.ifmix.parsed.payloadRoot"
+        private const val ATTR_TOKEN = "com.ifmix.parsed.verifiedToken"
+        private const val KEY_META = "meta"
+        private const val KEY_AUTHORIZATION = "authorization"
+        private const val MAX_REQ_ID_LEN = 128
+        /** meta 段（key+值）总字符数上限；超限 400000 大声拒绝（量级对齐 Tomcat 8KB 请求头区）。 */
+        private const val MAX_META_BYTES = 8 * 1024
         private val CURRENCY_RE = Regex("^[A-Z]{3}$")   // ISO 4217（大写后校验）
         private val COUNTRY_RE = Regex("^[A-Z]{2}$")    // ISO 3166-1 alpha-2（大写后校验）
         /** project slug 主键：小写字母开头，小写字母/数字/连字符，3-30 字符。创建后不可变。 */
         private val PROJECT_ID_RE = Regex("^[a-z][a-z0-9-]{2,29}$")
 
-        /** 非中文的受支持语言：language subtag（小写）→ 规范值。 */
-        private val SUPPORTED_LANGS = setOf("en", "ja", "fr", "es", "pt", "de", "it", "nl")
-
-        /** locale 归一结果：区分「格式非法」与「合法但不支持」。 */
-        sealed interface LocaleResult {
-            data class Ok(val value: String) : LocaleResult
-            /** 无法解析出 language subtag（垃圾输入）——格式 bug。 */
-            data object Malformed : LocaleResult
-            /** 合法 BCP 47 但不在支持集（如 ko、ru）——不是格式 bug。 */
-            data object Unsupported : LocaleResult
-        }
+        /** 归一集：这些语言的 region/script 变体按 language subtag 归并（en-US→en、pt-BR→pt）。其余语言原样透传。 */
+        private val COLLAPSED_LANGS = setOf("en", "ja", "fr", "es", "pt", "de", "it", "nl")
 
         /**
-         * 归一任意 BCP 47 输入。识别不了区分 [LocaleResult.Malformed]（无 language subtag）
-         * 与 [LocaleResult.Unsupported]（有 subtag 但不在支持集）。以后加语言改这里。
-         * 支持集：en, zh-CN, zh-TW, ja, fr, es, pt, de, it, nl。
+         * locale 归一（全语言支持，只归一部分）：
+         * - `zh*` 按 script/region 分简繁（zh-HK→zh-TW、zh-SG→zh-CN，裸 zh 默认简体）；
+         * - [COLLAPSED_LANGS] 内的语言按 language subtag 归并（en-US→en）；
+         * - 其余合法 BCP 47（ko、ru-RU、th…）**原样透传**——服务端不认识的值不动；
+         * - 解析不出 language subtag（垃圾输入）→ null（软校验：strict 抛 / 线上 WARN+null）。
          */
-        fun normalizeLocaleResult(raw: String): LocaleResult {
+        fun normalizeLocale(raw: String): String? {
             val locale = try {
                 java.util.Locale.forLanguageTag(raw.trim())
             } catch (_: Exception) {
-                return LocaleResult.Malformed
+                return null
             }
             val lang = locale.language.lowercase()
-            if (lang.isEmpty()) return LocaleResult.Malformed
-            if (lang == "zh") return LocaleResult.Ok(normalizeChinese(locale))
-            return if (lang in SUPPORTED_LANGS) LocaleResult.Ok(lang) else LocaleResult.Unsupported
+            if (lang.isEmpty()) return null
+            if (lang == "zh") return normalizeChinese(locale)
+            return if (lang in COLLAPSED_LANGS) lang else raw.trim()
         }
-
-        /**
-         * 归一任意 BCP 47 输入到受支持集，识别不了返回 null（不区分 malformed/unsupported）。
-         * 保留给不关心细分的调用方。以后加语言改 [normalizeLocaleResult]。
-         */
-        fun normalizeLocale(raw: String): String? =
-            (normalizeLocaleResult(raw) as? LocaleResult.Ok)?.value
 
         /** 中文按 script/region 分简繁；裸 zh 默认简体。 */
         private fun normalizeChinese(locale: java.util.Locale): String {
@@ -323,3 +298,6 @@ class RequestParser(
         }
     }
 }
+
+/** Jackson 解析失败（JSON 结构层），由调用方转成对应的 ApiError。 */
+private typealias JacksonException = tools.jackson.core.JacksonException

@@ -5,8 +5,12 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import com.ifmix.core.api.infra.auth.RequestParser
+import com.ifmix.core.api.infra.http.ApiError
+import com.ifmix.core.api.infra.http.ErrorCode
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import org.springframework.mock.web.MockFilterChain
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
@@ -18,7 +22,10 @@ import tools.jackson.databind.json.JsonMapper
  */
 class RequestLoggingFilterTest {
 
-    private val logging = RequestLoggingFilter(mock<RequestParser>())
+    private val parser = mock<RequestParser>().also {
+        whenever(it.parseMeta(any())).thenReturn(RequestMeta())
+    }
+    private val logging = RequestLoggingFilter(parser)
     private val status = GraphQlHttpStatusFilter(JsonMapper.builder().build())
     private val body = """{"errors":[{"message":"x","extensions":{"code":"503000"}}]}"""
 
@@ -58,5 +65,26 @@ class RequestLoggingFilterTest {
             assertThat(LogContext.requestId(req)).isNull()
             assertThat(res.contentAsString).isEqualTo("ok")
         }
+    }
+
+    @Test
+    fun `parseMeta throwing does not break the filter chain (error surfaces at business entry)`() {
+        // 非法 x-req-meta 等解析失败不能在 filter 层炸成 500：
+        // 业务入口（fromDfe）会再次解析并按 GraphQL 错误格式返回 400000。
+        val throwingParser = mock<RequestParser>().also {
+            whenever(it.parseMeta(any())).thenThrow(ApiError(ErrorCode.INVALID_REQUEST, "invalid x-req-meta"))
+        }
+        val res = MockHttpServletResponse()
+        val handler = object : jakarta.servlet.http.HttpServlet() {
+            override fun service(rq: jakarta.servlet.ServletRequest, rs: jakarta.servlet.ServletResponse) {
+                rs.writer.write("ok")
+            }
+        }
+        val req = MockHttpServletRequest("POST", "/customer/core/gql")
+        RequestLoggingFilter(throwingParser).doFilter(req, res, MockFilterChain(handler))
+        assertThat(res.status).isEqualTo(200)
+        assertThat(res.contentAsString).isEqualTo("ok")
+        // rid 仍已建立（生成值；MDC 在 filter 出口已清，用 request attribute 验证）
+        assertThat(LogContext.requestId(req)).isNotNull()
     }
 }

@@ -63,11 +63,11 @@ class TrustedInstallIdWriteTest {
         override fun save(mc: ModuleCtx, entity: ScanRecord): Boolean { saved = entity; return true }
     }
 
-    private fun ctx(tokenInstallId: UUID?) = ModuleCtx(
+    private fun ctx(installId: UUID?) = ModuleCtx(
         action = ActionContext(
             projectId = projectId,
             actorId = actor,
-            tokenInstallId = tokenInstallId,    // 可信 iid（唯一 install 信源）
+            installId = installId,    // 可信 iid（唯一 install 信源）
         ),
         sql = mock<KSqlClient>(),
     )

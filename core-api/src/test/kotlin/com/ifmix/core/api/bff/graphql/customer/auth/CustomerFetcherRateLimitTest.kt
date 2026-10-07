@@ -29,7 +29,7 @@ import java.util.UUID
 
 /**
  * 下游 install 层限流（attest 规格 §4.6「下游接口的 install 层」+ §7「下游的顺序和策略」）：
- * - 有可信 iid（tokenInstallId）：install 层（5/install/UTC 天）→ IP 层（100/60s + 1000/天）；
+ * - 有可信 iid（installId）：install 层（5/install/UTC 天）→ IP 层（100/60s + 1000/天）；
  *   install 层拒绝不碰 IP 计数器；IP 层拒绝时 install 额度已扣、不退；install 层 key 只含 iid（换 IP 额度保持）。
  * - 无 token iid 的请求在 ctx.mustGetTokenInstallId 即 401000（v1.0.6 起 legacy fallback 已删除），到不了限流层。
  * - key 按 projectId 隔离。
@@ -50,8 +50,8 @@ class CustomerFetcherRateLimitTest {
     private val ipMinKey = "ratelimit:$pid:anonymous:ip:min:$ip"
     private val ipDayKey = "ratelimit:$pid:anonymous:ip:day:$ip"
 
-    private fun ctxWithIid() = ActionContext(projectId = pid, clientIp = ip, tokenInstallId = iid, tokenType = 5, actorId = null)
-    private fun ctxWithoutIid() = ActionContext(projectId = pid, clientIp = ip, tokenInstallId = null, actorId = null)
+    private fun ctxWithIid() = ActionContext(projectId = pid, clientIp = ip, installId = iid, tokenType = 5, actorId = null)
+    private fun ctxWithoutIid() = ActionContext(projectId = pid, clientIp = ip, installId = null, actorId = null)
 
     private fun stubDfe(ctx: ActionContext) {
         whenever(ctxProvider.fromDfe(any(), any(), anyOrNull(), any(), any(), any())).thenReturn(ctx)

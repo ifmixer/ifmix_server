@@ -30,6 +30,14 @@
 - [ ] AI 惰性超时窗口与 runner 预算对齐（现仍 300s < 360s < 600s，慢任务被误杀）。
 - [ ] DeepResearch 缺 `premium_result` 判失败并重试（现为"AI 正常返回即 SUCCESS"，可落空报告）。
 
+### 2026-10-07 增补（请求解析职责收敛：filter 只解密，parser 只解析）
+
+- **`WireCryptoFilter` 收敛为纯加解密**：解密 body 原样透传（`{authorization, meta, query, variables}` 四键全保留，缓存到 request attribute 供 parser 取），headers 一律不动；不再解析 meta/authorization、不再剥键。
+- **`RequestParser` 只暴露 `parseMeta` / `parseAuthorization`**：meta 各字段的归一/校验在 parseMeta 内一次做完（projectId/clientPlatform 硬校验，locale/currency/country 归一+软校验），调用方直接取字段，8 个逐字段 parse 方法删除；`parseAuthorization` 信源 = 加密 body 顶层 `authorization`，无 body 且 mode=optional 回落 `Authorization` header，required 模式不读 headers。meta 不再含 accessToken 字段。
+- **`RequestParser.parseToken` 直接返回 JWT `VerifiedToken`**（`Actor` 包装类删除）：install token（无 sub）也返回（sub=null，iid/type 可用）；`parseTokenInstallId`/`parseTokenType` 及 request attribute 导出（ATTR_TOKEN_IID/TYPE）删除，UUID 解析移到 ctx 组装处。
+- 结构违规（meta 非对象/值非字符串/超 8KB/authorization 非字符串）从 400003 改为 400000（解析归 parser 后统一走 ApiError）。
+- **locale 语义放宽（客户端可见）**：所有合法 BCP 47 语言都被接受——归一集（en/ja/fr/es/pt/de/it/nl）按 language subtag 归并、中文分简繁，**其余语言（ko、ru-RU…）原样透传**（原「不支持 → null」语义删除）；仅畸形输入（解析不出 language subtag）走格式软校验。
+
 ### 2026-10-07 增补（demo E2E 走查修复）
 
 - **V17**：`core_demo_todo_item` 补 `note` 列——实体 `TodoItem.note` 与 schema 早已有该字段，建表迁移遗漏，任何写/读 note 的操作都会 500（column does not exist）。

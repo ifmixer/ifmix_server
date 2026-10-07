@@ -225,7 +225,7 @@ class AuthAggHandler(
         val accessToken = jwt.signAccess(
             ownerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(),
             sessionId = refreshTokenId.toString(), anonymous = false,
-            installId = mc.action.tokenInstallId?.toString(), // 只签可信 iid，header 兜底值不入 token
+            installId = mc.action.installId?.toString(), // 只签可信 iid，header 兜底值不入 token
         )
         // Merge 分支 ownerId 已是合并后的 existing（action.to）→ bind 指向 existing，绝不反向
         installFacade.bind(mc.action, tokenIid, ownerId)
@@ -283,7 +283,7 @@ class AuthAggHandler(
             oldToken.actorId.toString(), oldToken.actorType, projectId.toString(),
             sessionId = newTokenId.toString(),
             anonymous = anonymous,
-            installId = mc.action.tokenInstallId?.toString(), // 只签可信 iid，header 兜底值不入 token
+            installId = mc.action.installId?.toString(), // 只签可信 iid，header 兜底值不入 token
         )
         // refresh 续期 token 并保留 iid/anonymous。若 refresh token 属于某 customer actor，
         // 则检查该 actor 与 iid 的关系：未绑定则补绑（bind 幂等——已绑定则 NoOp，软删则复活）。
@@ -350,7 +350,7 @@ class AuthAggHandler(
         val accessToken = jwt.signAccess(
             customerId.toString(), AuthJwtService.ACTOR_CUSTOMER, projectId.toString(),
             sessionId = refreshTokenId.toString(), anonymous = true,
-            installId = mc.action.tokenInstallId?.toString(), // 只签可信 iid，header 兜底值不入 token
+            installId = mc.action.installId?.toString(), // 只签可信 iid，header 兜底值不入 token
         )
         installFacade.bind(mc.action, tokenIid, customerId)
         return CreateAnonymousRes(

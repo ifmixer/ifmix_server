@@ -71,7 +71,7 @@ class InstallFetcherAttestTest {
     private val attestDayKey = "ratelimit:$pid:attest-existing:install:day:$installId"
 
     private fun baseCtx() = ActionContext(projectId = pid, clientIp = ip, clientPlatform = ClientPlatform.IOS)
-    private fun installTokenCtx() = baseCtx().copy(tokenInstallId = installId, tokenType = 5, actorId = null)
+    private fun installTokenCtx() = baseCtx().copy(installId = installId, tokenType = 5, actorId = null)
 
     private fun validProof() = VerifiedProof(
         provider = 110, subject = "key1", publicKey = byteArrayOf(1),
@@ -411,16 +411,16 @@ class InstallFetcherAttestTest {
     @Test
     fun `attestExisting with customer token to 401000`() {
         whenever(ctxProvider.fromDfe(any(), any(), anyOrNull(), any(), any(), any())).thenReturn(
-            baseCtx().copy(tokenInstallId = installId, tokenType = 10, actorId = UUID.randomUUID()),
+            baseCtx().copy(installId = installId, tokenType = 10, actorId = UUID.randomUUID()),
         )
         val e = assertThrows<ApiError> { fetcher.attestExisting(dfe, attestInput()) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
 
     @Test
-    fun `attestExisting without tokenInstallId to 401000`() {
+    fun `attestExisting without installId to 401000`() {
         whenever(ctxProvider.fromDfe(any(), any(), anyOrNull(), any(), any(), any())).thenReturn(
-            baseCtx().copy(tokenType = 5, actorId = null, tokenInstallId = null),
+            baseCtx().copy(tokenType = 5, actorId = null, installId = null),
         )
         val e = assertThrows<ApiError> { fetcher.attestExisting(dfe, attestInput()) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)

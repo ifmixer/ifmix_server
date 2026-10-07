@@ -215,7 +215,7 @@ createAnonymous / refresh 只要求携带**有效可信 iid**（`mustGetTokenIns
 Fetcher 在进入事务前要求（`mustGetTokenInstallId()`）：
 
 ```text
-tokenInstallId != null   // 有效可信 iid
+installId != null   // 有效可信 iid
 ```
 
 token 类型不限（installToken 或含 iid 的 customer token 皆可）；无有效 iid 返回 `UNAUTHORIZED`；本期不新增专用错误码。

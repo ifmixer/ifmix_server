@@ -483,7 +483,7 @@ class ScanAggHandler(
             currency = scan.currency,
             promptVersion = scanPrompt.promptVersion,
             createdAt = now,
-            installId = sc.action.tokenInstallId,
+            installId = sc.action.installId,
             deepResearchPushEnabled = input.featureFlags?.deepResearchPushEnabled ?: false,
         )
     }

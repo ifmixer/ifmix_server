@@ -57,6 +57,10 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 - **customer/install 并入 auth 模块**：服务端内部结构（`modules/auth/{install,customer}`、`entity/auth/`）+ reqName namespace 变化（`m_auth_install_*`、`m_auth_customer_*`）。
 - **RPC URL 定稿 `POST /customer/core/greq/{reqName}`**：原 `/api/customer/core` 方案废弃；客户端 R0 已实现的 `/api/customer/core` URL 需在联调前同步调整。
 
+### v1.0.6 增量（2026-10-07：请求解析职责收敛）
+
+- **`WireCryptoFilter` 只解密**（body 四键原样透传 + 缓存 attribute，headers 不动）；**`RequestParser` 只暴露 `parseMeta`/`parseAuthorization`**（逐字段 parse 方法全删，meta 不含 accessToken）；`Actor` 加 `installId`/`tokenType`（install token 也产出 Actor），attribute 导出删除。meta 结构违规 400003 → 400000。见 wire 设计「meta 进 body」节。
+
 ### v1.0.6 增量（2026-10-07：demo E2E 走查修复）
 
 - **V17**：`core_demo_todo_item` 补 `note` 列（实体/schema 早已有，建表迁移遗漏）。

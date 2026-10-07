@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
  * 按 action 显式配置的限流阈值（install attestation 规格 §4.6 + 实现计划 §2 决策 6）。
  *
  * - IP 层 = 系统防护（阈值大）；install 层 = 防滥用（阈值小，接线任务 WP-D 使用）。
- *   （v1.0.6 起 legacy 层——无 tokenInstallId 旧客户端的独立严格阈值——随 legacy fallback 一并删除。）
+ *   （v1.0.6 起 legacy 层——无 installId 旧客户端的独立严格阈值——随 legacy fallback 一并删除。）
  * - **重启生效**：不做热更新，不能当即时 kill switch；紧急降额走一次重启/发布。
  * - 与 [RateLimitConfig]（tier 日限额，free/pro/enterprise 平铺字段）共用 `app.ratelimit` 前缀，
  *   字段互不重叠，Spring 各自绑定互不影响。

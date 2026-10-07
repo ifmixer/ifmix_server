@@ -52,7 +52,7 @@ class ScanAsyncQuotaTest {
         action = ActionContext(
             projectId = projectId,
             actorId = customerId,
-            tokenInstallId = installId,
+            installId = installId,
             isMutation = true,
         ),
         sql = mock<KSqlClient>(),

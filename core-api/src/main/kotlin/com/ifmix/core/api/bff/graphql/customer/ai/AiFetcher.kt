@@ -232,7 +232,7 @@ class AiFetcher(
 
     /**
      * 下游接口的 install 层限流（attest 规格 §4.6「下游接口的 install 层」）：
-     * 必须有可信 [ActionContext.tokenInstallId]（只认 token 签名过的 iid；scan/DR 用 customer token 的 iid；
+     * 必须有可信 [ActionContext.installId]（只认 token 签名过的 iid；scan/DR 用 customer token 的 iid；
      * v1.0.6 起 legacy fallback 已删除，无 iid 的请求在 ctx 层即 401000，到不了这里）：
      *   install 层（scan/DR：5/min + 100/天）→ IP 层（100/min + 1000/天）。install 层拒绝不碰 IP 计数器；
      *   IP 层拒绝时 install 额度已扣、**不退**（被拒请求一律不退款）。

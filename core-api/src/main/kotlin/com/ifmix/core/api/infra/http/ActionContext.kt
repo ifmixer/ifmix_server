@@ -31,7 +31,7 @@ data class ActionContext(
     val clientPlatform: ClientPlatform? = null,
     val clientIp: String? = null,
     /** token 的 iid claim（可信 installId）。install token 与 customer token 都可能携带。无 token iid 即无 install 上下文。 */
-    val tokenInstallId: UUID? = null,
+    val installId: UUID? = null,
     /** token 的 type claim：5=install / 10=customer / 20=manager。无 token 时 null。 */
     val tokenType: Int? = null,
     /** 请求 id（meta.reqId 原值，或服务端生成的 UuidV7；响应 Envelope.reqId 回传）。 */
@@ -89,7 +89,7 @@ data class ActionContext(
     fun mustGetTokenInstallId() = installIdOrNull() ?: throw ApiError(ErrorCode.UNAUTHORIZED, "trusted install id required")
 
     /** token 的可信 iid。v1.0.6 起不可信 install-id 信源已删，无 iid 即拒绝写入。 */
-    fun installIdOrNull(): UUID? = tokenInstallId
+    fun installIdOrNull(): UUID? = installId
 
     /**
      * login 入口：必须携带 iid，允许两类上下文——
@@ -104,6 +104,6 @@ data class ActionContext(
             else -> false
         }
         if (!ok) throw ApiError(ErrorCode.UNAUTHORIZED, "login requires customer or install token")
-        return tokenInstallId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "login requires trusted install id")
+        return installId ?: throw ApiError(ErrorCode.UNAUTHORIZED, "login requires trusted install id")
     }
 }

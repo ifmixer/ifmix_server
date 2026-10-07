@@ -144,7 +144,7 @@ JWT 新增 `type` claim 标识 token 类型，缺省 `10`（老 token 兼容）�
 
 - **install token 永不过期**（无 exp claim）、不设 `sub`（install 不是 actor）；installId 只在 `iid` claim。
 - `verify` 有 exp 才校验过期，无 exp（install token）放行——EdDSA 签名保证无法伪造。
-- install 不进 `Actor` 模型；`RequestParser.parseTokenInstallId` 从任一 token 的 `iid` 取可信 installId → `ActionContext.tokenInstallId`。`x-install-id` header 不再用于关系维护。
+- install 不进 `Actor` 模型；`RequestParser.parseTokenInstallId` 从任一 token 的 `iid` 取可信 installId → `ActionContext.installId`。`x-install-id` header 不再用于关系维护。
 
 ### Install↔Customer 关系维护
 
@@ -162,6 +162,6 @@ JWT 新增 `type` claim 标识 token 类型，缺省 `10`（老 token 兼容）�
 
 ### Refresh token 有效期（2026-10-05 决策）
 
-- **refresh 请求的 Authorization 携带 customer access token（type=10），不是 install token**。access token 过期（15min）后再 refresh 会被 `parseActor` 以 `TOKEN_EXPIRED` 拒绝——**这是有意行为**：客户端收到该错误后自动登出、引导重新登录（当前无 Apple/Google/Email 登录，重新登录即匿名重建，不丢本地数据由客户端 SQLite 承载）。
+- **refresh 请求的 Authorization 携带 customer access token（type=10），不是 install token**。access token 过期（15min）后再 refresh 会被 `parseToken` 以 `TOKEN_EXPIRED` 拒绝——**这是有意行为**：客户端收到该错误后自动登出、引导重新登录（当前无 Apple/Google/Email 登录，重新登录即匿名重建，不丢本地数据由客户端 SQLite 承载）。
 - **refresh token 暂不校验 `expires_at`**（落库 365 天但 `findValidByHash`/`hasValidToken` 只看 `revoked_at`）：在接入可重登录的第三方登录方式之前，过期即等于"用户被登出、数据全丢"，不可接受。有效期列已就绪，未来接入社交登录后实装校验即可。已知的取舍：被盗且未被轮换吊销的 refresh token 无 TTL 兜底。
 - logout 不信任 header 传入的 installId（伪造值不参与写路径）：有可信 iid 则解绑对应关系，否则仅吊销会话。

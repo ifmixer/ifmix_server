@@ -40,7 +40,7 @@ class AuthRefreshInstallTest {
         val oldTokenId = UUID.randomUUID()
         val installId = UUID.randomUUID()
         val mc = ModuleCtx(
-            action = ActionContext(projectId = projectId, tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, tokenInstallId = installId),
+            action = ActionContext(projectId = projectId, tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, installId = installId),
             sql = mock<KSqlClient>(),
         )
 
@@ -96,7 +96,7 @@ class AuthRefreshInstallTest {
         val projectId = "antique"
         val actorId = UUID.randomUUID()
         val installId = UUID.randomUUID()
-        val action = ActionContext(projectId = projectId, tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, tokenInstallId = installId)
+        val action = ActionContext(projectId = projectId, tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, installId = installId)
         val mc = ModuleCtx(action = action, sql = mock<KSqlClient>())
 
         whenever(oldToken.id).thenReturn(UUID.randomUUID())
@@ -141,7 +141,7 @@ class AuthRefreshInstallTest {
         val action = ActionContext(
             projectId = projectId,
             tokenType = AuthJwtService.TOKEN_TYPE_INSTALL,
-            tokenInstallId = installId,
+            installId = installId,
         )
         val mc = ModuleCtx(action = action, sql = mock<KSqlClient>())
 
@@ -194,7 +194,7 @@ class AuthRefreshInstallTest {
         val installFacade = mock<InstallFacade>()
         val actorId = UUID.randomUUID()
         val mc = ModuleCtx(
-            action = ActionContext(projectId = "antique", actorId = actorId, tokenInstallId = null),
+            action = ActionContext(projectId = "antique", actorId = actorId, installId = null),
             sql = mock<KSqlClient>(),
         )
 

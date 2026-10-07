@@ -35,11 +35,11 @@ class SupportRequestHandlerTest {
         override fun save(mc: ModuleCtx, entity: SupportRequest): Boolean { saved = entity; return true }
     }
 
-    private fun ctx(actorId: UUID?, tokenInstallId: UUID?) = ModuleCtx(
+    private fun ctx(actorId: UUID?, installId: UUID?) = ModuleCtx(
         action = ActionContext(
             projectId = projectId,
             actorId = actorId,
-            tokenInstallId = tokenInstallId,
+            installId = installId,
             locale = "zh-CN",
             country = "CN",
             currency = "CNY",
@@ -86,7 +86,7 @@ class SupportRequestHandlerTest {
         val repo = CapturingRepo()
         val handler = SupportRequestAggHandler(repo)
         val iid = UUID.randomUUID()
-        handler.create(ctx(actorId = null, tokenInstallId = iid), CreateSupportRequestReq(title = "t", message = "m"))
+        handler.create(ctx(actorId = null, installId = iid), CreateSupportRequestReq(title = "t", message = "m"))
         val e = repo.saved!!
         assertThat(e.customerId).isNull()
         assertThat(e.installId).isEqualTo(iid)
@@ -96,14 +96,14 @@ class SupportRequestHandlerTest {
     @Test
     fun `findMineById requires login`() {
         val handler = SupportRequestAggHandler(CapturingRepo())
-        val err = assertThrows<ApiError> { handler.findMineById(ctx(actorId = null, tokenInstallId = null), UUID.randomUUID()) }
+        val err = assertThrows<ApiError> { handler.findMineById(ctx(actorId = null, installId = null), UUID.randomUUID()) }
         assertThat(err.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
 
     @Test
     fun `findMine requires login`() {
         val handler = SupportRequestAggHandler(CapturingRepo())
-        val err = assertThrows<ApiError> { handler.findMine(ctx(actorId = null, tokenInstallId = null), null) }
+        val err = assertThrows<ApiError> { handler.findMine(ctx(actorId = null, installId = null), null) }
         assertThat(err.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
 }

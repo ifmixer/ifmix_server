@@ -27,7 +27,7 @@ DeepResearch 已异步化（创建 IN_PROGRESS → 后台跑 AI → CAS 回写�
 ### 3.1 必须补的字段：`DeepResearchTaskContext.installId`
 
 - 当前 `DeepResearchTaskContext` 无 installId；push 需发给发起方 install。
-- `createDeepResearchTask` 构造 ctx 时，从**本次请求的** ActionContext.tokenInstallId 快照取（可信 installId）。**不能从 scan 的原始 installId 推断**——通知目标必须是发起本次 DeepResearch 的设备（可能与创建 scan 的设备不同）。
+- `createDeepResearchTask` 构造 ctx 时，从**本次请求的** ActionContext.installId 快照取（可信 installId）。**不能从 scan 的原始 installId 推断**——通知目标必须是发起本次 DeepResearch 的设备（可能与创建 scan 的设备不同）。
 - 若 installId 为 null（理论上 customer 操作必有 iid）：§3.3 的 guard 跳过 push（DEBUG），不构造伪 UUID、不调 facade，不影响主流程。
 
 ### 3.2 Install 新增开关
@@ -135,5 +135,5 @@ scan 设计里 `sendToInstall` 查死 `scan_result_noti_enabled`。为支持 Dee
 
 ## 9. 实现期验证点
 
-1. `DeepResearchTaskContext.installId` 来源确认（createDeepResearchTask 的本次 ActionContext.tokenInstallId）。
+1. `DeepResearchTaskContext.installId` 来源确认（createDeepResearchTask 的本次 ActionContext.installId）。
 2. §3.5 notification 开关参数化：本文档依赖 scan push 的 notification 模块落地；若 scan push 尚在实现中，两者协调 `NotificationRequest.notiType` 扩展的落地顺序。

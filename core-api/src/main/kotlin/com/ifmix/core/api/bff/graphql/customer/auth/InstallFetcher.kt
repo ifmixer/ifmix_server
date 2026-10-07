@@ -154,7 +154,7 @@ class InstallFetcher(
     fun updateInstall(dfe: DgsDataFetchingEnvironment, @InputArgument input: Map<String, Any?>): UpdateInstallResult {
         // 需 token（install 或 customer），取 iid
         val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
-        val installId = ctx.tokenInstallId
+        val installId = ctx.installId
             ?: throw ApiError(ErrorCode.UNAUTHORIZED, "install token required")
         @Suppress("UNCHECKED_CAST")
         val deviceInfo = input["deviceInfo"] as? Map<String, Any?>
@@ -288,14 +288,14 @@ class InstallFetcher(
     fun attestExisting(dfe: DgsDataFetchingEnvironment, @InputArgument input: Map<String, Any?>): AttestExistingResult {
         val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
 
-        // 1. 鉴权：严格只认 installToken（type=5 && actorId==null && tokenInstallId!=null，否则 401000）
+        // 1. 鉴权：严格只认 installToken（type=5 && actorId==null && installId!=null，否则 401000）
         val ok = when {
             ctx.tokenType != AuthJwtService.TOKEN_TYPE_INSTALL -> false
             ctx.actorId != null -> false
-            else -> ctx.tokenInstallId != null
+            else -> ctx.installId != null
         }
         if (!ok) throw ApiError(ErrorCode.UNAUTHORIZED, "installToken required for attestExisting")
-        val installId = ctx.tokenInstallId!!
+        val installId = ctx.installId!!
         val pid = ctx.mustGetProjectId()
 
         // 2. IP 短窗口 10/60s

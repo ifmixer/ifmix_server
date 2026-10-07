@@ -94,7 +94,7 @@ class AiFetcherRateLimitTest {
             ((it.arguments[1]) as (ActionContext) -> Any)(c)
         }
 
-        val ctx = ActionContext(projectId = pid, clientIp = ip, tokenInstallId = iid, tokenType = 10, actorId = customerId)
+        val ctx = ActionContext(projectId = pid, clientIp = ip, installId = iid, tokenType = 10, actorId = customerId)
         stubDfe(ctx)
 
         fetcher = AiFetcher(
@@ -104,7 +104,7 @@ class AiFetcherRateLimitTest {
     }
 
     private fun ctxWithoutIid(): ActionContext =
-        ActionContext(projectId = pid, clientIp = ip, tokenInstallId = null, tokenType = 10, actorId = customerId)
+        ActionContext(projectId = pid, clientIp = ip, installId = null, tokenType = 10, actorId = customerId)
 
     private fun stubDfe(ctx: ActionContext) {
         whenever(ctxProvider.fromDfe(any(), any(), anyOrNull(), any(), any(), any())).thenReturn(ctx)
@@ -183,7 +183,7 @@ class AiFetcherRateLimitTest {
 
     @Test
     fun `install layer budget is shared across ips for the same install`() {
-        val ctxNewIp = ctxWithoutIid().copy(clientIp = "9.9.9.9", tokenInstallId = iid)
+        val ctxNewIp = ctxWithoutIid().copy(clientIp = "9.9.9.9", installId = iid)
         stubDfe(ctxNewIp)
         fetcher.newScan(dfe, NewScanInput(images = emptyList(), collected = null))
         verify(rateLimiter).check(eq(Window.MINUTE), eq(scanInstallMinKey), eq(5))

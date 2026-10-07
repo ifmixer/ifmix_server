@@ -44,8 +44,14 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
         val wrappedResponse = ContentCachingResponseWrapper(response)
 
         val start = System.currentTimeMillis()
-        // 先建立日志 rid（wire meta.reqId 有值直接用，否则生成 UuidV7），内层 filter / 业务日志都带 rid
-        LogContext.start(wrappedRequest)
+        // 先建立日志 rid（meta.reqId 有值直接用，否则生成 UuidV7），内层 filter / 业务日志都带 rid。
+        // parseMeta 结果挂在 request 上（本请求后续 RequestParser 调用零重复解析）。
+        // parseMeta 失败（如非法 x-req-meta）**不在 filter 层报错**：业务入口 fromDfe 会再次解析并按
+        // GraphQL 错误格式返回 400000；这里吞掉异常只为了拿到 reqId，不能让错误逃出 filter 变 500。
+        val reqId = runCatching { parser.parseMeta(wrappedRequest).reqId }
+            .onFailure { log.warn("meta parse failed at logging filter: {}", it.message) }
+            .getOrNull()
+        LogContext.start(wrappedRequest, reqId)
 
         try {
             filterChain.doFilter(wrappedRequest, wrappedResponse)
@@ -110,10 +116,11 @@ class RequestLoggingFilter(private val parser: RequestParser) : OncePerRequestFi
             val scheme = it.substringBefore(' ', it).take(16)
             parts.add("Authorization=$scheme ***")
         }
-        // meta（WireCryptoFilter 已解析挂到 request 上；明文无 meta 时全空）
-        val meta = request.getAttribute(RequestMeta.ATTR_META) as? RequestMeta
+        // meta（RequestParser.parseMeta 已解析挂到 request 上；无加密 body 且 required 模式时全空）。
+        // 首次解析失败时这里会再抛——同样吞掉，日志兜底字段而已。
+        val meta = runCatching { parser.parseMeta(request) }.getOrNull()
         if (meta != null) {
-            parts.add("meta={pid=${meta.projectId}, plat=${meta.clientPlatform}, locale=${meta.locale}, cur=${meta.currency}, cty=${meta.country}, av=${meta.appVersion}, ov=${meta.otaVersion}, req=${meta.accessToken != null}}")
+            parts.add("meta={pid=${meta.projectId}, plat=${meta.clientPlatform}, locale=${meta.locale}, cur=${meta.currency}, cty=${meta.country}, av=${meta.appVersion}, ov=${meta.otaVersion}}")
         }
         // clientIp / userId 取自 RequestParser（token 幂等缓存，与 fromDfe 共享同一 request 缓存）
         parts.add("clientIp=${parser.parseClientIp(request)}")

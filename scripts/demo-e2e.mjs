@@ -29,7 +29,7 @@ const session = {
   refreshToken: null,
 }
 
-/** x-req-meta header（明文 dev 通道的 RequestMeta；key 用普通字段名） */
+/** x-req-meta header（明文 dev 通道的 RequestMeta；key 用普通字段名，不含凭证） */
 function meta() {
   return JSON.stringify({
     projectId: PROJECT_ID,
@@ -39,23 +39,26 @@ function meta() {
     locale: 'zh-CN',
     currency: 'USD',
     country: 'US',
-    ...(session.customerToken
-      ? { accessToken: session.customerToken }
-      : session.installToken
-        ? { accessToken: session.installToken }
-        : {}),
   })
+}
+
+/** 当前生效的凭证（install token → customer token），走标准 Authorization header。 */
+function authHeader() {
+  return session.customerToken ?? session.installToken
 }
 
 async function gql(name, query, variables = {}) {
   step++
   const label = `[${String(step).padStart(2, '0')}] ${name}`
   const t0 = Date.now()
+  const headers = { 'content-type': 'application/json', 'x-req-meta': meta() }
+  const auth = authHeader()
+  if (auth) headers['authorization'] = `Bearer ${auth}`
   let res
   try {
     res = await fetch(GQL, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-req-meta': meta() },
+      headers,
       body: JSON.stringify({ query, variables }),
     })
   } catch (e) {

@@ -12,7 +12,7 @@ class LogContextTest {
     @Test
     fun `bind writes ordered fields with dash for null, clear removes`() {
         val iid = UUID.randomUUID()
-        LogContext.bind(ActionContext(tokenInstallId = iid, clientIp = "1.2.3.4", botScore = 12))
+        LogContext.bind(ActionContext(installId = iid, clientIp = "1.2.3.4", botScore = 12))
         assertThat(MDC.get("iid")).isEqualTo(iid.toString())
         assertThat(MDC.get("ip")).isEqualTo("1.2.3.4")
         assertThat(MDC.get("bot")).isEqualTo("12")
@@ -36,22 +36,18 @@ class LogContextTest {
     @Test
     fun `start generates request id, binds rid early, and stores it on request`() {
         val request = org.springframework.mock.web.MockHttpServletRequest()
-        val rid = LogContext.start(request)
+        val rid = LogContext.start(request, null)
         assertThat(MDC.get("rid")).isEqualTo(rid)
         assertThat(LogContext.requestId(request)).isEqualTo(rid)
         LogContext.clear()
     }
 
     @Test
-    fun `meta reqId used as-is (control chars stripped), generated when absent or blank`() {
-        fun startWith(v: String?) = LogContext.start(org.springframework.mock.web.MockHttpServletRequest().apply {
-            v?.let { setAttribute(RequestMeta.ATTR_META, RequestMeta(reqId = it)) }
-        })
-        assertThat(startWith("app-AbC_123")).isEqualTo("app-AbC_123")
-        assertThat(startWith("a b\nINFO fake")).isEqualTo("a bINFO fake")
-        assertThat(startWith("x".repeat(500)).length).isEqualTo(128)
-        for (v in listOf(null, "", "   ", "\n")) {
-            val rid = startWith(v)
+    fun `start uses caller-provided reqId as-is, generates when absent or blank`() {
+        assertThat(LogContext.start(org.springframework.mock.web.MockHttpServletRequest(), "app-AbC_123"))
+            .isEqualTo("app-AbC_123")
+        for (v in listOf(null, "")) {
+            val rid = LogContext.start(org.springframework.mock.web.MockHttpServletRequest(), v)
             assertThat(UUID.fromString(rid).toString()).isEqualTo(rid)
         }
         LogContext.clear()

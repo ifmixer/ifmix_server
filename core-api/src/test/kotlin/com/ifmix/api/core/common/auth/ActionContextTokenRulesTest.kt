@@ -22,25 +22,25 @@ class ActionContextTokenRulesTest {
     private fun ctx(
         actorId: UUID? = null,
         tokenType: Int? = null,
-        tokenInstallId: UUID? = null,
+        installId: UUID? = null,
     ) = ActionContext(
         projectId = "antique",
         actorId = actorId,
         tokenType = tokenType,
-        tokenInstallId = tokenInstallId,
+        installId = installId,
     )
 
     // ── mustGetTokenInstallId：createAnonymous / refresh 用（只要求有效 iid，token 类型不限） ──
 
     @Test fun `install token with iid is accepted`() {
         assertThat(
-            ctx(tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, tokenInstallId = iid).mustGetTokenInstallId()
+            ctx(tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, installId = iid).mustGetTokenInstallId()
         ).isEqualTo(iid)
     }
 
     @Test fun `customer token with iid is accepted`() {
         assertThat(
-            ctx(actorId = actor, tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, tokenInstallId = iid).mustGetTokenInstallId()
+            ctx(actorId = actor, tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, installId = iid).mustGetTokenInstallId()
         ).isEqualTo(iid)
     }
 
@@ -51,7 +51,7 @@ class ActionContextTokenRulesTest {
 
     @Test fun `token without iid rejected`() {
         val ex = assertThrows<ApiError> {
-            ctx(tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, tokenInstallId = null).mustGetTokenInstallId()
+            ctx(tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, installId = null).mustGetTokenInstallId()
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
@@ -60,14 +60,14 @@ class ActionContextTokenRulesTest {
 
     @Test fun `login accepts customer token context (type10 actor iid)`() {
         assertThat(
-            ctx(actorId = actor, tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, tokenInstallId = iid)
+            ctx(actorId = actor, tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, installId = iid)
                 .mustGetLoginInstallId()
         ).isEqualTo(iid)
     }
 
     @Test fun `login accepts install token context (type5 no-actor iid)`() {
         assertThat(
-            ctx(tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, tokenInstallId = iid).mustGetLoginInstallId()
+            ctx(tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, installId = iid).mustGetLoginInstallId()
         ).isEqualTo(iid)
     }
 
@@ -78,21 +78,21 @@ class ActionContextTokenRulesTest {
 
     @Test fun `login rejects manager token`() {
         val ex = assertThrows<ApiError> {
-            ctx(actorId = actor, tokenType = AuthJwtService.TOKEN_TYPE_MANAGER, tokenInstallId = iid).mustGetLoginInstallId()
+            ctx(actorId = actor, tokenType = AuthJwtService.TOKEN_TYPE_MANAGER, installId = iid).mustGetLoginInstallId()
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
 
     @Test fun `login rejects customer token without iid`() {
         val ex = assertThrows<ApiError> {
-            ctx(actorId = actor, tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, tokenInstallId = null).mustGetLoginInstallId()
+            ctx(actorId = actor, tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, installId = null).mustGetLoginInstallId()
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
 
     @Test fun `login rejects install token without iid`() {
         val ex = assertThrows<ApiError> {
-            ctx(tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, tokenInstallId = null).mustGetLoginInstallId()
+            ctx(tokenType = AuthJwtService.TOKEN_TYPE_INSTALL, installId = null).mustGetLoginInstallId()
         }
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
