@@ -34,7 +34,7 @@ DeepResearch 已异步化（创建 IN_PROGRESS → 后台跑 AI → CAS 回写�
 
 - `entity/install/Install.kt`：加 `deepResearchNotiEnabled: Boolean`（默认 `true`，与 `scanResultNotiEnabled` 并列）。
 - updateInstall（handler/facade/schema）：支持更新 `deep_research_noti_enabled`。
-- Migration：`ALTER TABLE core_install ADD COLUMN deep_research_noti_enabled boolean NOT NULL DEFAULT true;`（版本号接续 scan 那次迁移之后）。
+- Migration：`ALTER TABLE core_auth_install ADD COLUMN deep_research_noti_enabled boolean NOT NULL DEFAULT true;`（版本号接续 scan 那次迁移之后）。
 
 ### 3.3 后台发 push（`DeepResearchTaskService.doRun`）
 

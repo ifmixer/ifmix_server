@@ -11,7 +11,7 @@ import java.util.UUID
  * 一个 install 同时只绑一个 customer（业务保证：绑新的前软删该 install 其它有效关系）。
  */
 @Entity
-@Table(name = "core_install_customer_relation")
+@Table(name = "core_auth_install_customer_relation")
 interface InstallCustomerRelation : BaseProjectEntity, SoftDeletableProps {
 
     @Column(name = "install_id")

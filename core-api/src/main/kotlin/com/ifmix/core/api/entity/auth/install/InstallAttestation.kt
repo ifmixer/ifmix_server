@@ -8,7 +8,7 @@ import java.util.UUID
 /** attestation 状态编码（Int 全链路透传），码表见 [AttestationStatuses]。 */
 typealias AttestationStatus = Int
 
-/** core_install_attestation.status 码表（10 起步长 10）。 */
+/** core_auth_install_attestation.status 码表（10 起步长 10）。 */
 object AttestationStatuses {
     /** 有效：可 recover、可做新绑定。 */
     const val ACTIVE: AttestationStatus = 10
@@ -16,18 +16,32 @@ object AttestationStatuses {
     const val BLOCKED: AttestationStatus = 20
     /** 超出每个 install 的 ACTIVE 上限后轮换下来：不能 recover，也不能复活。 */
     const val RETIRED: AttestationStatus = 30
+    /** 未形成绑定（verify_status ∈ {20,30} 的留痕行专用）：无生命周期，不可 recover/轮换。 */
+    const val NOT_BOUND: AttestationStatus = 40
+}
+
+/** core_auth_install_attestation.verify_status 码表：服务端对该次 proof 的验证结论。 */
+object AttestationVerifyStatuses {
+    /** 验证通过并已绑定（status=ACTIVE；唯一索引只约束此类行）。 */
+    const val VALID: Int = 10
+    /** 验证不通过（失败原因在 evidence.reason）。 */
+    const val INVALID: Int = 20
+    /** 服务端未评估（Android 1b / 配置无效 / 信号量耗尽等：证明在但没给出技术结论）。 */
+    const val NOT_EVALUATED: Int = 30
 }
 
 /**
- * install 平台证明持久凭证（App Attest / Play Integrity），只存 VALID 的长期凭证与绑定。
- * installId 为逻辑外键 core_install.id（UUID，不用 @ManyToOne）；subject = iOS keyId（Android NULL）。
+ * install 平台证明持久凭证（App Attest / Play Integrity）。
+ * 「带 proof 的请求必留一行」：VALID 行是长期凭证/绑定（status=ACTIVE）；
+ * INVALID / NOT_EVALUATED 行仅留痕（status=NOT_BOUND，evidence.reason 记原因，不进 core-job 回填/刷新）。
+ * installId 为逻辑外键 core_auth_install.id（UUID，不用 @ManyToOne）；subject = iOS keyId（Android NULL）。
  * signals / evidence 为 JSONB（@Serialized）；attestation_object 原文由 core-job 回填 receipt 成功后清空。
  */
 @Entity
-@Table(name = "core_install_attestation")
+@Table(name = "core_auth_install_attestation")
 interface InstallAttestation : BaseProjectEntity {
 
-    /** 逻辑外键 core_install.id。 */
+    /** 逻辑外键 core_auth_install.id。 */
     @Column(name = "install_id")
     val installId: UUID
 
@@ -39,7 +53,7 @@ interface InstallAttestation : BaseProjectEntity {
 
     val publicKey: ByteArray?
 
-    /** 原始 attestation（≤16KB）；core-job 回填 receipt 成功后清空。 */
+    /** 原始 attestation（≤1MB）；core-job 回填 receipt 成功后清空。 */
     @Column(name = "attestation_object")
     val attestationObject: ByteArray?
 
@@ -74,6 +88,13 @@ interface InstallAttestation : BaseProjectEntity {
     val evidence: Map<String, Any?>?
 
     val status: AttestationStatus
+
+    /** 服务端对该次 proof 的验证结论（[AttestationVerifyStatuses]）；NULL=尚无结论。唯一索引只约束 VALID 行。 */
+    @Column(name = "verify_status")
+    val verifyStatus: Int?
+
+    /** 原始 challengeStr，随行留痕（离线重验用）；Android 1b 为 NULL。 */
+    val challenge: String?
 
     @Column(name = "last_used_at")
     val lastUsedAt: Instant?

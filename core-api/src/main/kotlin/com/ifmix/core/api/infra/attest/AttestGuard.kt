@@ -164,7 +164,7 @@ class AttestGuard(
                     ?: throw guardInvalid("appAttest.attestationObject is required")
                 val challenge = ios["challenge"] as? String ?: throw guardInvalid("appAttest.challenge is required")
                 checkLength("keyId", keyId, 64)
-                checkLength("attestationObject", attestationObject, 16 * 1024)
+                checkLength("attestationObject", attestationObject, 1_400_000) // base64 长度上限 ≈ 原文 1MB
                 checkLength("challenge", challenge, 128)
                 ProofBundle(PROVIDER_IOS, keyId, decodeBase64Flexible(attestationObject, "attestationObject"), challenge)
             }
@@ -176,7 +176,7 @@ class AttestGuard(
                 val token = android["integrityToken"] as? String
                     ?: throw guardInvalid("playIntegrity.integrityToken is required")
                 val nonce = android["nonce"] as? String ?: throw guardInvalid("playIntegrity.nonce is required")
-                checkLength("integrityToken", token, 16 * 1024)
+                checkLength("integrityToken", token, 1_400_000) // base64 长度上限 ≈ 原文 1MB
                 checkLength("nonce", nonce, 64)
                 ProofBundle(PROVIDER_ANDROID, null, decodeBase64Flexible(token, "integrityToken"), null)
             }
@@ -270,6 +270,63 @@ class AttestGuard(
         VERIFIED,
         NOT_PERSISTED,
         NOT_ATTEMPTED,
+    }
+
+    /**
+     * createInstall 事务内要持久化的 attestation 结论（「带 proof 的请求必留一行」，表 verify_status 码表）。
+     * 原始材料（rawObject/challenge）随行保留——后端算法有 bug 时可离线重验修正用户数据。
+     * - [Bound]：验证通过 → verify_status=10，绑定（status=ACTIVE）。
+     * - [Failed]：验证不通过 → verify_status=20（evidence.reason = [reason]）。
+     * - [NotEvaluated]：服务端未评估（Android 1b / 配置无效 / 信号量耗尽）→ verify_status=30
+     *   （evidence.reason = [reason]，null=实现本身未做）。
+     * 无 proof（bundle==null，含客户端声明 UNAVAILABLE）或全局关闭 → null（无可留痕材料，仅日志）。
+     */
+    sealed interface AttestationOutcome {
+        val provider: Int
+        val subject: String?
+        /** 原始 proof 字节（attestationObject / integrityToken），随行入库供离线重验。 */
+        val rawObject: ByteArray?
+        val challenge: String?
+
+        data class Bound(val proof: VerifiedProof, override val challenge: String) : AttestationOutcome {
+            override val provider get() = proof.provider
+            override val subject get() = proof.subject
+            override val rawObject get() = proof.attestationObject
+        }
+
+        @Suppress("ArrayInDataClass")
+        data class Failed(
+            override val provider: Int,
+            override val subject: String?,
+            override val rawObject: ByteArray?,
+            override val challenge: String?,
+            val reason: Reason,
+        ) : AttestationOutcome
+
+        @Suppress("ArrayInDataClass")
+        data class NotEvaluated(
+            override val provider: Int,
+            override val subject: String?,
+            override val rawObject: ByteArray?,
+            override val challenge: String?,
+            val reason: Reason?,
+        ) : AttestationOutcome
+    }
+
+    /** [Verification] + 原始 [ProofBundle] → 留痕结论；null = 不写行（无 proof 或 attest 全局关闭）。 */
+    fun outcomeOf(verification: Verification, bundle: ProofBundle?): AttestationOutcome? = when {
+        verification is Verification.Valid -> AttestationOutcome.Bound(verification.proof, verification.challenge)
+        verification is Verification.Invalid && bundle != null ->
+            AttestationOutcome.Failed(bundle.provider, bundle.subject, bundle.bytes, bundle.challenge, verification.reason)
+        bundle != null && (verification is Verification.NotEvaluated || verification is Verification.Unavailable) ->
+            AttestationOutcome.NotEvaluated(
+                bundle.provider,
+                bundle.subject,
+                bundle.bytes,
+                bundle.challenge,
+                (verification as? Verification.Unavailable)?.reason,
+            )
+        else -> null
     }
 
     /** 组合/输入上限校验失败统一抛 ApiError(400000)；[guardInvalid] 构造它（§5.1 组合表、§5.7 输入上限）。 */

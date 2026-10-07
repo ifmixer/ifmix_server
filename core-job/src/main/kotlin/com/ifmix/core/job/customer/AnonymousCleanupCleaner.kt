@@ -93,7 +93,7 @@ class AnonymousCleanupCleaner(
         jdbc.sql(
             """
             SELECT id, project_id, anonymous, (merged_to IS NOT NULL) AS merged
-            FROM core_customer
+            FROM core_auth_customer
             WHERE anonymous = true AND merged_to IS NULL AND (:afterId::uuid IS NULL OR id > :afterId::uuid)
             ORDER BY id
             LIMIT :batch
@@ -113,7 +113,7 @@ class AnonymousCleanupCleaner(
         jdbc.sql(
             """
             SELECT id, project_id, anonymous, (merged_to IS NOT NULL) AS merged
-            FROM core_customer
+            FROM core_auth_customer
             WHERE merged_to IS NOT NULL AND updated_at < :cutoff
               AND (:afterId::uuid IS NULL OR id > :afterId::uuid)
             ORDER BY id
@@ -161,7 +161,7 @@ class AnonymousCleanupCleaner(
         // 快照之后用户可能已登录转正（READ COMMITTED 读不到未提交事务）——
         // WHERE 复查状态 + 影响行数比对，杜绝误删刚注册用户。
         val guard = if (zombie) "anonymous = true AND merged_to IS NULL" else "merged_to IS NOT NULL"
-        val n = jdbc.sql("DELETE FROM core_customer WHERE id IN (:ids) AND $guard")
+        val n = jdbc.sql("DELETE FROM core_auth_customer WHERE id IN (:ids) AND $guard")
             .param("ids", toDelete).update()
         if (n != toDelete.size) {
             log.warn(

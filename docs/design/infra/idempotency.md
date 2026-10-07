@@ -213,16 +213,16 @@ leaseExpiresAt / expiresAt
 目标不变量：
 
 ```text
-core_install.id = API installId = JWT iid
+core_auth_install.id = API installId = JWT iid
 
 install token:
   type = 5
-  iid = core_install.id
+  iid = core_auth_install.id
 
 customer token:
   type = 10
   sub = customerId
-  iid = core_install.id
+  iid = core_auth_install.id
 ```
 
 新版本创建匿名 Customer 必须携带 installToken，并在同一事务中完成：
@@ -294,7 +294,7 @@ createAnonymous 响应丢失
 以下事项不是幂等功能，仍必须单独完成：
 
 1. `q_ai_scan_getById` 必须按 `projectId + customerId + id` 查询；当前仅按 project + id 不满足 “My” 语义。
-2. `core_install.id`、API `installId` 和 JWT `iid` 收敛为同一个 UUID。
+2. `core_auth_install.id`、API `installId` 和 JWT `iid` 收敛为同一个 UUID。
 3. Customer 业务数据的可信 install ID 只能来自 token `iid`，不能来自 `x-install-id`。
 4. 新签发的 customer token 必须包含 iid；新 Customer 业务记录的 install ID 目标态为非空。
 5. 未来设备认证必须在统一授权层校验 verified install，不能仅依赖“请求带 installToken”。

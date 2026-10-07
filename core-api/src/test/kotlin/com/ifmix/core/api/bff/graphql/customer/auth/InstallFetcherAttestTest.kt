@@ -35,6 +35,7 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.doCallRealMethod
 import org.mockito.kotlin.whenever
 import java.time.Instant
 import java.util.UUID
@@ -90,6 +91,8 @@ class InstallFetcherAttestTest {
         rateLimiter = mock()
         whenever(rateLimiter.check(any(), any(), any())).thenReturn(RateLimitResult.Allowed)
         attestGuard = mock()
+        // outcomeOf 是纯函数：对 mock 走真实实现，随 verifyProof/parseProofInput 的 stub 自动得到正确结论
+        org.mockito.kotlin.doCallRealMethod().whenever(attestGuard).outcomeOf(any(), anyOrNull())
         val globalTx = mock<GlobalTxRunner>()
         whenever(globalTx.withTx<Any>(any(), any())).thenAnswer { ((it.arguments[1]) as (ActionContext) -> Any)(baseCtx()) }
         serverConfigFacade = mock()
@@ -430,7 +433,7 @@ class InstallFetcherAttestTest {
     fun `attestExisting install row missing to 404001`() {
         stubInstallToken()
         stubValidAttest()
-        whenever(installFacade.attestExisting(any(), any(), any()))
+        whenever(installFacade.attestExisting(any(), any(), any(), anyOrNull()))
             .thenThrow(ApiError(ErrorCode.INSTALL_NOT_FOUND, "install not found"))
         val e = assertThrows<ApiError> { fetcher.attestExisting(dfe, attestInput()) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.INSTALL_NOT_FOUND)
@@ -512,7 +515,7 @@ class InstallFetcherAttestTest {
     fun `attestExisting success to 10 with per-install day quota and ip minute windows`() {
         stubInstallToken()
         stubValidAttest()
-        whenever(installFacade.attestExisting(any(), any(), any())).thenReturn(AttestExistingRes.Created)
+        whenever(installFacade.attestExisting(any(), any(), any(), anyOrNull())).thenReturn(AttestExistingRes.Created)
         val res = fetcher.attestExisting(dfe, attestInput())
         assertThat(res.attestationStatus).isEqualTo(10)
         verify(rateLimiter).check(eq(Window.MINUTE), eq(attestIpKey), eq(10))

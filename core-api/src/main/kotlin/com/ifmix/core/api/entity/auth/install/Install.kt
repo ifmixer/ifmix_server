@@ -9,7 +9,7 @@ import org.babyfish.jimmer.sql.*
  * reg_ip 为注册时 IP（createInstall 写入，updateInstall 不改）。
  */
 @Entity
-@Table(name = "core_install")
+@Table(name = "core_auth_install")
 interface Install : BaseProjectEntity {
 
     /** 平台 Int 码：10=ANDROID / 20=IOS / 30=WEB。来自 x-client-platform。 */

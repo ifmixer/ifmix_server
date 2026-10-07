@@ -23,6 +23,8 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 9. **operationName 与 reqName 四段式统一（2026-10-06）**：39→40 个 GraphQL 顶层 field 全量改名（customer 作用域 CRUD 动词后带 `My`，create 例外；专名动词与 install/session 不加）；persisted query 文本内 operation name == manifest key == 顶层 field；media resource 改 **file**（`m_media_file_presignUpload/Download`，表 `core_media_upload_record` → `core_media_file_record`，V16）。
 10. **createInstall 按平台拆分（2026-10-06，attest 规格 v6）**：`m_auth_install_create` → `m_auth_install_createIosInstall` / `m_auth_install_createAndroidInstall`。底层复用；入口强校验 `x-client-platform` 与 action 一致（400000）、proof.provider 与平台匹配（110/120）；限流 key 不含平台段（共享 IP 配额）。attest 仍可选（不带 proof 走 no-proof，ENFORCE 下由 mode 判定）。Android 1b（PlayIntegrityVerifier）实现前：ENFORCE 下 Android proof → 503002。
 11. **challenge secret 改 per-project（2026-10-07）**：`app_attest_config.challengeSecret`（`current[,previous]`，32 字节 base64）每 app 独立，优先于 env `APP_ATTEST_CHALLENGE_SECRET`（env 保留为回落，本地 dev/过渡期用）；per-project 格式非法记 problems（ENFORCE fail-closed）。**每个 app 上线前必须各自生成独立 secret 写入 DB**；决策依据与「iOS/Android 不拆分」的分析见设计 §3.1。
+12. **customer/install 表挂 auth 域前缀（2026-10-07，V18）**：`core_customer` → `core_auth_customer`、`core_install` → `core_auth_install`、`core_install_customer_relation` → `core_auth_install_customer_relation`、`core_install_attestation` → `core_auth_install_attestation`（attest 凭证/绑定表随 install 走）。纯改名（无物理外键、索引名不变）；历史增量段落中的旧表名以 V18 为准。
+13. **attestation 表改「带 proof 必留痕」（2026-10-07，V19）**：`core_auth_install_attestation` 增 `verify_status`（10 VALID / 20 INVALID / 30 NOT_EVALUATED，可空、无默认值）与 `challenge`；INVALID/NOT_EVALUATED 行 status=NOT_BOUND(40) 留痕，原始 attestation 字节与 challenge 全保留（后端算法修正后可离线重验）；唯一索引只约束 VALID 行；绑定语义查询（findBySubject/轮换/recover）只认 verify_status=10。证明材料上限 16KB → 1MB。设计 §5.4 已同步。
 
 ### 发布前必须完成的修复（2026-10-05 code review，P1）
 
@@ -41,7 +43,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 
 1. 完成上述修复，全量 `./gradlew :core-api:test :core-job:test` 通过；本地 `:core-api:flywayMigrate` 从零库验证。
 2. **停服**（旧实例停止，≤10min 窗口）。
-3. `./gradlew :core-api:flywayMigrate`（V4–V17）。**V6 改 `install_id` 列类型（text→uuid）、V8 改 AI key 表名——迁移后旧代码写入即失败，必须先停机再迁移**（决策 7）。
+3. `./gradlew :core-api:flywayMigrate`（V4–V19）。**V6 改 `install_id` 列类型（text→uuid）、V8 改 AI key 表名——迁移后旧代码写入即失败，必须先停机再迁移**（决策 7）。
 4. 部署新 core-api（增量脚本 `scripts/deploy/sync-core-api.sh` + 健康检查），恢复流量。
 5. core-job 同步部署；三个 attest job **不配 cron**（决策 3）。
 6. env 核对：`AUTH_JWT_PRIVATE_KEY`（缺失启动即失败）、`APP_ATTEST_GLOBAL_ENABLED`（默认 false）。`APP_ATTEST_CHALLENGE_SECRET` 为**可选回落**——每个 app 的独立 secret 写 per-project `app_attest_config.challengeSecret`（发布时生成，勿多 app 复用）；两者都缺且全局开关开 → 503002 fail-closed。

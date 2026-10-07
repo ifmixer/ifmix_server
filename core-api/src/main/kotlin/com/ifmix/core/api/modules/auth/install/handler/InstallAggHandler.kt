@@ -1,10 +1,12 @@
 package com.ifmix.core.api.modules.auth.install.handler
 
 import com.ifmix.core.api.entity.auth.install.AttestationStatuses
+import com.ifmix.core.api.entity.auth.install.AttestationVerifyStatuses
 import com.ifmix.core.api.entity.auth.install.Install
 import com.ifmix.core.api.entity.auth.install.InstallAttestation
 import com.ifmix.core.api.entity.auth.install.InstallCustomerRelation
 import com.ifmix.core.api.infra.auth.AuthJwtService
+import com.ifmix.core.api.infra.attest.AttestGuard.AttestationOutcome
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.db.UuidV7
 import com.ifmix.core.api.infra.http.ApiError
@@ -37,11 +39,14 @@ class InstallAggHandler(
 
     /**
      * createInstall（规格 §5.3 事务内绑定，须在事务内调用——外层 Fetcher 包 globalTx）。
-     * - [verifiedProof] = null：无 proof / 未绑定（OBSERVE 下 INVALID 等）→ 只建 install。
-     * - iOS VALID（subject 非 null）：按 (projectId, 110, keyId) 查已有 attestation——
+     * - [outcome] = null：无 proof（bundle==null，含客户端声明 UNAVAILABLE）或 attest 全局关闭 → 只建 install。
+     * - 带 proof 的请求必留一行（verify_status 码表 AttestationVerifyStatuses）：
+     *   Bound → iOS VALID（subject 非 null）：按 (projectId, 110, keyId) 查已有 attestation——
      *   已存在 → 403001(key_reused) **不建 install**（与 mode 无关，§5.3）；
      *   不存在 → 建 install（platform 由 provider 派生=20，§4.2）+ attestation 行
-     *   （status=10、sign_count=0、attestation_object 原文、signals/evidence 固定键）。
+     *   （verify_status=10、status=10、sign_count=0、attestation_object 原文、signals/evidence 固定键）。
+     *   Failed → verify_status=20、status=NOT_BOUND，evidence.reason 记失败原因（不存 attestation_object）。
+     *   NotEvaluated → verify_status=30、status=NOT_BOUND。
      * - [storeType]：入参 null → NULL（§5.9 缺省）；∉{10,20} → 400000。VALID 且 storeType≠10
      *   （provider 110）→ 由 Fetcher 调 Guard.logStoreMismatch 打日志，不拒绝。
      */
@@ -49,13 +54,13 @@ class InstallAggHandler(
         mc: ModuleCtx,
         deviceInfo: Map<String, Any?>?,
         storeType: Int?,
-        verifiedProof: com.ifmix.core.api.infra.attest.AttestGuard.VerifiedProof?,
+        outcome: com.ifmix.core.api.infra.attest.AttestGuard.AttestationOutcome?,
     ): CreateInstallRes {
         val projectId = mc.projectId!!
         if (storeType != null && storeType != 10 && storeType != 20) {
             throw ApiError(ErrorCode.INVALID_REQUEST, "storeType must be 10 (APP_STORE) or 20 (GOOGLE_PLAY)")
         }
-        val attestation = verifiedProof
+        val attestation = (outcome as? AttestationOutcome.Bound)?.proof
         val keyId = attestation?.subject
 
         if (keyId != null) {
@@ -99,38 +104,54 @@ class InstallAggHandler(
             this.updatedAt = now
         })
 
-        if (attestation != null) {
-            saveAttestationRow(mc, projectId, installId, attestation)
+        if (outcome != null) {
+            saveAttestationRow(mc, projectId, installId, outcome)
         }
         val token = jwt.signInstall(installId.toString(), projectId)
         return CreateInstallRes(installId = installId, installToken = token)
     }
 
-    /** attestation 行（status=10 ACTIVE、sign_count=0、attestation_object 原文、signals/evidence 固定键，§5.3/§5.4/§5.7）。 */
+    /**
+     * attestation 行（带 proof 必留痕）：Bound → status=ACTIVE、sign_count=0、attestation_object 原文、
+     * signals/evidence 固定键（§5.3/§5.4/§5.7）；Failed/NotEvaluated → status=NOT_BOUND 留痕行，
+     * evidence.reason 记原因，不存 attestation_object（垃圾证明原文不入库）。
+     */
     private fun saveAttestationRow(
         mc: ModuleCtx,
         projectId: String,
         installId: UUID,
-        attestation: com.ifmix.core.api.infra.attest.AttestGuard.VerifiedProof,
+        outcome: com.ifmix.core.api.infra.attest.AttestGuard.AttestationOutcome,
     ) {
+        val proof = (outcome as? AttestationOutcome.Bound)?.proof
+        val verifyStatus = when (outcome) {
+            is AttestationOutcome.Bound -> AttestationVerifyStatuses.VALID
+            is AttestationOutcome.Failed -> AttestationVerifyStatuses.INVALID
+            is AttestationOutcome.NotEvaluated -> AttestationVerifyStatuses.NOT_EVALUATED
+        }
         val now = Instant.now()
         val saved = attestRepo.insert(mc, InstallAttestation {
             this.id = UuidV7.generate()
             this.projectId = projectId
             this.installId = installId
-            this.provider = attestation.provider
-            this.subject = attestation.subject
-            this.publicKey = attestation.publicKey
-            this.attestationObject = attestation.attestationObject
+            this.provider = outcome.provider
+            this.subject = outcome.subject
+            this.publicKey = proof?.publicKey
+            this.attestationObject = outcome.rawObject
+            this.challenge = outcome.challenge
             this.signCount = 0
             this.receipt = null
             this.receiptExpiresAt = null
             this.nextRefreshAt = null
             this.refreshFailureCount = 0
             this.fraudMetric = null
-            this.signals = attestation.signals
-            this.evidence = attestation.evidence
-            this.status = AttestationStatuses.ACTIVE
+            this.signals = proof?.signals ?: mapOf("provider" to outcome.provider)
+            this.evidence = when (outcome) {
+                is AttestationOutcome.Bound -> proof?.evidence
+                is AttestationOutcome.Failed -> mapOf("reason" to outcome.reason.code)
+                is AttestationOutcome.NotEvaluated -> mapOf("reason" to "not_evaluated")
+            }
+            this.status = if (proof != null) AttestationStatuses.ACTIVE else AttestationStatuses.NOT_BOUND
+            this.verifyStatus = verifyStatus
             this.lastUsedAt = null
             this.createdAt = now
             this.updatedAt = now
@@ -170,13 +191,14 @@ class InstallAggHandler(
      * 3. 无绑定：countActiveByInstall 满 5 把时 retireOldestActive → 插入 → [AttestExistingRes.Created]。
      * subject 唯一约束冲突（并发跨 install 绑定）由调用方 catch 后回滚（GlobalTx 自动），
      * 重查映射 10/409001（见 [attestExistingRecheckAfterConflict]）。
-     * 不修改 core_install 的 platform / storeType，也不重签 token（§6.7）。
+     * 不修改 core_auth_install 的 platform / storeType，也不重签 token（§6.7）。
      */
     fun attestExisting(
         mc: ModuleCtx,
         installId: UUID,
         provider: Int,
         subject: String?,
+        challenge: String?,
         verifiedProof: com.ifmix.core.api.infra.attest.AttestGuard.VerifiedProof,
     ): AttestExistingRes {
         val projectId = mc.projectId!!
@@ -191,7 +213,8 @@ class InstallAggHandler(
                 if (activeCount >= MAX_ACTIVE_KEYS_PER_INSTALL) {
                     attestRepo.retireOldestActive(mc, projectId, installId)
                 }
-                saveAttestationRow(mc, projectId, installId, verifiedProof)
+                // attestExisting 走到这里必然已验签通过 → Bound（verify_status=10 绑定行）
+                saveAttestationRow(mc, projectId, installId, AttestationOutcome.Bound(verifiedProof, challenge!!))
                 AttestExistingRes.Created
             }
             existing.installId == installId && existing.status == AttestationStatuses.ACTIVE ->
@@ -221,7 +244,7 @@ class InstallAggHandler(
     fun findAttestationBySubject(mc: ModuleCtx, projectId: String, provider: Int, subject: String): InstallAttestation? =
         attestRepo.findBySubject(mc, projectId, provider, subject)
 
-    /** 生成 installId(=PK) + 写 core_install + 签发 installToken(type=5, iid=PK)。header 字段从 mc.action 取；reg_ip=clientIp。 */
+    /** 生成 installId(=PK) + 写 core_auth_install + 签发 installToken(type=5, iid=PK)。header 字段从 mc.action 取；reg_ip=clientIp。 */
     fun createInstall(mc: ModuleCtx, deviceInfo: Map<String, Any?>?): CreateInstallRes {
         val projectId = mc.projectId!!
         val installId = UuidV7.generate()

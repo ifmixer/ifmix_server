@@ -1,6 +1,7 @@
 package com.ifmix.core.api.modules.auth.install.handler
 
 import com.ifmix.core.api.entity.auth.install.AttestationStatuses
+import com.ifmix.core.api.entity.auth.install.AttestationVerifyStatuses
 import com.ifmix.core.api.entity.auth.install.Install
 import com.ifmix.core.api.entity.auth.install.InstallAttestation
 import com.ifmix.core.api.infra.attest.AttestGuard
@@ -105,7 +106,7 @@ class InstallAggHandlerAttestTest {
 
     @Test
     fun `VALID ios proof creates install with derived platform 20 and writes attestation row`() {
-        val res = handler.createInstallWithProof(mc, null, 10, proof())
+        val res = handler.createInstallWithProof(mc, null, 10, AttestGuard.AttestationOutcome.Bound(proof(), "challenge-1"))
         assertThat(installRepo.saved!!.id).isEqualTo(res.installId)
         assertThat(installRepo.saved!!.platform).isEqualTo(20) // §4.2：110 → IOS
         assertThat(installRepo.saved!!.storeType).isEqualTo(10)
@@ -123,7 +124,7 @@ class InstallAggHandlerAttestTest {
     @Test
     fun `existing key binding to 403001 key_reused and no install created`() {
         attestRepo.found = rowFor(otherInstallId, AttestationStatuses.ACTIVE)
-        val e = assertThrows<ApiError> { handler.createInstallWithProof(mc, null, 10, proof()) }
+        val e = assertThrows<ApiError> { handler.createInstallWithProof(mc, null, 10, AttestGuard.AttestationOutcome.Bound(proof(), "challenge-1")) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.ATTESTATION_FAILED)
         assertThat(installRepo.savedCount).isZero // 不建 install
         assertThat(attestRepo.inserted).isEmpty()
@@ -146,6 +147,44 @@ class InstallAggHandlerAttestTest {
     fun `storeType outside 10 20 to 400000`() {
         val e = assertThrows<ApiError> { handler.createInstallWithProof(mc, null, 30, null) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.INVALID_REQUEST)
+    }
+
+    @Test
+    fun `Failed outcome records attempt row verify_status 20 with raw material`() {
+        handler.createInstallWithProof(
+            mc, null, null,
+            AttestGuard.AttestationOutcome.Failed(110, "key-f", byteArrayOf(9), "challenge-f", AttestGuard.Reason.CHAIN_INVALID),
+        )
+        val row = attestRepo.inserted.single()
+        assertThat(row.verifyStatus).isEqualTo(AttestationVerifyStatuses.INVALID)
+        assertThat(row.status).isEqualTo(AttestationStatuses.NOT_BOUND)
+        assertThat(row.subject).isEqualTo("key-f")
+        assertThat(row.challenge).isEqualTo("challenge-f")
+        assertThat(row.attestationObject!!).isEqualTo(byteArrayOf(9)) // 原始 proof 留痕，供离线重验
+        assertThat(row.evidence!!["reason"]).isEqualTo("chain_invalid")
+    }
+
+    @Test
+    fun `NotEvaluated outcome records attempt row verify_status 30`() {
+        handler.createInstallWithProof(
+            mc, null, null,
+            AttestGuard.AttestationOutcome.NotEvaluated(120, null, byteArrayOf(7), null, null),
+        )
+        val row = attestRepo.inserted.single()
+        assertThat(row.verifyStatus).isEqualTo(AttestationVerifyStatuses.NOT_EVALUATED)
+        assertThat(row.status).isEqualTo(AttestationStatuses.NOT_BOUND)
+        assertThat(row.provider).isEqualTo(120)
+        assertThat(row.challenge).isNull()
+    }
+
+    @Test
+    fun `Bound outcome records verify_status 10 ACTIVE with raw material`() {
+        handler.createInstallWithProof(mc, null, null, AttestGuard.AttestationOutcome.Bound(proof(), "challenge-1"))
+        val row = attestRepo.inserted.single()
+        assertThat(row.verifyStatus).isEqualTo(AttestationVerifyStatuses.VALID)
+        assertThat(row.status).isEqualTo(AttestationStatuses.ACTIVE)
+        assertThat(row.challenge).isEqualTo("challenge-1")
+        assertThat(row.attestationObject!!).isEqualTo(byteArrayOf(3))
     }
 
     // ===== recoverInstall =====
@@ -171,7 +210,7 @@ class InstallAggHandlerAttestTest {
     @Test
     fun `attestExisting install row missing to 404001`() {
         attestRepo.lockResult = false
-        val e = assertThrows<ApiError> { handler.attestExisting(mc, installId, 110, "key-1", proof()) }
+        val e = assertThrows<ApiError> { handler.attestExisting(mc, installId, 110, "key-1", "challenge-1", proof()) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.INSTALL_NOT_FOUND)
         assertThat(attestRepo.inserted).isEmpty()
     }
@@ -179,7 +218,7 @@ class InstallAggHandlerAttestTest {
     @Test
     fun `attestExisting same install ACTIVE to idempotent no new row`() {
         attestRepo.found = rowFor(installId, AttestationStatuses.ACTIVE)
-        val res = handler.attestExisting(mc, installId, 110, "key-1", proof())
+        val res = handler.attestExisting(mc, installId, 110, "key-1", "challenge-1", proof())
         assertThat(res).isInstanceOf(InstallAggHandler.AttestExistingRes.Idempotent::class.java)
         assertThat(attestRepo.inserted).isEmpty()
     }
@@ -187,28 +226,28 @@ class InstallAggHandlerAttestTest {
     @Test
     fun `attestExisting BLOCKED to 403002`() {
         attestRepo.found = rowFor(installId, AttestationStatuses.BLOCKED)
-        val e = assertThrows<ApiError> { handler.attestExisting(mc, installId, 110, "key-1", proof()) }
+        val e = assertThrows<ApiError> { handler.attestExisting(mc, installId, 110, "key-1", "challenge-1", proof()) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.ATTEST_KEY_BLOCKED)
     }
 
     @Test
     fun `attestExisting RETIRED to 403002`() {
         attestRepo.found = rowFor(installId, AttestationStatuses.RETIRED)
-        val e = assertThrows<ApiError> { handler.attestExisting(mc, installId, 110, "key-1", proof()) }
+        val e = assertThrows<ApiError> { handler.attestExisting(mc, installId, 110, "key-1", "challenge-1", proof()) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.ATTEST_KEY_BLOCKED)
     }
 
     @Test
     fun `attestExisting other install ACTIVE to 409001`() {
         attestRepo.found = rowFor(otherInstallId, AttestationStatuses.ACTIVE)
-        val e = assertThrows<ApiError> { handler.attestExisting(mc, installId, 110, "key-1", proof()) }
+        val e = assertThrows<ApiError> { handler.attestExisting(mc, installId, 110, "key-1", "challenge-1", proof()) }
         assertThat(e.errorCode).isEqualTo(ErrorCode.ATTEST_KEY_BOUND_TO_OTHER_INSTALL)
     }
 
     @Test
     fun `attestExisting fifth key retires oldest then inserts`() {
         attestRepo.activeCount = 5
-        val res = handler.attestExisting(mc, installId, 110, "key-new", proof("key-new"))
+        val res = handler.attestExisting(mc, installId, 110, "key-new", "challenge-1", proof("key-new"))
         assertThat(res).isInstanceOf(InstallAggHandler.AttestExistingRes.Created::class.java)
         assertThat(attestRepo.retired).isTrue // 满 5 把 → retire 最早一把
         val row = attestRepo.inserted.single()
@@ -218,7 +257,7 @@ class InstallAggHandlerAttestTest {
     @Test
     fun `attestExisting below cap inserts without retiring`() {
         attestRepo.activeCount = 2
-        handler.attestExisting(mc, installId, 110, "key-new", proof("key-new"))
+        handler.attestExisting(mc, installId, 110, "key-new", "challenge-1", proof("key-new"))
         verify(attestMock, never()).retireOldestActive(any(), any(), any())
     }
 

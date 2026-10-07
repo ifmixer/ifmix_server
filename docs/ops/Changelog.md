@@ -39,6 +39,14 @@
 - **challenge secret 改为 per-project（服务端内部）**：`app_attest_config.challengeSecret`（`current[,previous]`，32 字节 base64）每 app 独立，解析优先于全局 env `APP_ATTEST_CHALLENGE_SECRET`（后者保留为回落，用于过渡期/本地 dev）；per-project 格式非法记入 problems（ENFORCE fail-closed）。单个 secret 泄露的伪造面收敛到单 app。设计 §3.1/§4.1 已同步。
 - **GraphQL 错误响应顶层注入 `code`/`msg`（客户端可见）**：`errors` 数组保留，顶层新增 `code`（= `errors[0].extensions.code`；GraphQL 校验/语法等框架级错误按 classification/errorType 推导兜底，推不出为 500000）与 `msg`（= `errors[0].message`），客户端统一按 `{code, msg, data}` 读取。由 `GraphQlHttpStatusFilter` 注入；兜底 code 不参与 HTTP status 映射（仍以 extensions.code 为准）。
 
+### 2026-10-07 增补（attestation 表改「带 proof 必留痕」，V19）
+
+- **`core_auth_install_attestation` 增 `verify_status`（数据库可见）**：10=VALID（验证通过并绑定）/ 20=INVALID（验证不通过）/ 30=NOT_EVALUATED（服务端未评估，如 Android 1b）。带 proof 的请求必留一行（此前失败尝试不入表）；INVALID/NOT_EVALUATED 行 `status`=40 NOT_BOUND 仅留痕，`evidence.reason` 记原因。原始 `attestation_object` 字节与新增 `challenge` 列全保留——后端算法修正后可写脚本离线重验、修正用户数据。唯一索引只约束 VALID 行；`attestationStatus` 返回值语义不变。`verify_status` 可空（NULL=尚无结论，无默认值）；证明材料输入上限从 16KB 放宽到 **1MB**（base64 入参 ≤1.4M 字符，请求体大小由请求层限制兜底）。
+
+### 2026-10-07 增补（customer/install 表挂 auth 域前缀，V18）
+
+- **表改名（V18，数据库可见）**：`core_customer` → `core_auth_customer`、`core_install` → `core_auth_install`、`core_install_customer_relation` → `core_auth_install_customer_relation`、`core_install_attestation` → `core_auth_install_attestation`（attest 凭证/绑定表随 install 走）。纯改名：无物理外键，索引名不变，无数据变更；v1.0.6 未发布，无兼容负担。实体 `@Table` 与所有原生 SQL（含 core-job 清理任务）已同步；历史条目中的旧表名不再回改，以本条为准。
+
 ### 2026-10-07 增补（请求解析职责收敛：filter 只解密，parser 只解析）
 
 - **`WireCryptoFilter` 收敛为纯加解密**：解密 body 原样透传（`{authorization, meta, query, variables}` 四键全保留，缓存到 request attribute 供 parser 取），headers 一律不动；不再解析 meta/authorization、不再剥键。

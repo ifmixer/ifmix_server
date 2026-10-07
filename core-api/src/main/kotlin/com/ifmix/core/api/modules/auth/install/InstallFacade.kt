@@ -35,9 +35,9 @@ class InstallFacade(
         ctx: ActionContext,
         deviceInfo: Map<String, Any?>?,
         storeType: Int?,
-        verifiedProof: AttestGuard.VerifiedProof?,
+        outcome: AttestGuard.AttestationOutcome?,
     ): CreateInstallRes =
-        handler.createInstallWithProof(mcFactory.forProject(ctx), deviceInfo, storeType, verifiedProof)
+        handler.createInstallWithProof(mcFactory.forProject(ctx), deviceInfo, storeType, outcome)
 
     /**
      * iOS 找回（§3.3，事务内）：条件更新 sign_count（0 行 → 403001 并发重放/期间封禁）+ 重签 installToken。
@@ -54,8 +54,9 @@ class InstallFacade(
         ctx: ActionContext,
         installId: UUID,
         verifiedProof: AttestGuard.VerifiedProof,
+        challenge: String,
     ): AttestExistingRes =
-        handler.attestExisting(mcFactory.forProject(ctx), installId, verifiedProof.provider, verifiedProof.subject, verifiedProof)
+        handler.attestExisting(mcFactory.forProject(ctx), installId, verifiedProof.provider, verifiedProof.subject, challenge, verifiedProof)
 
     /** subject 唯一约束冲突（并发跨 install 绑定）后的重查：true = 本 install ACTIVE（幂等 10）；false → 409001。 */
     fun attestExistingRecheckAfterConflict(ctx: ActionContext, installId: UUID, provider: Int, subject: String?): Boolean =

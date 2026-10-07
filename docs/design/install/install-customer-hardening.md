@@ -19,11 +19,11 @@
 在不建设通用创建幂等的前提下，建立以下目标不变量：
 
 ```text
-core_install.id
+core_auth_install.id
     = API installId
     = install token iid
     = customer token iid
-    = core_install_customer_relation.install_id
+    = core_auth_install_customer_relation.install_id
     = Customer 业务记录的可信 install_id
 ```
 
@@ -60,7 +60,7 @@ core_install.id
 
 | 范围 | 当前实现 | 目标 |
 |------|----------|------|
-| Install ID | `core_install.id` 与 `install_id` 分别生成 | 只保留一个 ID：PK `id` 即 API installId/JWT iid |
+| Install ID | `core_auth_install.id` 与 `install_id` 分别生成 | 只保留一个 ID：PK `id` 即 API installId/JWT iid |
 | createAnonymous | `installToken`/iid 可空 | 新客户端必须携带有效 iid（token 类型不限），iid 有效 |
 | customer token | `signAccess.installId` 可空 | 新 customer token 必须含 iid；nullable 仅用于 manager/legacy 解析 |
 | refresh | 将请求 iid 写入新 token，保留 anonymous，未调用 bind | 续期并保留 iid/anonymous；customer refresh token 与 iid 未绑定时补绑（bind 幂等） |
@@ -100,7 +100,7 @@ core_install.id
 #### 目标结构
 
 ```sql
-CREATE TABLE core_install (
+CREATE TABLE core_auth_install (
     id uuid PRIMARY KEY,
     project_id text NOT NULL,
     -- 不再有独立 install_id
@@ -122,13 +122,13 @@ jwt.signInstall(installId.toString(), projectId)
 
 #### V6 迁移建议
 
-当前旧 token iid 指向 `core_install.install_id`，而非内部 PK。由于 relation 的 `install_id` 也保存该业务值，可将主键收敛到旧业务 ID：
+当前旧 token iid 指向 `core_auth_install.install_id`，而非内部 PK。由于 relation 的 `install_id` 也保存该业务值，可将主键收敛到旧业务 ID：
 
 1. 预检查 `install_id` 是否全局重复；当前唯一约束只覆盖 `(project_id, install_id)`，不能直接假设全局唯一。预检不通过必须让 migration 明确 abort，不得跳过冲突行或部分更新。
 2. 预检查是否存在 `某行 id == 另一行 install_id` 的交叉冲突。
-3. 无冲突时执行 `UPDATE core_install SET id = install_id`。
-4. 删除 `core_install_project_install_uq`。
-5. 删除 `core_install.install_id`。
+3. 无冲突时执行 `UPDATE core_auth_install SET id = install_id`。
+4. 删除 `core_auth_install_project_install_uq`。
+5. 删除 `core_auth_install.install_id`。
 6. relation 表无需改值，其 `install_id` 已是旧 token iid，迁移后自然指向新 PK。
 
 > 若尚未部署任何共享环境，可直接修正 V5 并重建本地数据库；若 V5 已在共享/线上环境执行，必须新增 V6，不能修改历史 migration。
@@ -137,7 +137,7 @@ jwt.signInstall(installId.toString(), projectId)
 
 **文件：**
 
-- `core-api/src/main/resources/db/migration/V6__install_id_unification.sql`：收敛 core_install PK，并把业务 install_id 转为 nullable UUID
+- `core-api/src/main/resources/db/migration/V6__install_id_unification.sql`：收敛 core_auth_install PK，并把业务 install_id 转为 nullable UUID
 - 未来文件（本轮不得创建/执行）`V7__require_trusted_install_id.sql`：仅在可信回填完成后才另建，用于 `SET NOT NULL`；置于 Flyway 目录会紧随 V6 自动执行、无法延期，故本轮禁止提前创建
 - 修改 `entity/common/InstallIdProps.kt`
 - 修改：
@@ -609,7 +609,7 @@ for attempt in 0..1:
 
 ### 9.1 服务端
 
-- install token：type=5、iid=`core_install.id`、无 sub、无 exp；
+- install token：type=5、iid=`core_auth_install.id`、无 sub、无 exp；
 - createAnonymous 无 token/无 iid 拒绝；携带有效 iid 的 token（installToken 或含 iid 的 customer token）成功；
 - createAnonymous 事务失败时 Customer/relation/refresh token 全回滚；
 - login 有 customer token 时保留 cur actor，promote/merge 方向正确；无 session 时 installToken 路径成功；
@@ -666,7 +666,7 @@ createInstall
 
 - 新创建的 customer access token 全部有 iid；
 - 新 Customer 业务记录 install_id 全部非空且来自 token；
-- `core_install.id` 与 API/JWT iid 一致；
+- `core_auth_install.id` 与 API/JWT iid 一致；
 - 一个 Install 同时只有一个有效 Customer 关系；
 - 已有 customer session 的业务不依赖 install 创建成功；
 - 临时 refresh 错误不改变 Customer 身份；

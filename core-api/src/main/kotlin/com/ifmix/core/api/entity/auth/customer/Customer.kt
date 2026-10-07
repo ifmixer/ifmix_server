@@ -10,7 +10,7 @@ import java.util.UUID
  * 账号资料（姓名/邮箱/手机/metadata）归属 auth_identity，本表只保留 app 级身份与合并语义。
  */
 @Entity
-@Table(name = "core_customer")
+@Table(name = "core_auth_customer")
 interface Customer : BaseProjectEntity, SoftDeletableProps {
 
     /** 是否匿名（未转正）。app 启动即建匿名 customer，登录后转 false。 */

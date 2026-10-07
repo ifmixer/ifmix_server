@@ -193,7 +193,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
   - 仅**明确永久失效**（如 `UNREGISTERED`）才标 `fcm_token_valid=false`；**不要**把所有 `INVALID_ARGUMENT` 当失效（它也可能来自非法 payload/图片 URL）。
   - 标失效**必须带发送时 token 条件**，避免 token 轮换后误伤新 token：
     ```sql
-    UPDATE core_install SET fcm_token_valid = false
+    UPDATE core_auth_install SET fcm_token_valid = false
     WHERE project_id = :projectId AND id = :installId AND fcm_token = :sentToken;
     ```
   - 客户端每次成功上报非空 fcmToken → 重置 `fcm_token_valid=true`。

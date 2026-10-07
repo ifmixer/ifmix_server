@@ -17,7 +17,7 @@
 | auth | `core_auth_identity_to_idpidentity_relation` | project | AuthIdentityIdpRelation |
 | auth | `core_auth_project_to_idp_relation` | project | ProjectToIdpRelation |
 | auth | `core_auth_refreshtoken` | project | RefreshToken |
-| customer | `core_customer` | project | Customer |
+| customer | `core_auth_customer` | project | Customer |
 | demo | `core_demo_todo` | project | Todo |
 | demo | `core_demo_todo_item` | project | TodoItem |
 | project | `core_project_config_revision` | project | ProjectConfigRevision |
@@ -36,9 +36,9 @@
 | media | `core_media_file_record` | project | UploadRecord |
 | cs | `core_cs_feedback` | project | Feedback |
 | cs | `core_cs_support_request` | project | SupportRequest |
-| install | `core_install` | project | Install |
-| install | `core_install_customer_relation` | project | InstallCustomerRelation |
-| install | `core_install_attestation` | project | InstallAttestation |
+| install | `core_auth_install` | project | Install |
+| install | `core_auth_install_customer_relation` | project | InstallCustomerRelation |
+| install | `core_auth_install_attestation` | project | InstallAttestation |
 
 > `install_id`（`InstallIdProps`，entity/common）：客户端安装标识。v1.0.6 起**只写 token 的可信 `iid`**；`x-install-id` header 仅日志用，不再落任何表。存量列 nullable（`SET NOT NULL` 收尾迁移待另建），新写入非空由应用层保证。已铺到 `core_ai_scan_record` / `core_ai_scan_collection` / `core_cs_feedback` / `core_cs_support_request`（均可空）。
 
@@ -50,7 +50,7 @@
 
 | 关系 | 方向 / 列 | 基数 | 说明 |
 |------|-----------|------|------|
-| Customer → AuthIdentity | `core_customer.auth_identity_id` | N:1 | 匿名未登录为 null；customer 注销后可新建、复用同一账号 |
+| Customer → AuthIdentity | `core_auth_customer.auth_identity_id` | N:1 | 匿名未登录为 null；customer 注销后可新建、复用同一账号 |
 | AuthIdentity ↔ IdpIdentity | 关系表 `core_auth_identity_to_idpidentity_relation`（`auth_identity_id` / `idp_identity_id`） | M:N | 见下 |
 | RefreshToken → 主体 | `actor_type`(10=customer/20=manager) + `actor_id` | — | 主体无关，不直接绑 customer |
 | IdpIdentity → Idp | `core_auth_idpidentity.idp_id`（可选） | N:1 | email/phone 等内建身份可无 idp |
@@ -205,28 +205,28 @@ input CommonFindOptions {
     - 线上是直接执行 V2 SQL + 手插 V2 历史记录（未走 `flywayMigrate`，避免触发早期 V1 checksum 差异校验）。
     - 两库 flyway 历史现已完全一致：V1=`-1432007747`、V2=`-1291542121`（本地 V1 原 checksum 为空，已用 `flywayRepair` 对齐；无需改线上）。
   - V3 `core_cs_feedback` / `core_cs_support_request` 各加 `app_version` / `ota_version`（varchar(64)，可空；`ClientVersionProps`）。尚未在任何库执行，需 `./gradlew :core-api:flywayMigrate`。
-  - V4 `core_customer` 加 `scan_count` / `deep_research_count`（integer 默认 0，业务侧原子自增）。
-  - V9 新建 `core_ai_customer_scan_metrics`（每 customer 一行，`customer_id` 唯一，行不存在 = 计数 0，首次写入懒建），回填 V4 两列中非零的计数；`core_customer` 旧列暂留（实体不再映射），发布完成后另起迁移删除。
-  - V5 install 追踪：新建 `core_install` + `core_install_customer_relation`。
-  - V6 Install ID 收敛：`core_install.id = API installId = JWT iid`，删除冗余 `core_install.install_id`；四张 Customer 业务表 `install_id` 安全转为 nullable UUID，新写入由应用层强制 token iid。已在本地 PG 18.1 从 V5→V6 验证，未删除任何 resource。
+  - V4 `core_auth_customer` 加 `scan_count` / `deep_research_count`（integer 默认 0，业务侧原子自增）。
+  - V9 新建 `core_ai_customer_scan_metrics`（每 customer 一行，`customer_id` 唯一，行不存在 = 计数 0，首次写入懒建），回填 V4 两列中非零的计数；`core_auth_customer` 旧列暂留（实体不再映射），发布完成后另起迁移删除。
+  - V5 install 追踪：新建 `core_auth_install` + `core_auth_install_customer_relation`。
+  - V6 Install ID 收敛：`core_auth_install.id = API installId = JWT iid`，删除冗余 `core_auth_install.install_id`；四张 Customer 业务表 `install_id` 安全转为 nullable UUID，新写入由应用层强制 token iid。已在本地 PG 18.1 从 V5→V6 验证，未删除任何 resource。
   - V14 `core_project_server_config`（project 级服务端专属配置 JSONB，不下发前端；含 `fcm_config` / `app_attest_config`）。
-  - V15 install attestation（一期 1a）：`core_project_server_config` + `app_attest_config` JSONB；`core_install` + `store_type` INT NULL；新建 `core_install_attestation`（只存 VALID 长期凭证/绑定，含 `attestation_object` 回填列 + 4 个部分/唯一索引）。设计见 `docs/design/attest/install-attestation.md` §5.4。
+  - V15 install attestation（一期 1a）：`core_project_server_config` + `app_attest_config` JSONB；`core_auth_install` + `store_type` INT NULL；新建 `core_auth_install_attestation`（含 `attestation_object` 回填列 + 4 个部分/唯一索引）。V18 表挂 auth 前缀；V19 增 `verify_status` / `challenge`（带 proof 必留痕）。设计见 `docs/design/attest/install-attestation.md` §5.4。
 
 ## Install 平台证明（V15，install attestation 一期 1a）
 
 详见 `docs/design/attest/install-attestation.md`（§0 v5 修订表 + §5.4/§5.8/§5.9）。
 
-- **`core_install_attestation`**：只存 VALID 的长期凭证与绑定（失败尝试不入表，只进日志）。`(project_id, provider, subject)` 部分唯一索引（subject 非空时）；`provider` 110=APP_ATTEST / 120=PLAY_INTEGRITY；`status` 10=ACTIVE / 20=BLOCKED / 30=RETIRED；`sign_count BIGINT NOT NULL DEFAULT 0`（recover 条件更新依赖非 NULL）。
-  - **`attestation_object`**：原始 attestation（≤16KB），core-job 回填任务向 Apple `POST /v1/attestations` 换 receipt 成功后清空（§5.8 / §2 决策 1）。
+- **`core_auth_install_attestation`**：带 proof 的请求必留一行（V19）。`verify_status`（服务端验证结论）：10=VALID（已绑定）/ 20=INVALID / 30=NOT_EVALUATED；INVALID/NOT_EVALUATED 行 `status`=40 NOT_BOUND 仅留痕（`evidence.reason` 记原因），原始 `attestation_object` 字节与 `challenge` 保留供离线重验。`(project_id, provider, subject)` 部分唯一索引只约束 `verify_status=10`；`provider` 110=APP_ATTEST / 120=PLAY_INTEGRITY；`status` 10=ACTIVE / 20=BLOCKED / 30=RETIRED / 40=NOT_BOUND；`sign_count BIGINT NOT NULL DEFAULT 0`（recover 条件更新依赖非 NULL）。
+  - **`attestation_object`**：原始 attestation（≤1MB），core-job 回填任务向 Apple `POST /v1/attestations` 换 receipt 成功后清空（§5.8 / §2 决策 1）。
   - **`receipt` / `fraud_metric` / `next_refresh_at` / `refresh_failure_count`**：core-job 回填 + fraud metric 刷新写入；`receipt_expires_at` 一期不写（保留列）。
   - **`signals` JSONB NOT NULL**：验证信号（固定键集合）；**`evidence` JSONB NULL**：佐证（不含原始 token），90 天后由 core-job 清空。
-- **`core_install.store_type`**：安装来源商店（10=APP_STORE / 20=GOOGLE_PLAY），客户端上报、write-once、仅统计（§5.9）。
+- **`core_auth_install.store_type`**：安装来源商店（10=APP_STORE / 20=GOOGLE_PLAY），客户端上报、write-once、仅统计（§5.9）。
 - **`core_project_server_config.app_attest_config`**：per-project 证明配置 JSONB（null=关），含 `mode`（OFF/OBSERVE/ENFORCE）、`challengeSecret`（challenge 签名密钥，`current[,previous]` 各 32 字节 base64，每 app 独立；缺失回落 env `APP_ATTEST_CHALLENGE_SECRET`）与 `ios`/`android` 子对象；**服务端专属、绝不下发**（沿用该表约束）。
 
 ## Install 设备追踪（V5）
 
 详见 `docs/design/install/install-tracking.md`。
 
-- **`core_install`**：V6 起主键 `id` 即 API `installId` 和 JWT `iid`（服务端 UuidV7），不再有独立 `install_id` 列。`platform`(Int 10/20/30) / `device_info`(jsonb) / `app_version` / `ota_version` / `locale` / `country` / `currency` 来自请求 header（create 与 update 都写，仅覆盖非空）。`reg_ip` **write-once**：仅 createInstall 写入（`clientIp`），updateInstall 不改。`firebase_install_id` / `fcm_token` 客户端后补。
-- **`core_install_customer_relation`**：`(install_id, customer_id)` **全局唯一**（一对关系永远一行），`deleted_at` 软删（`@LogicalDeleted`）：null=当前绑定 / not null=已解绑。bind/unbind 复用同一行翻转 `deleted_at`（re-bind 复活软删行，需 `filters { setBehavior(..., LogicalDeletedBehavior.IGNORED) }` 绕过默认过滤）。一个 install 同时只绑一个 customer（绑新的前软删该 install 其它有效关系）。
+- **`core_auth_install`**：V6 起主键 `id` 即 API `installId` 和 JWT `iid`（服务端 UuidV7），不再有独立 `install_id` 列。`platform`(Int 10/20/30) / `device_info`(jsonb) / `app_version` / `ota_version` / `locale` / `country` / `currency` 来自请求 header（create 与 update 都写，仅覆盖非空）。`reg_ip` **write-once**：仅 createInstall 写入（`clientIp`），updateInstall 不改。`firebase_install_id` / `fcm_token` 客户端后补。
+- **`core_auth_install_customer_relation`**：`(install_id, customer_id)` **全局唯一**（一对关系永远一行），`deleted_at` 软删（`@LogicalDeleted`）：null=当前绑定 / not null=已解绑。bind/unbind 复用同一行翻转 `deleted_at`（re-bind 复活软删行，需 `filters { setBehavior(..., LogicalDeletedBehavior.IGNORED) }` 绕过默认过滤）。一个 install 同时只绑一个 customer（绑新的前软删该 install 其它有效关系）。
 - **关系维护挂点**（`AuthAggHandler`）：createAnonymousCustomer 要求有效 iid（token 类型不限）并绑定；login 用 customer/install token 的 iid 绑定最终 owner；refresh 续期并对 customer refresh token 补绑 actor↔install（bind 幂等），install refresh token 不绑；logout 有 iid 时解绑，legacy token 缺 iid 时只撤销会话；requestAccountDeletion 软删该 customer 全部关系。core-job cleanup 本期完全不改，后续另案设计。

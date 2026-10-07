@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import com.webauthn4j.appattest.DeviceCheckAssertionManager
+import com.webauthn4j.appattest.converter.jackson.DeviceCheckCBORModule
 import com.webauthn4j.appattest.DeviceCheckAttestationManager
 import com.webauthn4j.appattest.authenticator.DCAppleDevice
 import com.webauthn4j.appattest.authenticator.DCAppleDeviceImpl
@@ -67,7 +68,12 @@ class AppAttestVerifier(
     private val log = LoggerFactory.getLogger(javaClass)
 
     private val semaphore = Semaphore(verifyPermits.coerceAtLeast(1))
-    private val objectConverter = ObjectConverter()
+
+    /** 【2026-10-07 真机实测修复】DeviceCheckCBORModule 注册 apple-appattest 子类型——不注册则 CBOR 解析
+     *  直接 InvalidTypeIdException（known type ids 只有 core 的 7 种），所有真机 proof 都 parse_failed。 */
+    internal val objectConverter = ObjectConverter().apply {
+        cborConverter.registerModule(DeviceCheckCBORModule())
+    }
 
     // 信任锚资源缺失时不在启动期失败（AppAttestTrustAnchors 的降级策略），lazy 到第一次验签才报错。
     private val productionAttestationManager by lazy { createAttestationManager(production = true) }
@@ -179,8 +185,15 @@ class AppAttestVerifier(
     /** WebAuthn4J 异常 → 结构化 reason（供日志 `reason` 字段用，规格 §5.5）。 */
     private fun mapException(e: Exception): AppAttestVerification = when (e) {
         is IllegalStateException -> AppAttestVerification.Unavailable // 信任锚未就绪（资源缺失）
-        is IllegalArgumentException -> AppAttestVerification.Invalid(AppAttestVerification.Reason.PARSE_FAILED)
-        is DataConversionException -> AppAttestVerification.Invalid(AppAttestVerification.Reason.PARSE_FAILED)
+        is IllegalArgumentException -> {
+            // parse_failed 不带原始异常无法定位（base64/CBOR/公钥解析都可能走到这）——记录类名+message
+            log.warn("event=attest.parse_failed cause={} message={} rootCause={}", e.javaClass.simpleName, e.message, rootCauseOf(e))
+            AppAttestVerification.Invalid(AppAttestVerification.Reason.PARSE_FAILED)
+        }
+        is DataConversionException -> {
+            log.warn("event=attest.parse_failed cause={} message={} rootCause={}", e.javaClass.simpleName, e.message, rootCauseOf(e))
+            AppAttestVerification.Invalid(AppAttestVerification.Reason.PARSE_FAILED)
+        }
         is BadAttestationStatementException -> when {
             e.message?.contains("nonce", ignoreCase = true) == true ->
                 AppAttestVerification.Invalid(AppAttestVerification.Reason.NONCE_MISMATCH)
@@ -202,6 +215,12 @@ class AppAttestVerifier(
             log.error("event=attest.verify_unexpected_error", e)
             AppAttestVerification.Unavailable
         }
+    }
+
+    private fun rootCauseOf(e: Throwable): String {
+        var cur: Throwable = e
+        while (cur.cause != null && cur.cause !== cur) cur = cur.cause!!
+        return "${cur.javaClass.simpleName}: ${cur.message}"
     }
 
     /** keyId：客户端 base64（标准或 url alphabet）编码的 credentialId。 */

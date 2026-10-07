@@ -12,6 +12,8 @@ import com.ifmix.core.api.entity.auth.install.signCount
 import com.ifmix.core.api.entity.auth.install.status
 import com.ifmix.core.api.entity.auth.install.subject
 import com.ifmix.core.api.entity.auth.install.updatedAt
+import com.ifmix.core.api.entity.auth.install.verifyStatus
+import com.ifmix.core.api.entity.auth.install.AttestationVerifyStatuses
 import com.ifmix.core.api.infra.db.ModuleCtx
 import com.ifmix.core.api.infra.repo.ProjectCrudRepoTemplate
 import org.babyfish.jimmer.sql.kt.ast.expression.asc
@@ -37,20 +39,22 @@ class InstallAttestationRepository(dataSource: DataSource) {
     /** 插入一条 attestation（id 由应用生成 UuidV7，created/updated 由调用方赋值）。 */
     fun insert(mc: ModuleCtx, entity: InstallAttestation): Boolean = tpl.save(mc, entity)
 
-    /** 按 (projectId, provider, subject) 查绑定（含 status，供调用方区分 ACTIVE/BLOCKED/RETIRED）。 */
+    /** 按 (projectId, provider, subject) 查绑定（只认 VALID 行；含 status，供调用方区分 ACTIVE/BLOCKED/RETIRED）。 */
     fun findBySubject(mc: ModuleCtx, projectId: String, provider: Int, subject: String): InstallAttestation? =
         mc.sql.createQuery(InstallAttestation::class) {
             where(table.projectId eq projectId)
             where(table.provider eq provider)
             where(table.subject eq subject)
+            where(table.verifyStatus eq AttestationVerifyStatuses.VALID)
             select(table)
         }.limit(1).execute().firstOrNull()
 
-    /** 该 install 的全部 attestation 行（created_at ASC, id ASC，与轮换口径一致）。 */
+    /** 该 install 的全部 attestation 绑定行（只认 VALID；created_at ASC, id ASC，与轮换口径一致）。 */
     fun listByInstall(mc: ModuleCtx, projectId: String, installId: UUID): List<InstallAttestation> =
         mc.sql.createQuery(InstallAttestation::class) {
             where(table.projectId eq projectId)
             where(table.installId eq installId)
+            where(table.verifyStatus eq AttestationVerifyStatuses.VALID)
             orderBy(table.createdAt.asc())
             orderBy(table.id.asc())
             select(table)
@@ -106,7 +110,7 @@ class InstallAttestationRepository(dataSource: DataSource) {
      * 调用方映射 404001。必须参与当前事务（GlobalTxRunner 的 Spring 事务）。
      */
     fun lockInstallRow(mc: ModuleCtx, projectId: String, installId: UUID): Boolean =
-        jdbc.sql("SELECT id FROM core_install WHERE project_id = :projectId AND id = :id FOR UPDATE")
+        jdbc.sql("SELECT id FROM core_auth_install WHERE project_id = :projectId AND id = :id FOR UPDATE")
             .param("projectId", projectId)
             .param("id", installId)
             .query { rs, _ -> rs.getString("id") }

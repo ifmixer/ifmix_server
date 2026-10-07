@@ -27,11 +27,11 @@ object AttestRepoTestDb {
      * @BeforeAll 先 DROP 再建表（类级一次），@BeforeEach 用 [truncate] 清数据（用例级）。
      */
     fun setupTable(jdbc: JdbcClient) {
-        jdbc.sql("DROP TABLE IF EXISTS core_install_attestation").update()
+        jdbc.sql("DROP TABLE IF EXISTS core_auth_install_attestation").update()
         jdbc.sql("DROP TABLE IF EXISTS core_project_server_config").update()
         jdbc.sql(
             """
-            CREATE TABLE core_install_attestation (
+            CREATE TABLE core_auth_install_attestation (
                 id UUID PRIMARY KEY,
                 project_id TEXT NOT NULL,
                 install_id UUID NOT NULL,
@@ -48,6 +48,8 @@ object AttestRepoTestDb {
                 signals JSONB NOT NULL,
                 evidence JSONB NULL,
                 status INT NOT NULL,
+                verify_status INT NOT NULL DEFAULT 10,
+                challenge TEXT NULL,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL,
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
                 last_used_at TIMESTAMP WITH TIME ZONE NULL
@@ -70,7 +72,7 @@ object AttestRepoTestDb {
 
     /** H2 mem（DB_CLOSE_DELAY=-1）跨测试类共享：每个用例 @BeforeEach 清空两表，用例间互不污染。 */
     fun truncate(jdbc: JdbcClient) {
-        jdbc.sql("TRUNCATE TABLE core_install_attestation").update()
+        jdbc.sql("TRUNCATE TABLE core_auth_install_attestation").update()
         jdbc.sql("TRUNCATE TABLE core_project_server_config").update()
     }
 
@@ -84,7 +86,7 @@ object AttestRepoTestDb {
         val id = UUID.randomUUID()
         jdbc.sql(
             """
-            INSERT INTO core_install_attestation (
+            INSERT INTO core_auth_install_attestation (
                 id, project_id, install_id, provider, subject, attestation_object,
                 signals, status, created_at, updated_at
             ) VALUES (:id, :projectId, :installId, 110, :subject, :attObject,
@@ -110,7 +112,7 @@ object AttestRepoTestDb {
         val id = UUID.randomUUID()
         jdbc.sql(
             """
-            INSERT INTO core_install_attestation (
+            INSERT INTO core_auth_install_attestation (
                 id, project_id, install_id, provider, subject, receipt, next_refresh_at,
                 signals, status, created_at, updated_at
             ) VALUES (:id, :projectId, :installId, 110, :subject, :receipt, :nextRefreshAt,
@@ -132,7 +134,7 @@ object AttestRepoTestDb {
         val id = UUID.randomUUID()
         jdbc.sql(
             """
-            INSERT INTO core_install_attestation (
+            INSERT INTO core_auth_install_attestation (
                 id, project_id, install_id, provider, signals, evidence, status, created_at, updated_at
             ) VALUES (:id, :projectId, :installId, 110,
                       '{"verdict": "seed"}', :evidence::jsonb, 10, :createdAt, now())
@@ -152,7 +154,7 @@ object AttestRepoTestDb {
         val id = UUID.randomUUID()
         jdbc.sql(
             """
-            INSERT INTO core_install_attestation (
+            INSERT INTO core_auth_install_attestation (
                 id, project_id, install_id, provider, signals, evidence, status, created_at, updated_at
             ) VALUES (:id, :projectId, :installId, 110,
                       '{"verdict": "seed"}', NULL, 10, :createdAt, now())
@@ -187,7 +189,7 @@ object AttestRepoTestDb {
             """
             SELECT receipt, attestation_object, fraud_metric, next_refresh_at,
                    refresh_failure_count, evidence
-            FROM core_install_attestation WHERE id = :id
+            FROM core_auth_install_attestation WHERE id = :id
             """.trimIndent(),
         ).param("id", id).query { rs, _ ->
             val fmInt = rs.getInt("fraud_metric")

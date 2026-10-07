@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 
 /**
- * Install PK 收敛不变量：createInstall 写入的 core_install.id、返回的 installId、
+ * Install PK 收敛不变量：createInstall 写入的 core_auth_install.id、返回的 installId、
  * 与签发的 installToken 的 iid claim 必须三者一致（同一个 UUID）。
  * 纯逻辑：捕获式 InstallRepository + 真 AuthJwtService（testAuthJwtKeys 进程内生成 Ed25519 密钥）。
  */

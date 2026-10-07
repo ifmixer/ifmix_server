@@ -117,14 +117,14 @@ input InstallProofInput {
 input AppAttestProofInput {
     "credentialId（base64 / base64url，≤64 字符）"
     keyId: String!
-    "attestationObject 原文（base64，≤16KB）"
+    "attestationObject 原文（base64，≤1MB）"
     attestationObject: String!
     "m_auth_install_createAttestChallenge 签发的 challenge（76 字符，≤128）"
     challenge: String!
 }
 
 input PlayIntegrityProofInput {
-    "Play Integrity token（base64，≤16KB）"
+    "Play Integrity token（base64，≤1MB）"
     integrityToken: String!
     "requestHash 的随机 nonce（base64url，≤64 字符）"
     nonce: String!

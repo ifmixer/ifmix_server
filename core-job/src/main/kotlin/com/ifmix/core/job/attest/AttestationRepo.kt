@@ -53,7 +53,7 @@ class AttestationRepo(
         jdbc.sql(
             """
             SELECT id, project_id, subject, attestation_object, refresh_failure_count
-            FROM core_install_attestation
+            FROM core_auth_install_attestation
             WHERE provider = 110 AND status = 10
               AND receipt IS NULL AND attestation_object IS NOT NULL
               AND (next_refresh_at IS NULL OR next_refresh_at <= :now)
@@ -75,7 +75,7 @@ class AttestationRepo(
         jdbc.sql(
             """
             SELECT id, project_id, receipt, refresh_failure_count
-            FROM core_install_attestation
+            FROM core_auth_install_attestation
             WHERE provider = 110 AND status = 10
               AND receipt IS NOT NULL AND next_refresh_at <= :now
             ORDER BY next_refresh_at
@@ -95,7 +95,7 @@ class AttestationRepo(
     fun markBackfilled(id: UUID, receipt: ByteArray, nextRefreshAt: Instant): Int =
         jdbc.sql(
             """
-            UPDATE core_install_attestation
+            UPDATE core_auth_install_attestation
             SET receipt = :receipt,
                 next_refresh_at = :nextRefreshAt,
                 refresh_failure_count = 0,
@@ -113,7 +113,7 @@ class AttestationRepo(
     fun clearAttestationObject(id: UUID): Int =
         jdbc.sql(
             """
-            UPDATE core_install_attestation
+            UPDATE core_auth_install_attestation
             SET attestation_object = NULL, updated_at = :updatedAt
             WHERE id = :id AND status = 10
             """.trimIndent(),
@@ -123,7 +123,7 @@ class AttestationRepo(
     fun markBackoff(id: UUID, backoffUntil: Instant): Int =
         jdbc.sql(
             """
-            UPDATE core_install_attestation
+            UPDATE core_auth_install_attestation
             SET refresh_failure_count = refresh_failure_count + 1,
                 next_refresh_at = :backoffUntil,
                 updated_at = :updatedAt
@@ -138,7 +138,7 @@ class AttestationRepo(
     fun markFraudMetric(id: UUID, fraudMetric: Int, nextRefreshAt: Instant): Int =
         jdbc.sql(
             """
-            UPDATE core_install_attestation
+            UPDATE core_auth_install_attestation
             SET fraud_metric = :metric,
                 next_refresh_at = :nextRefreshAt,
                 refresh_failure_count = 0,
@@ -155,7 +155,7 @@ class AttestationRepo(
     fun markRefreshBackoff(id: UUID, backoffUntil: Instant): Int =
         jdbc.sql(
             """
-            UPDATE core_install_attestation
+            UPDATE core_auth_install_attestation
             SET refresh_failure_count = refresh_failure_count + 1,
                 next_refresh_at = :backoffUntil,
                 updated_at = :updatedAt
@@ -170,7 +170,7 @@ class AttestationRepo(
     fun clearOldEvidence(cutoff: Instant): Int =
         jdbc.sql(
             """
-            UPDATE core_install_attestation
+            UPDATE core_auth_install_attestation
             SET evidence = NULL, updated_at = :updatedAt
             WHERE evidence IS NOT NULL AND created_at < :cutoff
             """.trimIndent(),

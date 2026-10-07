@@ -69,12 +69,12 @@ install 是请求的**横切上下文**（「从哪个设备来」），不是�
 
 V5 建立 Install/关系表；V6 已完成 Install 单主键和业务 install_id UUID 化。表名使用 `core_` 前缀。
 
-### 3.1 `core_install` — 设备表
+### 3.1 `core_auth_install` — 设备表
 
 V5 初始包含内部 `id` 与业务 `install_id` 两列；V6 已收敛为单一主键：
 
 ```text
-core_install.id = API installId = JWT iid
+core_auth_install.id = API installId = JWT iid
 ```
 
 | 列 | 类型 | 说明 |
@@ -94,21 +94,21 @@ core_install.id = API installId = JWT iid
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
-- 不再有独立 `core_install.install_id` 列或 `(project_id, install_id)` 唯一索引。
+- 不再有独立 `core_auth_install.install_id` 列或 `(project_id, install_id)` 唯一索引。
 - install 记录独立于 customer，可先于任何身份存在。
 - createInstall 返回 `id` 并按同一值签 installToken。
 - updateInstall 按 `(project_id, id)` 查询，iid 一律来自已验签 token。
 - `platform/app_version/ota_version/locale/country/currency` 从 header 获取；`device_info/firebase_install_id/fcm_token` 从 GraphQL input 获取，仅覆盖非空值。
 - `reg_ip` write-once，只记录首次注册来源。
 
-### 3.2 `core_install_customer_relation` — 关系表
+### 3.2 `core_auth_install_customer_relation` — 关系表
 
 | 列 | 类型 | 说明 |
 |----|------|------|
 | id | uuid PK | UuidV7 |
 | project_id | text | |
-| install_id | uuid | 逻辑外键 → core_install.id（即 JWT iid） |
-| customer_id | uuid | 逻辑外键 → core_customer.id |
+| install_id | uuid | 逻辑外键 → core_auth_install.id（即 JWT iid） |
+| customer_id | uuid | 逻辑外键 → core_auth_customer.id |
 | created_at | timestamptz | 首次绑定时间，不变 |
 | updated_at | timestamptz | 最后写入时间（任意 save 都刷，无业务含义） |
 | deleted_at | timestamptz null | `@LogicalDeleted`：null=当前绑定 / not null=已解绑 |
@@ -331,7 +331,7 @@ extend type Mutation {
 - **两层限流**：IP 层=系统防护（阈值大），install 层=防滥用（阈值小）；任一层超限即拒。（v1.0.6 起 legacy 第三层已删除。）createInstall（v6 拆分后的 createIosInstall / createAndroidInstall，共享同一 IP 配额）：入口 100/60s/IP；验签后日窗口按结果分桶 attested 1000/天/IP、unverified 100/天/IP（UTC 日，两个计数器独立）。下游 createAnonymous / scan / DeepResearch：install 层（small）→ IP 层（large）；无 token iid 的请求在 `mustGetTokenInstallId` 即 401000，到不了限流层（legacy 独立计数器已于 2026-10-06 随 fallback 删除）。
 - **错误码与 Retry-After**：GraphQL 错误 `extensions.retryAfterSec`（429000=短窗口剩余秒、429002=到 UTC 零点秒，均必带；503002 可选）。REST 不动。
 - **开关**：全局 kill switch env `APP_ATTEST_GLOBAL_ENABLED`（默认 false）；challenge secret env `APP_ATTEST_CHALLENGE_SECRET`（`current[,previous]`）；per-project `core_project_server_config.app_attest_config` JSONB（null=关），mode OFF/OBSERVE/ENFORCE（project 级单一 mode）。一期默认关、显式开、先观察后强制。
-- **新表 `core_install_attestation`**（V15，只存 VALID 长期凭证/绑定；失败尝试不入表只进日志）+ `core_install.store_type`（§5.9）。
+- **新表 `core_auth_install_attestation`**（V15，只存 VALID 长期凭证/绑定；失败尝试不入表只进日志）+ `core_auth_install.store_type`（§5.9）。
 
 ---
 

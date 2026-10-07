@@ -121,11 +121,12 @@ class InstallFetcher(
         // 5. 一次性消费 challenge（日窗口通过后才消费，§4.6；replay → 403001；DEGRADED 放行由 guard 打 attest.redis_degraded）
         attestGuard.consume(verification)
 
-        // 6. 事务内绑定（§5.3；key_reused / 并发唯一冲突在事务阶段，已扣额度不退——§4.6）
-        val verifiedProof = (verification as? AttestGuard.Verification.Valid)?.proof
+        // 6. 事务内绑定（§5.3；key_reused / 并发唯一冲突在事务阶段，已扣额度不退——§4.6）。
+        // 带 proof 的请求必留 attestation 行（verify_status：10/20/30），无 proof / 全局关闭 → null 只建 install。
+        val outcome = attestGuard.outcomeOf(verification, bundle)
         val res = try {
             globalTx.withTx(ctx) { txCtx ->
-                installFacade.createInstallWithProof(txCtx, deviceInfo, storeType, verifiedProof)
+                installFacade.createInstallWithProof(txCtx, deviceInfo, storeType, outcome)
             }
         } catch (e: org.springframework.dao.DataIntegrityViolationException) {
             // §5.3：并发同 keyId（两个不同 challenge）唯一约束兜底 → 失败方回滚 → 403001(key_reused)，客户端转 recover
@@ -133,6 +134,7 @@ class InstallFetcher(
         }
 
         // §5.9：VALID 且 storeType 与平台交叉不一致 → 只打日志不拒绝（OBSERVE/ENFORCE 同）
+        val verifiedProof = (outcome as? AttestGuard.AttestationOutcome.Bound)?.proof
         if (verifiedProof != null && storeType != null) {
             val expectedStore = if (verifiedProof.provider == AttestGuard.PROVIDER_IOS) 10 else 20
             if (storeType != expectedStore) attestGuard.logStoreMismatch(pid, verifiedProof.provider, storeType)
@@ -369,7 +371,7 @@ class InstallFetcher(
         // 8. 事务内权威判定（§6.7）：锁 install 行（404001）→ 锁内重查 → 幂等/403002/409001/满 5 把 retire + 插入
         val txResult: AttestExistingResult = try {
             globalTx.withTx(ctx) { txCtx ->
-                installFacade.attestExisting(txCtx, installId, verified).let { _ ->
+                installFacade.attestExisting(txCtx, installId, verified, (verification as AttestGuard.Verification.Valid).challenge).let { _ ->
                     AttestExistingResult(attestationStatus = 10)
                 }
             }
