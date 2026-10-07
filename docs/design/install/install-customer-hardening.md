@@ -328,7 +328,7 @@ customer_id = actorId
 id = scanId
 ```
 
-至少修复 `q_ai_scan_getMyById`。同一轮必须审计并补齐：
+至少修复 `q_ai_scan_getById`。同一轮必须审计并补齐：
 
 - `m_ai_scan_updateMyOne`
 - `m_ai_scan_deleteMyOne`

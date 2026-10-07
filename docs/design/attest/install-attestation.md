@@ -128,10 +128,10 @@ mac          = HMAC-SHA256(challengeSecret, "ifmix-attest-ch-v1\n" ‖ projectId
 challengeStr = base64urlNoPadding(payload ‖ mac)                                        // 57 字节 → 76 字符 ASCII
 ```
 
-- `challengeSecret` 来自 env `APP_ATTEST_CHALLENGE_SECRET`（32 字节 base64）。MAC 绑定 projectId，所以一个 project 签发的 challenge 不能拿到别的 project 用。
+- `challengeSecret`：优先 per-project 字段 `app_attest_config.challengeSecret`（`current[,previous]`，各 32 字节 base64），**每 app 独立**——单个泄露只影响本 project 的伪造面；缺失回落全局 env `APP_ATTEST_CHALLENGE_SECRET`。MAC 绑定 projectId，一个 project 签发的 challenge 不能拿到别的 project 用。
 - 校验：base64 解码 → 长度和 ver 正确 → 恒定时间比较 MAC → `now - issuedAt ∈ [-30s, 300s]`（-30s 是给多实例之间的时钟差留的余量）。任一项不通过 → INVALID(challenge_invalid / challenge_expired)。
-- 更换 secret：环境变量可以同时配置当前值和上一个值（`current,previous`），校验时依次尝试。签发只用当前值。
-- 缺少 secret 而全局开关是开着的 → 配置无效（§4.1）。
+- 更换 secret：current 值旁保留上一个值（`current,previous`），校验时依次尝试。签发只用当前值。per-project 与 env 同格式。
+- per-project secret 格式非法 → 记入 problems（fail-closed），codec 层回落 env；两者都缺而全局开关开着 → 配置无效（§4.1）。
 
 **字节契约（逐字一致）**
 
@@ -228,13 +228,14 @@ clientData = "ifmix-install-recover-v1\n" + projectId + "\n" + challengeStr
 | 层 | 载体 | 默认 |
 |---|---|---|
 | 全局 kill switch | env `APP_ATTEST_GLOBAL_ENABLED` | false |
-| challenge 签名密钥 | env `APP_ATTEST_CHALLENGE_SECRET`（`current[,previous]`，32 字节 base64） | 无；全局开关为 true 且缺少密钥 → 配置无效 |
+| challenge 签名密钥 | per-project `app_attest_config.challengeSecret`（`current[,previous]`，32 字节 base64）；缺失回落 env `APP_ATTEST_CHALLENGE_SECRET` | 无；全局开关为 true 且两者都缺 → 配置无效 |
 | per-project | `core_project_server_config.app_attest_config`（JSONB，null = 关） | null |
 | mode（project 级，单一） | `app_attest_config.mode`：OFF / OBSERVE / ENFORCE | OBSERVE |
 
 ```json
 {
   "mode": "OBSERVE",
+  "challengeSecret": "<32字节base64>[,<previous>]",
   "ios": {
     "teamId": "ABCDE12345",
     "bundleId": "com.example.antique",

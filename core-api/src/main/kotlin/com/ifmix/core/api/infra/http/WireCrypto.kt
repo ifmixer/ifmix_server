@@ -12,7 +12,7 @@ import javax.crypto.spec.SecretKeySpec
 import org.bouncycastle.crypto.hpke.HPKE
 
 /**
- * `x-wirep-version: 2` 应用层加密（RFC 9180 HPKE base mode）：
+ * 应用层加密（RFC 9180 HPKE base mode）：
  * Suite = DHKEM(X25519, HKDF-SHA256) 0x0020 / HKDF-SHA256 0x0001 / AES-256-GCM 0x0002，
  * 全部走 BouncyCastle `org.bouncycastle.crypto.hpke`（RFC 9180 标准实现），不手写任何原语/常数。
  *

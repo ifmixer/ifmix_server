@@ -30,4 +30,11 @@ if [ -n "$PROXY_HOST" ]; then
 fi
 
 echo "Starting ifmix_server on port $PORT... (proxy: $PROXY_LABEL)"
-JAVA_TOOL_OPTIONS="-Xms128m -Xmx512m -XX:+HeapDumpOnOutOfMemoryError $PROXY_OPTS" SPRING_PROFILES_ACTIVE=local ./gradlew :core-api:bootRun
+# App Attest 全局开关：per-project OBSERVE/ENFORCE 配置要生效必须打开（默认 false = 全部放行只 log）。
+# challenge 签发还需 APP_ATTEST_CHALLENGE_SECRET（32 字节 base64，"current[,previous]"）+ project 配置 ios 子对象。
+# secret 优先读外部环境变量，回落到不入库的 scripts/.attest_secret（仅本地 dev，生产另行配置）。
+ATTEST_SECRET="${APP_ATTEST_CHALLENGE_SECRET:-$(cat "$(dirname "$0")/.attest_secret" 2>/dev/null | tr -d '\n')}"
+JAVA_TOOL_OPTIONS="-Xms128m -Xmx512m -XX:+HeapDumpOnOutOfMemoryError $PROXY_OPTS" \
+  APP_ATTEST_GLOBAL_ENABLED=true \
+  APP_ATTEST_CHALLENGE_SECRET="$ATTEST_SECRET" \
+  SPRING_PROFILES_ACTIVE=local ./gradlew :core-api:bootRun

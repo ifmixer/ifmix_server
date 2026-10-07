@@ -26,8 +26,9 @@ import java.util.concurrent.ConcurrentHashMap
  * 配置与开关（§4.1，env 接线在此）：
  * - 全局 kill switch：env `APP_ATTEST_GLOBAL_ENABLED`（默认 false）。OFF / project 未配置 → [Verification.Disabled]
  *   （decide 直接放行，attestationStatus=30）。
- * - challenge secret：env `APP_ATTEST_CHALLENGE_SECRET`（`current[,previous]`，各为 32 字节 base64）；
- *   解析成 [AttestChallengeCodec]。全局开关开但 secret 缺失/非法 → ENFORCE 下按「配置无效」fail-closed（503002）。
+ * - challenge secret：优先 per-project `app_attest_config.challengeSecret`（`current[,previous]`，各 32 字节
+ *   base64，每 app 独立）；缺失回落 env `APP_ATTEST_CHALLENGE_SECRET`。格式非法按未配置处理（warn 一次）。
+ *   全局开关开但两者都缺失 → ENFORCE 下按「配置无效」fail-closed（503002）。
  * - per-project 配置经 [ProjectServerConfigFacade.findAttestConfig]（进程内缓存，重启生效）读取；
  *   ENFORCE 且配置无效（§4.1 校验口径）→ [Verification.Unavailable]（CONFIG_INVALID）+ 节流日志
  *   `attest.config_invalid`（projectId+configHash；首条 + 每分钟一条，进程内存；修复后 INFO `attest.config_recovered`）。
@@ -69,16 +70,40 @@ class AttestGuard(
             _challengeCodec = null
             return
         }
-        _challengeCodec = runCatching {
-            val secrets = challengeSecretRaw.split(",")
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .take(2)
-                .map { Base64.getDecoder().decode(it) }
-            AttestChallengeCodec(secrets)
-        }.onFailure {
+        _challengeCodec = parseSecretRaw(challengeSecretRaw).onFailure {
             log.warn("event=attest.secret_invalid — APP_ATTEST_CHALLENGE_SECRET 非法（应为 base64 current,previous），按未配置处理")
         }.getOrNull()
+    }
+
+    private val secretCodecCache = ConcurrentHashMap<String, java.util.Optional<AttestChallengeCodec>>()
+
+    /**
+     * 解析某 project 可用的 challenge codec：per-project `challengeSecret` 优先，
+     * 缺失回落全局 env（[challengeCodec]）。显式配置但非法 → null（不回落 env，problems 已标记，
+     * ENFORCE 下 fail-closed）。解析结果按原文缓存（同一原文只解析/告警一次）。
+     */
+    fun challengeCodecFor(config: AttestConfig?): AttestChallengeCodec? {
+        val raw = config?.challengeSecret?.trim()?.takeIf { it.isNotEmpty() } ?: return challengeCodec
+        return secretCodecCache.computeIfAbsent(raw) { rawValue ->
+            java.util.Optional.ofNullable(
+                parseSecretRaw(rawValue).onFailure { e ->
+                    log.warn(
+                        "event=attest.secret_invalid secretHash8={} — per-project challengeSecret 非法（应为 base64 current,previous），按未配置处理 ({})",
+                        sha256Hex(rawValue).take(8), e.message,
+                    )
+                }.getOrNull(),
+            )
+        }.orElse(null)
+    }
+
+    /** 解析 `current[,previous]`（各 32 字节 base64）为 codec；非法 → failure。 */
+    private fun parseSecretRaw(raw: String): Result<AttestChallengeCodec> = runCatching {
+        val secrets = raw.split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .take(2)
+            .map { Base64.getDecoder().decode(it) }
+        AttestChallengeCodec(secrets)
     }
 
     // ===== 常量：provider 码（§4.2）=====
@@ -277,9 +302,10 @@ class AttestGuard(
             return Verification.Disabled
         }
 
-        // §4.1 fail-closed：ENFORCE 有效条件 = isValidForEnforce()（至少一个 provider 且全部可解析）+ secret 可用。
-        if (config.mode == AttestMode.ENFORCE && (!config.isValidForEnforce() || challengeCodec == null)) {
-            logConfigInvalid(projectId, config, challengeCodec == null)
+        // §4.1 fail-closed：ENFORCE 有效条件 = isValidForEnforce()（至少一个 provider 且全部可解析）+ secret 可用（per-project 优先，env 回落）。
+        val codec = challengeCodecFor(config)
+        if (config.mode == AttestMode.ENFORCE && (!config.isValidForEnforce() || codec == null)) {
+            logConfigInvalid(projectId, config, codec == null)
             logAttest(projectId, "ENFORCE", bundle?.provider ?: 0, proofStatus, "unavailable", "config_invalid", 0L, t0, bundle?.subject)
             return Verification.Unavailable(Reason.CONFIG_INVALID)
         }
@@ -326,7 +352,7 @@ class AttestGuard(
         // provider 110（1a）
         val ios = config.ios ?: return Verification.Invalid(Reason.PROVIDER_NOT_CONFIGURED)
         val challenge = bundle.challenge ?: return Verification.Invalid(Reason.CHALLENGE_MISSING)
-        val codec = challengeCodec
+        val codec = challengeCodecFor(config)
             ?: return Verification.Unavailable(Reason.SECRET_MISSING)
         when (val c = codec.verify(projectId, challenge)) {
             is AttestChallengeCodec.Verification.Invalid ->
@@ -427,7 +453,7 @@ class AttestGuard(
      * secret 缺失 → [GuardError]（503002）；challenge 无效/过期 → [GuardError]（403001）。
      */
     fun checkRecoverChallenge(projectId: String, challenge: String) {
-        val codec = challengeCodec
+        val codec = challengeCodecFor(serverConfigFacade.findAttestConfig(projectId))
             ?: throw GuardError(ApiError(ErrorCode.ATTESTATION_UNAVAILABLE, "attest challenge secret not configured"))
         when (val c = codec.verify(projectId, challenge)) {
             is AttestChallengeCodec.Verification.Invalid ->
@@ -438,7 +464,7 @@ class AttestGuard(
 
     /** 签发一次性 challenge（§5.1，纯计算不碰 Redis）。secret 缺失（全局开关开时按配置无效）→ [GuardError]（503002）。 */
     fun issueChallenge(projectId: String): String {
-        val codec = challengeCodec
+        val codec = challengeCodecFor(serverConfigFacade.findAttestConfig(projectId))
             ?: throw GuardError(ApiError(ErrorCode.ATTESTATION_UNAVAILABLE, "attest challenge secret not configured"))
         return codec.issue(projectId)
     }

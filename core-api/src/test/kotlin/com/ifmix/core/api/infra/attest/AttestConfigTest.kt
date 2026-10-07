@@ -235,4 +235,44 @@ class AttestConfigTest {
         assertThat(config.isValid).isFalse() // 有 problem（ios 坏）→ fail-closed 信号由调用方处理
         assertThat(config.isValidForEnforce()).isFalse() // problems 非空
     }
+
+    // ---- challengeSecret ----
+
+    @Test
+    fun `challengeSecret absent parses to null without problems`() {
+        val config = AttestConfig.parse(iosConfig())
+        assertThat(config.challengeSecret).isNull()
+        assertThat(config.isValid).isTrue()
+    }
+
+    @Test
+    fun `challengeSecret valid current or current,previous accepted`() {
+        val secret = java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 1 })
+        val previous = java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 2 })
+        assertThat(AttestConfig.parse(iosConfig() + mapOf("challengeSecret" to secret)).challengeSecret).isEqualTo(secret)
+        assertThat(AttestConfig.parse(iosConfig() + mapOf("challengeSecret" to "$secret,$previous")).challengeSecret)
+            .isEqualTo("$secret,$previous")
+        assertThat(AttestConfig.parse(iosConfig() + mapOf("challengeSecret" to secret)).isValid).isTrue()
+    }
+
+    @Test
+    fun `challengeSecret invalid format records problem`() {
+        // 非 32 字节
+        val short = java.util.Base64.getEncoder().encodeToString(ByteArray(16))
+        // 非法 base64
+        // 非字符串、超过两个值
+        for (bad in listOf(short, "!!!not-base64!!!", 42, "a,b,c")) {
+            val config = AttestConfig.parse(iosConfig() + mapOf("challengeSecret" to bad))
+            assertThat(config.challengeSecret).isNull()
+            assertThat(config.isValid).isFalse()
+            assertThat(config.problems.any { it.startsWith("challengeSecret:") }).isTrue()
+        }
+    }
+
+    @Test
+    fun `challengeSecret blank treated as absent`() {
+        val config = AttestConfig.parse(iosConfig() + mapOf("challengeSecret" to "  "))
+        assertThat(config.challengeSecret).isNull()
+        assertThat(config.isValid).isTrue()
+    }
 }

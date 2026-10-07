@@ -301,7 +301,7 @@ DB (via Jimmer KSqlClient)
 | `otaVersion` | 字符串 | 热更新版本号，形如 `${runtimeVersion}-${buildNumber}-${otaSeq}`，如 `1-23-3`；原样透传，不校验格式 |
 | `reqId` | 字符串 | 客户端请求 id，服务端清洗（去控制字符/限长 128）后进 MDC（`rid`）与响应 Envelope |
 
-永远留在 body 外的真实 header：`x-wirep-version` / `Content-Type`（wire 信封标记）与 CF 注入头（`cf-bot-score`、真实 IP——限流依赖）。
+永远留在 body 外的真实 header：`Content-Type`（wire 加密判定：`application/octet-stream` 即密文）与 CF 注入头（`cf-bot-score`、真实 IP——限流依赖）。`x-wirep-version` 仅明文请求传 `1` 作明文标记（加密请求不传，见 wire 设计 §11.3）。
 
 #### 格式软校验（严格 / 宽松）
 

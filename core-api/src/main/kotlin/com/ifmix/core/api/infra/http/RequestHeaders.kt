@@ -3,7 +3,8 @@ package com.ifmix.core.api.infra.http
 /** 请求头名常量。 */
 object RequestHeaders {
     /**
-     * 线协议版本：缺省视为当前版本；头存在则必须等于当前（响应头回传表示响应已加密）。
+     * 线协议标记头：**加密请求不传**（加密判定靠 `Content-Type: application/octet-stream`）；
+     * 明文请求传 `1`。头存在且非 1 → 400004。响应不回传（加密响应由 Content-Type 标识）。
      * 旧名 `x-proto-version`（v2 从未上线）已移除，现用 `x-wirep-version`。
      */
     const val WIREP_VERSION = "x-wirep-version"

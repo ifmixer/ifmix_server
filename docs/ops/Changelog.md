@@ -36,6 +36,7 @@
 - **`type` claim 必填**：`VerifiedToken.tokenType` 去掉默认值，token 缺 `type` claim 视为无效（verify 返回 null），不再兜底 10 兼容老 token。
 - **`ano` claim 可缺失**：`VerifiedToken.anonymous` 改为 `Boolean?`——claim 缺失为 null（不再兜底 false），`ActionContext.anonymous` 语义不变（null 归一为 false）。
 - **claim 类型不符不再 500**：token 验签通过但 claim 非法（`type` 非 Integer 等，typed getter 抛 ParseException）降级为无效 token——verify 返回 null，`parseToken` 抛 UNAUTHORIZED（"invalid token"），不再向上穿透异常。
+- **challenge secret 改为 per-project（服务端内部）**：`app_attest_config.challengeSecret`（`current[,previous]`，32 字节 base64）每 app 独立，解析优先于全局 env `APP_ATTEST_CHALLENGE_SECRET`（后者保留为回落，用于过渡期/本地 dev）；per-project 格式非法记入 problems（ENFORCE fail-closed）。单个 secret 泄露的伪造面收敛到单 app。设计 §3.1/§4.1 已同步。
 - **GraphQL 错误响应顶层注入 `code`/`msg`（客户端可见）**：`errors` 数组保留，顶层新增 `code`（= `errors[0].extensions.code`；GraphQL 校验/语法等框架级错误按 classification/errorType 推导兜底，推不出为 500000）与 `msg`（= `errors[0].message`），客户端统一按 `{code, msg, data}` 读取。由 `GraphQlHttpStatusFilter` 注入；兜底 code 不参与 HTTP status 映射（仍以 extensions.code 为准）。
 
 ### 2026-10-07 增补（请求解析职责收敛：filter 只解密，parser 只解析）
@@ -52,10 +53,14 @@
 - **Fixed**：跨线程 ActionContext 传播（服务端内部）。DGS 虚拟线程模式下嵌套 resolver / DataLoader 在独立线程执行，ThreadLocal 不可靠：① `CreateAnonymousResult.customer` 嵌套 resolver 原 `ActionContextHolder.current()` 必炸 500；② 若在嵌套处重建 ctx，parent type 非 Mutation → `preferReader=true`，mutation 流程内的读会误走 reader 池。修复：删除 ThreadLocal 机制（`ActionContextHolder` 整体移除），新增 `RequestActionContext`（DGS custom context，随 DgsContext 进 GraphQLContext，与线程无关）作为唯一传播通道——每请求首个 `fromDfe` 构建后缓存复用，嵌套处拿到顶层原 ctx（isMutation/preferReader/actionName 保持原值），require* 仍逐项校验；4 个 DataLoader（todoItems/todoItemCounts/scanRecords/latestDeepResearch）改 `MappedBatchLoaderWithContext` 从 DgsContext 取 ctx。
 - **Added**：demo 全链路 E2E 脚本 `scripts/demo-e2e.mjs`（明文 dev 通道 `x-req-meta`；createIosInstall → updateInstall → createAnonymous → Todo CRUD 19 步）。
 
+### 2026-10-07 增补（wire header 语义：加密是默认，头只做明文标记）
+
+- **加密请求不传 `x-wirep-version`**（客户端 breaking，app 未上线）：加密判定只靠 `Content-Type: application/octet-stream`；明文请求传 `x-wirep-version: 1` 作明文标记，头存在且非 1 → 400004。响应一律不回传该头（加密响应由 Content-Type 标识）。原「头缺省视为当前版本 / 响应回传 2」作废。明文请求带头 1 在 required 模式下仍 400004（标记不能替代加密）；optional（dev）模式明文原样放行不变。详见 wire 设计 §11.3。
+
 ### 2026-10-06 增补（RPC 迁移与模块结构调整，客户端 breaking）
 
 - **39 个 reqName 全量改四段式**（客户端 breaking）：格式 `{q|m}_{namespace}_{resource}_{action}`（namespace 目前=module，resource 可为聚合根，不兼容形状变更加 V2 后缀）。客户端需同步更新 trusted documents 调用名（39 条全量名单即 `persisted-queries/customer/customer.json` 的 key）。
-- **GraphQL operationName 同步改四段式**（客户端 breaking）：`@DgsQuery/@DgsMutation` field 名同日全量改名，规则同 reqName 并叠加 `My`——customer 作用域 CRUD 动作动词后带 `My`（`getMyById / listMy / updateMyOne / deleteMyMany`），`create` 例外不加（`m_demo_todo_createOne`），专名动词（me/login/verify/run/getStatus/getDefault/add/attest/recover 等）与 install/session 作用域不加。例：`q_ai_findMyScanById → q_ai_scan_getMyById`、`q_auth_me → q_auth_session_me`、`m_media_presignUpload → m_media_file_presignUpload`。greq path 末段与 persisted query manifest（`customer.json`）随之更新，前端 client-sdk 已对齐。
+- **GraphQL operationName 同步改四段式**（客户端 breaking）：`@DgsQuery/@DgsMutation` field 名同日全量改名，规则同 reqName 并叠加 `My`——customer 作用域 CRUD 动作动词后带 `My`（`getMyById / listMy / updateMyOne / deleteMyMany`），`create` 例外不加（`m_demo_todo_createOne`），专名动词（me/login/verify/run/getStatus/getDefault/add/attest/recover 等）与 install/session 作用域不加。例：`q_ai_findMyScanById → q_ai_scan_getById`、`q_auth_me → q_auth_session_me`、`m_media_presignUpload → m_media_file_presignUpload`。greq path 末段与 persisted query manifest（`customer.json`）随之更新，前端 client-sdk 已对齐。
 - **customer/install 并入 auth 模块**：服务端内部结构调整（`modules/auth/{install,customer}`、`entity/auth/`、fetcher 并入 `bff/graphql/customer/auth/`），随之相关 reqName 的 namespace 由 install/customer 改为 auth（`m_auth_install_*`、`m_auth_customer_*`）。
 - **RPC URL 定稿**：`POST /customer/core/greq/{reqName}`（与 GraphQL persisted query 同路径；gql raw 仍为 `/customer/core/gql`）；原 proposal 的 `POST /api/customer/core/{reqName}` 方案废弃，不再新增 `/api/` 前缀路径。
 - **media resource 改名 file**：`m_media_media_presignUpload/Download` → `m_media_file_presignUpload/Download`；表 `core_media_upload_record` → `core_media_file_record`（V16，纯 RENAME）。persisted query 文本内的 operation name 同步改为与 manifest key 一致（原 PascalCase 废弃）。

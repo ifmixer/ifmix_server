@@ -294,8 +294,8 @@ HTTPS 管传输（网络第三方）、wire 管设备持有者（HTTPS 终结后
   `reqId`（meta.reqId，客户端自定，服务端做控制字符/限长清洗）由 `RequestLoggingFilter` 经
   `LogContext.start(request, reqId)` 取（缺失生成 UuidV7）进 MDC 与响应 Envelope，
   不再走 `x-req-id` 响应头。
-- 永远留在 body 外的信封标记：`x-wirep-version` / `Content-Type`（服务端要先看到它才知道要解密——鸡生蛋）
-  与 CF 注入头（`cf-bot-score`、真实 IP——限流依赖）。
+- 永远留在 body 外的信封标记：`Content-Type`（服务端要先看到它才知道要解密——鸡生蛋）与 CF 注入头
+  （`cf-bot-score`、真实 IP——限流依赖）。`x-wirep-version` 仅明文请求传 `1` 作明文标记（§11.3，2026-10-07）。
 - 收益定位：对网络第三方无增益（HTTPS 已藏 header）；对设备持有者是收尾（token 本是其自有会话凭证）；
   调试收益：抓包/Charles 里 meta 在明文 header 可见，token 在 dev 仍走标准 header（工具友好）。
 
@@ -389,11 +389,11 @@ flags(1) | nonce(12) | AES-256-GCM(resKey, nonce, aad = enc ‖ flags, payload) 
 
 App 端未上线、无任何线上流量，协议清理不再考虑兼容：
 
-1. **版本号定 2**：信封 `ver(1)=2`、头 `x-wirep-version: 2`、info `"ifmix-wire-v2"`、exporter `"ifmix-wire-v2-res"`。历史 2/3 草案（自研信封 / HPKE 提案）从未上线，合并为一个版本，终结"从 3 开始"的困惑。§2 自研信封与 §10 的"ver=3"作废，线格式以 §10 为准、版本号以本节为准。
-2. **强制加密、无降级**：`app.wire-crypto.mode: required`（默认，线上）下 GraphQL 端点（`/customer/core/gql`、`/customer/core/greq/**`）必须加密——明文/头版本不符 → 明文 400 + `400004 WIRE_REQUIRED`；解密失败 → 400003（不变）。`optional` 仅 local/dev 调试。§5 降级表与 §9"保留降级与 kill switch"的决策**作废**（其前提是存在线上旧版本，已不成立）。
-3. **无版本协商**：只有一个版本。头缺省视为当前版本；头存在则必须等于 2。
+1. **版本号定 2**：信封 `ver(1)=2`、info `"ifmix-wire-v2"`、exporter `"ifmix-wire-v2-res"`。历史 2/3 草案（自研信封 / HPKE 提案）从未上线，合并为一个版本，终结"从 3 开始"的困惑。§2 自研信封与 §10 的"ver=3"作废，线格式以 §10 为准、版本号以本节为准。
+2. **强制加密、无降级**：`app.wire-crypto.mode: required`（默认，线上）下 GraphQL 端点（`/customer/core/gql`、`/customer/core/greq/**`）必须加密——明文 → 明文 400 + `400004 WIRE_REQUIRED`；解密失败 → 400003（不变）。`optional` 仅 local/dev 调试。§5 降级表与 §9"保留降级与 kill switch"的决策**作废**（其前提是存在线上旧版本，已不成立）。
+3. **加密是默认，头只做明文标记（2026-10-07 修订）**：加密请求（`Content-Type: application/octet-stream`）**不传** `x-wirep-version`，加密判定只靠 Content-Type；明文请求传 `x-wirep-version: 1`。头存在且非 1 → 400004。响应一律不回传该头（加密响应由 `Content-Type: application/octet-stream` 标识）。此前的"头缺省视为当前版本、头存在必须等于 2、响应回传 2"作废。
 4. **范围**：仅 GraphQL 端点强制；webhook / wellknown / actuator / docs 等信封外流量原样放行。
 5. **配置缺失 = 配置错误**：`keys` 未配时 required 模式下全部请求 400003（大声失败），不再静默降级明文。
 6. **多 kid 轮换保留**（轮换不是版本兼容问题）；ts 仅 warn、语义幂等防重放等 §9 结论不变。
 
-**客户端同步项**（一次发版）：`WIRE_VERSION=2`、info/exporter 字符串 v2、头值 "2"；删除 415/400003 明文重发降级逻辑与 `wireUnsupported` 状态；`getWireKey` 缺失 → fail-fast 拒绝调用（不再静默明文）；向量重新生成。
+**客户端同步项**（一次发版）：`WIRE_VERSION=2`、info/exporter 字符串 v2；**加密请求不传 `x-wirep-version`，明文请求传 `1`**（§11.3）；删除 415/400003 明文重发降级逻辑与 `wireUnsupported` 状态；`getWireKey` 缺失 → fail-fast 拒绝调用（不再静默明文）；向量重新生成。

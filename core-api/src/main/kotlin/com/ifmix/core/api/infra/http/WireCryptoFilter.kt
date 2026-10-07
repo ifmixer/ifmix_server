@@ -19,10 +19,12 @@ import java.io.BufferedReader
 import java.io.ByteArrayInputStream
 
 /**
- * `x-wirep-version: 2` 请求/响应 body 加密（RFC 9180 HPKE，线格式见 [WireCrypto]）。
+ * 请求/响应 body 加密（RFC 9180 HPKE，线格式见 [WireCrypto]）。
  *
- * **无版本协商**（app 未上线，无兼容负担；历史上的 2/3 草案版本已合并为 2）：
- * 头缺省视为当前版本；头存在则必须等于 [WIRE_VERSION_VALUE]，否则 400004。
+ * **加密是默认，头只做明文标记**（app 未上线，无兼容负担；历史上的 2/3 草案版本已合并为 2）：
+ * 加密请求（`Content-Type: application/octet-stream`）**不传** `x-wirep-version`；
+ * 明文请求传 `x-wirep-version: 1`（[PLAIN_VERSION_VALUE]）。头存在且非 1 → 400004。
+ * 加密响应同样不回传该头，由 `Content-Type: application/octet-stream` 标识。
  *
  * 强制策略 [mode]（`app.wire-crypto.mode`）：
  * - `required`（默认，线上）：`/customer/core/…（GraphQL 端点）` 请求必须加密——明文/版本不符 → 明文 400 + [ErrorCode.WIRE_REQUIRED]；
@@ -40,7 +42,7 @@ import java.io.ByteArrayInputStream
  *
  * 挂在最外层（[RequestLoggingFilter] +5 之外）：内层 filter / 日志 / 业务看到的都是明文，业务零改动。
  * - 设备时钟偏差 > 5min 只 warn 不拒绝（ts 仅用于观测，不做防重放）。
- * - 成功：缓存内层响应 → seal 后写回；status 保留，`x-wirep-version: 2` + `application/octet-stream`。
+ * - 成功：缓存内层响应 → seal 后写回；status 保留，`application/octet-stream`（不回传版本头）。
  *   内层抛到容器的错误页不是 octet-stream，客户端按网关错误处理（见 wire 设计 §5）。
  */
 @Component
@@ -62,20 +64,20 @@ class WireCryptoFilter(
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         val headerVersion = request.getHeader(RequestHeaders.WIREP_VERSION)
         val encrypted = request.contentType?.startsWith(MediaType.APPLICATION_OCTET_STREAM_VALUE) == true
-        if (encrypted || required) {
-            if (headerVersion != null && headerVersion != WIRE_VERSION_VALUE) {
-                reject(response, ErrorCode.WIRE_REQUIRED, "unsupported ${RequestHeaders.WIREP_VERSION}: $headerVersion")
-                return
-            }
-            if (!encrypted) {
+        // 头只允许出现明文标记 "1"（加密请求不传）；其余值一律 400004
+        if (headerVersion != null && headerVersion != PLAIN_VERSION_VALUE) {
+            reject(response, ErrorCode.WIRE_REQUIRED, "unsupported ${RequestHeaders.WIREP_VERSION}: $headerVersion")
+            return
+        }
+        if (!encrypted) {
+            if (required) {
                 // required 模式下的明文 /customer/core/…（GraphQL 端点） 请求：一律拒绝（线上无明文降级）。
                 log.warn("wire.required.plain path={}", request.requestURI)
                 reject(response, ErrorCode.WIRE_REQUIRED, "wire encryption required")
-                return
+            } else {
+                // optional 模式 + 明文：原样放行（meta/凭证由 RequestParser 按 env 回落读 headers）
+                chain.doFilter(request, response)
             }
-        } else {
-            // optional 模式 + 明文：原样放行（meta/凭证由 RequestParser 按 env 回落读 headers）
-            chain.doFilter(request, response)
             return
         }
 
@@ -96,7 +98,6 @@ class WireCryptoFilter(
         val sealed = opened.seal(wrapped.contentAsByteArray)
         // 成功也带 kid：轮换时按 kid 观察旧 kid 流量，降无可接受水平后删旧 kid（设计 §6）
         log.info("wire.seal.ok path={} kid={} gzip={} plain={} wire={}", request.requestURI, opened.kid, sealed[0].toInt() == 1, wrapped.contentAsByteArray.size, sealed.size)
-        response.setHeader(RequestHeaders.WIREP_VERSION, WIRE_VERSION_VALUE)
         response.contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE
         response.setContentLength(sealed.size)
         response.outputStream.write(sealed)
@@ -142,8 +143,8 @@ class WireCryptoFilter(
         private const val MAX_SKEW_MS = 5 * 60 * 1000L
         /** 业务 GraphQL 面路径前缀（wire 强制范围；gql 与 greq 同挂 /customer/core/ 之下）。 */
         const val GQL_PATH_PREFIX = "/customer/core/"
-        /** 当前线协议版本（与 [WireCrypto.VERSION] 一致）。 */
-        const val WIRE_VERSION_VALUE = "2"
+        /** 明文请求的 `x-wirep-version` 标记值（加密请求不传该头）。 */
+        const val PLAIN_VERSION_VALUE = "1"
         /** 解密后的 body（完整信封 JSON，含 meta/authorization 键）缓存 attribute key；RequestParser 消费。 */
         const val ATTR_DECRYPTED_BODY = "com.ifmix.wire.decryptedBody"
     }

@@ -348,6 +348,72 @@ class AttestGuardTest {
         assertThat(e.apiError.errorCode).isEqualTo(ErrorCode.ATTESTATION_UNAVAILABLE)
     }
 
+    // ===== per-project challengeSecret（优先于 env；非法不回落）=====
+
+    private fun otherSecretB64(): String {
+        val s = "fedcba9876543210fedcba9876543210".toByteArray(Charsets.US_ASCII)
+        return Base64.getEncoder().encodeToString(s)
+    }
+
+    private fun configWithSecret(mode: AttestMode = AttestMode.OBSERVE, secret: String?): AttestConfig =
+        AttestConfig.parse(
+            mapOf(
+                "mode" to mode.name,
+                "challengeSecret" to secret,
+                "ios" to mapOf("teamId" to "ABCDE12345", "bundleId" to "com.example.antique", "env" to "production"),
+            ),
+        )
+
+    @Test
+    fun per_project_secret_takes_precedence_over_env() {
+        // env 配了 secretA，project 配了 secretB：签发/校验必须走 B（用 A 签的 challenge 判 challenge_invalid）
+        whenever(facade.findAttestConfig("p1")).thenReturn(configWithSecret(secret = otherSecretB64()))
+        val perProjectCodec = guard.challengeCodecFor(configWithSecret(secret = otherSecretB64()))!!
+        val challenge = perProjectCodec.issue("p1")
+
+        val envSigned = AttestChallengeCodec(listOf(secret)).issue("p1") // env secret 签的 → 应校验失败
+        whenever(verifier.verifyAttestation(any(), any(), any(), any(), any(), any()))
+            .thenReturn(AppAttestVerification.Invalid(AppAttestVerification.Reason.ATTESTATION_INVALID))
+        val v1 = guard.verifyProof(ctx, iosBundle(challenge), null)
+        assertThat(v1).isInstanceOf(AttestGuard.Verification.Invalid::class.java)
+        assertThat((v1 as AttestGuard.Verification.Invalid).reason).isEqualTo(AttestGuard.Reason.ATTESTATION_INVALID) // challenge 过了，挂在 verifier
+        val v2 = guard.verifyProof(ctx, iosBundle(envSigned), null)
+        assertThat((v2 as AttestGuard.Verification.Invalid).reason).isEqualTo(AttestGuard.Reason.CHALLENGE_INVALID)
+    }
+
+    @Test
+    fun per_project_secret_missing_falls_back_to_env() {
+        whenever(facade.findAttestConfig("p1")).thenReturn(configWithSecret(secret = null))
+        val challenge = guard.challengeCodecFor(configWithSecret(secret = null))!!.issue("p1") // = env codec
+        whenever(verifier.verifyAttestation(any(), any(), any(), any(), any(), any()))
+            .thenReturn(AppAttestVerification.Invalid(AppAttestVerification.Reason.ATTESTATION_INVALID))
+        val v = guard.verifyProof(ctx, iosBundle(challenge), null)
+        assertThat((v as AttestGuard.Verification.Invalid).reason).isEqualTo(AttestGuard.Reason.ATTESTATION_INVALID)
+    }
+
+    @Test
+    fun per_project_secret_invalid_records_problem_and_fails_closed_on_enforce() {
+        // 非法 per-project secret：parse 丢弃该值（challengeSecret=null → codec 层面回落 env），
+        // 但 problems 非空 → ENFORCE 下 isValidForEnforce=false → fail-closed 503002 路径
+        val bad = "!!!not-base64!!!"
+        val g = guardWith() // env 有合法 secret
+        val badConfig = configWithSecret(secret = bad)
+        assertThat(badConfig.challengeSecret).isNull()
+        assertThat(badConfig.isValid).isFalse()
+        assertThat(g.challengeCodecFor(badConfig)).isEqualTo(g.challengeCodec) // 回落 env
+        whenever(facade.findAttestConfig("p1")).thenReturn(configWithSecret(AttestMode.ENFORCE, secret = bad))
+        val v = g.verifyProof(ctx, null, null)
+        assertThat(v).isInstanceOf(AttestGuard.Verification.Unavailable::class.java)
+    }
+
+    @Test
+    fun per_project_secret_used_by_issueChallenge_without_env() {
+        val g = guardWith(secretRaw = "", global = true) // env 无 secret
+        whenever(facade.findAttestConfig("p1")).thenReturn(configWithSecret(secret = otherSecretB64()))
+        val challenge = g.issueChallenge("p1") // 走 per-project secret，成功签发
+        assertThat(challenge).isNotBlank()
+    }
+
     // ===== 辅助 =====
 
     private fun v0(): AttestGuard.Verification = AttestGuard.Verification.Unavailable(AttestGuard.Reason.CONFIG_INVALID)

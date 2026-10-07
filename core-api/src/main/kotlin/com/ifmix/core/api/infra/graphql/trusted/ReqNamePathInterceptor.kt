@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono
 /**
  * 从 GReq（persisted query）请求 URL path 解析 reqName 并放入 GraphQLContext，供 [TrustedDocumentProvider] 使用。
  *
- * GReq 入口：`POST /customer/core/greq/{reqName}`（如 `.../greq/q_ai_scan_getMyById`）。
+ * GReq 入口：`POST /customer/core/greq/{reqName}`（如 `.../greq/q_ai_scan_getById`）。
  * reqName = 前端 persisted query 标识，取 [GREQ_PATH_SEGMENT] 之后的**整段末尾**。
  *
  * 走 GQL raw query 入口（`/customer/core/gql`）的请求 path 里没有 `/greq/` 段 → reqName 为空

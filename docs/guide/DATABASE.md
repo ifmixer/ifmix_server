@@ -221,7 +221,7 @@ input CommonFindOptions {
   - **`receipt` / `fraud_metric` / `next_refresh_at` / `refresh_failure_count`**：core-job 回填 + fraud metric 刷新写入；`receipt_expires_at` 一期不写（保留列）。
   - **`signals` JSONB NOT NULL**：验证信号（固定键集合）；**`evidence` JSONB NULL**：佐证（不含原始 token），90 天后由 core-job 清空。
 - **`core_install.store_type`**：安装来源商店（10=APP_STORE / 20=GOOGLE_PLAY），客户端上报、write-once、仅统计（§5.9）。
-- **`core_project_server_config.app_attest_config`**：per-project 证明配置 JSONB（null=关），含 `mode`（OFF/OBSERVE/ENFORCE）与 `ios`/`android` 子对象；**服务端专属、绝不下发**（沿用该表约束）。
+- **`core_project_server_config.app_attest_config`**：per-project 证明配置 JSONB（null=关），含 `mode`（OFF/OBSERVE/ENFORCE）、`challengeSecret`（challenge 签名密钥，`current[,previous]` 各 32 字节 base64，每 app 独立；缺失回落 env `APP_ATTEST_CHALLENGE_SECRET`）与 `ios`/`android` 子对象；**服务端专属、绝不下发**（沿用该表约束）。
 
 ## Install 设备追踪（V5）
 

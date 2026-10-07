@@ -244,14 +244,15 @@ class WireCryptoTest {
     fun `filter decrypts request, encrypts response, keeps status`() {
         val client = TestClient(crypto.publicKey(1)!!, kid = 1)
         val req = MockHttpServletRequest("POST", "/customer/core/greq/m_demo_todo_getById").apply {
-            addHeader(RequestHeaders.WIREP_VERSION, "2")
+            // 加密请求不传 x-wirep-version（判定靠 Content-Type）
             contentType = "application/octet-stream"
             setContent(client.sealRequest("""{"q":1}""".toByteArray(), ts = System.currentTimeMillis()))
         }
         val res = runFilter(wireFilter(), req, status = 401)
         assertThat(res.status).isEqualTo(401)
         assertThat(res.contentType).isEqualTo("application/octet-stream")
-        assertThat(res.getHeader(RequestHeaders.WIREP_VERSION)).isEqualTo("2")
+        // 响应也不回传版本头
+        assertThat(res.getHeader(RequestHeaders.WIREP_VERSION)).isNull()
         assertThat(client.openResponse(res.contentAsByteArray).toString(Charsets.UTF_8))
             .isEqualTo("ct=application/json;hdr=application/json;cachedAttr=true;body=${"{\"q\":1}"}")
     }
@@ -261,7 +262,7 @@ class WireCryptoTest {
         val bad = runFilter(
             wireFilter(),
             MockHttpServletRequest("POST", "/customer/core/greq/m_demo_todo_deleteOne").apply {
-                addHeader(RequestHeaders.WIREP_VERSION, "2"); contentType = "application/octet-stream"; setContent(ByteArray(80))
+                contentType = "application/octet-stream"; setContent(ByteArray(80))
             },
         )
         assertThat(bad.status).isEqualTo(400)
@@ -272,7 +273,7 @@ class WireCryptoTest {
         val noKeys = runFilter(
             WireCryptoFilter("", WireCrypto.DEFAULT_MAX_DECOMPRESSED_BYTES, "required"),
             MockHttpServletRequest("POST", "/customer/core/greq/m_demo_todo_deleteOne").apply {
-                addHeader(RequestHeaders.WIREP_VERSION, "2"); contentType = "application/octet-stream"
+                contentType = "application/octet-stream"
                 setContent(TestClient(crypto.publicKey(1)!!, kid = 1).sealRequest("{}".toByteArray(), ts = System.currentTimeMillis()))
             },
         )
@@ -289,15 +290,25 @@ class WireCryptoTest {
         assertThat(plain.status).isEqualTo(400)
         assertThat(plain.contentAsString).isEqualTo("""{"code":"400004","msg":"wire encryption required","data":null}""")
 
-        // required 模式：x-wirep-version 版本不符 → 400 400004（无版本协商）
+        // required 模式：明文请求带头标记 x-wirep-version: 1 同样拒绝（标记不能替代加密）
+        val plainMarked = runFilter(
+            wireFilter(),
+            MockHttpServletRequest("POST", "/customer/core/greq/m_demo_todo_deleteOne").apply {
+                addHeader(RequestHeaders.WIREP_VERSION, "1"); contentType = "application/json"; setContent("{}".toByteArray())
+            },
+        )
+        assertThat(plainMarked.status).isEqualTo(400)
+        assertThat(plainMarked.contentAsString).isEqualTo("""{"code":"400004","msg":"wire encryption required","data":null}""")
+
+        // 头存在但非法值（如旧协议的 "2"）→ 400 400004
         val wrongVer = runFilter(
             wireFilter(),
             MockHttpServletRequest("POST", "/customer/core/greq/m_demo_todo_deleteOne").apply {
-                addHeader(RequestHeaders.WIREP_VERSION, "1"); contentType = "application/octet-stream"; setContent(ByteArray(80))
+                addHeader(RequestHeaders.WIREP_VERSION, "2"); contentType = "application/json"; setContent("{}".toByteArray())
             },
         )
         assertThat(wrongVer.status).isEqualTo(400)
-        assertThat(wrongVer.contentAsString).isEqualTo("""{"code":"400004","msg":"unsupported x-wirep-version: 1","data":null}""")
+        assertThat(wrongVer.contentAsString).isEqualTo("""{"code":"400004","msg":"unsupported x-wirep-version: 2","data":null}""")
 
         // required 模式：旧头名 x-proto-version 不识别；octet-stream 内容按密文处理 → 解密失败 400003
         val oldName = runFilter(
@@ -315,6 +326,7 @@ class WireCryptoTest {
         val plain = runFilter(
             wireFilter(mode = "optional"),
             MockHttpServletRequest("POST", "/customer/core/greq/m_demo_todo_deleteOne").apply {
+                addHeader(RequestHeaders.WIREP_VERSION, "1") // 明文标记 "1"
                 contentType = "application/json"; setContent("{}".toByteArray())
             },
         )
@@ -338,7 +350,6 @@ class WireCryptoTest {
         val payload = """{"meta":{"locale":"zh-CN","currency":"USD","unknownKey":"keep-me"},""" +
             """"authorization":"Bearer tok","query":"","variables":{"a":1}}"""
         val req = MockHttpServletRequest("POST", "/customer/core/greq/q_demo_todo_listMy").apply {
-            addHeader(RequestHeaders.WIREP_VERSION, "2")
             contentType = "application/octet-stream"
             setContent(client.sealRequest(payload.toByteArray(), ts = System.currentTimeMillis()))
         }
@@ -350,14 +361,14 @@ class WireCryptoTest {
     }
 
     /**
-     * 防御性行为固化：v3 头但空 body（无 setContent）→ 明文 400 + 400003。
+     * 防御性行为固化：octet-stream（加密标记）但空 body（无 setContent）→ 明文 400 + 400003。
      * 无 body 请求没有密钥材料（resKey 派生自请求内 enc），不可能"跳过解密、仍加密响应"；
      * 此测试防止未来被改成那种走不通的路。
      */
     @Test
-    fun `filter encrypted header with empty body returns plain 400003`() {
+    fun `filter encrypted content-type with empty body returns plain 400003`() {
         val res = runFilter(wireFilter(), MockHttpServletRequest("POST", "/customer/core/greq/m_demo_todo_deleteOne").apply {
-            addHeader(RequestHeaders.WIREP_VERSION, "2"); contentType = "application/octet-stream"
+            contentType = "application/octet-stream"
         })
         assertThat(res.status).isEqualTo(400)
         assertThat(res.contentAsString).isEqualTo("""{"code":"400003","msg":"bad encrypted payload","data":null}""")
@@ -368,7 +379,6 @@ class WireCryptoTest {
     fun `filter clock skew over 5min is warn-only, request still processed`() {
         val client = TestClient(crypto.publicKey(1)!!, kid = 1)
         val req = MockHttpServletRequest("POST", "/customer/core/greq/m_demo_todo_getById").apply {
-            addHeader(RequestHeaders.WIREP_VERSION, "2")
             contentType = "application/octet-stream"
             // ts = 1 小时前（> 5min 偏差）
             setContent(client.sealRequest("""{"q":1}""".toByteArray(), ts = System.currentTimeMillis() - 3_600_000L))

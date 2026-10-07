@@ -8,6 +8,7 @@ package com.ifmix.core.api.infra.attest
  * ```json
  * {
  *   "mode": "OBSERVE",
+ *   "challengeSecret": "<32字节base64>[,<previous>]",   // 可选；per-project challenge 签名密钥，缺省回落全局 env
  *   "ios": {
  *     "teamId": "ABCDE12345",
  *     "bundleId": "com.example.antique",
@@ -70,6 +71,12 @@ data class AttestConfig(
     val ios: IosAttestConfig?,
     val android: AndroidAttestConfig?,
     val problems: List<String>,
+    /**
+     * per-project challenge 签名密钥（`current[,previous]`，各 32 字节 base64）。可选：
+     * 缺失回落全局 env `APP_ATTEST_CHALLENGE_SECRET`；格式非法记入 [problems]（fail-closed）。
+     * 每 app 独立 secret：单个泄露只影响本 project 的 challenge 伪造面。
+     */
+    val challengeSecret: String? = null,
 ) {
     /** 配置整体可解析（无任何 problem）。 */
     val isValid: Boolean
@@ -99,13 +106,36 @@ data class AttestConfig(
 
             val ios = parseIos(raw[KEY_IOS], problems)
             val android = parseAndroid(raw[KEY_ANDROID], problems)
+            val challengeSecret = parseChallengeSecret(raw[KEY_CHALLENGE_SECRET], problems)
 
             return AttestConfig(
                 mode = mode ?: AttestMode.OBSERVE,
                 ios = ios,
                 android = android,
                 problems = problems,
+                challengeSecret = challengeSecret,
             )
+        }
+
+        /** `current[,previous]`，各 32 字节 base64；缺失 → null（回落 env），非法 → 记 problem。 */
+        private fun parseChallengeSecret(raw: Any?, problems: MutableList<String>): String? {
+            val value = when (raw) {
+                null -> return null
+                is String -> raw.trim().takeIf { it.isNotEmpty() } ?: return null
+                else -> {
+                    problems += "challengeSecret: expected a string"
+                    return null
+                }
+            }
+            val parts = value.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            val decoded = runCatching {
+                parts.take(2).map { java.util.Base64.getDecoder().decode(it) }
+            }.getOrNull()
+            if (parts.isEmpty() || parts.size > 2 || decoded == null || decoded.any { it.size != CHALLENGE_SECRET_LEN }) {
+                problems += "challengeSecret: invalid format (expected 32-byte base64 current[,previous])"
+                return null
+            }
+            return value
         }
 
         private fun parseIos(raw: Any?, problems: MutableList<String>): IosAttestConfig? {
@@ -191,6 +221,7 @@ data class AttestConfig(
 
         // ---- keys ----
         private const val KEY_MODE = "mode"
+        private const val KEY_CHALLENGE_SECRET = "challengeSecret"
         private const val KEY_IOS = "ios"
         private const val KEY_ANDROID = "android"
         private const val KEY_TEAM_ID = "teamId"
@@ -204,6 +235,8 @@ data class AttestConfig(
 
         private const val ENV_PRODUCTION = "production"
         private const val ENV_DEVELOPMENT = "development"
+
+        private const val CHALLENGE_SECRET_LEN = 32
 
         private fun Map<*, *>.optString(key: String, problems: MutableList<String>, required: Boolean = false): String? =
             when (val v = this[key]) {

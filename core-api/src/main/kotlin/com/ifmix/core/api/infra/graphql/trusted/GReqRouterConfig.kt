@@ -11,7 +11,7 @@ import org.springframework.web.servlet.function.ServerResponse
 /**
  * GReq（persisted query）HTTP 入口路由。
  *
- * 把 GReq 请求（如 `/customer/core/greq/q_ai_scan_getMyById`）映射到 Spring GraphQL 自动装配的
+ * 把 GReq 请求（如 `/customer/core/greq/q_ai_scan_getById`）映射到 Spring GraphQL 自动装配的
  * 同一个 [GraphQlHttpHandler]。因此 GReq 与 GQL（`spring.graphql.path`）共用同一套
  * WebGraphQlInterceptor 链与执行引擎，仅入口路径不同：
  *  - GQL `/customer/core/gql`：raw query，供 GraphiQL / 本地探索（Spring Boot 默认注册）。
