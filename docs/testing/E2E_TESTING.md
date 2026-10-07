@@ -80,6 +80,16 @@ core-api/src/test/kotlin/com/ifmix/core/api/
 
 ## 运行方式
 
+**已有轻量 HTTP 冒烟脚本**（2026-10-07 起）：`scripts/demo-e2e.mjs`——对运行中的本地 server（local profile，明文 `x-req-meta` 通道）跑 createIosInstall → updateInstall → createAnonymous → Todo CRUD 全链路 19 步。适合快速走查，不是本方案 Testcontainers 体系的替代：
+
+```bash
+# 前提：./scripts/restart.sh 已启动本地 server；DB 有 project（默认 antique）
+node scripts/demo-e2e.mjs
+# 可选 env：BASE_URL、PROJECT_ID
+```
+
+以下为 Testcontainers 方案的运行方式：
+
 ```bash
 # 本地运行全部 E2E
 ./gradlew :core-api:test --tests "com.ifmix.core.api.e2e.*"

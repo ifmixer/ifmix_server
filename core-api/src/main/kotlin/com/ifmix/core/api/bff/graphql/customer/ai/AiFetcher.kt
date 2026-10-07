@@ -11,7 +11,7 @@ import com.ifmix.core.api.infra.db.ModuleCtxFactory
 import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
-import com.ifmix.core.api.infra.jimmer.ActionContextHolder
+import com.ifmix.core.api.infra.graphql.RequestActionContext
 import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
 import com.ifmix.core.api.infra.ratelimit.RateLimitResult
 import com.ifmix.core.api.infra.ratelimit.Window
@@ -44,7 +44,8 @@ import com.netflix.graphql.dgs.InputArgument
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
-import org.dataloader.MappedBatchLoader
+import org.dataloader.BatchLoaderEnvironment
+import org.dataloader.MappedBatchLoaderWithContext
 
 @DgsComponent
 class AiFetcher(
@@ -281,9 +282,12 @@ class AiFetcher(
 class ScanRecordsDataLoader(
     private val scanRecordRepo: ScanRecordRepository,
     private val mcFactory: ModuleCtxFactory,
-) : MappedBatchLoader<UUID, ScanRecord?> {
-    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanRecord?>> {
-        val actionCtx = ActionContextHolder.current()
+) : MappedBatchLoaderWithContext<UUID, ScanRecord?> {
+    override fun load(ids: Set<UUID>, env: BatchLoaderEnvironment): CompletionStage<Map<UUID, ScanRecord?>> {
+        // 经 DgsContext 取请求级原 ctx（isMutation/preferReader 保持顶层构建值），不依赖 ThreadLocal
+        val actionCtx = requireNotNull(RequestActionContext.fromBatchLoader(env)?.actionContext) {
+            "No ActionContext in batch loader (scanRecords)"
+        }
         val mc = mcFactory.forProject(actionCtx)
         val projectId = actionCtx.mustGetProjectId()
         // owner-scoped：只返回当前 customer 名下的记录，非本人的 id 一律 null。
@@ -302,9 +306,11 @@ class ScanRecordsDataLoader(
 @DgsDataLoader(name = LatestDeepResearchDataLoader.NAME, caching = false)
 class LatestDeepResearchDataLoader(
     private val aiService: AiFacade,
-) : MappedBatchLoader<UUID, ScanDeepResearch?> {
-    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, ScanDeepResearch?>> {
-        val actionCtx = ActionContextHolder.current()
+) : MappedBatchLoaderWithContext<UUID, ScanDeepResearch?> {
+    override fun load(ids: Set<UUID>, env: BatchLoaderEnvironment): CompletionStage<Map<UUID, ScanDeepResearch?>> {
+        val actionCtx = requireNotNull(RequestActionContext.fromBatchLoader(env)?.actionContext) {
+            "No ActionContext in batch loader (latestDeepResearch)"
+        }
         val rows = aiService.findDeepResearchByIds(actionCtx, ids)
         val map = rows.associateBy { it.id }
         return CompletableFuture.completedFuture(ids.associateWith { map[it] })

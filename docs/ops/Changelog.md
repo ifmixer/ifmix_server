@@ -30,6 +30,12 @@
 - [ ] AI 惰性超时窗口与 runner 预算对齐（现仍 300s < 360s < 600s，慢任务被误杀）。
 - [ ] DeepResearch 缺 `premium_result` 判失败并重试（现为"AI 正常返回即 SUCCESS"，可落空报告）。
 
+### 2026-10-07 增补（demo E2E 走查修复）
+
+- **V17**：`core_demo_todo_item` 补 `note` 列——实体 `TodoItem.note` 与 schema 早已有该字段，建表迁移遗漏，任何写/读 note 的操作都会 500（column does not exist）。
+- **Fixed**：跨线程 ActionContext 传播（服务端内部）。DGS 虚拟线程模式下嵌套 resolver / DataLoader 在独立线程执行，ThreadLocal 不可靠：① `CreateAnonymousResult.customer` 嵌套 resolver 原 `ActionContextHolder.current()` 必炸 500；② 若在嵌套处重建 ctx，parent type 非 Mutation → `preferReader=true`，mutation 流程内的读会误走 reader 池。修复：删除 ThreadLocal 机制（`ActionContextHolder` 整体移除），新增 `RequestActionContext`（DGS custom context，随 DgsContext 进 GraphQLContext，与线程无关）作为唯一传播通道——每请求首个 `fromDfe` 构建后缓存复用，嵌套处拿到顶层原 ctx（isMutation/preferReader/actionName 保持原值），require* 仍逐项校验；4 个 DataLoader（todoItems/todoItemCounts/scanRecords/latestDeepResearch）改 `MappedBatchLoaderWithContext` 从 DgsContext 取 ctx。
+- **Added**：demo 全链路 E2E 脚本 `scripts/demo-e2e.mjs`（明文 dev 通道 `x-req-meta`；createIosInstall → updateInstall → createAnonymous → Todo CRUD 19 步）。
+
 ### 2026-10-06 增补（RPC 迁移与模块结构调整，客户端 breaking）
 
 - **39 个 reqName 全量改四段式**（客户端 breaking）：格式 `{q|m}_{namespace}_{resource}_{action}`（namespace 目前=module，resource 可为聚合根，不兼容形状变更加 V2 后缀）。客户端需同步更新 trusted documents 调用名（39 条全量名单即 `persisted-queries/customer/customer.json` 的 key）。

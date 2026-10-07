@@ -5,7 +5,6 @@ import com.ifmix.core.api.generated.types.CreateAnonymousResult
 import com.ifmix.core.api.infra.graphql.ActionContextProvider
 import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
-import com.ifmix.core.api.infra.jimmer.ActionContextHolder
 import com.ifmix.core.api.infra.ratelimit.RateLimitProperties
 import com.ifmix.core.api.infra.ratelimit.RateLimiter
 import com.ifmix.core.api.infra.ratelimit.RateLimitResult
@@ -85,7 +84,9 @@ class CustomerFetcher(
     fun customer(dfe: DgsDataFetchingEnvironment): Customer {
         val parent = dfe.getSource<CreateAnonymousResult>()
             ?: throw ApiError(ErrorCode.INTERNAL, "CreateAnonymousResult source missing")
-        val ctx = ActionContextHolder.current()
+        // 嵌套 fetcher 在独立虚拟线程上执行：fromDfe 复用本请求首个调用构建的原 ctx
+        //（RequestActionContext 随 DgsContext 跨线程，isMutation/preferReader/actionName 保持顶层原值）。
+        val ctx = ctxProvider.fromDfe(dfe, requireActorType = null)
         return customerFacade.findById(ctx, parent.customerId)
             ?: throw ApiError(ErrorCode.NOT_FOUND, "customer not found")
     }

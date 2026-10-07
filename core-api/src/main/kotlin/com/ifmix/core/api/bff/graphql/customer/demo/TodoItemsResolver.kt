@@ -2,14 +2,15 @@ package com.ifmix.core.api.bff.graphql.customer.demo
 
 import com.ifmix.core.api.entity.demo.Todo
 import com.ifmix.core.api.entity.demo.TodoItem
-import com.ifmix.core.api.infra.jimmer.ActionContextHolder
+import com.ifmix.core.api.infra.graphql.RequestActionContext
 import com.ifmix.core.api.modules.demo.DemoFacade
 import com.ifmix.core.api.modules.demo.repo.TodoItemCounts
 import com.netflix.graphql.dgs.DgsComponent
 import com.netflix.graphql.dgs.DgsData
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.DgsDataLoader
-import org.dataloader.MappedBatchLoader
+import org.dataloader.BatchLoaderEnvironment
+import org.dataloader.MappedBatchLoaderWithContext
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
@@ -46,10 +47,16 @@ class TodoItemsResolver {
 @DgsDataLoader(name = TodoItemsDataLoader.NAME, caching = false)
 class TodoItemsDataLoader(
     private val demoFacade: DemoFacade,
-) : MappedBatchLoader<UUID, List<TodoItem>> {
+) : MappedBatchLoaderWithContext<UUID, List<TodoItem>> {
 
-    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, List<TodoItem>>> {
-        val actionCtx = ActionContextHolder.current()
+    /** 经 DgsContext 取请求级原 ctx（isMutation/preferReader 保持顶层构建值），不依赖 ThreadLocal。 */
+    private fun actionCtx(env: BatchLoaderEnvironment) =
+        requireNotNull(RequestActionContext.fromBatchLoader(env)?.actionContext) {
+            "No ActionContext in batch loader (todoItems)"
+        }
+
+    override fun load(ids: Set<UUID>, env: BatchLoaderEnvironment): CompletionStage<Map<UUID, List<TodoItem>>> {
+        val actionCtx = actionCtx(env)
         val allItems = demoFacade.findItemsByTodoIds(actionCtx, ids)
         val grouped = allItems.groupBy { it.todoId }
         val result = ids.associateWith { grouped[it] ?: emptyList() }
@@ -64,10 +71,12 @@ class TodoItemsDataLoader(
 @DgsDataLoader(name = TodoItemCountsDataLoader.NAME, caching = false)
 class TodoItemCountsDataLoader(
     private val demoFacade: DemoFacade,
-) : MappedBatchLoader<UUID, TodoItemCounts> {
+) : MappedBatchLoaderWithContext<UUID, TodoItemCounts> {
 
-    override fun load(ids: Set<UUID>): CompletionStage<Map<UUID, TodoItemCounts>> {
-        val actionCtx = ActionContextHolder.current()
+    override fun load(ids: Set<UUID>, env: BatchLoaderEnvironment): CompletionStage<Map<UUID, TodoItemCounts>> {
+        val actionCtx = requireNotNull(RequestActionContext.fromBatchLoader(env)?.actionContext) {
+            "No ActionContext in batch loader (todoItemCounts)"
+        }
         val countsMap = demoFacade.countItemsByTodoIds(actionCtx, ids)
         val result = ids.associateWith { countsMap[it] ?: ZERO }
         return CompletableFuture.completedFuture(result)

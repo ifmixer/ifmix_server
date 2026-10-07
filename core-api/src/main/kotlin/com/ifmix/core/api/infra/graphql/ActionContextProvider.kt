@@ -10,6 +10,7 @@ import com.netflix.graphql.dgs.context.DgsContext
 import com.netflix.graphql.dgs.DgsDataFetchingEnvironment
 import com.netflix.graphql.dgs.internal.DgsWebMvcRequestData
 import graphql.schema.GraphQLObjectType
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.context.request.ServletRequestAttributes
 
@@ -17,6 +18,7 @@ import org.springframework.web.context.request.ServletRequestAttributes
 class ActionContextProvider(
     private val parser: RequestParser,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     /**
      * 从 DGS DataFetchingEnvironment 解析请求并构造 ActionContext。
@@ -36,6 +38,19 @@ class ActionContextProvider(
         requireCountry: Boolean = false,
         requireCurrency: Boolean = false,
     ): ActionContext {
+        // 本请求已构建过 → 直接复用（嵌套 resolver / DataLoader 拿到的是顶层构建的原 ctx：
+        // isMutation / preferReader / actionName 保持原值）。重建会让嵌套处按 parent type 判出
+        // isMutation=false → preferReader=true，mutation 流程内的读误走 reader 池。
+        // require* 是 fromDfe 的硬契约：复用时仍逐项校验（对已构建字段做检查，不再解析请求）。
+        RequestActionContext.fromDfe(dfe)?.actionContext?.let { cached ->
+            checkRequire(cached, requireAppId, requireActorType, requireLocale, requireCountry, requireCurrency)
+            log.debug(
+                "event=action_context.reuse action={} isMutation={} preferReader={} caller={}",
+                cached.actionName, cached.isMutation, cached.preferReader, dfe.field?.name,
+            )
+            return cached
+        }
+
         val requestData = DgsContext.getRequestData(dfe) as? DgsWebMvcRequestData
             ?: throw ApiError(ErrorCode.INTERNAL, "GraphQL context not found")
         val servletRequest = (requestData.webRequest as? ServletRequestAttributes)?.request
@@ -70,8 +85,35 @@ class ActionContextProvider(
             isMutation = isMutation,
             preferReader = !isMutation,
         )
-        com.ifmix.core.api.infra.jimmer.ActionContextHolder.set(ctx)
+        // 缓存进请求级容器（RequestActionContext，随 DgsContext 跨线程）——这是 ActionContext
+        // 唯一的传播通道；不再有 ThreadLocal。
+        RequestActionContext.fromDfe(dfe)?.actionContext = ctx
+        log.debug(
+            "event=action_context.build action={} isMutation={} preferReader={}",
+            ctx.actionName, ctx.isMutation, ctx.preferReader,
+        )
         com.ifmix.core.api.infra.http.LogContext.bind(ctx, servletRequest)
         return ctx
+    }
+
+    /** 复用缓存 ctx 时对 require* 的等价校验（与 RequestParser 首次构建的语义对齐）。 */
+    private fun checkRequire(
+        ctx: ActionContext,
+        requireAppId: Boolean,
+        requireActorType: ActorType?,
+        requireLocale: Boolean,
+        requireCountry: Boolean,
+        requireCurrency: Boolean,
+    ) {
+        if (requireAppId && ctx.projectId == null) {
+            throw ApiError(ErrorCode.INVALID_REQUEST, "projectId is required")
+        }
+        requireActorType?.let {
+            if (ctx.actorId == null) throw ApiError(ErrorCode.UNAUTHORIZED, "authentication required")
+            if (ctx.actorType != it) throw ApiError(ErrorCode.FORBIDDEN, "actor type not allowed for this endpoint")
+        }
+        if (requireLocale && ctx.locale == null) throw ApiError(ErrorCode.INVALID_REQUEST, "locale is required")
+        if (requireCountry && ctx.country == null) throw ApiError(ErrorCode.INVALID_REQUEST, "country is required")
+        if (requireCurrency && ctx.currency == null) throw ApiError(ErrorCode.INVALID_REQUEST, "currency is required")
     }
 }

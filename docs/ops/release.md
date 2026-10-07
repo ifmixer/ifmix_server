@@ -40,7 +40,7 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 
 1. 完成上述修复，全量 `./gradlew :core-api:test :core-job:test` 通过；本地 `:core-api:flywayMigrate` 从零库验证。
 2. **停服**（旧实例停止，≤10min 窗口）。
-3. `./gradlew :core-api:flywayMigrate`（V4–V16）。**V6 改 `install_id` 列类型（text→uuid）、V8 改 AI key 表名——迁移后旧代码写入即失败，必须先停机再迁移**（决策 7）。
+3. `./gradlew :core-api:flywayMigrate`（V4–V17）。**V6 改 `install_id` 列类型（text→uuid）、V8 改 AI key 表名——迁移后旧代码写入即失败，必须先停机再迁移**（决策 7）。
 4. 部署新 core-api（增量脚本 `scripts/deploy/sync-core-api.sh` + 健康检查），恢复流量。
 5. core-job 同步部署；三个 attest job **不配 cron**（决策 3）。
 6. env 核对：`AUTH_JWT_PRIVATE_KEY`（缺失启动即失败）、`APP_ATTEST_GLOBAL_ENABLED`（默认 false）、`APP_ATTEST_CHALLENGE_SECRET`。
@@ -56,6 +56,13 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 - **legacy 兼容整体删除**（决策 8）：fallback 开关链路 + legacy 限流计数器 + DateTime epoch millis。发布 env 不再需要 `APP_LEGACY_INSTALL_ID_FALLBACK`。
 - **customer/install 并入 auth 模块**：服务端内部结构（`modules/auth/{install,customer}`、`entity/auth/`）+ reqName namespace 变化（`m_auth_install_*`、`m_auth_customer_*`）。
 - **RPC URL 定稿 `POST /customer/core/greq/{reqName}`**：原 `/api/customer/core` 方案废弃；客户端 R0 已实现的 `/api/customer/core` URL 需在联调前同步调整。
+
+### v1.0.6 增量（2026-10-07：demo E2E 走查修复）
+
+- **V17**：`core_demo_todo_item` 补 `note` 列（实体/schema 早已有，建表迁移遗漏）。
+- 跨线程 ActionContext 传播改权威通道 `RequestActionContext`（DGS custom context，随 DgsContext 传递）：嵌套 resolver 复用顶层原 ctx（否则重建会把 mutation 内的读判成 preferReader=true 误走 reader 池）；4 个 DataLoader 改 `MappedBatchLoaderWithContext`。ThreadLocal 机制整体移除（`ActionContextHolder`/`ProjectScopedFilter.kt` 删除）。
+- 新增 demo E2E 脚本 `scripts/demo-e2e.mjs`（19 步全链路，19/19 通过；`:core-api:test :core-job:test` 全过）。
+- attest 无需新增绕过开关：`APP_ATTEST_GLOBAL_ENABLED` 默认 false 即全绕过（曾临时加 `APP_ATTEST_BYPASS`，与关掉全局开关无实质差异，已删除）。
 
 ### v1.0.6 风险与待办（2026-10-06 梳理）
 
