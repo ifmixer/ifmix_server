@@ -1,0 +1,38 @@
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/AuthJwtService.kt
+  h_b17efd5c751f9f 19,21,127
+  h_b17efd5c751f9f 22,40,57,99-100,110,112,126,130-135,138
+core-api/src/main/kotlin/com/ifmix/core/api/infra/auth/RequestParser.kt
+  h_b17efd5c751f9f 217-221,225-226
+  h_b17efd5c751f9f 180,200
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/ActionContextProvider.kt
+  h_b17efd5c751f9f 74-75
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/GraphQlHttpStatusFilter.kt
+  h_b17efd5c751f9f 13-14,17-22,26-27,29,55,62-63,65-69,72-110
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/AuthJwtServiceTest.kt
+  h_b17efd5c751f9f 4-9,13,17-18,24,35,37,41-55,57-88
+core-api/src/test/kotlin/com/ifmix/api/core/common/auth/RequestParserTest.kt
+  h_b17efd5c751f9f 229,299,309,331
+core-api/src/test/kotlin/com/ifmix/api/core/common/http/GraphQlHttpStatusFilterChainTest.kt
+  h_b17efd5c751f9f 73
+core-api/src/test/kotlin/com/ifmix/api/core/common/http/GraphQlHttpStatusFilterTest.kt
+  h_b17efd5c751f9f 3,6-7,11-13,19-30,33-43,46-54,57-65,68-72,75-79,82-85,88-96
+core-api/src/test/kotlin/com/ifmix/core/api/infra/http/RequestLoggingFilterTest.kt
+  h_b17efd5c751f9f 48-50
+docs/guide/ARCHITECTURE.md
+  h_b17efd5c751f9f 282
+docs/guide/AUTH_DESIGN.md
+  h_b17efd5c751f9f 102
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 33-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a15953228aba46be13f474a23f625ff757f6e413",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
