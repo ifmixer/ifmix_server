@@ -30,6 +30,14 @@
 - [ ] AI 惰性超时窗口与 runner 预算对齐（现仍 300s < 360s < 600s，慢任务被误杀）。
 - [ ] DeepResearch 缺 `premium_result` 判失败并重试（现为"AI 正常返回即 SUCCESS"，可落空报告）。
 
+### 2026-10-07 增补（token claim 收敛：act 并入 type）
+
+- **VerifiedToken 去掉 `actorType`**：access token 不再有 `act` claim，`signAccess` 按 actorType 参数直接构建 `type` claim（10=customer / 20=manager，即 actorType 编码；install=5 不变）。服务端主体类型一律由 `tokenType` 判定（`ActorType` 是 Int typealias，编码同值）；`isCustomer` getter 删除。
+- **`type` claim 必填**：`VerifiedToken.tokenType` 去掉默认值，token 缺 `type` claim 视为无效（verify 返回 null），不再兜底 10 兼容老 token。
+- **`ano` claim 可缺失**：`VerifiedToken.anonymous` 改为 `Boolean?`——claim 缺失为 null（不再兜底 false），`ActionContext.anonymous` 语义不变（null 归一为 false）。
+- **claim 类型不符不再 500**：token 验签通过但 claim 非法（`type` 非 Integer 等，typed getter 抛 ParseException）降级为无效 token——verify 返回 null，`parseToken` 抛 UNAUTHORIZED（"invalid token"），不再向上穿透异常。
+- **GraphQL 错误响应顶层注入 `code`/`msg`（客户端可见）**：`errors` 数组保留，顶层新增 `code`（= `errors[0].extensions.code`；GraphQL 校验/语法等框架级错误按 classification/errorType 推导兜底，推不出为 500000）与 `msg`（= `errors[0].message`），客户端统一按 `{code, msg, data}` 读取。由 `GraphQlHttpStatusFilter` 注入；兜底 code 不参与 HTTP status 映射（仍以 extensions.code 为准）。
+
 ### 2026-10-07 增补（请求解析职责收敛：filter 只解密，parser 只解析）
 
 - **`WireCryptoFilter` 收敛为纯加解密**：解密 body 原样透传（`{authorization, meta, query, variables}` 四键全保留，缓存到 request attribute 供 parser 取），headers 一律不动；不再解析 meta/authorization、不再剥键。

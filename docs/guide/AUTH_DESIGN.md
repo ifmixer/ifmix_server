@@ -99,7 +99,7 @@ customer 与 install 两个模块的**代码已并入 auth 模块**：
 - **非阻塞设计**：无效 token 不拦截，只是不填充 `customerId`
 - 需要强认证的接口由 Handler 层判断 `mc.action.customerId ?: throw ApiError(UNAUTHORIZED)`
 - OPTIONS 请求自动跳过（CORS preflight）
-- token claim：`sub=actorId, act=actorType(Int), aud=projectId, ano=anonymous`（见 `AuthJwtService`）
+- token claim：`sub=actorId, type=5/10/20（access token 的 type 即 actorType 编码，无独立 act claim；必填，缺失视为无效 token）, aud=projectId, ano=anonymous（可缺失，缺失时 VerifiedToken.anonymous=null，不与 false 混淆）`（见 `AuthJwtService`）
 
 ## 跨模块调用
 

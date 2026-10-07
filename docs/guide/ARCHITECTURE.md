@@ -279,6 +279,7 @@ DB (via Jimmer KSqlClient)
 - Webhook: `POST /webhooks/iap/*`（JWS 验签）
 - JWKS: `GET /.well-known/jwks`
 - REST 响应: `Envelope<T>` (`{code, msg, data}`)
+- GraphQL 错误响应: 标准 `errors` 数组保留，顶层同时注入 `code`（= `errors[0].extensions.code`，框架级错误按 classification/errorType 兜底推导，推不出为 500000）与 `msg`（= `errors[0].message`）——客户端可按统一的 `{code, msg, data}` 形状读取（`GraphQlHttpStatusFilter` 注入；兜底 code 不参与 HTTP status 映射）
 
 ### 请求上下文（meta）
 

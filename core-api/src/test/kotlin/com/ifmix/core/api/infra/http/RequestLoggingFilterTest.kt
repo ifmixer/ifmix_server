@@ -45,7 +45,9 @@ class RequestLoggingFilterTest {
     fun `inner status rewrite reaches outer logging filter and client, body intact`() {
         val res = run("/customer/core/greq/m_x")
         assertThat(res.status).isEqualTo(503)
-        assertThat(res.contentAsString).isEqualTo(body)
+        // body 经 GraphQlHttpStatusFilter 注入顶层 code/msg（errors 保留），仅此差异
+        assertThat(res.contentAsString)
+            .isEqualTo("""{"errors":[{"message":"x","extensions":{"code":"503000"}}],"code":"503000","msg":"x"}""")
         // filter 出口清理 ThreadLocal（虚拟线程池防泄漏）：本测试线程 MDC 里 rid 已被 clear
         assertThat(org.slf4j.MDC.get("rid")).isNull()
     }

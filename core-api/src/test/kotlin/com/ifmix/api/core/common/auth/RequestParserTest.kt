@@ -226,7 +226,7 @@ class RequestParserTest {
         assertThat(parser.parseToken(bodyReq(envelope(meta = """{"projectId":"$projectId"}""")), requireActorType = null)).isNull()
     }
     @Test fun `valid token returns VerifiedToken`() {
-        bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.CUSTOMER, anonymous = true))
+        bearer(VerifiedToken(actorId = actorId, projectId = projectId, anonymous = true, tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, installId = "00000000-0000-0000-0000-000000000002"))
         val a = parser.parseToken(
             bodyReq(envelope(meta = """{"projectId":"$projectId"}""", authorization = "tok")),
             requireActorType = ActorTypes.CUSTOMER,
@@ -249,7 +249,6 @@ class RequestParserTest {
         bearer(VerifiedToken(
             actorId = null,
             projectId = projectId,
-            actorType = ActorTypes.CUSTOMER,
             tokenType = AuthJwtService.TOKEN_TYPE_INSTALL,
             installId = "00000000-0000-0000-0000-000000000002",
         ))
@@ -267,7 +266,6 @@ class RequestParserTest {
         bearer(VerifiedToken(
             actorId = null,
             projectId = projectId,
-            actorType = ActorTypes.CUSTOMER,
             tokenType = AuthJwtService.TOKEN_TYPE_INSTALL,
             installId = "00000000-0000-0000-0000-000000000002",
         ))
@@ -284,7 +282,6 @@ class RequestParserTest {
         bearer(VerifiedToken(
             actorId = actorId,
             projectId = projectId,
-            actorType = ActorTypes.CUSTOMER,
             tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER,
             installId = "00000000-0000-0000-0000-000000000002",
         ))
@@ -299,7 +296,7 @@ class RequestParserTest {
 
     @Test fun `token aud mismatch (cross-app) throws UNAUTHORIZED`() {
         // token.aud != meta.projectId → UNAUTHORIZED（防跨 app 重放）
-        bearer(VerifiedToken(actorId = actorId, projectId = "other-app", actorType = ActorTypes.CUSTOMER))
+        bearer(VerifiedToken(actorId = actorId, projectId = "other-app", tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, installId = "00000000-0000-0000-0000-000000000002"))
         val ex = assertThrows<ApiError> {
             parser.parseToken(
                 bodyReq(envelope(meta = """{"projectId":"$projectId"}""", authorization = "tok")),
@@ -309,7 +306,7 @@ class RequestParserTest {
         assertThat(ex.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
     }
     @Test fun `wrong actorType throws FORBIDDEN`() {
-        bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.MANAGER))
+        bearer(VerifiedToken(actorId = actorId, projectId = projectId, tokenType = AuthJwtService.TOKEN_TYPE_MANAGER))
         val ex = assertThrows<ApiError> {
             parser.parseToken(
                 bodyReq(envelope(meta = """{"projectId":"$projectId"}""", authorization = "tok")),
@@ -331,7 +328,7 @@ class RequestParserTest {
 
     // ── peekActorId：不抛 ──
     @Test fun `peekActorId returns actorId for valid, null otherwise`() {
-        bearer(VerifiedToken(actorId = actorId, projectId = projectId, actorType = ActorTypes.CUSTOMER))
+        bearer(VerifiedToken(actorId = actorId, projectId = projectId, tokenType = AuthJwtService.TOKEN_TYPE_CUSTOMER, installId = "00000000-0000-0000-0000-000000000002"))
         assertThat(parser.peekActorId(bodyReq(envelope(meta = """{"projectId":"$projectId"}""", authorization = "tok"))))
             .isEqualTo(UUID.fromString(actorId))
         assertThat(parser.peekActorId(plainReq())).isNull()

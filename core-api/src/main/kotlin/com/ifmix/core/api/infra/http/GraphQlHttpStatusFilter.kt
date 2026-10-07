@@ -10,15 +10,23 @@ import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import org.springframework.web.util.ContentCachingResponseWrapper
 import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.ObjectNode
 
 /**
- * 把 GraphQL response 的 `errors[0].extensions.code` 前 3 位映射为 HTTP 状态码。
+ * GraphQL response 适配：
+ * 1. 顶层注入 `code` / `msg`——客户端统一契约是 `{code, msg, data}`（Envelope），GraphQL 的
+ *    `errors` 数组照留不删，但顶层必须有 code/msg（取自第一个 error：`extensions.code` / `message`）。
+ *    非业务 error（GraphQL 校验/语法错误等，无 extensions.code）按 classification/errorType
+ *    推导兜底 code，避免顶层缺字段。
+ * 2. 把 `errors[0].extensions.code` 前 3 位映射为 HTTP 状态码。
  *
  * 背景：GraphQL over HTTP（legacy JSON）恒返回 200，业务错误码放在 body 里。为让
  * CF/nginx/客户端能直接按 HTTP status 判断，这里读 response body 的第一个 error 的
- * `extensions.code`（如 `"401000"`），取前 3 位（`401`）设为 HTTP status。
+ * `extensions.code`（如 `"401000"`），取前 3 位（`401`）设为 HTTP status。兜底推导的 code
+ * 不参与 status 映射（无 extensions.code 时保持 handler 原状态）。
  *
- * - 无 errors（或无法解析出 code）→ 不改动，保持 handler 原状态（成功即 200）。
+ * - 无 errors（成功响应）→ body 原样透传，不注入、不缓冲重写。
  * - 仅作用于 GraphQL/GReq 端点（[GRAPHQL_PATH_MARKERS]），其余请求直接放行不缓冲。
  *
  * @Order 高优先级：包在业务之外，确保改后的 status 对客户端生效；
@@ -44,28 +52,63 @@ class GraphQlHttpStatusFilter(private val mapper: ObjectMapper) : OncePerRequest
         try {
             filterChain.doFilter(request, wrapped)
         } finally {
-            statusFromBody(wrapped.contentAsByteArray)?.let { wrapped.status = it }
+            rewriteBody(wrapped)
             // 必须 copyBodyToResponse，否则客户端收不到响应体。
             wrapped.copyBodyToResponse()
         }
     }
 
     /**
-     * 从 GraphQL response body 解析 `errors[0].extensions.code` 前 3 位为 HTTP status。
-     * 无 errors / 无 code / code 非法 → null（不改状态）。
+     * 有 errors 时：注入顶层 `code`/`msg`，并按 extensions.code 前 3 位设 HTTP status。
+     * body 无法解析 / 无 errors → 原样放行。
      */
-    private fun statusFromBody(body: ByteArray): Int? {
-        if (body.isEmpty()) return null
-        val code = try {
-            val root = mapper.readTree(body)
-            root.get("errors")?.takeIf { it.isArray && !it.isEmpty }
-                ?.get(0)?.get("extensions")?.get("code")?.asString()
+    private fun rewriteBody(wrapped: ContentCachingResponseWrapper) {
+        val body = wrapped.contentAsByteArray
+        if (body.isEmpty()) return
+        val root = try {
+            mapper.readTree(body)
         } catch (e: Exception) {
             log.debug("GraphQlHttpStatusFilter: cannot parse response body. error={}", e.message)
-            return null
+            return
         }
-        if (code.isNullOrBlank() || code.length < 3) return null
-        return code.take(3).toIntOrNull()?.takeIf { it in 100..599 }
+        val firstError = root.get("errors")?.takeIf { it.isArray && !it.isEmpty }?.get(0) ?: return
+
+        val code = firstError.get("extensions")?.get("code")?.asString()
+        code?.take(3)?.toIntOrNull()?.takeIf { it in 100..599 }?.let { wrapped.status = it }
+
+        val obj = root as? ObjectNode ?: return
+        obj.put("code", code ?: fallbackCode(firstError))
+        firstError.get("message")?.asString()?.let { obj.put("msg", it) }
+        try {
+            val rewritten = mapper.writeValueAsBytes(root)
+            wrapped.resetBuffer()
+            wrapped.outputStream.write(rewritten)
+        } catch (e: Exception) {
+            // 注入失败按原 body 返回（status 映射已生效），不影响错误送达。
+            wrapped.resetBuffer()
+            wrapped.outputStream.write(body)
+            log.warn("GraphQlHttpStatusFilter: inject code/msg failed. error={}", e.message)
+        }
+    }
+
+    /**
+     * 无 extensions.code 的 error（GraphQL 校验/语法/超时等框架级错误）的兜底 code：
+     * 从 errorType/classification 推导客户端错误类；推不出 → 500000。
+     */
+    private fun fallbackCode(firstError: JsonNode): String {
+        val kind = firstError.get("extensions")?.let { ext ->
+            ext.get("errorType")?.asString() ?: ext.get("classification")?.asString()
+        } ?: return "500000"
+        return when {
+            kind.contains("Unauthorized", ignoreCase = true) -> "401000"
+            kind.contains("Forbidden", ignoreCase = true) -> "403000"
+            kind.contains("NotFound", ignoreCase = true) -> "404000"
+            kind.contains("Validation", ignoreCase = true) ||
+                kind.contains("Syntax", ignoreCase = true) ||
+                kind.contains("BadRequest", ignoreCase = true) ||
+                kind.contains("OperationNotSupported", ignoreCase = true) -> "400000"
+            else -> "500000"
+        }
     }
 
     companion object {

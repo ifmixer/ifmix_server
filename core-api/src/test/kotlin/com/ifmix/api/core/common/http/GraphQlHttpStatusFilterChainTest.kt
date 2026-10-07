@@ -70,5 +70,6 @@ class GraphQlHttpStatusFilterChainTest {
         filter.doFilter(req, res, chain)
 
         assertThat(res.status).`as`("outer filter should still override to 400").isEqualTo(400)
+        assertThat(res.contentAsString).`as`("outer filter should still inject code/msg").contains("\"code\":\"400000\"").contains("\"msg\":\"boom\"")
     }
 }

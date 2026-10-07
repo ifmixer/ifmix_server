@@ -71,7 +71,8 @@ class ActionContextProvider(
         val ctx = ActionContext(
             projectId = meta.projectId,
             actorId = principal?.actorId?.toUuidOrNull(),
-            actorType = principal?.actorType,
+            // access token 的 type claim 即 actorType 编码（10=customer / 20=manager）
+            actorType = principal?.tokenType,
             anonymous = principal?.anonymous ?: false,
             sessionId = principal?.sessionId,
             locale = meta.locale,

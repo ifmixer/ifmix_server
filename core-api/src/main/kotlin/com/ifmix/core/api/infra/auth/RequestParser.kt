@@ -177,7 +177,7 @@ class RequestParser(
     /**
      * 解析并校验 token——遇到问题**直接抛**（不经中间状态）。直接返回 JWT 的 [VerifiedToken]，不做二次包装：
      * - 没带 token：requireActorType!=null（需登录）→ UNAUTHORIZED；否则返回 null。
-     * - 带了 token：过期→TOKEN_EXPIRED；验签失败→UNAUTHORIZED（invalid token: signature…）；
+     * - 带了 token：过期→TOKEN_EXPIRED；验签失败或 claim 非法（缺失/类型不符）→UNAUTHORIZED（invalid token）；
      *   跨 app（aud≠meta.projectId）→ UNAUTHORIZED（invalid token: app mismatch）；
      *   非 install token 缺 subject→UNAUTHORIZED。
      * - requireActorType != null：install token（无 sub，只带 iid）→ UNAUTHORIZED（customer authentication
@@ -197,7 +197,7 @@ class RequestParser(
             jwt.verify(token)
         } catch (_: TokenExpiredException) {
             throw ApiError(ErrorCode.TOKEN_EXPIRED, "access token expired")
-        } ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token: signature verification failed")
+        } ?: throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token")
 
         // aud 校验：token 的 projectId(aud) 必须与 meta.projectId 一致，防跨 app 重放 token。
         val metaAppId = parseMeta(request).projectId
@@ -214,10 +214,16 @@ class RequestParser(
     }
 
     private fun checkToken(token: VerifiedToken, requireActorType: ActorType?): VerifiedToken {
+        if(token.tokenType == AuthJwtService.TOKEN_TYPE_INSTALL || token.tokenType == AuthJwtService.TOKEN_TYPE_CUSTOMER){
+            if(token.installId == null){
+                throw ApiError(ErrorCode.UNAUTHORIZED, "invalid token, require install")
+            }
+        }
         if (requireActorType == null) return token
         if (token.tokenType == AuthJwtService.TOKEN_TYPE_INSTALL)
             throw ApiError(ErrorCode.UNAUTHORIZED, "customer authentication required")
-        if (token.actorType != requireActorType)
+        // access token 的 type claim 即 actorType 编码（10/20），直接与 requireActorType 比较
+        if (token.tokenType != requireActorType)
             throw ApiError(ErrorCode.FORBIDDEN, "actor type not allowed for this endpoint")
         return token
     }
