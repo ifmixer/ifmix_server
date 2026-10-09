@@ -1,0 +1,30 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 296-300
+docs/version/v1.0.7/todo.md
+  h_b17efd5c751f9f 1-10
+.workbuddy/memory/2026-10-09.md
+  h_b17efd5c751f9f 1-46
+AGENTS.md
+  h_b17efd5c751f9f 34-35
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiApiKeyStore.kt
+  h_b17efd5c751f9f 25-30,102-111,113-127
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiConfig.kt
+  h_b17efd5c751f9f 37,104-105,116,119
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiApiKeyStoreTest.kt
+  h_b17efd5c751f9f 18-24,48,183-217
+docs/design/ai/api-key-disable-and-probe-skip.md
+  h_b17efd5c751f9f 75,78-83,102-104,107-109,112-115,156,158-159,185,194,198
+docs/ops/AI_KEY_POOL_OPS.md
+  h_b17efd5c751f9f 1-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55d0bc074bfa06517bbec514345636a90e1a10ba",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
