@@ -1,0 +1,49 @@
+docs/ops/release.md
+  h_b17efd5c751f9f 44,46-105
+  h_b17efd5c751f9f 45
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/GReqRouterConfig.kt
+  h_b17efd5c751f9f 14
+docs/testing/GRAPHQL_TRUSTED_DOCUMENTS.md
+  h_b17efd5c751f9f 14,26-27,103
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 44,79
+docs/design/infra/idempotency.md
+  h_b17efd5c751f9f 296
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/ai/AiFetcher.kt
+  h_b17efd5c751f9f 63
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/PersistedQueryStore.kt
+  h_b17efd5c751f9f 27,39
+docs/ops/DEPLOY.md
+  h_b17efd5c751f9f 142-143
+core-api/src/main/resources/schema/customer/ai.graphqls
+  h_b17efd5c751f9f 240,244
+core-api/src/test/kotlin/com/ifmix/api/core/graphql/trusted/ReqNamePathInterceptorTest.kt
+  h_b17efd5c751f9f 22
+docs/design/ai/deep-research-async.md
+  h_b17efd5c751f9f 91,285,290,323,356,360
+core-api/src/main/kotlin/com/ifmix/core/api/infra/graphql/trusted/ReqNamePathInterceptor.kt
+  h_b17efd5c751f9f 13
+docs/design/notification/scan-async-notification-push.md
+  h_b17efd5c751f9f 75,288
+core-api/src/main/resources/application-prod.yml
+  h_b17efd5c751f9f 41
+docs/design/install/install-customer-hardening.md
+  h_b17efd5c751f9f 331
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 33
+core-api/src/main/kotlin/com/ifmix/core/api/bff/RootController.kt
+  h_b17efd5c751f9f 21
+scripts/deploy/db-init/README.md
+  h_b17efd5c751f9f 6,9-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0756797a761b0bb8b6dc20ee945bcb04189cadc",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
