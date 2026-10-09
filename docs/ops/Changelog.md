@@ -2,7 +2,7 @@
 
 本文件按时间倒序记录 core-api 面向客户端/数据库的变更。DateTime 用 ISO-8601；数据库变更标注对应 Flyway 版本。
 
-## 未发布（v1.0.6，2026-10-05 整理）
+## 已发布（v1.0.6，2026-10-05 整理）
 
 相对 v1.0.3 的全部变更（feature/install + feature/attest 已合入 main）。发布步骤与决策记录见 `docs/ops/release.md`「v1.0.6 发布计划」。
 
