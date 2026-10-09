@@ -1,0 +1,14 @@
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "595764d988f0bfafd802513497c80c72bcef8745",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
