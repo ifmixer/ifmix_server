@@ -1,0 +1,10 @@
+1. 排查问题
+{"@timestamp":"2026-10-09T06:17:56.880871558Z","@version":"1","message":"pg-writer - Failed to validate connection org.postgresql.jdbc.PgConnection@68a0d15a (This connection has been closed.). Possibly consider using a shorter maxLifetime value.","logger_name":"com.zaxxer.hikari.pool.PoolBase","thread_name":"pg-writer:housekeeper","level":"WARN","level_value":30000}
+2. agnes-3.0-flash 下载图片经常失败,agnes-2.5-flash 几乎没有遇到过.  检查对于这种错误是否有重试, 如果没有需要加上重试.
+{"@timestamp":"2026-10-09T15:51:31.771301299Z","@version":"1","message":"Scan AI call failed. projectId=antique, scanId=01a1215c-901e-756d-b963-d1f70cc3c645","logger_name":"com.ifmix.core.api.modules.ai.ScanTaskService","thread_name":"virtual-2904","level":"WARN","level_value":30000,"stack_trace":"com.ifmix.core.api.infra.http.ApiError: AI rejected the request (invalid image or input)\n\tat com.ifmix.core.api.modules.ai.service.SpringAiScanRunner.run(SpringAiScanRunner.kt:248)\n\tat com.ifmix.core.api.modules.ai.ScanTaskService.doRun(ScanTaskService.kt:48)\n\tat com.ifmix.core.api.modules.ai.ScanTaskService.runTask(ScanTaskService.kt:35)\n\tat com.ifmix.core.api.modules.ai.ScanTaskService.submit$lambda$0(ScanTaskService.kt:30)\n\tat java.base/java.util.concurrent.ThreadPerTaskExecutor$TaskRunner.run(ThreadPerTaskExecutor.java:291)\n\tat java.base/java.lang.VirtualThread.run(VirtualThread.java:460)\n"}
+3. `updated_at 不能当禁用时间：应用的禁用是 createUpdate 局部更新，只写 enabled 列、不动 updated_at。10-07 被自动禁用的 8 行，updated_at 全部还是 9-17 bulk insert 时的时间点。凡是 updated_at 变了的禁用行，都是人工/脚本 SQL 干的。` 这个需要改, 要更新 updated_at.
+4. api key: AiApiKeyStore + AiConfig 两个文件：
+disableKeyFn 签名改为 (String) -> Boolean（true = DB 已确认该 key 不在 enabled 集合，含 affected=0 的重复禁用；异常 → false）
+新增 AiApiKeyStore.evict()；disableKey() 变成 写成功才剔除（写失败不剔除——那时 Redis 冷却 + 重载是唯一兜底，提前剔除反而让还能用的 key 白掉一个轮换位）
+剔除后列表为空时 cached() 判空 → 下次立即重载，不会误报空池
+3.runAiScan 不用校验用户 quota,  目前是无穷大, 检查没有意义.

@@ -293,11 +293,11 @@ class ScanAggHandler(
     fun runAiScan(mc: ModuleCtx, input: NewScanInput): AiScanResult {
         val actionCtx = mc.action
         // 前置配额校验（AI 调用前拒绝，省下 AI 成本）；并发兜底见 saveNewScan 的原子自增。
-        val actorId = actionCtx.mustGetActorId()
-        val used = scanMetricsRepo.findCounts(mc, actionCtx.mustGetProjectId(), actorId)?.first ?: 0
-        if (used >= scanQuota.scan) throw com.ifmix.core.api.infra.http.ApiError(
-            com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "scan quota exhausted"
-        )
+//        val actorId = actionCtx.mustGetActorId()
+//        val used = scanMetricsRepo.findCounts(mc, actionCtx.mustGetProjectId(), actorId)?.first ?: 0
+//        if (used >= scanQuota.scan) throw com.ifmix.core.api.infra.http.ApiError(
+//            com.ifmix.core.api.infra.http.ErrorCode.QUOTA_EXCEEDED, "scan quota exhausted"
+//        )
         val scanId = UuidV7.generate()
         val now = Instant.now()
 

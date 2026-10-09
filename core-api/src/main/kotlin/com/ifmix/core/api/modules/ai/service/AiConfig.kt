@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicLong
  * 的永久禁用是 best-effort 副作用——DB 写失败只限频 WARN、Redis 1h 冷却仍在、300s 后列表重载移出，
  * 因此 **任何异常都不得逃出 disableKeyFn**（catch Exception 整体收敛而非按类型列举——
  * Jimmer 异常不经 Spring 翻译、不是 DataAccessException，按类型列举兜不住）。
+ * 写成功后 [AiApiKeyStore] 会把 key 从本地列表立即剔除，不再等 300s 重载（该窗口原先只靠 Redis 冷却兜）。
  */
 @Configuration
 class AiConfig(
@@ -100,6 +101,8 @@ class AiConfig(
             // 失效 key 的永久禁用（不可逆，需人工恢复）。best-effort 副作用：任何异常在此收敛
             // （Jimmer 异常不经 Spring 翻译、不是 DataAccessException，catch Exception 整体兜住），
             // 绝不向 runner 逃逸导致扫描失败；DB 故障时 Redis 1h 冷却 + 300s 列表重载仍能把 key 移出。
+            // 返回值语义：true = DB 已确认该 key 不在 enabled 集合（写成功；affected=0 的重复禁用同样是"已不在"），
+            // AiApiKeyStore 据此把 key 从本地列表立即剔除——不再依赖下一次列表重载。
             try {
                 val affected = sqlClient.createUpdate(AiApiKey::class) {
                     where(table.id eq UUID.fromString(keyId))
@@ -110,8 +113,10 @@ class AiConfig(
                 } else {
                     log.info("AI API key disable was a no-op (already disabled or deleted). keyId={}", keyId)
                 }
+                true
             } catch (e: Exception) {
                 warnDegraded("disable key (PG enabled=false)", "db write failed (Redis 1h cooldown still active; retry is idempotent)", e)
+                false
             }
         },
         probeWindow = probeWindow,

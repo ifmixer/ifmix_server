@@ -72,9 +72,15 @@ AiConfig:       val affected = sqlClient.createUpdate(AiApiKey::class) {   // �
                 }.execute()
                 affected > 0 → WARN（key 已禁用，提示运营确认）
                 affected = 0 → INFO（已禁用或已删除，幂等 no-op）
-                catch (e: Exception) → warnDegraded（禁用是 best-effort 副作用，整体收敛：
+                catch (e: Exception) → warnDegraded + return false（禁用是 best-effort 副作用，整体收敛：
                     Jimmer 异常不经 Spring 翻译、不是 DataAccessException，按类型列举兜不住；
                     不变量 =「任何异常不得逃出 disableKeyFn」）
+                返回值 Boolean：true = DB 已确认该 key 不在 enabled 集合（写成功，含 affected=0 的重复禁用）；
+                  false = 写失败
+
+AiApiKeyStore:  disableKey(keyId) = if (disableKeyFn(keyId)) evict(keyId)
+                evict 把该 key 从本进程列表立即剔除（2026-10-09 加，见 §完整时序）：
+                  禁用不再等 300s 列表重载才生效，也就不必依赖 Redis 冷却去兜那段窗口
 
 warnDegraded 参数化：现有实现硬编码 "redis failed (fail-open, cooldown disabled ...)"，
 DB 写失败复用会打出与实际故障/后果都不符的误导消息——op 与原因改为入参（Redis 路径消息不变），
@@ -93,14 +99,19 @@ Jimmer 局部更新用 `createUpdate(...).execute()`（项目已有 6 处先例�
 
 ```
 类型化 401 → markCooldown(Redis 1h) + disableKey(PG enabled=false)
-  ├─ t < 300s：key 仍在内存列表（REFRESH_TTL_SEC），但 Redis 1h 冷却覆盖
-  │            → pick 的 MGET 判冷却跳过（1h > 300s，窗口被覆盖住）
-  └─ t ≥ 300s：loadKeys 重载，where(enabled eq true) 过滤掉 → 永久移出轮换
+  ├─ 本地：写库成功 → AiApiKeyStore.evict 立即把 key 从本进程列表剔除（2026-10-09 起，
+  │        原先要等 REFRESH_TTL_SEC=300s 重载）
+  └─ 其他实例：仍各自缓存，最长 300s 后重载剔除；这段窗口由 Redis 1h 冷却覆盖
 
 降级链：
-  DB 写失败     → 限频 WARN，Redis 1h 冷却仍在；1h 后 key 回池再次 401 时重试禁用（幂等）
-  Redis 同时故障 → 300s 内重复 401、重复尝试禁用（幂等无副作用），300s 后列表刷新彻底移出
+  DB 写失败     → 限频 WARN，**不本地剔除**（此时 Redis 1h 冷却 + 300s 重载是唯一兜底；
+                  提前剔除会让一个其实还能用的 key 白掉一个轮换位），1h 后回池再 401 时重试禁用（幂等）
+  Redis 同时故障 → 最多再 401 一次（本实例已剔除；其余实例等重载），禁用幂等 + MAX_ATTEMPTS_PER_MODEL=4 上界兜住
 ```
+
+为什么不本地剔除反而更危险：列表陈旧窗口原先**只**由 Redis 冷却守护——一旦冷却键丢失（Redis 重启：
+生产 `appendonly=no` + RDB 定时落盘）或 MGET 降级 fail-open，已禁用的 key 会被再挑出去一次
+（2026-10-09 排查记录的正是这条路径）。写成功即剔除把这层依赖去掉，Redis 只剩跨实例同步这一个职责。
 
 **误杀面三层控制**：类型化异常（而非兜底短语）+ ERROR 日志（1h 发现窗口）+ Redis 1h 缓冲。恢复方式：运营改 `enabled=true` 或删除该行。
 
@@ -142,10 +153,10 @@ attempt3: [k10..k14] 命中 k12 → 游标 +1，返回 k12      # 3 次 attempt 
 
 | 文件 | 改动 |
 |---|---|
-| `core-api/.../modules/ai/service/AiApiKeyStore.kt` | `pick()` 全冷却跳跃；新增 `disableKeyFn` seam + `disableKey()` |
+| `core-api/.../modules/ai/service/AiApiKeyStore.kt` | `pick()` 全冷却跳跃；新增 `disableKeyFn` seam + `disableKey()`；2026-10-09：`disableKeyFn` 改 `(String) -> Boolean`，新增 `evict()`，写库成功即本地剔除 |
 | `core-api/.../modules/ai/service/SpringAiScanRunner.kt` | `KeyFailure` data class；`classify` 返回类型；catch 分支调 `disableKey` + 日志分级 |
-| `core-api/.../modules/ai/service/AiConfig.kt` | 组装 `disableKeyFn`（`createUpdate().execute()` 局部更新 + `catch (e: Exception)` 收敛）；`warnDegraded` 消息参数化；新增 `id` 扩展属性与 `UUID` import；顺带删除未使用的 `aiApiKeyRepo` 注入（死代码，已验证无引用） |
-| `core-api/src/test/.../modules/ai/AiApiKeyStoreTest.kt` | Fake 提供 `disableKeyFn`；新增全冷却跳跃 / `probe=1` 退化用例 |
+| `core-api/.../modules/ai/service/AiConfig.kt` | 组装 `disableKeyFn`（`createUpdate().execute()` 局部更新 + `catch (e: Exception)` 收敛）；`warnDegraded` 消息参数化；新增 `id` 扩展属性与 `UUID` import；顺带删除未使用的 `aiApiKeyRepo` 注入（死代码，已验证无引用）；2026-10-09：`disableKeyFn` 返回 Boolean（写成功/已停用 = true，异常 = false） |
+| `core-api/src/test/.../modules/ai/AiApiKeyStoreTest.kt` | Fake 提供 `disableKeyFn`；新增全冷却跳跃 / `probe=1` 退化用例；2026-10-09：Fake 支持 `disableSucceeds`，新增「禁用后立即不再被 pick」「写失败不剔除」「剔除到空触发重载」3 个用例 |
 | `core-api/src/test/.../modules/ai/SpringAiScanRunnerClassifyTest.kt` | 断言从 `Pair` 改 `KeyFailure`；新增类型化 vs 兜底 `typedInvalidKey` 用例 |
 | `core-api/src/test/.../modules/ai/SpringAiScanRunnerDisableTest.kt`（新增） | mock `ChatClient.prompt().call()` 抛 `UnauthorizedException` → 断言 `disableKey` 被调；message 兜底异常 → 只 `markCooldown` 不禁用；`disableKeyFn` 抛任意异常 → 主流程不中断（runner 侧对 seam 返回值无依赖，天然不中断） |
 | `core-api/src/test/.../modules/ai/AiConfigDisableKeyFnTest.kt`（新增） | 纯单测（stub `KSqlClient`，不依赖 DB）：更新抛 `RuntimeException` / `DataAccessException` / `IllegalArgumentException` → `disableKey` 均不外抛（锁「任何异常不逃出 disableKeyFn」不变量）；正常返回 affected 计数 |
@@ -171,7 +182,7 @@ attempt3: [k10..k14] 命中 k12 → 游标 +1，返回 k12      # 3 次 attempt 
 ## 已知取舍
 
 - **message 兜底命中的真失效 key 只冷却不禁用**：该 key 每 1h 回池一次烧最多 4 次尝试，直到下次被类型化异常命中才禁用。换取的是不误杀好 key——与 `classify` 删除纯数字匹配同源的风险权衡。
-- **禁用与 300s 列表缓存的窗口不填新机制**：靠 Redis 1h 冷却覆盖（1h > 300s）；Redis 同时故障的窗口内靠禁用幂等 + `MAX_ATTEMPTS_PER_MODEL=4` 上界兜住。
+- **跨实例的陈旧窗口仍靠 Redis 冷却覆盖**：本实例写成功后立即剔除；其他实例（若有）各自缓存，最长 300s 后重载剔除，这段窗口由 Redis 1h 冷却覆盖（1h > 300s）。**不引入 pub/sub 广播**：为这段窗口引入通知机制的成本高于收益（Redis 冷却已经能兜，且当前生产是单实例），属于 YAGNI。多实例部署时要意识到这条。
 - **不引入禁用阈值/开关配置**：一次类型化 401 即禁用，行为简单可预测；阈值化（如连续 N 次）属 YAGNI，且会引入跨 attempt/请求的计数状态。
 - **provider 鉴权故障会级联禁用整个池**：鉴权服务故障 / 网关误配 / 本机 IP 被封时，全池 key 会被类型化 401/403 逐个永久禁用。影响自限（此时池子本就不可用，扫描同样在失败）；ERROR 总量以池大小为上界（每 key 至多一次禁用 + 一条日志，~3000 条）；恢复是一次 `UPDATE core_ai_apikey SET enabled=true`（或按 updatedAt 圈定误杀时段的行）。接受此风险换取实现简单，不加熔断/阈值。
 
@@ -180,7 +191,9 @@ attempt3: [k10..k14] 命中 k12 → 游标 +1，返回 k12      # 3 次 attempt 
 - 基线（轮询 + 打乱 + Redis 冷却 + 降级）：[api-key-pool.md](api-key-pool.md)
 - 表结构（`core_ai_apikey` + `provider` 列）：见 [api-key-pool.md](api-key-pool.md)「表结构」一节
 - 实体：`entity/ai/AiApiKey.kt`（`enabled` / `unavailableUntil`）
+- 生产排查手册（怎么连库/看日志/误杀恢复）：[../../ops/AI_KEY_POOL_OPS.md](../../ops/AI_KEY_POOL_OPS.md)
 
 ## 修订记录
 
+- 2026-10-09（排查 `2026-10-07T20:23` 那条 401 ERROR 后补）：`disableKeyFn` 返回值改 `Boolean`（写成功/已停用 = true，异常 = false），`AiApiKeyStore.disableKey` 在 true 时调新增的 `evict()` 把 key 从本进程列表**立即**剔除，不再等 300s 重载。动机：那段陈旧窗口原先只靠同一条失败链写的 Redis 1h 冷却守护，一旦冷却键丢失（生产 Redis `appendonly=no`，重启会丢）或 MGET 降级 fail-open，已禁用的 key 会被再挑出去一次。写失败时**不**剔除（Redis 冷却 + 重载仍是唯一兜底，避免让还能用的 key 白掉轮换位）。伴随产出排障手册 `docs/ops/AI_KEY_POOL_OPS.md`。
 - 2026-10-04 按 review 修订：`disableKeyFn` 改 `catch (e: Exception)` 整体收敛（Jimmer 异常不经 Spring 翻译、非 `DataAccessException`，按类型列举兜不住，兑现「任何异常不逃出」不变量），并新增 `AiConfigDisableKeyFnTest` 纯单测锁定；`warnDegraded` 消息参数化（原硬编码 "redis failed" 会误导 DB 故障排查）、`affected=0` 降 INFO；局部更新改用项目惯例 `createUpdate().execute()`（6 处先例，弃用无先例的 `executeUpdate`）；问题二成因归因修正（shuffle 已切断导入聚集，连续冷却区段实际来自「风暴顺路打冷却」与「高冷却占比」两条路径）；已知取舍补 provider 鉴权故障级联禁用场景（恢复 = 一次 UPDATE，ERROR 总量以池大小为上界）；`SpringAiScanRunnerClassifyTest` 用例数勘误 5→6；AiConfig 顺带删除未使用的 `aiApiKeyRepo` 注入。

@@ -15,7 +15,13 @@ import org.junit.jupiter.api.Test
  */
 class AiApiKeyStoreTest {
 
-    private class Fake(keyIds: List<String>, probeWindow: Int = 8, cursorSeed: Long = 0) {
+    private class Fake(
+        keyIds: List<String>,
+        probeWindow: Int = 8,
+        cursorSeed: Long = 0,
+        /** 模拟 DB 写结果：true = 已确认不在 enabled 集合。 */
+        disableSucceeds: Boolean = true,
+    ) {
         val cooled = mutableSetOf<String>()
         val marks = mutableListOf<Triple<String, Long, String>>()
         val disabled = mutableListOf<String>()
@@ -39,6 +45,7 @@ class AiApiKeyStoreTest {
             },
             disableKeyFn = { id ->
                 disabled.add(id)
+                disableSucceeds
             },
             probeWindow = probeWindow,
             cursorSeed = cursorSeed,
@@ -172,5 +179,40 @@ class AiApiKeyStoreTest {
         assertThat(fake.disabled).contains("a")
         assertThat(fake.marks).hasSize(0)
         assertThat(fake.cooled).doesNotContain("a")
+    }
+
+    @Test
+    fun `disabled key is evicted from the local list immediately, not after ttl`() {
+        // 写 enabled=false 成功后本列表原本要等 REFRESH_TTL_SEC 重载才不含它，
+        // 这段陈旧窗口只靠 Redis 冷却兜 → 冷却丢失时会漏一次。写成功即剔除，窗口归零。
+        val fake = Fake(listOf("a", "b", "c"))
+        fake.store.currentKeys()                       // 触发一次加载（TTL 计时开始）
+        fake.store.disableKey("a")
+        val picked = (1..20).map { fake.store.pick()!!.id }
+        assertThat(picked).doesNotContain("a")
+        // 剔除不改 TTL：列表非空则继续复用缓存（不因此多打一次 DB）
+        assertThat(fake.loadCount).isEqualTo(1)
+    }
+
+    @Test
+    fun `failed disable keeps the key in the local list`() {
+        // DB 写失败时不能本地剔除：Redis 冷却 + 后续重载仍是唯一兜底，
+        // 提前剔除会让一个其实还能用的 key 白掉一个轮换位。
+        val fake = Fake(listOf("a", "b"), disableSucceeds = false)
+        fake.store.disableKey("a")
+        assertThat(fake.disabled).contains("a")
+        val picked = (1..10).map { fake.store.pick()!!.id }
+        assertThat(picked).contains("a")
+    }
+
+    @Test
+    fun `evicting every key makes the next currentKeys reload`() {
+        // 剔除到空列表 → cached() 判空视为不新鲜 → 下次重载由 where enabled=true 决定，不误报空池
+        val fake = Fake(listOf("a", "b"))
+        fake.store.currentKeys()
+        fake.store.evict("a")
+        fake.store.evict("b")
+        fake.store.pick()
+        assertThat(fake.loadCount).isEqualTo(2)
     }
 }

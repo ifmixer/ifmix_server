@@ -22,8 +22,12 @@ class AiApiKeyStore(
     private val loadKeys: () -> List<AiApiKeyDoc>,
     private val readCooldowns: (List<String>) -> List<Boolean>,
     private val markCooldownFn: (keyId: String, cooldownSec: Long, reason: String) -> Unit,
-    /** 失效 key 的永久禁用（PG enabled=false，不可逆，需人工恢复）；由 AiConfig 用全局 sqlClient 组装，异常在组装侧收敛。 */
-    private val disableKeyFn: (keyId: String) -> Unit,
+    /**
+     * 失效 key 的永久禁用（PG enabled=false，不可逆，需人工恢复）；由 AiConfig 用全局 sqlClient 组装，异常在组装侧收敛。
+     * 返回是否**已确认该 key 不在 enabled 集合**——写库成功（affected>0，或已是 disabled/不存在）返回 true，
+     * 写失败（异常在 AiConfig 内吞掉）返回 false；只有 true 才触发本地立即剔除（见 [disableKey]）。
+     */
+    private val disableKeyFn: (keyId: String) -> Boolean,
     /** 单次 pick 的探测窗口（无默认值，由 AiConfig 从 app.ai.apikey-pool.probe-window 显式注入）；下限 1（误配 0/负数时 clamp，否则 pick 恒空）。 */
     probeWindow: Int,
     /** 轮询游标初值；默认随机，单测传固定值获得确定性（负数由 floorMod 归一）。 */
@@ -95,9 +99,32 @@ class AiApiKeyStore(
         markCooldownFn(keyId, cooldownSec, reason)
     }
 
-    /** 永久禁用 key（PG enabled=false，不可逆——恢复需人工改回或删除行）。 */
+    /**
+     * 永久禁用 key：先写库（seam），**写成功才把它从本地列表剔除**（见 [evict]）。
+     *
+     * 为什么需要本地剔除：写 `enabled=false` 之后，本列表要等 [REFRESH_TTL_SEC] 到期重载才不含它，
+     * 这段陈旧窗口原先只靠同一条失败链上写的 Redis 1h 冷却兜；一旦冷却没拦住（Redis 丢键/降级放行），
+     * 已禁用的 key 会被再挑出去一次。写成功即剔除，把这道窗口从"≤300s"压到"本次调用之后立即"。
+     *
+     * 写失败时不剔除：此时 Redis 冷却 + 后续重载仍是唯一兜底，本地提前剔除会让一个其实还能用的 key
+     * 白白少一个轮换位（禁用不可逆，粘性更强的一侧说了算）。
+     */
     fun disableKey(keyId: String) {
-        disableKeyFn(keyId)
+        if (disableKeyFn(keyId)) evict(keyId)
+    }
+
+    /**
+     * 从本地列表移除 key（不等 TTL 重载）。列表被清空时 [cached] 判空 → 下次 [currentKeys] 立即重载，
+     * 重载结果由 `where enabled = true` 决定，不会因为这批剔除而误报空池。
+     */
+    fun evict(keyId: String) {
+        synchronized(this) {
+            val current = keys
+            if (current.any { it.id == keyId }) {
+                keys = current.filter { it.id != keyId }
+                log.info("AI API key evicted from local pool. keyId={} remaining={}", keyId, keys.size)
+            }
+        }
     }
 
     private fun cached(): List<AiApiKeyDoc>? {

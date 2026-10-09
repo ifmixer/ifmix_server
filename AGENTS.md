@@ -31,7 +31,8 @@ docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一
 | [数据库约定](docs/guide/DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup |
 | [发布记录](docs/ops/release.md) | 发布版本号、线上版本、未发布变更与发布计划 |
 | [Changelog](docs/ops/Changelog.md) | 面向客户端/数据库的变更时间线 |
-| [部署](docs/ops/DEPLOY.md) | 部署方式、增量发布、systemd、env 管理 |
+| [部署](docs/ops/DEPLOY.md) | 部署方式、增量发布、systemd、env 管理（生产主机 `ssh app_us1`、env `/data/app/core-api/common/.env.prod`、日志 `/data/app/log/core-api/`） |
+| [AI Key 池生产排查](docs/ops/AI_KEY_POOL_OPS.md) | key 池排障：连生产 PG/Redis、日志三件套配对、禁用/恢复 SQL、级联禁用判定、已知坑（`updated_at` 不随应用禁用变化、列表缓存滞后、Redis 重启丢冷却） |
 | [E2E 测试](docs/testing/E2E_TESTING.md) / [Trusted Documents](docs/testing/GRAPHQL_TRUSTED_DOCUMENTS.md) | 测试约定、persisted query 契约 |
 
 ### 设计文档（docs/design/，按模块分目录）
