@@ -3,13 +3,15 @@
 迁移已收敛为单一 `V1__init.sql`（历史 V1–V20 固化为初始 schema，见 release.md 决策 15）。
 线上初始化**直接走 Flyway**，与本地同一份文件 → checksum 天然一致，无需 baseline。
 
-## 步骤（空库）
+## 步骤（空库；服务器没有 gradle/源码——SSH 隧道从本地执行，Flyway 历史含正确 checksum）
 
 ```bash
-createdb <目标库>
-# 在仓库根执行（DB 连接指向线上库）：
-./gradlew :core-api:flywayMigrate        # 应用 V1，建 26 张表 + flyway_schema_history
-psql -d <目标库> -f data_seed.sql        # 种子数据（COPY 格式，必须用 psql）
+# 1) 隧道
+ssh -N -L 15432:localhost:5432 app_us1
+# 2) flyway 应用 V1（本地仓库根）
+DB_URL=jdbc:postgresql://localhost:15432/core_api DB_USER=app DB_PASSWORD=<线上密码> ./gradlew :core-api:flywayMigrate
+# 3) 种子数据
+psql "postgresql://app:<线上密码>@localhost:15432/core_api" -f data_seed.sql
 ```
 
 ## data_seed.sql（含敏感数据，已 gitignore，勿提交）

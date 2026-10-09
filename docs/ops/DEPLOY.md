@@ -139,8 +139,8 @@ DB_URL="jdbc:postgresql://<隧道>/core_api" DB_USER=app DB_PASSWORD=... \
 
 生产库只监听 localhost，跑迁移时用 SSH 隧道打通：
 ```bash
-ssh -N -L 15432:localhost:5432 app_us1 &   # 本地 15432 → 服务器 5432
-DB_URL="jdbc:postgresql://localhost:15432/core_api" DB_USER=app DB_PASSWORD=0tTvtqzcSly3X4nzKFJHnDJ4 \
+ssh -N -L 25432:localhost:5432 app_us1 &   # 本地 15432 → 服务器 5432
+DB_URL="jdbc:postgresql://localhost:25432/core_api" DB_USER=app DB_PASSWORD=0tTvtqzcSly3X4nzKFJHnDJ4 \
   ./gradlew :core-api:flywayMigrate
 ```
 

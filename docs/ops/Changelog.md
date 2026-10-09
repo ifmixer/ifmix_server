@@ -41,7 +41,7 @@
 
 ### 2026-10-07 增补（迁移历史收敛为单一 V1）
 
-- **Flyway 重置（服务端内部）**：历史 V1–V20 按最终 schema 固化为 `V1__init.sql`，旧迁移文件删除；本地库已重建（schema + 种子数据还原）。线上初始化改为空库直接 `flywayMigrate` 应用 V1 + `data_seed.sql` 种子数据，无需 pg_dump 导 schema、无需 baseline。后续变更从 V2 递增。配套修复：`AiFetcher` 的 `q_ai_scan_getMyById` → `q_ai_scan_getById`（2eed4a3b 改名时被旧文件覆盖，导致启动失败）。
+- **Flyway 重置（服务端内部）**：历史 V1–V20 按最终 schema 固化为 `V1__init.sql`，旧迁移文件删除；本地库已重建（schema + 种子数据还原）。线上初始化改为空库直接 `flywayMigrate` 应用 V1 + `data_seed.sql` 种子数据，无需 pg_dump 导 schema、无需 baseline。后续变更从 V2 递增。配套修复：`AiFetcher` 的 `q_ai_scan_getMyById` → `q_ai_scan_getMyById`（2eed4a3b 改名时被旧文件覆盖，导致启动失败）。
 
 ### 2026-10-07 增补（表名去重，V20）
 
@@ -76,7 +76,7 @@
 ### 2026-10-06 增补（RPC 迁移与模块结构调整，客户端 breaking）
 
 - **39 个 reqName 全量改四段式**（客户端 breaking）：格式 `{q|m}_{namespace}_{resource}_{action}`（namespace 目前=module，resource 可为聚合根，不兼容形状变更加 V2 后缀）。客户端需同步更新 trusted documents 调用名（39 条全量名单即 `persisted-queries/customer/customer.json` 的 key）。
-- **GraphQL operationName 同步改四段式**（客户端 breaking）：`@DgsQuery/@DgsMutation` field 名同日全量改名，规则同 reqName 并叠加 `My`——customer 作用域 CRUD 动作动词后带 `My`（`getMyById / listMy / updateMyOne / deleteMyMany`），`create` 例外不加（`m_demo_todo_createOne`），专名动词（me/login/verify/run/getStatus/getDefault/add/attest/recover 等）与 install/session 作用域不加。例：`q_ai_findMyScanById → q_ai_scan_getById`、`q_auth_me → q_auth_session_me`、`m_media_presignUpload → m_media_file_presignUpload`。greq path 末段与 persisted query manifest（`customer.json`）随之更新，前端 client-sdk 已对齐。
+- **GraphQL operationName 同步改四段式**（客户端 breaking）：`@DgsQuery/@DgsMutation` field 名同日全量改名，规则同 reqName 并叠加 `My`——customer 作用域 CRUD 动作动词后带 `My`（`getMyById / listMy / updateMyOne / deleteMyMany`），`create` 例外不加（`m_demo_todo_createOne`），专名动词（me/login/verify/run/getStatus/getDefault/add/attest/recover 等）与 install/session 作用域不加。例：`q_ai_findMyScanById → q_ai_scan_getMyById`、`q_auth_me → q_auth_session_me`、`m_media_presignUpload → m_media_file_presignUpload`。greq path 末段与 persisted query manifest（`customer.json`）随之更新，前端 client-sdk 已对齐。
 - **customer/install 并入 auth 模块**：服务端内部结构调整（`modules/auth/{install,customer}`、`entity/auth/`、fetcher 并入 `bff/graphql/customer/auth/`），随之相关 reqName 的 namespace 由 install/customer 改为 auth（`m_auth_install_*`、`m_auth_customer_*`）。
 - **RPC URL 定稿**：`POST /customer/core/greq/{reqName}`（与 GraphQL persisted query 同路径；gql raw 仍为 `/customer/core/gql`）；原 proposal 的 `POST /api/customer/core/{reqName}` 方案废弃，不再新增 `/api/` 前缀路径。
 - **media resource 改名 file**：`m_media_media_presignUpload/Download` → `m_media_file_presignUpload/Download`；表 `core_media_upload_record` → `core_media_filerecord`（V16，纯 RENAME）。persisted query 文本内的 operation name 同步改为与 manifest key 一致（原 PascalCase 废弃）。

@@ -38,6 +38,7 @@ app:
   # x-proto-version: 2 wire 加密私钥（可选）：`kid:base64,...` 多 kid 并存以便轮换；
   # 缺省 = 不支持 v2，v2 请求全部 400003，客户端自动降级明文。
   wire-crypto:
+    mode: optional
     keys: ${WIRE_CRYPTO_KEYS:}
 
   storage:

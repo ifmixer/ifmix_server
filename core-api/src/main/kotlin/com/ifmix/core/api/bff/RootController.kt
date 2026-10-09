@@ -18,7 +18,7 @@ class RootController(environment: Environment) {
     private val healthInfo: Map<String, Any> = mapOf(
         "service" to "core-api",
         "status" to "ok",
-        "version" to "1.0.3",
+        "version" to "1.0.6",
         // 当前激活 profile（SPRING_PROFILES_ACTIVE）；未设时为 "default"
         "env" to environment.activeProfiles.joinToString(",").ifEmpty { "default" },
     )

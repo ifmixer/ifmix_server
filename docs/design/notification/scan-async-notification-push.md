@@ -72,7 +72,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
   → 前端轮询 q_ai_scan_getStatus(scanId)
       - IN_PROGRESS：updated_at 超 5 min → [单短事务] CAS 20→40 TIMEOUT + pending -= 1；否则继续
       - FAILED：返回 status + errorCode
-      - SUCCESS：→ q_ai_scan_getById(scanId) 取权威 ScanRecord（含 basicResult）→ SQLite 覆盖
+      - SUCCESS：→ q_ai_scan_getMyById(scanId) 取权威 ScanRecord（含 basicResult）→ SQLite 覆盖
 ```
 
 ### 4.3 复用 DeepResearch / scan 特有
@@ -285,7 +285,7 @@ app:
 
 ## 11. 前端改造要点（供前端 agent review）
 
-- `runScanFlow`：从「createScan 直接拿 ScanRecord」改为「createScan 拿 scanId → 轮询 q_ai_scan_getStatus → SUCCESS 后 q_ai_scan_getById 取权威记录 → SQLite 覆盖」。复用已有 DeepResearch 轮询/恢复基建（pending 列 + resume + 回前台恢复），scan 加对应 `pendingScanId`。
+- `runScanFlow`：从「createScan 直接拿 ScanRecord」改为「createScan 拿 scanId → 轮询 q_ai_scan_getStatus → SUCCESS 后 q_ai_scan_getMyById 取权威记录 → SQLite 覆盖」。复用已有 DeepResearch 轮询/恢复基建（pending 列 + resume + 回前台恢复），scan 加对应 `pendingScanId`。
 - mutation 返回 status=40(TASK_SUBMISSION_FAILED) 的早检查（同 DeepResearch）。
 - **push 接收 + 深链（§6.2）**：解析 `data.link` → 严格匹配 `/p/{projectId}/scan-result/{scanId}` → 校验 projectId → 映射到 Expo Router 实际路由 `/result/{scanId}`；非法/不符不导航。勿直接 `router.push` 逻辑深链。
 - **授权 + 开关（§7）**：发起 scan 提示 + 请求授权；授权成功执行"取 token→上报→订阅 topic→开关 true"完整注册；拒绝 → 开关 false；设置页重开按系统授权状态处理。

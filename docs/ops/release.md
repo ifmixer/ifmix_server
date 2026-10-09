@@ -41,15 +41,68 @@ core-api 发布版本记录（倒序）。版本号即 git tag；「线上」列
 
 应修（P2）：RateLimiter INCR/EXPIRE 原子化、bind 关系部分唯一索引、logout 只认可信 iid、webhook 幂等唯一索引、FirebaseAppRegistry 负缓存、AiChatClientFactory 无淘汰缓存、scan 表 customer_id 索引、attestExisting 冲突重查返回值。~~ActionContextProvider 与 yml 默认值对齐~~（随 legacy 删除消解）。
 
-### 发布步骤（停机 ≤10min）
+### 发布 Runbook（首版 1.0.6，可执行清单）
 
-1. 完成上述修复，全量 `./gradlew :core-api:test :core-job:test` 通过；本地 `:core-api:flywayMigrate` 从零库验证。
-2. **停服**（旧实例停止，≤10min 窗口）。
-3. 线上 DB 初始化：空库 `./gradlew :core-api:flywayMigrate`（应用收敛后的 V1，决策 15）+ `psql -f data_seed.sql` 种子数据（见 `scripts/deploy/db-init/README.md`）。历史版本的停机迁移注意事项（V6/V8）已随历史收敛失效，后续新迁移如涉及破坏性变更照旧先停机。
-4. 部署新 core-api（增量脚本 `scripts/deploy/sync-core-api.sh` + 健康检查），恢复流量。
-5. core-job 同步部署；三个 attest job **不配 cron**（决策 3）。
-6. env 核对：`AUTH_JWT_PRIVATE_KEY`（缺失启动即失败）、`APP_ATTEST_GLOBAL_ENABLED`（默认 false）。`APP_ATTEST_CHALLENGE_SECRET` 为**可选回落**——每个 app 的独立 secret 写 per-project `app_attest_config.challengeSecret`（发布时生成，勿多 app 复用）；两者都缺且全局开关开 → 503002 fail-closed。
-7. 灰度：服务端上线（attest 全局关、无 project 配置 → 现网零影响）→ 客户端发布 → `APP_ATTEST_GLOBAL_ENABLED=true` + project 写 `app_attest_config`（mode=OBSERVE + challengeSecret）→ 观察指标 → 切 ENFORCE（前置检查见下方 feature/attest 小节）。
+#### Phase 0 — 发布前必须完成（本地）
+
+- [ ] **P1 五项修复**（上方清单，全部打勾）→ 全量 `./gradlew :core-api:test :core-job:test` 通过（仅 Docker 环境用例可跳过）
+- [ ] 本地从零库验证：`DROP SCHEMA public CASCADE; CREATE SCHEMA public;` → `./gradlew :core-api:flywayMigrate` → 恢复种子数据 → bootRun 冒烟（已验证过一次，重构 schema 后需重验）
+- [ ] `.env.prod` 终审（见 Phase 1 清单），`data_seed.sql` 确认不在 git 暂存区
+
+#### Phase 1 — 服务器环境配置（`/data/app/core-api/common/.env.prod`，经 `scripts/deploy/push-env.sh` 上传）
+
+| 变量 | 值 | 说明 |
+|---|---|---|
+| `SPRING_PROFILES_ACTIVE` / `PORT` / `LOG_PATH` | `prod` / `3001` / `/data/app/log/core-api` | 已有 |
+| `PG_WRITER_URL` / `PG_READER_URL` / `PG_USERNAME` / `PG_PASSWORD` | 线上库 | 已有 |
+| `REDIS_URL` | 线上 Redis | 已有 |
+| `STORAGE_*` | **⚠️ 换生产桶/密钥**（当前是 dev R2，文件里自带 TODO） | 待办 |
+| `SPRING_AI_OPENAI_BASE_URL` / `MODEL` | agnes 线上地址 | key 走 DB（core_ai_apikey 种子） |
+| `AUTH_JWT_PRIVATE_KEY` / `AUTH_ACCESS_TTL_SEC` | Ed25519 JWK 私钥（**上线定稿，之后换 key = 全员登出**） | 已有，确认定稿 |
+| `WIRE_CRYPTO_KEYS` | `1:<私钥base64>`（**无引号**；客户端 env.ts 填配对 pubHex，kid=1） | 已有，核对配对 |
+| `APP_ATTEST_GLOBAL_ENABLED` | `false`（首版先关，灰度第 3 步再改 true + 重启） | 已有=true，**改成 false** 或接受上线即 OBSERVE 记录 |
+| `GOOGLE_WEBHOOK_TOKEN` | 自生成随机值，须与 Google Play Console 后台一致 | **待填** |
+| `APP_ATTEST_CHALLENGE_SECRET` | 不配（per-project secret 已在 seed 里；此项仅作回落） | — |
+| `APP_DATASOURCE_BUSINESS_*` / `APP_DATASOURCE_JOB_*` | core-job 用（宽松绑定覆盖硬编码） | 已有 |
+
+上传：`scripts/deploy/push-env.sh`（远端自动备份 `.bak.<ts>`、权限 640 root:app）→ `systemctl daemon-reload`。
+验证：`systemctl show app-core-api -p Environment | tr ' ' '\n' | grep -E 'WIRE|ATTEST|WEBHOOK'`。
+
+#### Phase 2 — 线上 DB 初始化（空库；服务器无需 gradle/源码，走 SSH 隧道从本地执行）
+
+```bash
+# 1) 隧道（本地 15432 → 线上 5432；线上 PG 只听 localhost）
+ssh -N -L 15432:localhost:5432 app_us1
+
+# 2) 本地另开终端：flyway 应用 V1（连接覆盖见 build.gradle.kts flywayMigrate 注释）
+DB_URL=jdbc:postgresql://localhost:15432/core_api \
+DB_USER=app DB_PASSWORD=<线上密码> \
+./gradlew :core-api:flywayMigrate        # 26 张表 + flyway_schema_history（含 V1 正确 checksum）
+
+# 3) 种子数据（3 张表，含线上 challengeSecret/env=production），同样走隧道
+psql "postgresql://app:<线上密码>@localhost:15432/core_api" -f scripts/deploy/db-init/data_seed.sql
+```
+
+核对：`SELECT count(*) FROM core_ai_apikey;`（3169）、`flyway_schema_history` 仅 `1|init`。
+后续 V2+ 发布用同一隧道命令，无需 baseline。
+
+#### Phase 3 — 部署
+
+1. core-api：`scripts/deploy/sync-core-api.sh`（增量 rsync + 蓝绿软链 + 健康检查自动回切；异常用 `--full` 兜底 / `rollback-core-api.sh` 回滚）。
+2. core-job：`./gradlew :core-job:bootJar` → 上传 fat jar（**不要 `-plain.jar`**）→ 装 systemd unit（参照 `app-core-api.service` 自建 `app-core-job.service`，复用 `common/.env.prod`）→ **三个 attest job 不配 cron**（决策 3）。
+3. 健康检查：`curl http://localhost:3001/core/health`（`"status":"ok"`）、`curl http://localhost:3001/.well-known/jwks`（返回 kid=ifmixp1）。
+
+#### Phase 4 — 冒烟（线上，curl 明文 dev 通道不可用时走客户端）
+
+- 建装：`m_auth_install_createIosInstall` → installToken + attestationStatus=30
+- 错误格式：带无效 token 调任一接口 → HTTP 401 + body 顶层 `{"code":"401000","msg":...}` + errors 数组
+- JWKS、`/actuator/health` UP、日志无 `attest.config_invalid` / 启动 ERROR
+
+#### Phase 5 — 客户端发布与灰度
+
+1. 客户端包：persisted query manifest（40 条，含 `q_ai_scan_getMyById` 改名）、`env.ts` prod `wireKey={kid:1, pubHex}`、wire 默认开关 **false**、push/attest flag 默认关。
+2. 发版后灰度：OTA 开 wire 开关（性能门槛 p95<10ms）→ `APP_ATTEST_GLOBAL_ENABLED=true` 重启（attestation 开始记录，OBSERVE 不拦截）→ 按 §4.5 指标再切 ENFORCE。
+3. 回滚预案：app 层面 `rollback-core-api.sh`；wire/attest 均有 OTA 关闭开关；DB 首版无回滚需求（V1 终态 + 数据备份）。
 
 ## v1.0.6 增量（2026-10-06：RPC 试点、命名统一与模块结构调整）
 

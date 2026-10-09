@@ -11,7 +11,7 @@
 | **GReq**（persisted query） | `POST /customer/core/greq/{reqName}` | 生产主入口，前端只走这里 | `{"query":"","variables":{...}}` |
 | **GQL**（raw query） | `POST /customer/core/gql` | GraphiQL / 本地 API 探索，**保留不动** | `{"query":"...","variables":{...}}` |
 
-- **GReq**：reqName 在 path 末段，服务端按 reqName 从 allowlist 取预注册 query 执行。前置层（CF/nginx）看到的是 `/customer/core/greq/q_ai_scan_getById` 这样的具体路径，可直接分流。
+- **GReq**：reqName 在 path 末段，服务端按 reqName 从 allowlist 取预注册 query 执行。前置层（CF/nginx）看到的是 `/customer/core/greq/q_ai_scan_getMyById` 这样的具体路径，可直接分流。
 - **GQL**：原始 raw query 入口，机制与行为完全不变；`allow-raw-query=false`（uat/prod）时仍拒绝 raw query。
 
 > `x-api-name` header **已废弃删除**，不再支持、不做兼容（未上线）。
@@ -23,8 +23,8 @@
 - **method**：`POST`
 - **path**：`/customer/core/greq/{reqName}`
   - `{reqName}` 为整体单段，格式约定 `${q|m}_${namespace}_${resource}_${action}[Vn]`（2026-10-06 四段式定稿：namespace 目前=module，resource 可为聚合根），全局唯一，是 allowlist 的 key
-  - 例：`/customer/core/greq/q_ai_scan_getById`、`/customer/core/greq/m_cs_feedback_createOne`
-  - 当前实现里 reqName == GraphQL 顶层 field name（四段式，见下方 allowlist 一节）；协议上保留组合/投影变体的余地（如 `q_ai_scan_getByIdV2`）
+  - 例：`/customer/core/greq/q_ai_scan_getMyById`、`/customer/core/greq/m_cs_feedback_createOne`
+  - 当前实现里 reqName == GraphQL 顶层 field name（四段式，见下方 allowlist 一节）；协议上保留组合/投影变体的余地（如 `q_ai_scan_getMyByIdV2`）
   - **不展开**成 `/query/module/action` 多段——reqName 作为单个末段透传
 - **body**：`{"query":"","variables":{...}}`
   - `query:""` 仅为**通过 Spring GraphQL HTTP transport 的「query 字段必须存在」校验**的占位，客户端 wire 上**没有真实 query**
@@ -100,7 +100,7 @@ graphql:
 }
 ```
 
-key = reqName（2026-10-06 起四段式；39 个存量 reqName 已全量改名，39 条全量名单即本 allowlist 的 key 集合），value = 完整 query 文本。**GraphQL operationName（顶层 field，`@DgsQuery/@DgsMutation` 的 field）2026-10-06 起同步改为四段式**，规则与 reqName 相同：customer 作用域动作在动词后插 `My`（如 `q_ai_scan_getById`、`m_demo_todo_deleteMyOne`）；`create` 天然作用于自己不加 `My`（如 `m_demo_todo_createOne`）；专名动词（`me/login/verify/run/getStatus/getDefault/add/attest/recover` 等）与 install/session 这类设备/会话作用域也不加。因此当前 reqName == GraphQL 顶层 field name（39 条一一对应）。**由前端 build 时从 `graphql.ts` 的 query const 提取生成并提交进本 repo**。
+key = reqName（2026-10-06 起四段式；39 个存量 reqName 已全量改名，39 条全量名单即本 allowlist 的 key 集合），value = 完整 query 文本。**GraphQL operationName（顶层 field，`@DgsQuery/@DgsMutation` 的 field）2026-10-06 起同步改为四段式**，规则与 reqName 相同：customer 作用域动作在动词后插 `My`（如 `q_ai_scan_getMyById`、`m_demo_todo_deleteMyOne`）；`create` 天然作用于自己不加 `My`（如 `m_demo_todo_createOne`）；专名动词（`me/login/verify/run/getStatus/getDefault/add/attest/recover` 等）与 install/session 这类设备/会话作用域也不加。因此当前 reqName == GraphQL 顶层 field name（39 条一一对应）。**由前端 build 时从 `graphql.ts` 的 query const 提取生成并提交进本 repo**。
 
 ## 前端改动（待做）
 

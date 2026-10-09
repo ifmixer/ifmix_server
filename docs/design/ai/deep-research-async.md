@@ -88,7 +88,7 @@ CREATED(10) → IN_PROGRESS(20) → SUCCESS(30)
         - IN_PROGRESS：updated_at 超 5 min → CAS 置 FAILED(TIMEOUT)，返回 FAILED；否则继续轮询
         - FAILED：返回 status + error_code + scanStatus（供补拍提示）
         - SUCCESS：
-            → q_ai_scan_getById(scanRecordId) 取权威 ScanRecord + latestDeepResearch{ premiumResult }
+            → q_ai_scan_getMyById(scanRecordId) 取权威 ScanRecord + latestDeepResearch{ premiumResult }
             → 以 API ScanRecord 为基础（basicResult + premiumResult 均来自 API）
             → SQLite 单事务覆盖本地
 ```
@@ -282,12 +282,12 @@ type ScanDeepResearch {
 ```
 
 - `ScanRecord.deepResearch`（旧字段，按 scanRecordId 查）→ 改为 `latestDeepResearch`，按 `latest_deep_research_id` 加载。DataLoader key 改为 scanRecord 的 `latest_deep_research_id`。
-- **`ScanDeepResearch` 不再有 `resultUrl` 字段**（R2 残留）：现有 persisted query（`m_ai_scan_createOne`、`m_ai_scan_updateMyOne`、`q_ai_scan_getById`、`q_ai_collectionItem_listMy`）里对 `latestDeepResearch { ... resultUrl ... }` 的选择必须全部去掉 `resultUrl`，否则 schema 校验失败。
+- **`ScanDeepResearch` 不再有 `resultUrl` 字段**（R2 残留）：现有 persisted query（`m_ai_scan_createOne`、`m_ai_scan_updateMyOne`、`q_ai_scan_getMyById`、`q_ai_collectionItem_listMy`）里对 `latestDeepResearch { ... resultUrl ... }` 的选择必须全部去掉 `resultUrl`，否则 schema 校验失败。
 - **哪些查询选 `latestDeepResearch { premiumResult }`（P1#4，premiumResult 是 JSONB 大字段，列表场景不选）**：
 
 | 操作 | 是否选 latestDeepResearch.premiumResult | 理由 |
 |------|------|------|
-| `q_ai_scan_getById`（详情） | **选** | 详情页需要 premiumResult |
+| `q_ai_scan_getMyById`（详情） | **选** | 详情页需要 premiumResult |
 | `m_ai_scan_createOne` / `m_ai_scan_updateMyOne` 回包 | **选**（仅 scanRecord 回包需要时） | 回包即详情形状；createScan 时 latest 恒 null，开销可忽略 |
 | `m_ai_deepResearch_run` 回包 | 不涉及（只返回 deepResearchId+status） | — |
 | `q_ai_scan_listMy`（列表） | **不选** | 列表只需状态/基础字段 |
@@ -320,7 +320,7 @@ type ScanDeepResearch {
 - `runDeepResearchFlow`：返回语义从 `Promise<ScanRecord>` 改为「拿 deepResearchId → 轮询 → SUCCESS 后重查权威 ScanRecord → SQLite 覆盖」。
 - **mutation 返回即检查终态（P2-1）**：mutation 可能直接返回 `{ status: 40, errorCode: "TASK_SUBMISSION_FAILED" }`（executor 提交失败）。拿到返回后应**立即** `if (status === 40) { 清 pending; throw DeepResearchTaskError(errorCode) }`，不进轮询（否则多一次轮询且 pending 刚写入又要清）。`errorCode` 直接取自 mutation 回包（§5.1 已加该字段），无需再调 `q_ai_deepResearch_getStatus`。`DeepResearchTaskError` 需支持从 mutation 返回值构造（现仅从轮询结果构造，需扩展）。
 - **方案 B 一致性**：
-  - SUCCESS 后调 `q_ai_scan_getById(scanRecordId)` 取权威 ScanRecord + `latestDeepResearch { premiumResult }`。
+  - SUCCESS 后调 `q_ai_scan_getMyById(scanRecordId)` 取权威 ScanRecord + `latestDeepResearch { premiumResult }`。
   - basicResult **与** premiumResult **均以 API ScanRecord 为准**（premiumResult 直接从 `latestDeepResearch.premiumResult` 读，无需下载 R2）。
   - 若轮询任务 A 成功时服务端 latest 已是更新的 B，`findMyScanById` 返回的 latest 即 B，避免「A 的 basic 配 B 的 premium」。
 - 轮询间隔几秒一次；处理 20/30/40 三态 UI。FAILED 的 AI_STATUS_REJECTED 从 `scanStatus` 读推荐补拍（沿用 `deepResearchRejectionReason`），其它 error_code 做通用失败提示。
@@ -353,11 +353,11 @@ type ScanDeepResearch {
 
 **服务端：**
 - `schema/customer/ai.graphqls`：改 `RunDeepResearchResult`；加 `DeepResearchStatus` + `q_ai_deepResearch_getStatus`；`ScanRecord.deepResearch`→`latestDeepResearch`。
-- `resources/graphql/persisted-queries/customer/customer.json`：加入新 Query 与改造后 mutation、`q_ai_scan_getById`（含 latestDeepResearch）条目。`m_ai_deepResearch_run` 的回包选择须含 `{ deepResearchId status errorCode }`（errorCode 供 §7 早检查用）。
+- `resources/graphql/persisted-queries/customer/customer.json`：加入新 Query 与改造后 mutation、`q_ai_scan_getMyById`（含 latestDeepResearch）条目。`m_ai_deepResearch_run` 的回包选择须含 `{ deepResearchId status errorCode }`（errorCode 供 §7 早检查用）。
 - DGS codegen 类型随编译更新。
 
 **前端（antique）：**
-- `apps/shared/src/api/graphql.ts` 的 `_API_ENTRIES`：新增 `q_ai_deepResearch_getStatus`；更新 `m_ai_deepResearch_run`（返回值已改）与 `q_ai_scan_getById`（含 latestDeepResearch{premiumResult}）的 query 文本。
+- `apps/shared/src/api/graphql.ts` 的 `_API_ENTRIES`：新增 `q_ai_deepResearch_getStatus`；更新 `m_ai_deepResearch_run`（返回值已改）与 `q_ai_scan_getMyById`（含 latestDeepResearch{premiumResult}）的 query 文本。
 - 重新生成 schema 类型与 persisted-query，与服务端 `customer.json` 1:1 对齐（缺任一侧线上即被拒）。
 
 ## 9. 错误处理与边界

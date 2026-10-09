@@ -293,7 +293,7 @@ createAnonymous 响应丢失
 
 以下事项不是幂等功能，仍必须单独完成：
 
-1. `q_ai_scan_getById` 必须按 `projectId + customerId + id` 查询；当前仅按 project + id 不满足 “My” 语义。
+1. `q_ai_scan_getMyById` 必须按 `projectId + customerId + id` 查询；当前仅按 project + id 不满足 “My” 语义。
 2. `core_auth_install.id`、API `installId` 和 JWT `iid` 收敛为同一个 UUID。
 3. Customer 业务数据的可信 install ID 只能来自 token `iid`，不能来自 `x-install-id`。
 4. 新签发的 customer token 必须包含 iid；新 Customer 业务记录的 install ID 目标态为非空。

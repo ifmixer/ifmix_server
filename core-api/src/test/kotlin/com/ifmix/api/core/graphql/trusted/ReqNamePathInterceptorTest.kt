@@ -19,7 +19,7 @@ class ReqNamePathInterceptorTest {
 
     @Test
     fun `extracts reqName from greq path`() {
-        assertThat(extract("/customer/core/greq/q_ai_scan_getById")).isEqualTo("q_ai_scan_getById")
+        assertThat(extract("/customer/core/greq/q_ai_scan_getMyById")).isEqualTo("q_ai_scan_getMyById")
     }
 
     @Test
