@@ -1,0 +1,28 @@
+.workbuddy/memory/2026-10-10.md
+  h_b17efd5c751f9f 68-92
+core-api/src/main/kotlin/com/ifmix/core/api/infra/http/LogContext.kt
+  h_b17efd5c751f9f 8-9,13,51-81
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/ScanTaskService.kt
+  h_b17efd5c751f9f 8,31-33,49-52
+core-api/src/main/resources/logback-spring.xml
+  h_b17efd5c751f9f 12-18,24,26,56-57,76-77,96-97
+docs/design/attest/install-attestation.md
+  h_b17efd5c751f9f 666,668-670
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 5-21,38
+docs/ops/PRODUCTION_ACCESS.md
+  h_b17efd5c751f9f 28,146,148-174,180-181,183,186-187,192,194-195,197-199,202-203
+"docs/version/v1.0.6/release plan v1.0.6.md"
+  h_b17efd5c751f9f 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c7385a0cf63aa507b169bdc715a325b85a05d9b",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
