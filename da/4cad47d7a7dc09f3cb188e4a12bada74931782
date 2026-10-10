@@ -1,0 +1,14 @@
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/ScratchRowLockProbeTest.kt
+  h_b17efd5c751f9f 1-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da4cad47d7a7dc09f3cb188e4a12bada74931782",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
