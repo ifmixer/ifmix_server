@@ -5,12 +5,12 @@ import org.slf4j.MDC
 
 /**
  * 请求级日志上下文：把 [ActionContext.logFields] 逐项写入 MDC（每个字段一个 key，值为 null 的不写），
- * 文件日志是 JSON（logback-spring.xml 的 StructuredLogEncoder，MDC 每项成为一个顶层字段），
- * 本地控制台用 `%mdc` 文本输出。加字段改 [ActionContext.logFields] 即可，不用动这里和 logback 配置。
+ * 日志是文本格式（logback-spring.xml 的 LOG_PATTERN），`%mdc` 把每项输出成 `rid=… pid=…`。
+ * 加字段改 [ActionContext.logFields] 即可，不用动这里和 logback 配置。
  *
  * MDC 只对当前线程生效。DGS 开虚拟线程后 data fetcher 与 servlet filter 不在同一线程，
  * 所以 [bind] 同时把 ctx 挂到 request attribute 上，filter 等其他线程用 [bindFrom] 取回再绑。
- * @Async / 线程池里的日志不带（需要时在提交任务处自行 bind）。
+ * 提交到虚拟线程/线程池的任务：用 [snapshot] + [runWith] 把上下文带过去（见文档注释）。
  */
 object LogContext {
     /** 曾写入过的 MDC key（clear 时逐个移除，不用 MDC.clear() 以免误删第三方放的值）。 */
@@ -48,4 +48,35 @@ object LogContext {
     }
 
     fun clear() = KEYS.forEach(MDC::remove)
+
+    /**
+     * 捕获当前线程 MDC 快照，用于**跨线程**传递上下文。
+     *
+     * 虚拟线程（ThreadPerTaskExecutor）与线程池都**不继承**父线程的 MDC（ThreadLocal 不传），
+     * 所以异步任务里的日志默认一个上下文字段都没有。提交任务处调一次，任务内用 [runWith] 恢复。
+     */
+    fun snapshot(): Map<String, String>? = MDC.getCopyOfContextMap()
+
+    /**
+     * 在任务线程恢复 [snapshot] 后执行 [block]，结束时还原（不是简单 clear——复用线程池时
+     * 不还原会污染下一个任务）。
+     *
+     * 用法：
+     * ```kotlin
+     * val snap = LogContext.snapshot()               // 提交线程（servlet）有 rid
+     * executor.execute { LogContext.runWith(snap) { doWork() } }
+     * ```
+     *
+     * 注意：异步写盘不丢上下文——`LoggingEvent` 在**构造时**就复制了 MDC，
+     * 所以 logback 的 AsyncAppender 即使在别的线程编码也拿得到。
+     */
+    fun <T> runWith(snapshot: Map<String, String>?, block: () -> T): T {
+        val prev = MDC.getCopyOfContextMap()
+        if (snapshot != null) MDC.setContextMap(snapshot)
+        return try {
+            block()
+        } finally {
+            if (prev != null) MDC.setContextMap(prev) else clear()
+        }
+    }
 }

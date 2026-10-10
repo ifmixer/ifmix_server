@@ -2,6 +2,23 @@
 
 本文件按时间倒序记录 core-api 面向客户端/数据库的变更。DateTime 用 ISO-8601；数据库变更标注对应 Flyway 版本。
 
+## 未发布（2026-10-10 起，待整理进 v1.0.7）
+
+### Changed
+- **日志格式改回纯文本**（原 logstash JSON）：实测固定字段占 41.6% 体积，而业务日志跑在虚拟线程上、MDC 不继承，
+  **自定义字段产出为 0**——等于纯付开销。业务 message 本身是 `key=value` 自描述，JSON 未提供额外语义。
+  格式：`时间(UTC) [线程] 级别 logger [MDC 上下文] - message`，异常栈在下一行。
+  **注意历史滚动包里仍是 JSON**，两种格式会并存一段时间（解析方式见 [PRODUCTION_ACCESS.md](PRODUCTION_ACCESS.md) §5.2）。
+- **AI 图片拉取失败加重试**：provider 回源下载图片超时会报 400（非 5xx），此前一律当不可重试直接失败；
+  现识别为瞬态错误后换 key 重试（上界 2，不冷却/禁用 key）。agnes-3.0-flash 高频、2.5 几乎不出现的差异由此缓解。
+
+### Fixed
+- **禁用 API key 时补写 `updated_at`**：此前 Jimmer 局部更新只写 `enabled`，导致 disabled 行的 `updated_at`
+  停在插入时刻，无法判断「何时被自动禁用」。同时把 where 收紧为 `enabled eq true`，避免重复禁用把时间戳刷成最后一次重试。
+  ⚠️ 2026-10-10 之前的历史 disabled 行 `updated_at` 仍不可信。
+- **异步任务日志带上请求上下文**：MDC 不继承到虚拟线程，scan 任务的日志此前没有任何 `rid`/`pid`。
+  现在提交处快照、任务内恢复（`LogContext.snapshot()` / `runWith`），任务内再 `bind(offlineCtx)` 补 `pid`/`cid`。
+
 ## 已发布（v1.0.6，2026-10-05 整理）
 
 相对 v1.0.3 的全部变更（feature/install + feature/attest 已合入 main）。发布步骤与决策记录见 [`docs/version/v1.0.6/release plan v1.0.6.md`](../version/v1.0.6/release%20plan%20v1.0.6.md)「v1.0.6 发布计划」。
@@ -18,7 +35,7 @@
 ### Changed
 - **refresh 契约明确**：`m_auth_session_refresh` 的 Authorization 携带 **customer access token（type=10）**；过期后 refresh 返回 `TOKEN_EXPIRED`，客户端应自动登出（有意设计）。refresh token 暂不校验 `expires_at`（接入第三方登录前，见 `docs/guide/AUTH_DESIGN.md`）。
 - **错误透出收紧**：线上（`app.expose-errors=false`）5xx 只返回通用文案，`details`/内部异常信息不再透出。
-- **日志 JSON 化**（logstash 一行一条）：MDC 上下文（rid/pid/iid/cid/ip/bot/plat/av/ov/loc/cur/cty）为顶层字段；请求日志含 req/res 摘要；线上看日志需 `jq`。
+- **日志 JSON 化**（logstash 一行一条）：MDC 上下文（rid/pid/iid/cid/ip/bot/plat/av/ov/loc/cur/cty）为顶层字段；请求日志含 req/res 摘要；线上看日志需 `jq`。**（2026-10-10 已改回纯文本，见上文「未发布」）**
 - **对象存储下载校验收紧**：objectKey 必须内嵌 projectId+actorId 且与 token 身份一致（封顶 24h）。旧 `/project/` 格式 key 无历史数据，无兼容期。
 - **refresh token 生成改 `SecureRandom`**（原 `Random` 可预测）；`AUTH_JWT_PRIVATE_KEY` 缺失启动即失败（原静默临时密钥）。
 - 旧同步 scan 路径（`m_ai_runAiScan`）废弃，统一走异步任务。

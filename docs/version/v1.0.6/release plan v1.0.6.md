@@ -156,6 +156,7 @@ install attestation 一期（1a，iOS App Attest）。设计见 `docs/design/att
 - **AI key 池**：轮询 + Redis 分布式冷却；`core_ai_agnes_key` → `core_ai_apikey`（V8）。
 - **错误透出**：线上（`app.expose-errors=false`）5xx 只返回通用文案。
 - **日志**：文件日志改为 JSON（logstash 格式，一行一条）；MDC 上下文字段 `rid pid iid cid ip bot plat av ov loc cur cty` 为顶层字段；请求日志 `method/path/httpStatus/duration(ms 数值)/req/res`；请求头/响应头 `x-req-id`。线上看日志需 `jq`，日志采集侧按 JSON 解析。
+  > **已于 2026-10-10 改回纯文本**（JSON 固定字段占 41.6% 体积而实际未产出任何自定义字段），见 `docs/ops/Changelog.md`「未发布」。
 
 发布注意：
 - **DB 迁移顺序**：先 `flywayMigrate`（V4–V9）再发新代码；V6 改 `install_id` 列类型（text→uuid），旧代码在迁移后写入会失败，需短暂停机或先停旧实例。

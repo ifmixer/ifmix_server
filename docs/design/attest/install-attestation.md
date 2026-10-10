@@ -663,9 +663,11 @@ CREATE INDEX idx_install_attestation_evidence ON core_auth_installattestation (c
 - **【2026-10-07 修订，取代「失败尝试不入表」】带 proof 的请求（bundle != null）必留一行**，verify_status 区分结论（10 VALID 绑定 / 20 INVALID / 30 NOT_EVALUATED）；INVALID/NOT_EVALUATED 行 status=NOT_BOUND(40) 仅留痕，`evidence.reason` 记原因，不进 core-job 回填/刷新。原始 `attestation_object` 字节与 `challenge` 全部随行保留——后端算法有 bug 时可离线重验、修正用户数据。无 proof（bundle==null，含客户端声明 UNAVAILABLE）或 attest 全局关闭 → 不写行（无材料，仅日志）。`findBySubject` / 轮换 / recover 等绑定语义的查询一律只认 verify_status=10。
 - **`status=BLOCKED` 在一期的实际效果只有「禁止 recover，禁止这个 key 做新的绑定」。** installToken 是无状态、永不过期的 JWT，认证链路不会查 attestation 状态，所以已经签发出去的 token 照样能用。这里不能说成"封禁"了这个 install。真正的封禁需要的升级路径见 §8 二期。
 
-### 5.5 观测（结构化日志 + SQL）
+### 5.5 观测（日志 + SQL）
 
-core-api 有 actuator，但未接指标导出；现有观测是 logstash JSON 日志（自带 MDC：plat / av / pid / ip / rid）。
+core-api 有 actuator，但未接指标导出；现有观测是文本日志（MDC 自带 plat / av / pid / ip / rid，
+虚拟线程里的日志需显式传递上下文——见 `LogContext.snapshot()` / `runWith`）。
+2026-10-10 之前是 logstash JSON，已改回纯文本（理由见 `docs/ops/Changelog.md`）。
 
 ```
 event=install.attest   mode provider proofStatus result=missing|valid|invalid|unavailable|client_unavailable reason verifyMs totalMs signals{固定键}

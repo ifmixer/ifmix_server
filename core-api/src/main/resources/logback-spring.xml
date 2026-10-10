@@ -9,15 +9,21 @@
   - 控制台仅 local profile 输出，方便本地调试
 -->
 <!--
-  文件日志为 JSON（logstash 格式，一行一条）：MDC 字段（rid/pid/iid/cid/ip/…，见 ActionContext.logFields()）
-  与 SLF4J key-value（如请求日志的 method/path/httpStatus/duration）都是顶层字段。本地控制台保持文本，%mdc 输出上下文。
+  文件与控制台统一为文本格式（一行一条，异常栈跟在后面）。
+  2026-10-10 之前文件是 JSON（logstash），实测固定字段占 41.6% 体积且**没有产出任何自定义字段**
+  （业务日志跑在虚拟线程上，MDC 不继承），纯属开销；而业务 message 本身就是 `key=value` 自描述，JSON 未提供额外语义。
+  - UTC 显式标注：日志时间一律 UTC，跟本地时间对不上先换算。
+  - %mdc = LogContext 写入的请求上下文（rid/pid/iid/cid/ip…，见 ActionContext.logFields()），无值时输出空。
+  - %kvp = SLF4J key-value（如请求日志的 method/path/httpStatus/duration）。
+  - 末尾 %ex：不带异常时输出空；带异常时栈紧跟在 %n 之后（Spring Boot 默认 pattern 同样写法）。
 -->
 <configuration>
     <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="core-api"/>
 
     <property name="LOG_PATH" value="${LOG_PATH:-./logs}"/>
+    <!-- UTC 显式声明（服务器时区就是 UTC，但写出来避免混淆）；%ex 放 %n 之后，无异常时输出空 -->
     <property name="LOG_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%mdc] - %msg %kvp%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS,UTC} [%thread] %-5level %logger{36} [%mdc] - %msg %kvp%n%ex"/>
 
     <!-- 控制台（仅本地开发） -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -47,8 +53,8 @@
             <maxHistory>30</maxHistory>
             <totalSizeCap>3GB</totalSizeCap>
         </rollingPolicy>
-        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
-            <format>logstash</format>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
@@ -67,8 +73,8 @@
             <maxHistory>30</maxHistory>
             <totalSizeCap>3GB</totalSizeCap>
         </rollingPolicy>
-        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
-            <format>logstash</format>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
@@ -87,8 +93,8 @@
             <maxHistory>30</maxHistory>
             <totalSizeCap>3GB</totalSizeCap>
         </rollingPolicy>
-        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
-            <format>logstash</format>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>

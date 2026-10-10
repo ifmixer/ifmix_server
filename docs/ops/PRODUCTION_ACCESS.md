@@ -25,7 +25,7 @@
 | 发布槽 | `/data/app/core-api/{a,b}`，`current` 软链指向 active 槽 |
 | 日志 | `/data/app/log/core-api/{info,warn,error}.log`（logback）+ `core-api.log`（systemd stdout） |
 | Nginx | `/data/app/log/nginx/{access,error}.log`，站点 `/etc/nginx/sites-available/api.ifmix.com` |
-| 时区 | 服务器与日志时间戳均为 **UTC**（`@timestamp` 的 `Z`） |
+| 时区 | 服务器与日志时间戳均为 **UTC**（日志 pattern 显式声明 UTC） |
 
 ---
 
@@ -143,39 +143,64 @@ ssh app_us1 'sudo bash -c "set -a; . /data/app/core-api/common/.env.prod; set +a
 滚动：按天 + 50MB → gzip，**留 30 天 / 3GB 上限**。只有今天（和尚未滚动的那几个）的 `warn.log` / `info.log` 是完整的，
 **历史 WARN/INFO 会随时间被清掉**，追旧问题要连 `*.gz` 一起扫，或先备份日志再分析。
 
-### 5.2 日志是 JSON（ECS 风格），别裸 grep
+### 5.2 日志格式（2026-10-10 起为纯文本）
 
-单行为 JSON，字段：`@timestamp` / `level` / `logger_name` / `message`（还有 `thread_name`）。
-裸 grep 会带出一整行 JSON，噪声很大——按字段解析后再过滤：
+一行一条，格式（`logback-spring.xml` 的 `LOG_PATTERN`）：
+
+```
+2026-10-07 17:04:07.159 [virtual-70] ERROR c.i.c.a.m.a.s.SpringAiScanRunner [rid=0199…, pid=antique] - AI API key invalid … reason=401 keyId=ddc72b86… duration=941ms
+└─ 时间(UTC) ─┘  └─ 线程 ─┘ 级别  └──── logger(缩写) ────┘ └─ MDC 上下文 ─┘   └─ message（本身是 key=value 自描述）
+```
+
+- `[…]` 里是 [LogContext](../../core-api/src/main/kotlin/com/ifmix/core/api/infra/http/LogContext.kt) 写入的
+  MDC 上下文（`rid` `pid` `iid` `cid` `ip` `bot` `plat` `av` `ov` `loc` `cur` `cty`，见 `ActionContext.logFields()`），
+  **虚拟线程/线程池里的日志默认没有**（MDC 不继承，见 5.3）。无上下文时是空的 `[]`。
+- **异常栈在下一行**（不带异常时没有），所以按行过滤时带上 `-A` 才看得全：
+
+```bash
+# 直接捞（记得带 *.gz，否则只看到今天未滚动的部分）
+ssh app_us1 'cd /data/app/log/core-api && sudo zgrep -h "关键字" *.log *.gz | tail -50'
+
+# 带异常栈一起看（-A 20 覆盖栈）
+ssh app_us1 'cd /data/app/log/core-api && sudo zgrep -h -A 20 "关键字" *.log *.gz | tail -80'
+
+# 只要某级别（级别字段在第 3 列，用 awk 精确匹配避免误命中 message 里的 "ERROR"）
+ssh app_us1 'cd /data/app/log/core-api && sudo zcat -f *.log *.gz | awk "\$3==\"ERROR\"" | tail -30'
+```
+
+> 时间戳是 **UTC**（pattern 里显式声明了 `UTC`）；跟本地时间对不上先换算（`date -u` 同步口径）。
+>
+> **2026-10-10 之前的历史日志是 JSON**（logstash，字段 `@timestamp`/`level`/`logger_name`/`message`），
+> 两种格式会同时存在于滚动文件里。要解析旧格式：
 
 ```bash
 ssh app_us1 'cd /data/app/log/core-api && sudo python3 - <<PY
 import json, glob, gzip
 rows=[]
-for f in glob.glob("*.log")+glob.glob("*.gz"):
-    op = gzip.open if f.endswith(".gz") else open
-    for l in op(f, "rt", errors="ignore"):
+for f in glob.glob("*.gz"):            # 旧格式只在历史滚动包里
+    for l in gzip.open(f, "rt", errors="ignore"):
         l=l.strip()
-        if not l: continue
+        if not l.startswith("{"): continue     # 跳过新的文本行
         try: rows.append(json.loads(l))
         except Exception: continue
-rows.sort(key=lambda d: d.get("@timestamp",""))
-KW = "关键字"          # ← 改这里
-for d in rows:
-    if KW in d["message"]:
+for d in sorted(rows, key=lambda d: d.get("@timestamp","")):
+    if "关键字" in d["message"]:
         print(d["@timestamp"], d["level"], d["logger_name"].split(".")[-1], d["message"][:150])
 PY'
 ```
 
-（只想要某级别就再过滤 `d["level"]`；想看全量分布就把 `if` 换成计数。）
+### 5.3 虚拟线程里的日志没有上下文（MDC 不继承）
 
-纯文本捞也可以，记得带 `*.gz`：
+MDC 是 ThreadLocal，虚拟线程（`ThreadPerTaskExecutor`）与线程池**都不继承**父线程的值，
+所以异步任务里的日志默认 `[]` 空的。要带上下文，在提交任务处快照、任务内恢复：
 
-```bash
-ssh app_us1 'cd /data/app/log/core-api && sudo zgrep -h "关键字" *.log *.gz | tail -50'
+```kotlin
+val snapshot = LogContext.snapshot()                      // 提交线程（servlet）有 rid
+executor.execute { LogContext.runWith(snapshot) { work() } }   // 任务内恢复，finally 自动还原
 ```
 
-> 时间戳是 **UTC**（`@timestamp` 后缀 `Z`）；跟本地时间对不上先换算（`date -u` 同步口径）。
+任务内还可以 `LogContext.bind(ctx)` 补 `pid`/`cid` 等（一次性，本虚拟线程后续日志都带）。
+参考实现见 `ScanTaskService.submit()` / `doRun()`。
 
 ---
 

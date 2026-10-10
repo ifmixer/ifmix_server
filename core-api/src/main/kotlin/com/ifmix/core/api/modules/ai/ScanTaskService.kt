@@ -5,6 +5,7 @@ import com.ifmix.core.api.entity.ai.AiTaskErrorCodes
 import com.ifmix.core.api.entity.common.ActorTypes
 import com.ifmix.core.api.infra.db.ModuleCtxFactory
 import com.ifmix.core.api.infra.http.ActionContext
+import com.ifmix.core.api.infra.http.LogContext
 import com.ifmix.core.api.infra.tx.TxRunner
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.notification.NotificationFacade
@@ -27,7 +28,9 @@ class ScanTaskService(
 
     /** mutation 事务提交后调用；executor 拒绝由调用方处理为 TASK_SUBMISSION_FAILED。 */
     fun submit(ctx: ScanTaskContext) {
-        executor.execute { runTask(ctx) }
+        // 提交线程（servlet）的 MDC 里有 rid；虚拟线程不继承 ThreadLocal，快照带过去由 runWith 恢复。
+        val snapshot = LogContext.snapshot()
+        executor.execute { LogContext.runWith(snapshot) { runTask(ctx) } }
     }
 
     private fun runTask(ctx: ScanTaskContext) {
@@ -43,6 +46,10 @@ class ScanTaskService(
 
     private fun doRun(ctx: ScanTaskContext) {
         val actionCtx = offlineCtx(ctx)
+        // 显式绑定上下文：本虚拟线程内所有日志都带 pid/cid/loc/cty/cur，包括深层没拿到 ctx 的代码
+        // （如 key 池 AiApiKeyStore/AiConfig）。rid 由 submit 处的 MDC 快照提供（offlineCtx 无 requestId）。
+        // 清理在 runWith 的 finally（还原快照）里完成。
+        LogContext.bind(actionCtx)
         val mc = mcFactory.forProject(actionCtx)
         val aiResponse = try {
             scanRunner.run(actionCtx, scanAggHandler.buildScanInput(ctx))
