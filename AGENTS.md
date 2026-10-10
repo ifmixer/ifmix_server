@@ -23,17 +23,44 @@
 
 docs/ 分层：`guide/`（指南与约定）、`design/`（功能设计，唯一真相源）、`ops/`（运维与发布）、`testing/`（测试）。**改实现前先读对应设计，改完必须回写**；历史版本看 git（原 `docs/superpowers/` 已于 2026-10-05 迁入 design/ 或归档删除，作废文件不保留，在取代它的文档里留说明）。
 
+### 运维文档约定（写新文档前先看这里）
+
+1. **通用先行**：ssh / 连 PG / 连 Redis / 日志位置 / 重启回滚 这类「每回都要用」的内容，
+   一律写在 [生产接入手册](docs/ops/PRODUCTION_ACCESS.md)，**不在具体文档里重复**——具体文档用一句链接引用即可。
+2. **排查记录进 `docs/ops/issues/`**，文件名 `YYYY-MM-DD-标题.md`（日期小写横杠，标题英文短横线，
+   如 `2026-10-09-ai-api-key-invalid-disabling.md`）。一次排查一份文件，内容 = 现象 + 生产证据 + 结论 + 修复 + 该组件的排障要点
+   （SQL / 日志怎么读 / 恢复手册 / 坑）。
+3. **组件常驻知识也归 issues/**：按组件排障的手册不是 docs/design 的事（design 讲设计与取舍），
+   放 issues/ 下那份记录里，下次同模块出问题就继续在那份文件里追加。
+4. **禁止把凭据写进仓库**（含 issue 文档）。口令只在 `.env` 与服务器 env 文件里，命令用变量引用。
+5. 新增/移动 ops 文档后**同步更新下面这张索引表**。
+6. **`docs/ops/release.md` 已不存在**——发布计划在 `docs/version/v1.0.6/release plan v1.0.6.md`，
+   未发布变更清单在 `docs/version/v1.0.7/todo.md`。看到历史文档里残留的 `ops/release.md` 引用，按这两份替换。
+7. **改生产机器（系统配置 / 包管理 / systemd）也要留痕**：先备份再改，改完在对应 issue 记录里追加「处置」章节
+   （写了什么、为什么这么选、代价是什么、怎么回退），并在 [生产接入手册](docs/ops/PRODUCTION_ACCESS.md) 里同步现状
+   ——否则下次排障会以为配置还是初始值。
+8. **生产已关闭全部自动更新**（2026-10-10，原因见 PG 重启那条 issue）。别再提议「让它自动打补丁」；
+   需要更新时走维护窗口手工 `apt update && apt upgrade` + `needrestart -r a`。
+
 | 文档 | 内容 |
 |------|------|
 | [架构总览](docs/guide/ARCHITECTURE.md) | 分层、模块职责、设计决策、API 约定 |
 | [编码指南](docs/guide/CODING_GUIDE.md) | 每层怎么写、Context 模型、事务、示例代码 |
 | [认证设计](docs/guide/AUTH_DESIGN.md) | IDP + AuthIdentity 模型、登录判定表、refresh token 有效期决策 |
 | [数据库约定](docs/guide/DATABASE.md) | 表清单、命名规则、UUID、枚举、FilterGroup |
-| [发布记录](docs/ops/release.md) | 发布版本号、线上版本、未发布变更与发布计划 |
 | [Changelog](docs/ops/Changelog.md) | 面向客户端/数据库的变更时间线 |
-| [部署](docs/ops/DEPLOY.md) | 部署方式、增量发布、systemd、env 管理（生产主机 `ssh app_us1`、env `/data/app/core-api/common/.env.prod`、日志 `/data/app/log/core-api/`） |
-| [AI Key 池生产排查](docs/ops/AI_KEY_POOL_OPS.md) | key 池排障：连生产 PG/Redis、日志三件套配对、禁用/恢复 SQL、级联禁用判定、已知坑（`updated_at` 不随应用禁用变化、列表缓存滞后、Redis 重启丢冷却） |
+| **[生产接入手册](docs/ops/PRODUCTION_ACCESS.md)** | **通用入口：ssh 别名与隧道、连 PG/Redis、日志位置与 JSON 解析、服务重启/发布/回滚、目录地图、常见坑** |
+| [部署](docs/ops/DEPLOY.md) | 服务器初始化、蓝绿增量发布、systemd、Nginx、env 与凭据管理 |
+| [Ops issues](docs/ops/issues/) | 具体问题的排查记录（`YYYY-MM-DD-标题.md`），清单见下 |
 | [E2E 测试](docs/testing/E2E_TESTING.md) / [Trusted Documents](docs/testing/GRAPHQL_TRUSTED_DOCUMENTS.md) | 测试约定、persisted query 契约 |
+
+ops issues 现存记录：
+
+| 文件 | 主题 |
+|------|------|
+| [2026-10-09-ai-api-key-invalid-disabling](docs/ops/issues/2026-10-09-ai-api-key-invalid-disabling.md) | AI API key 401 自动禁用：`enabled=true` 条件没漏，是 300s 列表缓存窗口（已修）；含 key 池 SQL / 日志配对 / 误杀恢复 / key 池相关坑 |
+| [2026-10-10-pg-connection-closed-by-unattended-upgrade](docs/ops/issues/2026-10-10-pg-connection-closed-by-unattended-upgrade.md) | Hikari `Failed to validate connection … closed` WARN：根因是 **unattended-upgrades 升级 libxml2 → needrestart 自动重启 postgresql**（不是 maxLifetime）；已处置（自动更新全关 + needrestart `override_rc` 禁重启 PG/Redis），含证据链、代价与回退方式 |
+| [2026-10-10-ai-image-fetch-timeout-retry](docs/ops/issues/2026-10-10-ai-image-fetch-timeout-retry.md) | agnes-3.0-flash 常报「图片加载失败」：provider 回源下载超时被它自己返回成 **400**，原逻辑把 400/422 一律当不可重试；已加有限换 key 重试 |
 
 ### 设计文档（docs/design/，按模块分目录）
 

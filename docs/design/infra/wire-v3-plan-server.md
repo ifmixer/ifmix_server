@@ -63,7 +63,7 @@ info:    "ifmix-wire-v3"
 
 - [ ] **状态：pending** ｜ 依赖：T3（可与前端 WP-I 并行）
 - 回写本文各任务状态；`docs/design/infra/wire-encryption.md` §10.4 步骤 1 勾选。
-- `docs/ops/release.md`（v1.0.6 发布计划）与 `docs/ops/Changelog.md` 回写：wire v3（HPKE + 请求压缩），注明「v2 从未上线，无兼容负担」。
+- `docs/version/v1.0.6/release plan v1.0.6.md`（v1.0.6 发布计划）与 `docs/ops/Changelog.md` 回写：wire v3（HPKE + 请求压缩），注明「v2 从未上线，无兼容负担」。
 - 检查 AGENTS.md / DESIGN 索引中 wire 行的描述是否仍准确。
 
 ## 2. 执行顺序与并行

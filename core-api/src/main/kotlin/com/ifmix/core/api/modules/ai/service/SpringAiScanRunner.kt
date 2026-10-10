@@ -92,6 +92,14 @@ open class SpringAiScanRunner(
         /** 单模型最大尝试次数（换 key 重试的上界）。与 key 数解耦——否则 key 池一大，坏 key 会被原样重试上千次。 */
         private const val MAX_ATTEMPTS_PER_MODEL = 4
 
+        /**
+         * provider 回源取图失败时的换 key 重试上界（见 [isTransientImageFetchFailure]）。
+         * 比 [MAX_ATTEMPTS_PER_MODEL] 更小：这类失败 provider 侧要先跑完图片下载超时才返回，
+         * 单次可能占几十秒，重试上界放满会把 deadline 耗光却仍失败。
+         * 2 次 = 原 key 失败后再换一个 key 试一次，够覆盖偶发抖动，也留得下时间走正常分类路径。
+         */
+        private const val MAX_IMAGE_FETCH_ATTEMPTS = 2
+
         /** cause 链遍历深度上限（防理论上的环）。Spring AI 可能包装 SDK 异常，类型判定必须沿链下探。 */
         private const val MAX_CAUSE_DEPTH = 16
 
@@ -162,6 +170,29 @@ open class SpringAiScanRunner(
          */
         internal fun isNonRetryableRequestError(e: Exception): Boolean =
             chainOf(e).any { it is BadRequestException || it is UnprocessableEntityException }
+
+        /**
+         * provider 回源取图失败（**瞬态**）——在 400/422 里单独识别出来。
+         *
+         * 背景：图片以 URL 形式交给 provider，由 provider 自己去我们的对象存储回源下载。
+         * 源站抖动/跨境网络超时会让 provider 在下发前就拿不到图，此时它返回的是 **400**
+         * （实测 agnes-3.0-flash 常见，2.5 少见）：
+         * `"400: …BadRequestError: OpenAIException - {"message":"An exception occurred while
+         *   loading IMAGE data at index 0: … Timed out while downloading media URL: …"}"`
+         * 这不是"图片坏"也不是"key 坏"——**同样的 URL、同样的 key，稍后重试往往就能过**，
+         * 所以归入可重试，走 [MAX_IMAGE_FETCH_ATTEMPTS] 次换 key 重试。
+         */
+        internal fun isTransientImageFetchFailure(e: Exception): Boolean {
+            if (!isNonRetryableRequestError(e)) return false
+            return chainOf(e).any {
+                it.message.orEmpty().lowercase().let { m ->
+                    "loading image data" in m ||
+                        "error while loading data" in m ||
+                        "downloading media url" in m ||
+                        "failed to download image" in m
+                }
+            }
+        }
     }
 
     override fun run(ctx: ActionContext, input: ScanInput): Map<String, Any?> {
@@ -180,6 +211,8 @@ open class SpringAiScanRunner(
 
         for (model in allModels) {
             var attemptCount = 0
+            /** provider 回源取图失败的次数（单独计数，上界 [MAX_IMAGE_FETCH_ATTEMPTS]）。 */
+            var imageFetchFailures = 0
             while (attemptCount < MAX_ATTEMPTS_PER_MODEL) {
                 // 总预算检查：剩余时间不足以完成一次完整调用（call-timeout）时不发起新 attempt——
                 // 保证所有在途调用都能在预算内结束（最坏总耗时 = deadline，而非 deadline + 一次调用超时）。
@@ -241,6 +274,21 @@ open class SpringAiScanRunner(
                     return data
 
                 } catch (e: Exception) {
+                    // provider 回源取图失败是**瞬态**的（它不是坏图片，也不是 key 的问题——
+                    // provider 没能把图从我们的对象存储拉到手就先返回 400）。换一个 key 再试一次
+                    // （走不同出口），不少情况下就过了；不冷却 key——它没有错。
+                    if (isTransientImageFetchFailure(e)) {
+                        imageFetchFailures++
+                        if (imageFetchFailures < MAX_IMAGE_FETCH_ATTEMPTS) {
+                            log.warn("AI could not fetch image (transient upstream failure) — retrying with next key. " +
+                                "imageFetchFailures={} scanId={} model={} keyId={} msg={}",
+                                imageFetchFailures, input.scanId, model, doc.id, e.message)
+                            continue
+                        }
+                        log.warn("AI could not fetch image after {} attempts — giving up without cooldown. " +
+                            "scanId={} model={} keyId={} msg={}", imageFetchFailures, input.scanId, model, doc.id, e.message)
+                        throw ApiError(ErrorCode.INVALID_REQUEST, "AI could not load the image (upstream fetch failed)")
+                    }
                     // 400/422：请求数据问题（坏图片等），换 key 重试无意义 → 立即终止，不冷却 key、不重试。
                     if (isNonRetryableRequestError(e)) {
                         log.warn("AI rejected request (non-retryable 400/422) — abort without cooldown/retry. " +

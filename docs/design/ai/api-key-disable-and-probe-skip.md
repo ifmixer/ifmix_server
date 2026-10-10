@@ -68,7 +68,9 @@ AiApiKeyStore:  新增构造 seam disableKeyFn: (keyId: String) -> Unit，暴露
 
 AiConfig:       val affected = sqlClient.createUpdate(AiApiKey::class) {   // 项目惯例（InstallRepository 等 6 处先例）
                     where(table.id eq UUID.fromString(keyId))
+                    where(table.enabled eq true)      // 2026-10-10 加：保证重复禁用是**真**幂等
                     set(table.enabled, false)
+                    set(table.updatedAt, Instant.now()) // 2026-10-10 加：表无 ON UPDATE trigger
                 }.execute()
                 affected > 0 → WARN（key 已禁用，提示运营确认）
                 affected = 0 → INFO（已禁用或已删除，幂等 no-op）
@@ -77,6 +79,14 @@ AiConfig:       val affected = sqlClient.createUpdate(AiApiKey::class) {   // �
                     不变量 =「任何异常不得逃出 disableKeyFn」）
                 返回值 Boolean：true = DB 已确认该 key 不在 enabled 集合（写成功，含 affected=0 的重复禁用）；
                   false = 写失败
+
+为什么是这两个条件（2026-10-10）：
+  · `updated_at`：`core_ai_apikey` 无 ON UPDATE trigger，Jimmer 局部更新只写 set 过的列。
+    不写的话 disabled 行的 updated_at 停在插入时刻，排障无法判断"何时被自动禁用"——
+    2026-10-09 排查时就踩了：`SELECT ... WHERE updated_at BETWEEN` 圈不出任何自动禁用，
+    只能翻滚动日志。写完 updated_at = "状态被改成 disabled 的时刻"。
+  · `enabled eq true`：只加 updated_at 会让重复禁用每次 affected=1（时间戳变了），
+    updated_at 漂移到"最后一次重试禁用"的时间，同时每次都打一条似是而非的 WARN。
 
 AiApiKeyStore:  disableKey(keyId) = if (disableKeyFn(keyId)) evict(keyId)
                 evict 把该 key 从本进程列表立即剔除（2026-10-09 加，见 §完整时序）：
@@ -149,18 +159,51 @@ attempt3: [k10..k14] 命中 k12 → 游标 +1，返回 k12      # 3 次 attempt 
 - `probe=1`（clamp 下限或 `n=1`）：额外 +0，退化为当前行为
 - `n ≤ probe`：净推进 `probe` ≥ `n`，`floorMod` 归一回原位——全池冷却时跳到哪都一样返回 null，正确
 
+## 补充改动：400/422 的两类语义（2026-10-10）
+
+原先 catch 里 `isNonRetryableRequestError`（类型化 `BadRequestException`/`UnprocessableEntityException`）一命中就
+立即终止——基于「400/422 = 请求数据本身有问题，换 key 重试无意义」。这条假设漏了一类：
+
+**provider 回源取图失败，provider 自己把它报成 400。** 图片以 URL 形式交给 provider，由 provider
+回源到我们的对象存储下载；超时/抖动时它返回：
+
+```
+400: BadRequestError: OpenAIException - {"message":"An exception occurred while loading IMAGE data
+     at index 0: … Timed out while downloading media URL: https://…"}
+```
+
+这既不是图片坏、也不是 key 坏——**同样的 URL 和 key，稍后重试往往能过**（实测 agnes-3.0-flash 高发，
+2.5 少见）。所以 400/422 现在分两类处理：
+
+```
+isTransientImageFetchFailure(e)   // 先要求类型化 400/422，再要求 message 命中图片装载短语
+  ├─ true  → 换 key 重试，独立上界 MAX_IMAGE_FETCH_ATTEMPTS = 2
+  │           **不冷却、不禁用 key**（provider 回源失败，key 无过错）
+  │           上界取 2 而不是 MAX_ATTEMPTS_PER_MODEL=4：每次失败 provider 要先跑完图片下载超时才返回，
+  │           放满会把 scan-deadline(600s) 耗光却仍失败
+  │           耗尽才抛 INVALID_REQUEST，message 区别于真坏图片
+  └─ false → 维持原语义（isNonRetryableRequestError）：立即终止、不冷却、不重试
+```
+
+两道判定缺一不可：只按 message 匹配会让普通超时/错误因为路径里带了 media URL 字样就被劫持到重试分支
+（有单测锁定：非 400 + 该短语 → 仍走正常 timeout 冷却路径）。
+
+判定的前提是「重试安全」：图片 URL 是公开桶 + 自定义域拼出来的**永久公开地址**（`getPublicUrl`，
+非 presigned，无签名/无 expiry），重复下载不会过期。
+
 ## 文件清单
 
 | 文件 | 改动 |
 |---|---|
 | `core-api/.../modules/ai/service/AiApiKeyStore.kt` | `pick()` 全冷却跳跃；新增 `disableKeyFn` seam + `disableKey()`；2026-10-09：`disableKeyFn` 改 `(String) -> Boolean`，新增 `evict()`，写库成功即本地剔除 |
-| `core-api/.../modules/ai/service/SpringAiScanRunner.kt` | `KeyFailure` data class；`classify` 返回类型；catch 分支调 `disableKey` + 日志分级 |
-| `core-api/.../modules/ai/service/AiConfig.kt` | 组装 `disableKeyFn`（`createUpdate().execute()` 局部更新 + `catch (e: Exception)` 收敛）；`warnDegraded` 消息参数化；新增 `id` 扩展属性与 `UUID` import；顺带删除未使用的 `aiApiKeyRepo` 注入（死代码，已验证无引用）；2026-10-09：`disableKeyFn` 返回 Boolean（写成功/已停用 = true，异常 = false） |
+| `core-api/.../modules/ai/service/SpringAiScanRunner.kt` | `KeyFailure` data class；`classify` 返回类型；catch 分支调 `disableKey` + 日志分级；2026-10-10：新增 `isTransientImageFetchFailure` + `MAX_IMAGE_FETCH_ATTEMPTS=2`（400/422 的两类语义，见上节） |
+| `core-api/.../modules/ai/service/AiConfig.kt` | 组装 `disableKeyFn`（`createUpdate().execute()` 局部更新 + `catch (e: Exception)` 收敛）；`warnDegraded` 消息参数化；新增 `id` 扩展属性与 `UUID` import；顺带删除未使用的 `aiApiKeyRepo` 注入（死代码，已验证无引用）；2026-10-09：`disableKeyFn` 返回 Boolean（写成功/已停用 = true，异常 = false）；2026-10-10：补 `set(updatedAt, Instant.now())` + `where(enabled eq true)` |
 | `core-api/src/test/.../modules/ai/AiApiKeyStoreTest.kt` | Fake 提供 `disableKeyFn`；新增全冷却跳跃 / `probe=1` 退化用例；2026-10-09：Fake 支持 `disableSucceeds`，新增「禁用后立即不再被 pick」「写失败不剔除」「剔除到空触发重载」3 个用例 |
 | `core-api/src/test/.../modules/ai/SpringAiScanRunnerClassifyTest.kt` | 断言从 `Pair` 改 `KeyFailure`；新增类型化 vs 兜底 `typedInvalidKey` 用例 |
 | `core-api/src/test/.../modules/ai/SpringAiScanRunnerDisableTest.kt`（新增） | mock `ChatClient.prompt().call()` 抛 `UnauthorizedException` → 断言 `disableKey` 被调；message 兜底异常 → 只 `markCooldown` 不禁用；`disableKeyFn` 抛任意异常 → 主流程不中断（runner 侧对 seam 返回值无依赖，天然不中断） |
 | `core-api/src/test/.../modules/ai/AiConfigDisableKeyFnTest.kt`（新增） | 纯单测（stub `KSqlClient`，不依赖 DB）：更新抛 `RuntimeException` / `DataAccessException` / `IllegalArgumentException` → `disableKey` 均不外抛（锁「任何异常不逃出 disableKeyFn」不变量）；正常返回 affected 计数 |
-| `core-api/src/test/.../modules/ai/AiConfigDisableKeyDbTest.kt`（新增） | 真库（沿用 `CustomerScanMetricsRepositoryDbTest` 的 PG+Flyway+`newKSqlClient` 模式）插入 enabled=true 行 → `createUpdate` → 断言 enabled=false；0 行场景 |
+| `core-api/src/test/.../modules/ai/AiConfigDisableKeyDbTest.kt`（新增） | 真库（沿用 `CustomerScanMetricsRepositoryDbTest` 的 PG+Flyway+`newKSqlClient` 模式）插入 enabled=true 行 → `createUpdate` → 断言 enabled=false；0 行场景；2026-10-10：新增「禁用 bump updated_at」「重复禁用不动 updated_at」2 个用例（后者锁定 `enabled eq true` 带来的幂等性） |
+| `core-api/src/test/.../modules/ai/SpringAiScanRunnerImageFetchRetryTest.kt`（新增，2026-10-10） | 图片拉取失败重试后成功（且 key 未被冷却/禁用）／到上界后放弃（call 次数=2 而非 4）／真坏图片 400 一次即止／非 400 但含 media URL 短语不被劫持 |
 | `docs/design/ai/api-key-pool.md` | 基线文档：仅修订记录 + 关联加指针，实质内容不并入（避免混淆） |
 
 不改：`AiApiKeyRepository.kt`（`save`/`findById` 仍无 main 调用点；禁用走 `AiConfig` 全局 `sqlClient`）、`application.yml`、DB schema。
@@ -191,9 +234,12 @@ attempt3: [k10..k14] 命中 k12 → 游标 +1，返回 k12      # 3 次 attempt 
 - 基线（轮询 + 打乱 + Redis 冷却 + 降级）：[api-key-pool.md](api-key-pool.md)
 - 表结构（`core_ai_apikey` + `provider` 列）：见 [api-key-pool.md](api-key-pool.md)「表结构」一节
 - 实体：`entity/ai/AiApiKey.kt`（`enabled` / `unavailableUntil`）
-- 生产排查手册（怎么连库/看日志/误杀恢复）：[../../ops/AI_KEY_POOL_OPS.md](../../ops/AI_KEY_POOL_OPS.md)
+- 生产排查手册（key 池 SQL / 日志怎么读 / 误杀恢复 / 坑）：
+  [../../ops/issues/2026-10-09-ai-api-key-invalid-disabling.md](../../ops/issues/2026-10-09-ai-api-key-invalid-disabling.md)
+  （通用的 ssh/连库/日志位置见 [../../ops/PRODUCTION_ACCESS.md](../../ops/PRODUCTION_ACCESS.md)）
 
 ## 修订记录
 
-- 2026-10-09（排查 `2026-10-07T20:23` 那条 401 ERROR 后补）：`disableKeyFn` 返回值改 `Boolean`（写成功/已停用 = true，异常 = false），`AiApiKeyStore.disableKey` 在 true 时调新增的 `evict()` 把 key 从本进程列表**立即**剔除，不再等 300s 重载。动机：那段陈旧窗口原先只靠同一条失败链写的 Redis 1h 冷却守护，一旦冷却键丢失（生产 Redis `appendonly=no`，重启会丢）或 MGET 降级 fail-open，已禁用的 key 会被再挑出去一次。写失败时**不**剔除（Redis 冷却 + 重载仍是唯一兜底，避免让还能用的 key 白掉轮换位）。伴随产出排障手册 `docs/ops/AI_KEY_POOL_OPS.md`。
+- 2026-10-10（两项，均源自生产现象）：**① 禁用补写 `updated_at`** + where 收紧 `enabled eq true`。前者是因为 `core_ai_apikey` 无 ON UPDATE trigger、Jimmer 局部更新只写 set 过的列，导致自动禁用不留时间痕迹（2026-10-09 排查时 `updated_at` 完全圈不出禁用时间点）；后者是补 `updated_at` 的连带要求——否则每次重复禁用都 affected=1，时间戳会漂移到最后一次重试、并打出似是而非的 WARN。**② 图片拉取失败从「不可重试」改为有限重试**（见「400/422 的两类语义」一节）：provider 回源下载超时被它自己上报为 400，实际是瞬态错误；命中 `isTransientImageFetchFailure` 时换 key 重试至多 2 次、不冷却不禁用 key，耗尽才抛 `INVALID_REQUEST`（message 与真坏图片区分）。产出 `docs/ops/issues/2026-10-10-ai-image-fetch-timeout-retry.md`。
+- 2026-10-09（排查 `2026-10-07T20:23` 那条 401 ERROR 后补）：`disableKeyFn` 返回值改 `Boolean`（写成功/已停用 = true，异常 = false），`AiApiKeyStore.disableKey` 在 true 时调新增的 `evict()` 把 key 从本进程列表**立即**剔除，不再等 300s 重载。动机：那段陈旧窗口原先只靠同一条失败链写的 Redis 1h 冷却守护，一旦冷却键丢失（生产 Redis `appendonly=no`，重启会丢）或 MGET 降级 fail-open，已禁用的 key 会被再挑出去一次。写失败时**不**剔除（Redis 冷却 + 重载仍是唯一兜底，避免让还能用的 key 白掉轮换位）。伴随产出排查记录 `docs/ops/issues/2026-10-09-ai-api-key-invalid-disabling.md` 与通用接入手册 `docs/ops/PRODUCTION_ACCESS.md`。
 - 2026-10-04 按 review 修订：`disableKeyFn` 改 `catch (e: Exception)` 整体收敛（Jimmer 异常不经 Spring 翻译、非 `DataAccessException`，按类型列举兜不住，兑现「任何异常不逃出」不变量），并新增 `AiConfigDisableKeyFnTest` 纯单测锁定；`warnDegraded` 消息参数化（原硬编码 "redis failed" 会误导 DB 故障排查）、`affected=0` 降 INFO；局部更新改用项目惯例 `createUpdate().execute()`（6 处先例，弃用无先例的 `executeUpdate`）；问题二成因归因修正（shuffle 已切断导入聚集，连续冷却区段实际来自「风暴顺路打冷却」与「高冷却占比」两条路径）；已知取舍补 provider 鉴权故障级联禁用场景（恢复 = 一次 UPDATE，ERROR 总量以池大小为上界）；`SpringAiScanRunnerClassifyTest` 用例数勘误 5→6；AiConfig 顺带删除未使用的 `aiApiKeyRepo` 注入。

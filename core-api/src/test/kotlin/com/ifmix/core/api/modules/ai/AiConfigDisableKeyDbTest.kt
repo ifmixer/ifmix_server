@@ -8,6 +8,7 @@ import com.ifmix.core.api.entity.ai.by
 import com.ifmix.core.api.entity.ai.enabled
 import com.ifmix.core.api.entity.ai.id
 import com.ifmix.core.api.entity.ai.provider
+import com.ifmix.core.api.entity.ai.updatedAt
 import com.ifmix.core.api.modules.ai.service.AiConfig
 import org.babyfish.jimmer.kt.new
 import org.babyfish.jimmer.sql.dialect.PostgresDialect
@@ -22,6 +23,7 @@ import org.mockito.kotlin.mock
 import org.postgresql.ds.PGSimpleDataSource
 import org.testcontainers.DockerClientFactory
 import org.testcontainers.containers.PostgreSQLContainer
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -85,6 +87,40 @@ class AiConfigDisableKeyDbTest {
         assertThat(enabledOf(id)).isEqualTo(false)
     }
 
+    /**
+     * 禁用必须顺带写 `updated_at`：表上没有 ON UPDATE trigger，Jimmer 局部更新只写 set 过的列。
+     * 不写的话 disabled 行的 updated_at 停在插入时刻，排障时无法判断「何时被自动禁用」——
+     * 2026-10-10 之前只能靠滚动日志推断（见 docs/ops/issues 的 key 池记录）。
+     */
+    @Test
+    fun `disableKey bumps updated_at`() {
+        val id = insertKey()
+        val before = updatedAtOf(id)!!
+        Thread.sleep(5) // Instant.now() 在同一毫秒内可能取巧相等，跨毫秒才可断言严格递增
+
+        config.aiApiKeyStore(probeWindow = 5).disableKey(id.toString())
+
+        assertThat(enabledOf(id)).isEqualTo(false)
+        val after = updatedAtOf(id)!!
+        assertThat(after > before).isEqualTo(true)
+    }
+
+    /**
+     * 重复禁用（affected=0）不应再改 updated_at——否则每次都会把"最后被重试的时间"
+     * 当成禁用时间，同样会误导排障。
+     */
+    @Test
+    fun `disableKey no-op does not touch updated_at`() {
+        val id = insertKey()
+        config.aiApiKeyStore(probeWindow = 5).disableKey(id.toString())
+        val afterFirst = updatedAtOf(id)!!
+        Thread.sleep(5)
+
+        config.aiApiKeyStore(probeWindow = 5).disableKey(id.toString())
+
+        assertThat(updatedAtOf(id)).isEqualTo(afterFirst)
+    }
+
     @Test
     fun `disableKey on unknown id is an idempotent no-op`() {
         val unknown = UUID.randomUUID()
@@ -107,5 +143,12 @@ class AiConfigDisableKeyDbTest {
             where(table.id eq id)
             where(table.provider eq 10)
             select(table.enabled)
+        }.execute().firstOrNull()
+
+    private fun updatedAtOf(id: UUID): Instant? =
+        sqlClient.createQuery(AiApiKey::class) {
+            where(table.id eq id)
+            where(table.provider eq 10)
+            select(table.updatedAt)
         }.execute().firstOrNull()
 }

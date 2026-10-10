@@ -4,7 +4,7 @@
 
 ## 已发布（v1.0.6，2026-10-05 整理）
 
-相对 v1.0.3 的全部变更（feature/install + feature/attest 已合入 main）。发布步骤与决策记录见 `docs/ops/release.md`「v1.0.6 发布计划」。
+相对 v1.0.3 的全部变更（feature/install + feature/attest 已合入 main）。发布步骤与决策记录见 [`docs/version/v1.0.6/release plan v1.0.6.md`](../version/v1.0.6/release%20plan%20v1.0.6.md)「v1.0.6 发布计划」。
 
 ### Added
 - **install 体系**（V5/V6）：`m_auth_install_create` / `m_auth_install_updateOne`；JWT 新增 `type`（5=install / 10=customer）与 `iid` claim；`core_install` + `core_install_customer_relation`（一 install 一 active customer）。老 app 兼容：`app.auth.legacy-install-id-fallback`（默认 true，token 无 iid 时退回 `x-install-id` header，仅读不写关系）。

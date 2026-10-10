@@ -5,6 +5,7 @@ import com.ifmix.core.api.entity.ai.ApiProviders
 import com.ifmix.core.api.entity.ai.enabled
 import com.ifmix.core.api.entity.ai.id
 import com.ifmix.core.api.entity.ai.provider
+import com.ifmix.core.api.entity.ai.updatedAt
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.slf4j.LoggerFactory
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.dao.DataAccessException
 import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -106,7 +108,16 @@ class AiConfig(
             try {
                 val affected = sqlClient.createUpdate(AiApiKey::class) {
                     where(table.id eq UUID.fromString(keyId))
+                    // 只匹配「还是启用状态」的行：加了这一条，重复禁用才是真幂等。
+                    // 否则 updated_at 每次都变（虽然 enabled 不变），UPDATE 永远 affected=1——
+                    // updated_at 会漂移到"最后一次重试禁用"的时刻（排障时误判禁用时间），
+                    // 并且每次都打一条 WARN，看着像刚刚才被误杀一次。
+                    where(table.enabled eq true)
                     set(table.enabled, false)
+                    // 必须显式写 updated_at：表上没有 ON UPDATE trigger，Jimmer 的局部更新只写 set 的列。
+                    // 不写的话 disabled 行的 updated_at 会一直停在插入时的时间点，排障时无法判断"何时被自动禁用"
+                    // （2026-10-10 之前的禁用行就是这么来的：只能靠滚动日志推断时间）。
+                    set(table.updatedAt, Instant.now())
                 }.execute()
                 if (affected > 0) {
                     log.warn("AI API key disabled (enabled=false). keyId={} — 需运营确认是否误杀，恢复：改回 enabled=true 或删除行", keyId)
