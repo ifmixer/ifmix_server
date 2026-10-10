@@ -1,0 +1,38 @@
+.workbuddy/memory/2026-10-10.md
+  h_b17efd5c751f9f 1-71
+AGENTS.md
+  h_b17efd5c751f9f 26-44,52-54,57-64
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiConfig.kt
+  h_b17efd5c751f9f 8,18,111-115,117-120
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  h_b17efd5c751f9f 95-102,173-195,214-215,277-291
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/AiConfigDisableKeyDbTest.kt
+  h_b17efd5c751f9f 11,26,90-123,147-153
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/SpringAiScanRunnerImageFetchRetryTest.kt
+  h_b17efd5c751f9f 1-175
+docs/design/ai/api-key-disable-and-probe-skip.md
+  h_b17efd5c751f9f 71,73,83-90,162-193,199-200,205-206,237-239,243-244
+docs/design/infra/wire-v3-plan-server.md
+  h_b17efd5c751f9f 66
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 7
+docs/ops/PRODUCTION_ACCESS.md
+  h_b17efd5c751f9f 1-324
+docs/ops/issues/2026-10-09-ai-api-key-invalid-disabling.md
+  h_b17efd5c751f9f 1-176
+docs/ops/issues/2026-10-10-ai-image-fetch-timeout-retry.md
+  h_b17efd5c751f9f 1-78
+docs/ops/issues/2026-10-10-pg-connection-closed-by-unattended-upgrade.md
+  h_b17efd5c751f9f 1-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7a598c47a08874a8a28db1926f2b7d947044ad2",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
