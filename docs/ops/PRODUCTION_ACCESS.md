@@ -19,7 +19,7 @@
 | SSH 端口 | **20856**（非 22，Ubuntu 26 走 `ssh.socket` 而非改 `sshd_config`） |
 | 端口转发（本机） | `25432`→PG `5432`、`26379`→Redis `6379`、`23001`→core-api `3001` |
 | 生产 PG | 库 `core_api`（业务）/ `core_job`（Batch 元数据）/ `app_ops`（预留），用户 `app` |
-| 生产 Redis | `localhost:6379`，口令变量名 **`REDIS_URL`** |
+| 生产 Redis | `localhost:6379`，口令变量名 **`REDIS_URL`**，持久化 **AOF(everysec) + RDB**（详见 §四） |
 | systemd unit | **`app-core-api.service`**（带 `app-` 前缀，裸 `core-api` 查不到） |
 | 环境变量 | `/data/app/core-api/common/.env.prod`（`root:app 640`） |
 | 发布槽 | `/data/app/core-api/{a,b}`，`current` 软链指向 active 槽 |
@@ -105,26 +105,38 @@ DB_URL="jdbc:postgresql://localhost:25432/core_api" DB_USER=app DB_PASSWORD="$PG
 
 ### 4.1 本机直连（走 26379 隧道）
 
-口令在服务器 env 文件里，**不要回显**：
+口令只在服务器 env 文件里（`redis://:<password>@localhost:6379` 的形式）。两种连法**同一套 helper**：
+服务器上直连 `6379`，本机走隧道时用 `26379`（`-h/-p` 换一下即可）。
 
 ```bash
-ssh app_us1 'sudo bash -c "set -a; . /data/app/core-api/common/.env.prod; set +a; echo \$REDIS_URL"'
-# 形如 redis://:<password>@localhost:6379
-redis-cli -u "redis://:<password>@localhost:26379" ping
+# 服务器内直连（推荐，省一道转发）
+ssh app_us1 'sudo bash -s' <<'EOF'
+set -a; . /data/app/core-api/common/.env.prod; set +a
+PW=$(printf '%s' "$REDIS_URL" | sed -E 's|^redis://:||; s|@.*$||')   # 剥出口令，不回显整串
+R() { redis-cli --no-auth-warning -a "$PW" "$@"; }
+R ping
+R info server | grep -E "redis_version|uptime_in_days"
+R info memory | grep -E "used_memory_human|maxmemory_human"
+R info persistence | grep -E "^(aof_enabled|aof_last_write_status|aof_last_bgrewrite_status|rdb_last_bgsave_status)"
+R config get appendonly appendfsync save dir maxmemory maxmemory-policy | paste - -
+R dbsize
+EOF
 ```
 
-### 4.2 服务器内连（推荐，省一道转发）
+本机（走 26379 隧道）连法一样，只是加 `-h/-p`：把上面 helper 改成
+`R() { redis-cli --no-auth-warning -a "$PW" -h 127.0.0.1 -p 26379 "$@"; }`（`$PW` 用 §4 的方式取回，别回显整串 URL）。
 
-```bash
-ssh app_us1 'sudo bash -c "set -a; . /data/app/core-api/common/.env.prod; set +a
-  redis-cli -u \"\$REDIS_URL\" info server | grep -E \"redis_version|uptime_in_days\"
-  redis-cli -u \"\$REDIS_URL\" config get maxmemory maxmemory-policy
-  redis-cli -u \"\$REDIS_URL\" dbsize"'
-```
+> ⚠️ **别用 `redis-cli -u "$REDIS_URL"`**：本机会报 `WRONGPASS invalid username-password pair`
+> （把提取出的口令重新拼成 URL 也一样），同一个口令用 `-a` 才通。
 
 > 变量名是 `REDIS_URL`，**没有** `SPRING_DATA_REDIS_PASSWORD` 这种拆分变量——按后者去找会白找一圈。
-> 生产实例 `maxmemory=0` + `noeviction`（不会被内存驱逐），但 `appendonly=no`，**重启会丢未落盘的 key**——
-> 排查问题时先查 `uptime_in_days`，短 uptime 意味着近期可能丢过数据。
+> 生产实例 `maxmemory=0` + `noeviction`（不会被内存驱逐）。
+> **持久化（2026-10-10 起）：AOF `appendonly=yes` + `appendfsync=everysec`，同时保留 RDB 快照**
+> （`save 3600 1 300 100 60 10000`）；数据目录 `/data/redis`（含 `appendonlydir/`），`systemctl restart` 不丢 key。
+> 在此之前只有 RDB，`appendonly=no`，崩溃/`kill -9` 最多丢近 1 小时增量——见
+> [issues/2026-10-10-redis-aof-persistence.md](issues/2026-10-10-redis-aof-persistence.md)。
+> 排查「状态是不是丢了」时先看 `aof_last_write_status` / `rdb_last_bgsave_status`（不为 ok = 落盘失败），
+> 而不是只看 `uptime_in_days`。
 
 ---
 
