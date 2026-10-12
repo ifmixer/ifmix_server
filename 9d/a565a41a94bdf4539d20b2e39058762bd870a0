@@ -1,0 +1,20 @@
+AGENTS.md
+  h_b17efd5c751f9f 64
+docs/ops/DEPLOY.md
+  h_b17efd5c751f9f 21,24,32-33,35,39-40,93-94,105,108,144,463
+docs/ops/PRODUCTION_ACCESS.md
+  h_b17efd5c751f9f 106-107,125,127,330-332,350-354
+docs/ops/issues/2026-10-09-ai-api-key-invalid-disabling.md
+  h_b17efd5c751f9f 49-51,138-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9da565a41a94bdf4539d20b2e39058762bd870a0",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
