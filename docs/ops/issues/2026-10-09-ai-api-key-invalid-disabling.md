@@ -46,8 +46,9 @@
 4. **排除项**：单实例（`ss -ltnp | grep 3001` 只有一个 PID，无多份缓存）；
    Redis `noeviction` + `maxmemory=0`（不会被逐出）；禁用 UPDATE 不在事务内（不会回滚）；
    导入脚本 `ON CONFLICT (key) DO NOTHING`（不会重新启用已禁用的 key）。
-5. **潜雷**：代码上 300s 窗口真的存在，而生产 Redis `appendonly=no`、**uptime 仅 1 天**——重启会丢冷却键。
-   这次没炸，但不修迟早炸。
+5. **潜雷（已拆雷）**：代码上 300s 窗口真的存在，当时生产 Redis `appendonly=no`、**uptime 仅 1 天**——重启会丢冷却键。
+   这次没炸。**2026-10-10 已开 AOF（`appendonly yes`/`everysec`）**，详见
+   [2026-10-10-redis-aof-persistence](2026-10-10-redis-aof-persistence.md)。
 
 ---
 
@@ -134,9 +135,13 @@ ssh app_us1 "sudo systemctl restart app-core-api"
    **多实例部署时每个实例各一份缓存**——巡检时 `ss -ltnp | grep 3001` 确认实例数。
 3. **ERROR 措辞会误导。** `"disabling (PG enabled=false, best-effort)"` 只代表"没有抛异常"，不代表真的改到了行；
    `affected=0` 也打同一条。判断落地与否要看伴生的 WARN/INFO。
-4. **Redis 重启会丢冷却。** 生产 `maxmemory=0` + `noeviction`（不会被驱逐），
-   但 `appendonly=no`、RDB `save 3600 1 300 100 60 10000`——**重启会丢掉未落盘的冷却键**。
-   查故障先看 `info server` 的 `uptime_in_days`。Redis 故障期间 key 池是 fail-open 放行（预期行为）。
+4. **Redis 落盘与丢冷却键。** 生产 `maxmemory=0` + `noeviction`（不会被驱逐）。
+   **2026-10-10 起 AOF 已开**（`appendonly yes` + `appendfsync everysec`，RDB 快照保留），
+   `systemctl restart` 不再丢冷却键，崩溃最多丢约 1s。
+   查故障先看 `info persistence` 的 `aof_enabled` / `aof_last_write_status` / `rdb_last_bgsave_status`
+   （不为 ok = 落盘失败，此时 Redis 会拒写），其次看 `info server` 的 `uptime_in_days`。
+   Redis 故障期间 key 池是 fail-open 放行（预期行为）。细节见
+   [2026-10-10-redis-aof-persistence](2026-10-10-redis-aof-persistence.md)。
 5. **`core_ai_apikey` 的 `unavailable_until` 是死字段**，全仓库无读写逻辑，不要拿它当禁用标记。
 6. **唯一约束在 `key` 而不是 id**：导入脚本用 `ON CONFLICT (key) DO NOTHING`，**不会把禁用的 key 重新启用**，
    同一批 key 也不会重复入库。

@@ -61,6 +61,7 @@ ops issues 现存记录：
 | [2026-10-09-ai-api-key-invalid-disabling](docs/ops/issues/2026-10-09-ai-api-key-invalid-disabling.md) | AI API key 401 自动禁用：`enabled=true` 条件没漏，是 300s 列表缓存窗口（已修）；含 key 池 SQL / 日志配对 / 误杀恢复 / key 池相关坑 |
 | [2026-10-10-pg-connection-closed-by-unattended-upgrade](docs/ops/issues/2026-10-10-pg-connection-closed-by-unattended-upgrade.md) | Hikari `Failed to validate connection … closed` WARN：根因是 **unattended-upgrades 升级 libxml2 → needrestart 自动重启 postgresql**（不是 maxLifetime）；已处置（自动更新全关 + needrestart `override_rc` 禁重启 PG/Redis），含证据链、代价与回退方式 |
 | [2026-10-10-ai-image-fetch-timeout-retry](docs/ops/issues/2026-10-10-ai-image-fetch-timeout-retry.md) | agnes-3.0-flash 常报「图片加载失败」：provider 回源下载超时被它自己返回成 **400**，原逻辑把 400/422 一律当不可重试；已加有限换 key 重试 |
+| [2026-10-10-redis-aof-persistence](docs/ops/issues/2026-10-10-redis-aof-persistence.md) | Redis 只有 RDB 快照（`appendonly=no`）→ 崩溃/`kill -9` 最多丢近 1h 写；已开 **AOF（everysec）+ 保留 RDB** 并重启验证。同为 **Redis 组件常驻手册**：持久化健康度判定、AOF 目录、`redis-cli -u` 必失败要用 `-a`、写入失败行为、遗留 `vm.overcommit_memory` 警告 |
 
 ### 设计文档（docs/design/，按模块分目录）
 

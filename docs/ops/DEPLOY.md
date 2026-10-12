@@ -18,10 +18,10 @@
 | 反向代理 | **Nginx**，`api.ifmix.com` → 反代 `127.0.0.1:3001`（core-api）；日志落 `/data/app/log/nginx/*.log` |
 | 工具 | unzip, zip, fail2ban, htop, jq |
 | PostgreSQL | **18.6**（Ubuntu 官方源），数据目录迁至 `/data/postgresql/18/main`，监听 `localhost:5432` |
-| Redis | **8.0.5**（Ubuntu 官方源），数据目录 `/data/redis`，监听 `localhost:6379`，`requirepass` 已设 |
+| Redis | **8.0.5**（Ubuntu 官方源），数据目录 `/data/redis`，监听 `localhost:6379`，`requirepass` 已设；**持久化 AOF(`appendonly yes`/`everysec`) + RDB 快照**（`/etc/redis/redis.conf`，2026-10-10 起，见 [issues/2026-10-10-redis-aof-persistence.md](issues/2026-10-10-redis-aof-persistence.md)） |
 | JDK | Temurin **25.0.4.1 LTS**（ARM64）→ `/usr/lib/jvm/temurin-25-jdk-arm64` |
 | 日志（全部落数据盘，按应用分目录） | `/data/app/log/core-api/`、`/data/app/log/core-job/`、`/data/app/log/nginx/`；PG `/data/postgresql/log/`、Redis `/data/redis/redis.log`。core-api 由 logback 分 `info.log`/`warn.log`/`error.log`（按天+50MB 滚动、gzip、留 30 天、3GB 上限），需设 `LOG_PATH=/data/app/log/core-api` |
-| 防膨胀 | journald `SystemMaxUse=500M`；PG `logging_collector=on` 写数据盘；PG 数据+WAL、Redis RDB 均在 `/data` |
+| 防膨胀 | journald `SystemMaxUse=500M`；PG `logging_collector=on` 写数据盘；PG 数据+WAL、Redis RDB + AOF 均在 `/data`（Redis AOF 要到 64MB 才触发 rewrite，当前 1MB 级，暂无压力） |
 
 > **命名约定**：全部基础设施统一用 `app` 前缀（系统用户/组 `app`、服务 `app-core-api`、PG 角色 `app`）。应用程序、配置、日志**全部落 `/data`**（`/data/app/core-api/`）——这样只需备份 `/data` 即覆盖 程序+配置(含密钥)+日志 全套，无需备份系统盘。数据（PG/WAL、Redis RDB、各类日志）本就在 `/data`。
 
@@ -29,14 +29,15 @@
 
 ### 数据库与凭据
 
-> 密码在初始化时随机生成，已写入服务器 `/data/app/core-api/common/.env.prod`（`root:app 640`）。**请妥善保管，下面明文仅供首次记录。**
+> 密码在初始化时随机生成，已写入服务器 `/data/app/core-api/common/.env.prod`（`root:app 640`）。
+> **仓库里一律放占位符**（`<PG_PASSWORD>` / `<REDIS_PASSWORD>`），明文口令不外流出服务器——2026-10-10 起已按此清理。
 
-- PostgreSQL 用户 `app` / 密码 `0tTvtqzcSly3X4nzKFJHnDJ4`
+- PostgreSQL 用户 `app` / 密码 `<PG_PASSWORD>`
   - 库 `core_api`（业务库，对应本地 `core_api_local`）
   - 库 `core_job`（Spring Batch 元数据）
   - 库 `app_ops`（预留）
-- Redis 密码 `xx0epuZ2XOZcP1WfEt2d7J45`
-  - 连接串：`redis://:xx0epuZ2XOZcP1WfEt2d7J45@localhost:6379`
+- Redis 密码 `<REDIS_PASSWORD>`（明文只在服务器 `/data/app/core-api/common/.env.prod` 的 `REDIS_URL` 里；2026-10-10 起本文档不再记录明文）
+  - 连接串：`REDIS_URL=redis://:<REDIS_PASSWORD>@localhost:6379`
 
 **安全说明**：PG 与 Redis 都只监听 `localhost`，应用与数据库同机通信，不对公网暴露。core-api 的 `3001` 也只在本机监听，**不在 `ufw` 放行之列**——公网流量统一走 **Nginx（80）→ 反代 `127.0.0.1:3001`**（配置见下文「Nginx 反向代理」）。生产建议再加 443/TLS（Let's Encrypt），见该节。
 
@@ -89,8 +90,8 @@ PORT=3001
 PG_WRITER_URL=jdbc:postgresql://localhost:5432/core_api
 PG_READER_URL=jdbc:postgresql://localhost:5432/core_api
 PG_USERNAME=app
-PG_PASSWORD=0tTvtqzcSly3X4nzKFJHnDJ4
-REDIS_URL=redis://:xx0epuZ2XOZcP1WfEt2d7J45@localhost:6379
+PG_PASSWORD=<PG_PASSWORD>
+REDIS_URL=redis://:<REDIS_PASSWORD>@localhost:6379
 APP_EXPOSE_ERRORS=false
 APP_HEADER_VALIDATION_STRICT=false
 LOG_PATH=/data/app/log/core-api
@@ -101,10 +102,10 @@ LOG_PATH=/data/app/log/core-api
 ```
 APP_DATASOURCE_BUSINESS_JDBCURL=jdbc:postgresql://localhost:5432/core_api
 APP_DATASOURCE_BUSINESS_USERNAME=app
-APP_DATASOURCE_BUSINESS_PASSWORD=0tTvtqzcSly3X4nzKFJHnDJ4
+APP_DATASOURCE_BUSINESS_PASSWORD=<PG_PASSWORD>
 APP_DATASOURCE_JOB_JDBCURL=jdbc:postgresql://localhost:5432/core_job
 APP_DATASOURCE_JOB_USERNAME=app
-APP_DATASOURCE_JOB_PASSWORD=0tTvtqzcSly3X4nzKFJHnDJ4
+APP_DATASOURCE_JOB_PASSWORD=<PG_PASSWORD>
 ```
 
 > 还需按实际补充：`STORAGE_*`（S3/R2）、`SPRING_AI_OPENAI_*`、`AUTH_*` 等。
@@ -140,7 +141,7 @@ DB_URL="jdbc:postgresql://<隧道>/core_api" DB_USER=app DB_PASSWORD=... \
 生产库只监听 localhost，跑迁移时用 SSH 隧道打通：
 ```bash
 ssh -N -L 25432:localhost:5432 app_us1 &   # 本地 15432 → 服务器 5432
-DB_URL="jdbc:postgresql://localhost:25432/core_api" DB_USER=app DB_PASSWORD=0tTvtqzcSly3X4nzKFJHnDJ4 \
+DB_URL="jdbc:postgresql://localhost:25432/core_api" DB_USER=app DB_PASSWORD="$PG_PASSWORD" \   # $PG_PASSWORD 取自本机 .env
   ./gradlew :core-api:flywayMigrate
 ```
 
@@ -459,7 +460,7 @@ scripts/deploy/rollback-core-api.sh --status # 只看当前 active / 回滚目�
 
 ### ⚠️ 上线前必办（待处理）
 
-1. **保管凭据**：PG `0tTvtqzcSly3X4nzKFJHnDJ4`、Redis `xx0epuZ2XOZcP1WfEt2d7J45`（在 `/data/app/core-api/common/.env.prod`）。
+1. **保管凭据**：PG `<PG_PASSWORD>`、Redis `<REDIS_PASSWORD>`（在 `/data/app/core-api/common/.env.prod`）。**口令本体不写进仓库**——仓库里一律用占位符。
 2. **换生产存储**：`/data/app/core-api/common/.env.prod` 中 storage 现为 **dev R2 占位桶（ugcdev/staticdev）**，须换成生产桶 + 生产密钥。
 3. **补齐业务变量**：`SPRING_AI_OPENAI_*`（Agnes AI）、`AUTH_*`（Google/Apple JWKS、JWT 私钥）等按实际填。
 4. **对外暴露**：Nginx 反代已就位（`api.ifmix.com`→80→3001），主机 `ufw` 已放行 80。**仍需**：① AWS 安全组放行入站 80/443；② `api.ifmix.com` A 记录指向本机弹性 IP；③ 配 HTTPS（certbot，见「Nginx 反向代理」节）。

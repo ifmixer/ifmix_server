@@ -103,10 +103,8 @@ DB_URL="jdbc:postgresql://localhost:25432/core_api" DB_USER=app DB_PASSWORD="$PG
 
 ## 四、连 Redis
 
-### 4.1 本机直连（走 26379 隧道）
-
-口令只在服务器 env 文件里（`redis://:<password>@localhost:6379` 的形式）。两种连法**同一套 helper**：
-服务器上直连 `6379`，本机走隧道时用 `26379`（`-h/-p` 换一下即可）。
+口令只在服务器 env 文件里（`redis://:<password>@localhost:6379` 的形式）。服务器上直连 `6379`、
+本机走隧道用 `26379`，**同一套 helper**（见下面注释里的 `-h/-p`）。
 
 ```bash
 # 服务器内直连（推荐，省一道转发）
@@ -124,9 +122,9 @@ EOF
 ```
 
 本机（走 26379 隧道）连法一样，只是加 `-h/-p`：把上面 helper 改成
-`R() { redis-cli --no-auth-warning -a "$PW" -h 127.0.0.1 -p 26379 "$@"; }`（`$PW` 用 §4 的方式取回，别回显整串 URL）。
+`R() { redis-cli --no-auth-warning -a "$PW" -h 127.0.0.1 -p 26379 "$@"; }`（`$PW` 用上面那条命令取回，别回显整串 URL）。
 
-> ⚠️ **别用 `redis-cli -u "$REDIS_URL"`**：本机会报 `WRONGPASS invalid username-password pair`
+> ⚠️ **别用 `redis-cli -u "$REDIS_URL"`**：会报 `WRONGPASS invalid username-password pair`
 > （把提取出的口令重新拼成 URL 也一样），同一个口令用 `-a` 才通。
 
 > 变量名是 `REDIS_URL`，**没有** `SPRING_DATA_REDIS_PASSWORD` 这种拆分变量——按后者去找会白找一圈。
@@ -329,7 +327,9 @@ sudo snap refresh              # 需要时手工拉一次
    历史 WARN/INFO 很容易查不到。追旧问题必须连 `*.gz` 一起扫，或先把日志备份下来再分析。
 6. **时间是 UTC。** 跟本地时间对着看会差 8 小时。
 7. **`zgrep` 要显式带 `*.gz`**，否则只能看到尚未滚动的那部分（会误判"没有这条日志"）。
-8. **重启 Redis 会丢未落盘数据**（`appendonly=no`）。重启前先确认有没有状态依赖它。
+8. **Redis 连不上先看是不是用了 `-u`**：本例 `redis-cli -u "$REDIS_URL"` 恒定 `WRONGPASS`，用 `-a "$PW"` 才通（§四）。
+   Redis 排障要点（持久化健康度判定、AOF 目录、写入失败行为、遗留 `vm.overcommit_memory` 警告）见
+   [issues/2026-10-10-redis-aof-persistence.md](issues/2026-10-10-redis-aof-persistence.md)。
 9. **发布 ≠ 迁移。** Flyway 不随应用启动跑（已刻意关闭），上线含建表/改列的变更要手动 `flywayMigrate`。
 
 ---
@@ -347,8 +347,11 @@ ssh app_us1 "curl -fsS http://127.0.0.1:3001/actuator/health; for s in nginx pos
 # 3. 最近错误
 ssh app_us1 'cd /data/app/log/core-api && sudo tail -n 50 error.log; sudo journalctl -u app-core-api -n 50 --no-pager'
 
-# 4. Redis uptime 短 = 可能丢过冷却/会话类数据
-ssh app_us1 'sudo bash -c "set -a; . /data/app/core-api/common/.env.prod; set +a; redis-cli -u \"\$REDIS_URL\" info server | grep uptime"'
+# 4. Redis 健康：uptime + 持久化状态（AOF/RDB 落盘失败比重启丢数据更值得警惕）
+ssh app_us1 'sudo bash -c "set -a; . /data/app/core-api/common/.env.prod; set +a
+  PW=\$(printf \"%s\" \"\$REDIS_URL\" | sed -E \"s|^redis://:||; s|@.*\$||\")
+  redis-cli --no-auth-warning -a \"\$PW\" info server | grep uptime
+  redis-cli --no-auth-warning -a \"\$PW\" info persistence | grep -E \"^(aof_enabled|aof_last_write_status|rdb_last_bgsave_status)\""'
 ```
 
 ---
