@@ -58,7 +58,9 @@ class AiConfigDisableKeyDbTest {
     @BeforeEach
     fun requireDb() = assumeTrue(available, "需 Docker 或 TEST_PG_URL")
 
-    private val config = AiConfig(sqlClient, mock())
+    // lazy：构造阶段不能碰 sqlClient（会触发 Testcontainers 启动），
+    // 否则无 Docker/TEST_PG_URL 时实例化即失败，@BeforeEach 的 assumeTrue 跳过形同虚设
+    private val config: AiConfig by lazy { AiConfig(sqlClient, mock()) }
 
     private fun insertKey(): UUID {
         val id = UUID.randomUUID()
