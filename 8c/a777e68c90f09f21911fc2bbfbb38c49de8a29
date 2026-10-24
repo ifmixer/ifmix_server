@@ -1,0 +1,19 @@
+core-api/src/test/kotlin/com/ifmix/api/core/tmp/TmpJsonNodeProbeTest.kt
+  s_aad4c0bff9d589::t_c7054bd6b912ec 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ca777e68c90f09f21911fc2bbfbb38c49de8a29",
+  "prompts": {},
+  "sessions": {
+    "s_aad4c0bff9d589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b54f2918-edd7-48c5-812e-699c42087a3f",
+        "model": "unknown"
+      },
+      "human_author": "mylab <mylab@qq.com>"
+    }
+  }
+}
