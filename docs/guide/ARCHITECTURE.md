@@ -95,7 +95,7 @@ Repo         →  持有 CrudRepoTemplate（companion object）
 | pay | Apple/Google 购买验证、订阅管理、Webhook(JWS 验签)、Tier 映射 |
 | cs | 用户反馈（customer support） |
 | media | 预签名上传/下载 |
-| project | ProjectConfig 版本管理、ProjectInfo |
+| project | ProjectConfig 版本管理、ProjectInfo、云配置（CloudConfigItem：客户端冷启动按 keys 拉取，平台/ota 版本门槛定向，见 [cloud-config](../design/config/cloud-config.md)） |
 
 > 匿名 Customer 清理等批处理任务在 **core-job**（Spring Batch），不在 core-api。
 > 认证详细设计见 [AUTH_DESIGN.md](AUTH_DESIGN.md)
@@ -112,7 +112,8 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   │   ├── cs/                 # CsFetcher
 │   │   ├── demo/               # DemoFetcher + TodoItemsResolver
 │   │   ├── pay/                # PayFetcher
-│   │   └── media/              # MediaFetcher
+│   │   ├── media/              # MediaFetcher
+│   │   └── project/            # ProjectFetcher（CloudConfig 冷启动查询）
 │   ├── webhooks/               # WebhookController (Apple/Google IAP REST)
 │   └── wellknown/              # JwksController
 ├── entity/                      # Jimmer interface entity (直出 GraphQL)
@@ -121,7 +122,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   ├── auth/                   # Idp, IdpIdentity, AuthIdentity, AuthIdentityIdpRelation, ProjectToIdpRelation, RefreshToken, Customer（2026-10-06 并入）
 │   ├── pay/                    # Subscription, StoreNotification
 │   ├── demo/                   # Todo, TodoItem, TodoRecommend
-│   ├── project/                    # ProjectConfigRevision, ProjectInfo, ConfigTypes
+│   ├── project/                    # ProjectConfigRevision, ProjectInfo, CloudConfigItem, ConfigTypes
 │   ├── cs/                     # Feedback
 │   └── media/                  # UploadRecord
 ├── modules/
@@ -152,8 +153,8 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   │   ├── handler/StorageAggHandler.kt
 │   │   └── repo/
 │   ├── project/
-│   │   ├── ProjectConfigFacade.kt
-│   │   ├── handler/ProjectConfigAggHandler.kt
+│   │   ├── ProjectConfigFacade.kt, CloudConfigItemFacade.kt
+│   │   ├── handler/ProjectConfigAggHandler.kt, CloudConfigItemAggHandler.kt
 │   │   └── repo/
 │   └── demo/
 │       ├── DemoFacade.kt
@@ -177,7 +178,7 @@ core-api/src/main/kotlin/com/ifmix/core/api/
 │   └── config/                 # WebConfig, JacksonConfig, TransactionConfig
 └── resources/
     ├── schema/common/          # GraphQL 公共 scalars + CommonFindOptions
-    ├── schema/customer/        # GraphQL Customer schema (auth, ai, demo, pay, media, cs)
+    ├── schema/customer/        # GraphQL Customer schema (auth, ai, demo, pay, media, cs, project)
     ├── db/migration/           # Flyway V1-V5（手动：./gradlew :core-api:flywayMigrate）
     ├── prompts/                # AI scan prompts
     └── application.yml + application-local.yml
@@ -387,3 +388,4 @@ locale 特例：所有合法 BCP 47 都接受（见下方「locale 归一」）�
 | 2026-09-02 | 身份模型重构：AuthIdentity 账号中枢 + Customer + M:N 关系表 |
 | 2026-09-02 | Flyway 改手动 flywayMigrate task；匿名清理迁入 core-job |
 | 2026-10-06 | customer/install 模块代码并入 auth（modules/auth/{install,customer}、entity/auth/）；reqName 改四段式 `{q|m}_{namespace}_{resource}_{action}`；RPC URL 定稿 `/customer/core/greq/{reqName}` |
+| 2026-10-24 | 云配置 CloudConfigItem 聚合 + `core_project_cloudconfigitem` 表（冷启动按 keys 拉取，platform/ota 版本门槛定向），见 [cloud-config](../design/config/cloud-config.md) |

@@ -79,6 +79,8 @@ ops issues 现存记录：
 | notification | [push-feature-flag](docs/design/notification/push-feature-flag.md)（✅ 已实现） | 前端 hard code flag + mutation 传参（非后端 kill switch） |
 | infra | [wire-encryption](docs/design/infra/wire-encryption.md)（v2 已实现未发布；§10 v3 HPKE 提案已定稿，v1.0.6 前实施） | wire 加密：v2 → v3（RFC 9180 HPKE）、降级模型、安全模型与演进决策 |
 | infra | [idempotency](docs/design/infra/idempotency.md)（✅ 决策完成） | 创建接口幂等性评估：不建通用幂等，语义幂等 + 业务唯一键 |
+| config | [cloud-config](docs/design/config/cloud-config.md)（✅ 已实现） | 云配置：客户端冷启动按 keys 拉取（`q_project_cloudConfig_get`）、platform=0/单平台覆盖、ota 版本门槛、(project, platform, otaVersion) 缓存、SQL 运维手册 |
+| config | [cloud-config-keys](docs/design/config/cloud-config-keys.md)（持续维护） | 云配置 **key 契约（前端用）**：支持哪些 key、value 类型/语义、客户端内置默认、新增 key 流程；改 key 必改此文档 |
 
 已归档删除（git 历史可查）：`superpowers/specs/2026-10-02-…r2-versioning`（作废，理由在 deep-research-async §1.1）、`…install-attestation-impl-plan`（任务全 done，遗留项在设计文档头部）、`superpowers/plans/2026-09-29-install-tracking`（结论已沉淀）、`design/api-key-table`（并入 api-key-pool「表结构」）。
 

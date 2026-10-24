@@ -498,6 +498,25 @@ CREATE TABLE public.core_pay_subscription (
 
 
 --
+-- Name: core_project_cloudconfigitem; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.core_project_cloudconfigitem (
+    id uuid CONSTRAINT core_project_cloudconfigitem_id_not_null NOT NULL,
+    project_id character varying(64) CONSTRAINT core_project_cloudconfigitem_project_id_not_null NOT NULL,
+    key character varying(128) CONSTRAINT core_project_cloudconfigitem_key_not_null NOT NULL,
+    value jsonb CONSTRAINT core_project_cloudconfigitem_value_not_null NOT NULL,
+    platform smallint DEFAULT 0 CONSTRAINT core_project_cloudconfigitem_platform_not_null NOT NULL,
+    min_ota_version character varying(32),
+    max_ota_version character varying(32),
+    enabled boolean DEFAULT true CONSTRAINT core_project_cloudconfigitem_enabled_not_null NOT NULL,
+    note text DEFAULT ''::text CONSTRAINT core_project_cloudconfigitem_note_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT core_project_cloudconfigitem_created_at_not_null NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() CONSTRAINT core_project_cloudconfigitem_updated_at_not_null NOT NULL
+);
+
+
+--
 -- Name: core_project_configrevision; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -695,6 +714,14 @@ ALTER TABLE ONLY public.core_cs_feedback
 
 
 --
+-- Name: core_project_cloudconfigitem core_project_cloudconfigitem_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.core_project_cloudconfigitem
+    ADD CONSTRAINT core_project_cloudconfigitem_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: core_project_configrevision project_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -867,6 +894,20 @@ CREATE INDEX core_install_customer_rel_install_idx ON public.core_auth_install2c
 --
 
 CREATE UNIQUE INDEX core_install_customer_rel_uq ON public.core_auth_install2customer USING btree (install_id, customer_id);
+
+
+--
+-- Name: core_project_cloudconfigitem_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX core_project_cloudconfigitem_uq ON public.core_project_cloudconfigitem USING btree (project_id, key, platform);
+
+
+--
+-- Name: core_project_cloudconfigitem_project_enabled_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX core_project_cloudconfigitem_project_enabled_idx ON public.core_project_cloudconfigitem USING btree (project_id) WHERE (enabled);
 
 
 --

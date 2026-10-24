@@ -1,0 +1,15 @@
+# ==================== Cloud Config（云配置 · 冷启动按 keys 拉取）====================
+# 设计见 docs/design/config/cloud-config.md。服务端权威键值配置，app 冷启动拉取后调整内部行为。
+
+"云配置拉取结果。请求的 key 无一生效时返回 { configVersion: \"0\", values: {} }，不报错"
+type CloudConfigResult {
+    "配置版本：本次返回条目最大 updatedAt 的 epoch millis 十进制字符串；无返回条目为 \"0\"。opaque，仅作对比/日志"
+    configVersion: String!
+    "生效配置：仅含请求的 key。单平台行覆盖同 key 全平台行；ota 版本门槛不满足的行不出现在此"
+    values: JSON!
+}
+
+extend type Query {
+    "拉取云配置。keys 必传，只返回要求的 key（缺失/被门槛过滤的 key 不出现、不报错）。冷启动可用（不要求登录）；projectId/clientPlatform/otaVersion 取自 meta"
+    q_project_cloudConfig_get(keys: [String!]!): CloudConfigResult!
+}

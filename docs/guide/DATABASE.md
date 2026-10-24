@@ -21,6 +21,7 @@
 | demo | `core_demo_todo` | project | Todo |
 | demo | `core_demo_todoitem` | project | TodoItem |
 | project | `core_project_configrevision` | project | ProjectConfigRevision |
+| project | `core_project_cloudconfigitem` | project | CloudConfig |
 | project | `core_project_info` | 全局 | ProjectInfo |
 | ai | `core_ai_scanrecord` | project | ScanRecord |
 | ai | `core_ai_deepresearch` | project | ScanDeepResearch |
@@ -138,6 +139,7 @@
 | `SupportRequestCategory` (entity/cs) | `SupportRequestCategories` | 0=UNSPECIFIED, 10=BUG, 20=FEATURE_REQUEST, 30=ACCOUNT, 40=PAYMENT, 50=CONTENT_ERROR, 1000=OTHER（允许客户端传未登记值） |
 | `AiApiKeyType` (entity/ai) | `AiApiKeyTypes` | 10=PERSONAL（`sk-` 前缀）, 20=ENTERPRISE（`wk-` 前缀） |
 | `AiApiKeyProvider` (entity/ai) | `ApiProviders` | 10=AGNES |
+| `ConfigPlatform` (entity/project) | `ConfigPlatforms` | 0=ALL（全部平台，默认值；**此列显式例外于「0 保留不用」惯例**）, 10=IOS, 20=ANDROID, 30=WEB |
 
 #### `Feedback.reasons`（反馈原因，多选，存于 `core_cs_feedback.reasons` PG `smallint[]`）
 
@@ -211,6 +213,7 @@ input CommonFindOptions {
   - V6 Install ID 收敛：`core_auth_install.id = API installId = JWT iid`，删除冗余 `core_auth_install.install_id`；四张 Customer 业务表 `install_id` 安全转为 nullable UUID，新写入由应用层强制 token iid。已在本地 PG 18.1 从 V5→V6 验证，未删除任何 resource。
   - V14 `core_project_serverconfig`（project 级服务端专属配置 JSONB，不下发前端；含 `fcm_config` / `app_attest_config`）。
   - V15 install attestation（一期 1a）：`core_project_serverconfig` + `app_attest_config` JSONB；`core_auth_install` + `store_type` INT NULL；新建 `core_auth_installattestation`（含 `attestation_object` 回填列 + 4 个部分/唯一索引）。V18 表挂 auth 前缀；V19 增 `verify_status` / `challenge`（带 proof 必留痕）。设计见 `docs/design/attest/install-attestation.md` §5.4。
+  - V1（2026-10-24 重压缩基线内追加）`core_project_cloudconfigitem` 云配置表（platform=0 全部 + ota 版本门槛；读路径 `(project_id, platform, otaVersion)` 缓存 5min）。设计见 `docs/design/config/cloud-config.md`。
 
 ## Install 平台证明（V15，install attestation 一期 1a）
 
