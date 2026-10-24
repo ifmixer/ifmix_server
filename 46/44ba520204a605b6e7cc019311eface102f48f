@@ -1,0 +1,14 @@
+docs/ops/issues/2026-10-09-ai-api-key-invalid-disabling.md
+  h_b17efd5c751f9f 5-6,8,11,17-27,34,36,41-42,44,46-47,49-50,59,61,65,74-80,83,109,120,129-130,132,134-137,139,141-146,149,151,158-159,161-162,169,184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4644ba520204a605b6e7cc019311eface102f48f",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
