@@ -1,0 +1,42 @@
+AGENTS.md
+  h_b17efd5c751f9f 82-83
+core-api/src/main/kotlin/com/ifmix/core/api/bff/graphql/customer/project/ProjectFetcher.kt
+  h_b17efd5c751f9f 1-26
+core-api/src/main/kotlin/com/ifmix/core/api/entity/project/CloudConfigItem.kt
+  h_b17efd5c751f9f 1-48
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/CloudConfigItemFacade.kt
+  h_b17efd5c751f9f 1-22
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/handler/CloudConfigItemAggHandler.kt
+  h_b17efd5c751f9f 1-121
+core-api/src/main/kotlin/com/ifmix/core/api/modules/project/repo/CloudConfigItemRepository.kt
+  h_b17efd5c751f9f 1-34
+core-api/src/main/resources/db/migration/V1__init.sql
+  h_b17efd5c751f9f 500-518,716-723,899-912
+core-api/src/main/resources/graphql/persisted-queries/customer/customer.json
+  h_b17efd5c751f9f 37
+core-api/src/main/resources/schema/customer/project.graphqls
+  h_b17efd5c751f9f 1-15
+core-api/src/test/kotlin/com/ifmix/api/core/modules/project/CloudConfigItemAggHandlerTest.kt
+  h_b17efd5c751f9f 1-129
+core-api/src/test/kotlin/com/ifmix/api/core/modules/project/CloudConfigVersionTest.kt
+  h_b17efd5c751f9f 1-49
+docs/design/config/cloud-config-keys.md
+  h_b17efd5c751f9f 1-63
+docs/design/config/cloud-config.md
+  h_b17efd5c751f9f 1-227
+docs/guide/ARCHITECTURE.md
+  h_b17efd5c751f9f 98,115-116,125,156-157,181,391
+docs/guide/DATABASE.md
+  h_b17efd5c751f9f 24,142,216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d33b24f021ea5812e0122e26955bd83c02297c0",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
