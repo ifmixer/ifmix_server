@@ -1,0 +1,14 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 297-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0143a0861eced9ae985ca1f286fb7777adad9ede",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
