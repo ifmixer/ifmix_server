@@ -62,6 +62,7 @@ ops issues 现存记录：
 | [2026-10-10-pg-connection-closed-by-unattended-upgrade](docs/ops/issues/2026-10-10-pg-connection-closed-by-unattended-upgrade.md) | Hikari `Failed to validate connection … closed` WARN：根因是 **unattended-upgrades 升级 libxml2 → needrestart 自动重启 postgresql**（不是 maxLifetime）；已处置（自动更新全关 + needrestart `override_rc` 禁重启 PG/Redis），含证据链、代价与回退方式 |
 | [2026-10-10-ai-image-fetch-timeout-retry](docs/ops/issues/2026-10-10-ai-image-fetch-timeout-retry.md) | agnes-3.0-flash 常报「图片加载失败」：provider 回源下载超时被它自己返回成 **400**，原逻辑把 400/422 一律当不可重试；已加有限换 key 重试 |
 | [2026-10-10-redis-aof-persistence](docs/ops/issues/2026-10-10-redis-aof-persistence.md) | Redis 只有 RDB 快照（`appendonly=no`）→ 崩溃/`kill -9` 最多丢近 1h 写；已开 **AOF（everysec）+ 保留 RDB** 并重启验证。同为 **Redis 组件常驻手册**：持久化健康度判定、AOF 目录、`redis-cli -u` 必失败要用 `-a`、写入失败行为、遗留 `vm.overcommit_memory` 警告 |
+| [2026-10-27-tcg-project-bootstrap](docs/ops/issues/2026-10-27-tcg-project-bootstrap.md) | **⏳ 未执行**：TCG 扫描器（`projectId=tcg`）的项目数据初始化施工单 —— `core_project_info` / `core_project_serverconfig.fcm_config` 写入 SQL、attest 配置、冒烟步骤、回滚与排障。项目短期搁置，恢复时照此执行 |
 
 ### 设计文档（docs/design/，按模块分目录）
 
@@ -74,6 +75,7 @@ ops issues 现存记录：
 | ai | [api-key-disable-and-probe-skip](docs/design/ai/api-key-disable-and-probe-skip.md)（✅ 已实现） | 401/403 永久禁用、pick 全冷却跳窗口（key 池演进） |
 | ai | [deep-research-async](docs/design/ai/deep-research-async.md)（✅ 已实现） | DR 异步化 + PG premium_result 存储 + 历史版本 + latest 权威指针 |
 | ai | [agnes-key-import](docs/design/ai/agnes-key-import.md)（✅ 已实现） | key 导入脚本（`scripts/agnes_keys/`）用法、配对/去重逻辑 |
+| ai | [tcg-prompt-per-project](docs/design/ai/tcg-prompt-per-project.md)（✅ 代码已实现，分支 `feature/tcgcard-prompt` 未合 main；项目数据入库见 ops issue） | 提示词按 projectId 查表选择（`app.ai.prompt.*`）+ 单次扫描内联 premium（复用 `core_ai_deepresearch`，不耗深研配额）+ 正反面告知模型；antique 行为逐字不变 |
 | notification | [scan-async-notification-push](docs/design/notification/scan-async-notification-push.md)（✅ 已实现） | scan 异步化 + notification 模块基座（FCM 寻址、深链、配额预留） |
 | notification | [deep-research-push](docs/design/notification/deep-research-push.md)（✅ 已实现） | DR 完成 push（对 scan push 的增量） |
 | notification | [push-feature-flag](docs/design/notification/push-feature-flag.md)（✅ 已实现） | 前端 hard code flag + mutation 传参（非后端 kill switch） |
