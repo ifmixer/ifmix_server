@@ -280,16 +280,9 @@ class ScanAggHandler(
         val locale = resolveLocale(ctx.locale)
         val title = msg("push.scan.title", locale)
         val body = if (name != null) msg("push.scan.body.named", locale, name) else msg("push.scan.body.unnamed", locale)
-<<<<<<< HEAD
-        // coin 只有 FRONT/BACK 没有 MAIN 图（设计 §8.3）：MAIN 未命中时回退 FRONT，再回退第一张。
+        // MAIN → FRONT → 第一张 的取图回退（coin 设计 §8.3）：coin 只有 FRONT/BACK 没有 MAIN 图。
         // 对 antique 是纯增强（有 MAIN，走第一个分支，行为不变），对 coin 是修复（否则推送恒无图）。
-        val imageRef = ctx.images.firstOrNull { it.category == ImageCategories.MAIN }
-            ?: ctx.images.firstOrNull { it.category == ImageCategories.FRONT }
-            ?: ctx.images.firstOrNull()
-        val imageUrl = imageRef?.let {
-=======
         val imageUrl = pickNotificationImage(ctx.images) { it.category }?.let {
->>>>>>> feature/toyscan-prompt
             runCatching { objectStorage.getPublicUrl("ugc", it.imageKey) }
                 .onFailure { error -> log.warn("Scan notification image URL unavailable. scanId={}", ctx.scanId, error) }
                 .getOrNull()
@@ -311,15 +304,8 @@ class ScanAggHandler(
         val locale = resolveLocale(ctx.locale)
         val title = msg("push.deepResearch.title", locale)
         val body = if (name != null) msg("push.deepResearch.body.named", locale, name) else msg("push.deepResearch.body.unnamed", locale)
-<<<<<<< HEAD
         // 同上：MAIN → FRONT → 第一张 的取图回退（coin 设计 §8.3）。
-        val imageRef = ctx.images.firstOrNull { it.category == ImageCategories.MAIN }
-            ?: ctx.images.firstOrNull { it.category == ImageCategories.FRONT }
-            ?: ctx.images.firstOrNull()
-        val imageUrl = imageRef?.let {
-=======
         val imageUrl = pickNotificationImage(ctx.images) { it.category }?.let {
->>>>>>> feature/toyscan-prompt
             runCatching { objectStorage.getPublicUrl("ugc", it.key) }
                 .onFailure { error -> log.warn("DeepResearch notification image URL unavailable. deepResearchId={}", ctx.deepResearchId, error) }
                 .getOrNull()

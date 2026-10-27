@@ -65,14 +65,10 @@ class ScanNotificationContentTest {
     }
 
     @Test
-<<<<<<< HEAD
     fun `content falls back to plain template with blank name but still uses front image`() {
         // coin 设计 §8.3：无 MAIN 时回退 FRONT，所以 front 图仍会出现在推送里。
-=======
-    fun `content falls back to plain template with no images and blank name`() {
->>>>>>> feature/toyscan-prompt
         val content = handler.buildScanNotificationRequest(
-            context(emptyList()),
+            context(listOf(ScanTaskContext.ImageRefItem("front.jpg", 10, "image/jpeg"))),
             mapOf("object_overview" to mapOf("name" to "  ")),
         )!!.content
 

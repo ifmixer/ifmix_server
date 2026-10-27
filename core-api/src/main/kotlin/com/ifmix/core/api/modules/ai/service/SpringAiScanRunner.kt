@@ -195,34 +195,34 @@ open class SpringAiScanRunner(
                 }
             }
         }
-    }
-
-    /**
-     * 输出是否**疑似被截断**（设计 §8.2.1）。
-     *
-     * JSON_OBJECT 模式下截断表现为「JSON 到 maxTokens 处戛然而止」：花括号/方括号不平衡。
-     * 解析失败 + 本判定命中 → 走 basic 模板降级重跑，而不是按坏输出换 key 重试整条
-     * （同样的输出规模换个 key 大概率还是截断，白烧一次调用）。
-     * 纯启发式（JSON_OBJECT 下拿不到可靠的 finish_reason），宁可漏判（当普通失败重试）
-     * 不可误判误伤完整输出——所以同时要求「解析已失败」才调用本函数。
-     */
-    internal fun isLikelyTruncatedJson(content: String): Boolean {
-        val cleaned = content
-            .trim()
-            .removePrefix("```json")
-            .removeSuffix("```")
-            .removePrefix("```")
-            .removeSuffix("```")
-            .trim()
-        val startIdx = cleaned.indexOf('{')
-        if (startIdx < 0) return false
-        val body = cleaned.substring(startIdx)
-        // 括号不平衡（开多于闭）→ JSON 在输出中途被切断。粗粒度（不考虑字符串内括号），
-        // 但本函数只在解析已失败后调用，误判代价只是多跑一次降级重试。
-        val braces = body.count { it == '{' } - body.count { it == '}' }
-        val brackets = body.count { it == '[' } - body.count { it == ']' }
-        return braces > 0 || brackets > 0
-    }
+    
+        /**
+         * 输出是否**疑似被截断**（设计 §8.2.1）。
+         *
+         * JSON_OBJECT 模式下截断表现为「JSON 到 maxTokens 处戛然而止」：花括号/方括号不平衡。
+         * 解析失败 + 本判定命中 → 走 basic 模板降级重跑，而不是按坏输出换 key 重试整条
+         * （同样的输出规模换个 key 大概率还是截断，白烧一次调用）。
+         * 纯启发式（JSON_OBJECT 下拿不到可靠的 finish_reason），宁可漏判（当普通失败重试）
+         * 不可误判误伤完整输出——所以同时要求「解析已失败」才调用本函数。
+         */
+        internal fun isLikelyTruncatedJson(content: String): Boolean {
+            val cleaned = content
+                .trim()
+                .removePrefix("```json")
+                .removeSuffix("```")
+                .removePrefix("```")
+                .removeSuffix("```")
+                .trim()
+            val startIdx = cleaned.indexOf('{')
+            if (startIdx < 0) return false
+            val body = cleaned.substring(startIdx)
+            // 括号不平衡（开多于闭）→ JSON 在输出中途被切断。粗粒度（不考虑字符串内括号），
+            // 但本函数只在解析已失败后调用，误判代价只是多跑一次降级重试。
+            val braces = body.count { it == '{' } - body.count { it == '}' }
+            val brackets = body.count { it == '[' } - body.count { it == ']' }
+            return braces > 0 || brackets > 0
+        }
+}
 
     override fun run(ctx: ActionContext, input: ScanInput): Map<String, Any?> {
         if (keyStore.isEmpty()) {

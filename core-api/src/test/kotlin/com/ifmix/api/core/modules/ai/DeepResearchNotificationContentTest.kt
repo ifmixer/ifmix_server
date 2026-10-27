@@ -83,30 +83,13 @@ class DeepResearchNotificationContentTest {
     }
 
     @Test
-<<<<<<< HEAD
-    fun `front image is used when main is missing`() {
-        // coin 设计 §8.3：coin 只有 FRONT/BACK 没有 MAIN，推送取图必须回退 FRONT。
-=======
     fun `missing main image falls back to front then omits image when list is empty`() {
         // MAIN 缺失 → FRONT 回退（设计 §8.3），不再静默无图
->>>>>>> feature/toyscan-prompt
         val noMain = ctx.copy(images = listOf(DeepResearchTaskContext.ImageRefItem("front.jpg", 10)))
         assertThat(handler.buildDeepResearchNotificationContent(noMain, result("SUCCESS")).imageUrl)
             .isEqualTo("https://cdn/front.jpg")
 
-<<<<<<< HEAD
-        assertThat(handler.buildDeepResearchNotificationContent(noMain, result("SUCCESS")).imageUrl)
-            .isEqualTo("https://cdn/front.jpg")
-    }
-
-    @Test
-    fun `no image at all omits notification image`() {
-        val noImages = ctx.copy(images = emptyList())
-
-        assertThat(handler.buildDeepResearchNotificationContent(noImages, result("SUCCESS")).imageUrl).isNull()
-=======
         val empty = ctx.copy(images = emptyList())
         assertThat(handler.buildDeepResearchNotificationContent(empty, result("SUCCESS")).imageUrl).isNull()
->>>>>>> feature/toyscan-prompt
     }
 }
