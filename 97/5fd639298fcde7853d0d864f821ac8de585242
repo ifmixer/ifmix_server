@@ -1,0 +1,16 @@
+AGENTS.md
+  h_b17efd5c751f9f 66-67
+docs/ops/issues/2026-10-27-coin-project-bootstrap.md
+  h_b17efd5c751f9f 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "975fd639298fcde7853d0d864f821ac8de585242",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
