@@ -65,13 +65,24 @@ class ScanNotificationContentTest {
     }
 
     @Test
-    fun `content falls back to plain template without main image or blank name`() {
+    fun `content falls back to plain template with blank name but still uses front image`() {
+        // coin 设计 §8.3：无 MAIN 时回退 FRONT，所以 front 图仍会出现在推送里。
         val content = handler.buildScanNotificationRequest(
             context(listOf(ScanTaskContext.ImageRefItem("front.jpg", 10, "image/jpeg"))),
             mapOf("object_overview" to mapOf("name" to "  ")),
         )!!.content
 
         assertThat(content.body).isEqualTo("Your scan result is ready")
+        assertThat(content.imageUrl).isEqualTo("https://cdn/front.jpg")
+    }
+
+    @Test
+    fun `content omits image when there are no images at all`() {
+        val content = handler.buildScanNotificationRequest(
+            context(emptyList()),
+            mapOf("object_overview" to mapOf("name" to "Blue Vase")),
+        )!!.content
+
         assertThat(content.imageUrl).isNull()
     }
 
