@@ -2,6 +2,7 @@ package com.ifmix.core.api.modules.ai.service
 
 import com.ifmix.core.api.dto.ai.ScanInput
 import com.ifmix.core.api.dto.ai.ScanType
+import com.ifmix.core.api.entity.ai.ImageCategories
 
 /**
  * 扫描系统提示词加载器（**按项目实例化**，由 [ScanPromptRegistry] 缓存持有）。
@@ -92,10 +93,21 @@ class ScanPrompt(
 
     /**
      * 生成 `Image 1 = front, Image 2 = back.` 这样的视角说明行。
-     * 任一图的分类缺失或不在码表内 → 返回 null（保持改造前的措辞，不误导模型）。
+     *
+     * - 全部是 MAIN（antique 的常态、toyscan 的首扫单图）→ 没有视角信息要传达，返回 null，
+     *   保持改造前的通用措辞；
+     * - MAIN 与其他分类**混合**（toyscan 补充扫描 = 原图 MAIN + 补充图）→ MAIN 标为
+     *   `primary photo`，其余按码表（设计 §8.2）；
+     * - 任一图的分类缺失或不在码表内 → 返回 null（保持改造前的措辞，不误导模型）。
      */
     private fun buildViewLine(input: ScanInput): String? {
-        val labels = input.items.map { it.category?.let { code -> VIEW_LABELS[code] } }
+        if (input.items.all { it.category == ImageCategories.MAIN }) return null
+        val labels = input.items.map { item ->
+            when (item.category) {
+                ImageCategories.MAIN -> "primary photo"
+                else -> item.category?.let { code -> VIEW_LABELS[code] }
+            }
+        }
         if (labels.any { it == null }) return null
         val body = labels.mapIndexed { index, label -> "Image ${index + 1} = $label" }.joinToString(", ")
         return "$body."
@@ -108,8 +120,9 @@ class ScanPrompt(
 
         /**
          * 图片分类码 → user prompt 里的视角名。
-         * **故意不含 MAIN(0) / OTHER(1000)**：这两个没有视角语义，
-         * 出现在集合里就退回通用措辞（antique 因此完全不受影响）。
+         * MAIN(0) 不在码表里：它没有视角语义，全部为 MAIN 时整体退回通用措辞；
+         * 与其他分类混合时在 [buildViewLine] 里单独标为 `primary photo`。
+         * OTHER(1000) 无视角语义，出现在集合里就退回通用措辞。
          */
         val VIEW_LABELS: Map<Int, String> = linkedMapOf(
             10 to "front",
