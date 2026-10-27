@@ -124,11 +124,18 @@ app:
           full: rockid-scan-system-premium
           version: ${ROCK_SCAN_PROMPT_VERSION:v1}
           # 同 tcg：石头 app v1 也是「一次调用同时产出 basic + premium」
+          scan-uses-full-template: true
         coin:
           name: coin-scan-system
           full: coin-scan-system-premium
           version: ${COIN_SCAN_PROMPT_VERSION:v1}
           # 同 tcg：单次扫描同时产出 basic + premium
+          scan-uses-full-template: true
+        toyscan:
+          name: toyscan-scan-system
+          # 与 tcg 同构：basic 组仅作 registry 占位，普通扫描直接走 premium（basic+premium 一次产出）
+          full: toyscan-scan-system-premium
+          version: ${TOY_SCAN_PROMPT_VERSION:v1}
           scan-uses-full-template: true
     # 单次 AI 调用超时（秒）。线上最长调用 ~5min、常 2-3min，默认 6min 覆盖长尾；SDK 内置重试已关闭（maxRetries=0）
     call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:360}

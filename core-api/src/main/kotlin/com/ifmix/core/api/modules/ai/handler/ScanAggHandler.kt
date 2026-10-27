@@ -57,6 +57,18 @@ class ScanAggHandler(
     private fun msg(key: String, locale: java.util.Locale, vararg args: Any): String =
         messages.getMessage(key, args, locale)
 
+    /**
+     * 挑推送大图（设计 §8.3）：按 **MAIN → FRONT → 第一张** 回退。
+     *
+     * 多品类扫描会把图片分类成 FRONT/BACK/…（toyscan 补充照片、相册多选的第一张被标成 FRONT），
+     * 只认 `category == MAIN` 会让查询落空、推送静默无图。antique 的图片恒为 MAIN，
+     * 回退链第一位就命中，行为不变。
+     */
+    private fun <T> pickNotificationImage(images: List<T>, categoryOf: (T) -> Int?): T? =
+        images.firstOrNull { categoryOf(it) == ImageCategories.MAIN }
+            ?: images.firstOrNull { categoryOf(it) == ImageCategories.FRONT }
+            ?: images.firstOrNull()
+
     /** 创建事务内：清理 stale 任务、预留额度并写入 IN_PROGRESS scan。 */
     fun createScanTask(sc: ModuleCtx, input: NewScanInput): ScanTaskContext {
         val projectId = sc.action.mustGetProjectId()
@@ -268,12 +280,16 @@ class ScanAggHandler(
         val locale = resolveLocale(ctx.locale)
         val title = msg("push.scan.title", locale)
         val body = if (name != null) msg("push.scan.body.named", locale, name) else msg("push.scan.body.unnamed", locale)
+<<<<<<< HEAD
         // coin 只有 FRONT/BACK 没有 MAIN 图（设计 §8.3）：MAIN 未命中时回退 FRONT，再回退第一张。
         // 对 antique 是纯增强（有 MAIN，走第一个分支，行为不变），对 coin 是修复（否则推送恒无图）。
         val imageRef = ctx.images.firstOrNull { it.category == ImageCategories.MAIN }
             ?: ctx.images.firstOrNull { it.category == ImageCategories.FRONT }
             ?: ctx.images.firstOrNull()
         val imageUrl = imageRef?.let {
+=======
+        val imageUrl = pickNotificationImage(ctx.images) { it.category }?.let {
+>>>>>>> feature/toyscan-prompt
             runCatching { objectStorage.getPublicUrl("ugc", it.imageKey) }
                 .onFailure { error -> log.warn("Scan notification image URL unavailable. scanId={}", ctx.scanId, error) }
                 .getOrNull()
@@ -295,11 +311,15 @@ class ScanAggHandler(
         val locale = resolveLocale(ctx.locale)
         val title = msg("push.deepResearch.title", locale)
         val body = if (name != null) msg("push.deepResearch.body.named", locale, name) else msg("push.deepResearch.body.unnamed", locale)
+<<<<<<< HEAD
         // 同上：MAIN → FRONT → 第一张 的取图回退（coin 设计 §8.3）。
         val imageRef = ctx.images.firstOrNull { it.category == ImageCategories.MAIN }
             ?: ctx.images.firstOrNull { it.category == ImageCategories.FRONT }
             ?: ctx.images.firstOrNull()
         val imageUrl = imageRef?.let {
+=======
+        val imageUrl = pickNotificationImage(ctx.images) { it.category }?.let {
+>>>>>>> feature/toyscan-prompt
             runCatching { objectStorage.getPublicUrl("ugc", it.key) }
                 .onFailure { error -> log.warn("DeepResearch notification image URL unavailable. deepResearchId={}", ctx.deepResearchId, error) }
                 .getOrNull()

@@ -65,10 +65,14 @@ class ScanNotificationContentTest {
     }
 
     @Test
+<<<<<<< HEAD
     fun `content falls back to plain template with blank name but still uses front image`() {
         // coin 设计 §8.3：无 MAIN 时回退 FRONT，所以 front 图仍会出现在推送里。
+=======
+    fun `content falls back to plain template with no images and blank name`() {
+>>>>>>> feature/toyscan-prompt
         val content = handler.buildScanNotificationRequest(
-            context(listOf(ScanTaskContext.ImageRefItem("front.jpg", 10, "image/jpeg"))),
+            context(emptyList()),
             mapOf("object_overview" to mapOf("name" to "  ")),
         )!!.content
 
@@ -84,6 +88,45 @@ class ScanNotificationContentTest {
         )!!.content
 
         assertThat(content.imageUrl).isNull()
+    }
+
+    @Test
+    fun `name reads object_overview for every app`() {
+        val images = listOf(ScanTaskContext.ImageRefItem("main.jpg", ImageCategories.MAIN, "image/jpeg"))
+
+        // toyscan / tcg / antique 共用同一个内部根键；品类差异不进 JSON 键名。
+        val toy = handler.buildScanNotificationRequest(
+            context(images),
+            mapOf("object_overview" to mapOf("name" to "Nissan Skyline STH")),
+        )!!.content
+        assertThat(toy.body).contains("Nissan Skyline STH")
+
+        // 名字为空白 → 走 unnamed 文案，不返回空串
+        val blank = handler.buildScanNotificationRequest(
+            context(images),
+            mapOf("object_overview" to mapOf("name" to "  ")),
+        )!!.content
+        assertThat(blank.body).isEqualTo("Your scan result is ready")
+    }
+
+    @Test
+    fun `notification image falls back to front then first image when main missing`() {
+        val frontOnly = handler.buildScanNotificationRequest(
+            context(listOf(ScanTaskContext.ImageRefItem("front.jpg", ImageCategories.FRONT, "image/jpeg"))),
+            null,
+        )!!.content
+        assertThat(frontOnly.imageUrl).isEqualTo("https://cdn/front.jpg")
+
+        val firstFallback = handler.buildScanNotificationRequest(
+            context(
+                listOf(
+                    ScanTaskContext.ImageRefItem("detail.jpg", ImageCategories.DETAIL, "image/jpeg"),
+                    ScanTaskContext.ImageRefItem("bottom.jpg", ImageCategories.BOTTOM, "image/jpeg"),
+                ),
+            ),
+            null,
+        )!!.content
+        assertThat(firstFallback.imageUrl).isEqualTo("https://cdn/detail.jpg")
     }
 
     @Test
