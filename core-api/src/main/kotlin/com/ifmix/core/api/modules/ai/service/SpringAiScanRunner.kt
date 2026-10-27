@@ -237,7 +237,7 @@ open class SpringAiScanRunner(
                 try {
                     val client = chatClientFactory.forKey(doc.key, model)
 
-                    val scanPrompt = scanPromptRegistry.forProject(input.projectId)
+                    val scanPrompt = scanPromptRegistry.forProject(ctx.projectId)
                     val systemMsg = SystemMessage(scanPrompt.systemPromptFor(input))
                     val userText = scanPrompt.userPrompt(input)
                     val userMsg = UserMessage.builder()

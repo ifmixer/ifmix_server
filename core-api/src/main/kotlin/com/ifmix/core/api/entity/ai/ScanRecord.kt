@@ -37,6 +37,17 @@ interface ScanRecord : BaseProjectEntity, SoftDeletableProps, CustomerIdProps, I
     val basicResult: Map<String, Any?>?
 
     /**
+     * 扫描时顺带产出的 premium 内容（非用户发起的 DeepResearch）。
+     *
+     * 一次 AI 调用同时返回 `basic_result` + `premium_result` 时写这里；antique 的
+     * DeepResearch 路径仍写 [latestDeepResearchId] 指向的深研表，本列为 null。
+     * 客户端读取优先级：本列 ?? `latestDeepResearch.premiumResult`。
+     */
+    @Serialized
+    @Column(name = "premium_result")
+    val premiumResult: Map<String, Any?>?
+
+    /**
      * 权威指针：指向当前有效（最新且成功）的 deep research 任务。
      * 逻辑外键（跨聚合，不用 @ManyToOne）；null = 从未成功过。
      * latest 判定与并发规则见 docs/design/ai/deep-research-async.md §3.4。

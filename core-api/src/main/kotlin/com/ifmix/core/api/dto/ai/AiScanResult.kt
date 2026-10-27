@@ -18,6 +18,8 @@ data class AiScanResult(
     val clientIp: String?,
     val images: List<NewScanImageInput>,
     val basicResult: Map<String, Any?>,
+    /** 同步扫描顺带产出的 premium 内容（antique 的异步路径为 null）。 */
+    val premiumResult: Map<String, Any?>? = null,
     val collected: Boolean,
     val promptVersion: String,
     val createdAt: Instant,

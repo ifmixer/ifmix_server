@@ -19,6 +19,8 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -82,7 +84,7 @@ class ScanAsyncQuotaTest {
     @Test
     fun `ai success transfers pending reservation into scan count`() {
         val scanId = UUID.randomUUID()
-        whenever(scanRepo.casSuccess(any(), eq(projectId), eq(customerId), eq(scanId), any())).thenReturn(1)
+        whenever(scanRepo.casSuccess(any(), eq(projectId), eq(customerId), eq(scanId), any(), anyOrNull())).thenReturn(1)
         whenever(metricsRepo.completeScan(any(), eq(projectId), eq(customerId))).thenReturn(1)
 
         val won = handler.finalizeScanSuccess(
@@ -124,14 +126,13 @@ class ScanAsyncQuotaTest {
     private val premium = mapOf("authenticity_check" to mapOf("visual_authenticity" to "GENUINE"))
 
     /**
-     * 设计 §8.2：INSUFFICIENT_IMAGE / NON_CARD_SUBJECT 不落 core_ai_deepresearch 行
-     * （premium 与 basic 同一次 AI 调用产出，status 差时模型可能仍带 premium_result，
-     * 服务端必须拦 —— 否则每张废图都在深研表留垃圾行）。
+     * 废图（INSUFFICIENT_IMAGE / NON_CARD_SUBJECT）不写 premium：模型可能仍返回 premium_result，
+     * 服务端必须拦 —— 内容没有意义，落库只会污染数据。
      */
     @Test
     fun `inline premium skipped when scan status is not SUCCESS or PARTIAL`() {
         val scanId = UUID.randomUUID()
-        whenever(scanRepo.casSuccess(any(), eq(projectId), eq(customerId), eq(scanId), any())).thenReturn(1)
+        whenever(scanRepo.casSuccess(any(), eq(projectId), eq(customerId), eq(scanId), any(), anyOrNull())).thenReturn(1)
         whenever(metricsRepo.completeScan(any(), eq(projectId), eq(customerId))).thenReturn(1)
 
         val won = handler.finalizeScanSuccess(
@@ -142,29 +143,28 @@ class ScanAsyncQuotaTest {
         )
 
         assertThat(won).isTrue()
-        verify(scanRepo, never()).updateAiFieldsAndPointerIfNewer(
-            any(), any(), any(), any(), any(), any(), any(), any(),
-        )
+        // premium 被拦下 → CAS 收到的是 null
+        verify(scanRepo).casSuccess(any(), eq(projectId), eq(customerId), eq(scanId), any(), isNull())
     }
 
     @Test
-    fun `inline premium attached when scan status is SUCCESS`() {
+    fun `inline premium written to scan record when status is SUCCESS`() {
         val scanId = UUID.randomUUID()
-        // deepResearchRepo.insert 走 Jimmer entities.save；用 deep stub 让它安全返回 0 行
-        val deepStubSql = mock<KSqlClient>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
-        whenever(scanRepo.casSuccess(any(), eq(projectId), eq(customerId), eq(scanId), any())).thenReturn(1)
+        whenever(scanRepo.casSuccess(any(), eq(projectId), eq(customerId), eq(scanId), any(), anyOrNull())).thenReturn(1)
         whenever(metricsRepo.completeScan(any(), eq(projectId), eq(customerId))).thenReturn(1)
 
         val won = handler.finalizeScanSuccess(
-            mc(deepStubSql),
+            mc(),
             ctx(scanId),
             basicResult = mapOf("scan_status" to mapOf("status" to "SUCCESS")),
             premiumResult = premium,
         )
 
         assertThat(won).isTrue()
-        verify(scanRepo).updateAiFieldsAndPointerIfNewer(
-            any(), eq(projectId), eq(customerId), eq(scanId), any(), any(), any(), any(),
+        // 一次 CAS 同时写 basic + premium，不建深研行、不挪指针
+        verify(scanRepo).casSuccess(any(), eq(projectId), eq(customerId), eq(scanId), any(), eq(premium))
+        verify(scanRepo, never()).updateAiFieldsAndPointerIfNewer(
+            any(), any(), any(), any(), any(), any(), any(), any(),
         )
     }
 }

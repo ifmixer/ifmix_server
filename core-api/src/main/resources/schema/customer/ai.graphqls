@@ -40,6 +40,8 @@ type ScanRecord {
     images: [ImageRef!]
     "基础扫描结果 (JSONB)"
     basicResult: JSON
+    "扫描时顺带产出的 premium 结果 (JSONB)。非用户发起的深研，直接随扫描落库"
+    premiumResult: JSON
     "当前有效（最新且成功）的 deep research，按 latest_deep_research_id 权威指针加载 (DataLoader)"
     latestDeepResearch: ScanDeepResearch
 }

@@ -480,7 +480,7 @@ Comments are schema documentation only.
       "overall_confidence_desc": null                  // REQUIRED | {{RESPONSE_LOCALE}}
     },
 
-    "card_identity": {                                 // REQUIRED | OBJECT
+    "object_overview": {                                 // REQUIRED | OBJECT
       "name": null,                                    // REQUIRED | {{RESPONSE_LOCALE}} | English name allowed when no reliable localized name
       "name_en": null,                                 // REQUIRED | ENGLISH | official English card name
       "game": null,                                    // REQUIRED | ENUM | POKEMON|MAGIC|YUGIOH|ONEPIECE|DIGIMON|LORCANA|FLESH_AND_BLOOD|SPORTS|OTHER

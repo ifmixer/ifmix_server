@@ -77,38 +77,38 @@ BASIC         → scanUsesFullTemplate ? full 组 : basic 组
 
 ### 4.1 做法
 
-`ScanTaskService.doRun` 从 AI 响应里同时取 `basic_result` 和 `premium_result`，传给 `finalizeScanSuccess`。同一事务内：
+`ScanTaskService.doRun` 从 AI 响应里同时取 `basic_result` 和 `premium_result`，传给 `finalizeScanSuccess`。
 
-1. 若 `premium_result != null` 且 `basic_result.scan_status.status ∈ {SUCCESS, PARTIAL}`：
-   - 插入一条 `core_ai_deepresearch` 行（`status=30 SUCCESS`，含 `premium_result` 与 `basic_result` 快照）；
-   - 把 `scan_record.latest_deep_research_id` 指过去，`has_deep_search=true`。
+`finalizeScanSuccess` 在 `casSuccess` 里一次写完两者：
 
-2. 否则只更新 scan（antique 走这条）。
+1. 若 `premium_result != null` 且 `basic_result.scan_status.status ∈ {SUCCESS, PARTIAL}` → `scan_record.premium_result` 写入；
+2. 否则该列写 null（antique 走这条）。
 
-### 4.2 为什么复用 `core_ai_deepresearch` 表
+没有额外建行、没有指针挪动、没有第二个事务。
 
-客户端读 premium 的代码是 `premiumOf()` → `record.deepResearch.premiumResult`，源头是 GraphQL 的 `ScanRecord.latestDeepResearch.premiumResult`（已有字段 + DataLoader）。
+### 4.2 为什么直接加 `scan_record.premium_result` 列
 
-复用后：
-- **GraphQL schema 零变更**
-- **客户端读取代码零改动**
-- 不需要给 `scan_record` 加列、不需要迁移
+最初的方案是复用 `core_ai_deepresearch` 表（插一行 + 挪 `latest_deep_research_id` 指针），理由是客户端和 GraphQL schema 零改动。**但这是过度设计**：
+
+- 这不是用户发起的深研，没有异步任务语义 —— 插深研行纯粹是为了复用已有的读取路径；
+- 多一条 INSERT + 一次指针 CAS 比较，还留下「每条扫描在深研表留一行」的副作用；
+- 代价只是加一个 JSONB 列 + schema 加一个字段，一次迁移的事。
+
+现在的做法：`scan_record` 新增 `premium_result` 列（`V2__scan_record_premium_result.sql`），`casSuccess` 一次写 basic + premium。
+
+**读取优先级（客户端 `premiumOf()`）**：`record.premiumResult` ?? `record.latestDeepResearch.premiumResult`。后者是 antique 的 DeepResearch 路径，保留兜底是为了同一套读取代码服务两种来源。
 
 ### 4.3 为什么不消耗深研配额
 
 `tryIncrementDeepResearchCount` **不调用**。这不是用户主动发起的深研，是普通扫描的附带产出，计费口径应是扫描配额（已有）。
 
-### 4.4 为什么直接插 SUCCESS 而不走 CAS
+### 4.4 与 DeepResearch 竞态无关
 
-DeepResearch 的 `IN_PROGRESS → SUCCESS` CAS 是为了处理「异步任务晚完成 / 查询侧惰性超时抢先」的竞态。内联 premium 与 basic 是**同一次 AI 调用、同一个事务**产出，不存在这个竞态，直接插终态行。
+DeepResearch 的 `IN_PROGRESS → SUCCESS` CAS 处理的是「异步任务晚完成 / 查询侧惰性超时抢先」。内联 premium 与 basic 是**同一次 AI 调用、同一个事务**产出，`casSuccess` 本身已在做这个 CAS，premium 跟着一起写，不引入新的竞态面。
 
-### 4.5 为什么只在 SUCCESS / PARTIAL 落行
+### 4.5 为什么只在 SUCCESS / PARTIAL 落库
 
-`INSUFFICIENT_IMAGE` / `NON_CARD_SUBJECT` 的扫描，模型可能仍返回 `premium_result`（prompt 没强制禁止），但内容没有意义。不拦的话每张废图都在深研表留垃圾行，而 `core_ai_deepresearch` 的行是不可回收的。
-
-### 4.6 已知副作用
-
-每条 tcg 扫描都会在 `core_ai_deepresearch` 里留一行 `status=30`。将来若有按该表做的深研统计 / 历史，**需要按 `project_id` 过滤**。v1 接受这个代价。
+`INSUFFICIENT_IMAGE` / `NON_CARD_SUBJECT` 的扫描，模型可能仍返回 `premium_result`（prompt 没强制禁止），但内容没有意义。不拦的话每张废图都带一份垃圾 premium。
 
 ## 5. 正反面告知模型
 
@@ -124,11 +124,13 @@ Image 1 = front, Image 2 = back.
 
 为什么必须明说：卡牌背面承载版本 / 版权 / 标志，靠模型自己猜哪张是背面会直接影响 `variant.finish`、`is_first_edition`、真伪判断。
 
-## 6. 推送标题读名
+## 6. 根键保持 `object_overview`
 
-`buildScanNotificationContent` / `buildDeepResearchNotificationContent` 原先直接读 `basicResult["object_overview"]["name"]`。tcg 的卡名在 `card_identity` 下。
+卡牌的 `basic_result` 根键**沿用 antique 的 `object_overview`**，只是内部字段按卡牌语义重建（`game` / `set_name` / `card_number` / `rarity_tier` / `card_language` …），并新增 `variant` 与 `condition` 两个板块。
 
-新增 `extractSubjectName(basicResult)`：**先读 `card_identity.name`，再回退 `object_overview.name`**。两个 app 共用这一处，antique 不受影响。
+改名（`card_identity`）曾出现在初版实现里，已撤销：这是内部 JSON 键，不展示给用户，改名要牵动服务端推送读名回退 + 客户端 17 个文件，纯增复杂度。
+
+因此 `buildScanNotificationContent` / `buildDeepResearchNotificationContent` **保持原样**直接读 `basicResult["object_overview"]["name"]`。
 
 ## 7. 改动清单
 
@@ -137,10 +139,13 @@ Image 1 = front, Image 2 = back.
 | `modules/ai/service/ScanPromptProperties.kt` | 新增。`@ConfigurationProperties(prefix="app.ai.prompt")` |
 | `modules/ai/service/ScanPromptRegistry.kt` | 新增。按 projectId 懒加载 + 缓存，未登记回落 default |
 | `modules/ai/service/ScanPrompt.kt` | 按项目实例化；新增 `systemPromptFor()` / `fullSystemPrompt()`；`userPrompt` 加视角行 |
-| `modules/ai/service/SpringAiScanRunner.kt` | 用 `registry.forProject(input.projectId).systemPromptFor(input)` |
-| `dto/ai/ScanDto.kt` | `ScanInput.projectId`、`ScanMediaItem.category` |
+| `modules/ai/service/SpringAiScanRunner.kt` | 用 `registry.forProject(ctx.projectId).systemPromptFor(input)`（projectId 取自 ActionContext，不进 ScanInput） |
+| `dto/ai/ScanDto.kt` | `ScanMediaItem.category`（`ScanInput` 不需要 projectId，`run(ctx, input)` 里已有） |
 | `modules/ai/ScanTaskService.kt` | 解析 `premium_result` 并传给 finalize |
-| `modules/ai/handler/ScanAggHandler.kt` | `attachInlinePremium` / `inlinePremiumEligible` / `extractSubjectName`；5 处 promptVersion 改按项目取 |
+| `entity/ai/ScanRecord.kt` + `repo/ScanRecordRepository.kt` | 新增 `premiumResult` 列；`casSuccess` 多一个可选参数 |
+| `db/migration/V2__scan_record_premium_result.sql` | `ALTER TABLE core_ai_scanrecord ADD COLUMN premium_result jsonb` |
+| `schema/customer/ai.graphqls` | `ScanRecord.premiumResult: JSON` |
+| `modules/ai/handler/ScanAggHandler.kt` | `finalizeScanSuccess` 接收 premiumResult 并交给 `casSuccess`；`inlinePremiumEligible`；5 处 promptVersion 改按项目取 |
 | `infra/ratelimit/RateLimitBeans.kt` | 登记 `ScanPromptProperties` |
 | `resources/application.yml` | `app.ai.prompt.*` 配置 |
 | `resources/prompts/tcgcard-scan-system-basic_v1.md` | 新增（占位，内容与 premium 一致） |

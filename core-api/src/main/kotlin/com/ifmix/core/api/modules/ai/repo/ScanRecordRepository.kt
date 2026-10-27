@@ -19,6 +19,7 @@ import com.ifmix.core.api.entity.ai.id
 import com.ifmix.core.api.entity.ai.images
 import com.ifmix.core.api.entity.ai.isPublic
 import com.ifmix.core.api.entity.ai.latestDeepResearchId
+import com.ifmix.core.api.entity.ai.premiumResult
 import com.ifmix.core.api.entity.ai.promptVersion
 import com.ifmix.core.api.entity.ai.updatedAt
 import com.ifmix.core.api.entity.ai.userDisplayName
@@ -108,13 +109,14 @@ class ScanRecordRepository(dataSource: DataSource) {
 
     fun insert(mc: ModuleCtx, entity: ScanRecord): Boolean = tpl.save(mc, entity)
 
-    /** IN_PROGRESS -> SUCCESS，并写入本次 AI basicResult。 */
+    /** IN_PROGRESS -> SUCCESS，并写入本次 AI basicResult（以及可选的 premiumResult）。 */
     fun casSuccess(
         mc: ModuleCtx,
         projectId: String,
         customerId: UUID,
         scanId: UUID,
         basicResult: Map<String, Any?>?,
+        premiumResult: Map<String, Any?>? = null,
     ): Int = mc.sql.createUpdate(ScanRecord::class) {
         where(table.projectId eq projectId)
         where(table.customerId eq customerId)
@@ -122,6 +124,8 @@ class ScanRecordRepository(dataSource: DataSource) {
         where(table.status eq ScanStatuses.IN_PROGRESS)
         set(table.status, ScanStatuses.SUCCESS)
         set(table.basicResult, basicResult)
+        // 一次调用同时产出 basic + premium 时直接落本表（非用户发起的深研不走深研表）。
+        set(table.premiumResult, premiumResult)
         set(table.errorCode, null as String?)
         set(table.errorDetails, null as Map<String, Any?>?)
         set(table.updatedAt, Instant.now())

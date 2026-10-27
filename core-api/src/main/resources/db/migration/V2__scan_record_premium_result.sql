@@ -1,0 +1,11 @@
+-- 扫描记录直接携带 premium_result。
+--
+-- 背景：premium 内容原先只由 DeepResearch 异步任务产出（存 core_ai_scan_deep_research，
+-- scan_record 用 latest_deep_research_id 指过去）。但非用户主动发起的「扫描时顺带产出
+-- premium」没有异步任务语义，走深研表要多插一行 + 挪指针，纯属多余复杂度。
+--
+-- 现在：AI 一次调用同时返回 basic_result + premium_result 时，直接写在本表同名列。
+-- 深研表保持原样（antique 的 DeepResearch 路径不变）。
+--
+-- 读取优先级（客户端）：premium_result ?? latestDeepResearch.premiumResult
+ALTER TABLE public.core_ai_scanrecord ADD COLUMN IF NOT EXISTS premium_result jsonb;

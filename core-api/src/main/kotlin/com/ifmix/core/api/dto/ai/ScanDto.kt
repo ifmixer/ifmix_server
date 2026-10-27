@@ -46,9 +46,4 @@ data class ScanInput(
     val date: LocalDate = LocalDate.now(),
     /** 扫描类型 — ScanRunner 据此选择系统提示词 */
     val type: ScanType = ScanType.BASIC,
-    /**
-     * 发起扫描的 app（core_project_info.id，如 antique / tcgcard）。
-     * ScanRunner 用它选该项目的提示词组（设计 §8.1）；为 null 时回落到默认组。
-     */
-    val projectId: String? = null,
 )

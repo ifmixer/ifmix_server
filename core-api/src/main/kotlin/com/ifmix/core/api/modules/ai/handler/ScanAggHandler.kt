@@ -57,20 +57,6 @@ class ScanAggHandler(
     private fun msg(key: String, locale: java.util.Locale, vararg args: Any): String =
         messages.getMessage(key, args, locale)
 
-    /**
-     * 从 basicResult 取「主体名称」（设计 §7.3）：**先读 `card_identity.name`，再回退 `object_overview.name`**。
-     *
-     * tcgcard 把 antique 的 `object_overview` 改名为 `card_identity`（卡牌语境下后者名不副实），
-     * 推送标题读名处必须回退，否则 antique 的推送标题会变空。两个 app 共用这一处实现。
-     */
-    @Suppress("UNCHECKED_CAST")
-    private fun extractSubjectName(basicResult: Map<String, Any?>?): String? {
-        fun read(rootKey: String): String? =
-            ((basicResult?.get(rootKey) as? Map<String, Any?>)?.get("name") as? String)
-                ?.trim()?.takeIf { it.isNotEmpty() }
-        return read("card_identity") ?: read("object_overview")
-    }
-
     /** 创建事务内：清理 stale 任务、预留额度并写入 IN_PROGRESS scan。 */
     fun createScanTask(sc: ModuleCtx, input: NewScanInput): ScanTaskContext {
         val projectId = sc.action.mustGetProjectId()
@@ -93,6 +79,7 @@ class ScanAggHandler(
             this.projectId = projectId
             this.images = images.map { ImageRef(it.imageKey, it.category ?: ImageCategories.MAIN) }
             this.basicResult = null
+            this.premiumResult = null
             this.latestDeepResearchId = null
             this.status = ScanStatuses.IN_PROGRESS
             this.errorCode = null
@@ -146,16 +133,14 @@ class ScanAggHandler(
         locale = ctx.locale,
         country = ctx.country,
         currency = ctx.currency,
-        projectId = ctx.projectId,
     )
 
     /**
      * AI 正常返回即任务成功，AI 业务 status 原样存入 basicResult。
      *
-     * [premiumResult] 非 null（tcgcard v1：单次调用同时产出 basic + premium，设计 §8.2）时，
-     * 在同一事务内补一条 SUCCESS 的 deepresearch 行并把 scan 的 latest 指针指过去 ——
-     * 复用 `core_ai_deepresearch` 表而不加字段，是为了让客户端 `premiumOf()` 与 GraphQL
-     * schema 一行都不用改。antique 的 BASIC 提示词不返回 premium_result → 这里传 null → 行为不变。
+     * [premiumResult] 非 null 时（一次调用同时产出 basic + premium）一并写入 `scan_record.premium_result`，
+     * 同一条 CAS 完成，不额外建行、不挪指针。antique 的 BASIC 提示词不返回 premium_result
+     * → 这里传 null → 该列保持 null，行为不变。
      */
     fun finalizeScanSuccess(
         sc: ModuleCtx,
@@ -163,12 +148,8 @@ class ScanAggHandler(
         basicResult: Map<String, Any?>?,
         premiumResult: Map<String, Any?>? = null,
     ): Boolean {
-        if (scanRepo.casSuccess(sc, ctx.projectId, ctx.customerId, ctx.scanId, basicResult) != 1) return false
-        // 设计 §8.2：只有 SUCCESS / PARTIAL 才值得落 premium 行；INSUFFICIENT_IMAGE / NON_CARD_SUBJECT
-        // 没有 premium 内容，既省 token 也避免往 core_ai_deepresearch 塞垃圾行。
-        if (premiumResult != null && inlinePremiumEligible(basicResult)) {
-            attachInlinePremium(sc, ctx, basicResult, premiumResult)
-        }
+        val premium = premiumResult?.takeIf { inlinePremiumEligible(basicResult) }
+        if (scanRepo.casSuccess(sc, ctx.projectId, ctx.customerId, ctx.scanId, basicResult, premium) != 1) return false
         if (scanMetricsRepo.completeScan(sc, ctx.projectId, ctx.customerId) != 1) {
             throw com.ifmix.core.api.infra.http.ApiError(
                 com.ifmix.core.api.infra.http.ErrorCode.INTERNAL,
@@ -179,54 +160,9 @@ class ScanAggHandler(
     }
 
     /**
-     * 单次扫描就地附带 premium（设计文档 §8.2，tcgcard v1）。
-     *
-     * premium 存进 `core_ai_deepresearch` 而不是给 scan_record 加字段：客户端 `premiumOf()`
-     * 读的就是 `latestDeepResearch.premiumResult`，GraphQL schema 已有该字段与 DataLoader ——
-     * 复用后客户端读取代码与 schema 都零改动。
-     *
-     * 这里直接插 SUCCESS（30）行、不走 IN_PROGRESS→CAS：premium 与 basic 同一次 AI 调用产出，
-     * 不存在「异步任务晚完成」的竞态。**不调 tryIncrementDeepResearchCount** —— 这不是用户
-     * 主动发起的深研，不该消耗深研配额。
-     */
-    private fun attachInlinePremium(
-        sc: ModuleCtx,
-        ctx: ScanTaskContext,
-        basicResult: Map<String, Any?>?,
-        premiumResult: Map<String, Any?>,
-    ) {
-        val now = Instant.now()
-        val id = UuidV7.generate()
-        deepResearchRepo.insert(
-            sc,
-            ScanDeepResearch {
-                this.id = id
-                this.projectId = ctx.projectId
-                this.scanRecordId = ctx.scanId
-                this.premiumResult = premiumResult
-                this.basicResult = basicResult
-                this.promptVersion = ctx.promptVersion
-                this.status = DeepResearchStatuses.SUCCESS
-                this.errorCode = null
-                this.errorDetails = null
-                this.createdAt = now
-                this.updatedAt = now
-            },
-        )
-        // 同事务内把 latest 指针挪过去并置 has_deep_search=true（行锁内比较 (created_at,id)）。
-        val pointerMoved = scanRepo.updateAiFieldsAndPointerIfNewer(
-            sc, ctx.projectId, ctx.customerId, ctx.scanId,
-            id, now, basicResult, ctx.promptVersion,
-        )
-        log.debug(
-            "Inline premium attached. projectId={}, scanId={}, deepResearchId={}, pointerMoved={}",
-            ctx.projectId, ctx.scanId, id, pointerMoved,
-        )
-    }
-
-    /**
-     * inline premium 白名单（设计 §8.2）：`basic_result.scan_status.status` 为 SUCCESS / PARTIAL
-     * 才落 `core_ai_deepresearch` 行。status 缺失或无法识别 → 不落（宁缺勿滥，垃圾行不可回收）。
+     * premium 落库白名单：`basic_result.scan_status.status` 为 SUCCESS / PARTIAL 才写。
+     * 废图（INSUFFICIENT_IMAGE / NON_CARD_SUBJECT）的 premium 没有意义，status 缺失或
+     * 无法识别时也不写（宁缺勿滥）。
      */
     private fun inlinePremiumEligible(basicResult: Map<String, Any?>?): Boolean =
         @Suppress("UNCHECKED_CAST")
@@ -327,9 +263,8 @@ class ScanAggHandler(
 
     @Suppress("UNCHECKED_CAST")
     private fun buildScanNotificationContent(ctx: ScanTaskContext, basicResult: Map<String, Any?>?): NotificationContent {
-        // 卡牌 app 的卡名在 card_identity 下（设计 §7.3）；先读新键、再回退 antique 的 object_overview，
-        // 两个 app 共用这一处读名逻辑，antique 行为不变。
-        val name = extractSubjectName(basicResult)
+        val name = ((basicResult?.get("object_overview") as? Map<String, Any?>)?.get("name") as? String)
+            ?.trim()?.takeIf { it.isNotEmpty() }
         val locale = resolveLocale(ctx.locale)
         val title = msg("push.scan.title", locale)
         val body = if (name != null) msg("push.scan.body.named", locale, name) else msg("push.scan.body.unnamed", locale)
@@ -350,7 +285,8 @@ class ScanAggHandler(
         ctx: DeepResearchTaskContext,
         result: DeepResearchResult,
     ): NotificationContent {
-        val name = extractSubjectName(result.basicResult)
+        val name = ((result.basicResult?.get("object_overview") as? Map<String, Any?>)?.get("name") as? String)
+            ?.trim()?.takeIf { it.isNotEmpty() }
         val locale = resolveLocale(ctx.locale)
         val title = msg("push.deepResearch.title", locale)
         val body = if (name != null) msg("push.deepResearch.body.named", locale, name) else msg("push.deepResearch.body.unnamed", locale)
@@ -404,7 +340,6 @@ class ScanAggHandler(
             locale = actionCtx.locale,
             country = actionCtx.country,
             currency = actionCtx.currency,
-            projectId = actionCtx.mustGetProjectId(),
         )
         val aiResponse = scanRunner.run(actionCtx, scanInput)
 
@@ -435,6 +370,7 @@ class ScanAggHandler(
             this.projectId = result.projectId
             this.images = result.images.map { ImageRef(key = it.imageKey, category = it.category ?: ImageCategories.MAIN) }
             this.basicResult = result.basicResult
+            this.premiumResult = result.premiumResult
             this.errorCode = null
             this.errorDetails = null
             this.status = com.ifmix.core.api.entity.ai.ScanStatuses.READY
@@ -597,7 +533,6 @@ class ScanAggHandler(
             country = ctx.country,
             currency = ctx.currency,
             type = com.ifmix.core.api.dto.ai.ScanType.DEEP_RESEARCH,
-            projectId = ctx.projectId,
         )
 
     /** AI 响应 Map → DeepResearchResult（沿用 basic_result/premium_result 提取规则）。 */
