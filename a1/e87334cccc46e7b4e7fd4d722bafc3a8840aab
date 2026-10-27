@@ -1,0 +1,18 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/handler/ScanAggHandler.kt
+  h_b17efd5c751f9f 271-276,298-302
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/DeepResearchNotificationContentTest.kt
+  h_b17efd5c751f9f 86-87,90-98
+core-api/src/test/kotlin/com/ifmix/api/core/modules/ai/ScanNotificationContentTest.kt
+  h_b17efd5c751f9f 68-69,76-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a1e87334cccc46e7b4e7fd4d722bafc3a8840aab",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
