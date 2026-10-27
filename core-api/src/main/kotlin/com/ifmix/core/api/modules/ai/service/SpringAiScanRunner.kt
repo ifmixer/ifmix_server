@@ -4,6 +4,7 @@ import com.ifmix.core.api.infra.http.ApiError
 import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.infra.http.ActionContext
 import com.ifmix.core.api.dto.ai.ScanInput
+import com.ifmix.core.api.dto.ai.ScanType
 import com.ifmix.core.api.modules.ai.ScanRunner
 import com.openai.errors.RateLimitException
 import com.openai.errors.PermissionDeniedException
@@ -196,6 +197,33 @@ open class SpringAiScanRunner(
         }
     }
 
+    /**
+     * 输出是否**疑似被截断**（设计 §8.2.1）。
+     *
+     * JSON_OBJECT 模式下截断表现为「JSON 到 maxTokens 处戛然而止」：花括号/方括号不平衡。
+     * 解析失败 + 本判定命中 → 走 basic 模板降级重跑，而不是按坏输出换 key 重试整条
+     * （同样的输出规模换个 key 大概率还是截断，白烧一次调用）。
+     * 纯启发式（JSON_OBJECT 下拿不到可靠的 finish_reason），宁可漏判（当普通失败重试）
+     * 不可误判误伤完整输出——所以同时要求「解析已失败」才调用本函数。
+     */
+    internal fun isLikelyTruncatedJson(content: String): Boolean {
+        val cleaned = content
+            .trim()
+            .removePrefix("```json")
+            .removeSuffix("```")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+        val startIdx = cleaned.indexOf('{')
+        if (startIdx < 0) return false
+        val body = cleaned.substring(startIdx)
+        // 括号不平衡（开多于闭）→ JSON 在输出中途被切断。粗粒度（不考虑字符串内括号），
+        // 但本函数只在解析已失败后调用，误判代价只是多跑一次降级重试。
+        val braces = body.count { it == '{' } - body.count { it == '}' }
+        val brackets = body.count { it == '[' } - body.count { it == ']' }
+        return braces > 0 || brackets > 0
+    }
+
     override fun run(ctx: ActionContext, input: ScanInput): Map<String, Any?> {
         if (keyStore.isEmpty()) {
             log.error("No AI API keys found in database — cannot run AI scan")
@@ -261,6 +289,34 @@ open class SpringAiScanRunner(
                     val data = try {
                         parseJsonToMap(content)
                     } catch (e: Exception) {
+                        // 设计 §8.2.1：输出被截断（JSON 不闭合）时**不能整单失败**——
+                        // basic_result 可能本来是完整的。识别为截断时不按坏输出换 key 重试整条
+                        // （同样的输出规模换 key 大概率还是截断），改用 basic 模板重跑一次：
+                        // 产出 basic_result、premium 留空（客户端显示「本次未生成完整报告」）。
+                        // BASIC 类型的主模板本来就是 basic 组 → 重跑同模板，语义一致、行为无害。
+                        if (input.type == ScanType.BASIC && isLikelyTruncatedJson(content)) {
+                            log.warn("AI output likely truncated — one degraded retry with the basic-only template. " +
+                                "keyId={}, model={}, rawLength={}", doc.id, model, content.length)
+                            val retryPrompt = Prompt(listOf(SystemMessage(scanPrompt.systemPrompt(input)), userMsg))
+                            val retryContent = try {
+                                client.prompt(retryPrompt).call().content()
+                            } catch (retryError: Exception) {
+                                log.warn("Degraded basic retry failed. keyId={}, model={} msg={}",
+                                    doc.id, model, retryError.message)
+                                null
+                            }
+                            if (retryContent != null) {
+                                val retryData = try {
+                                    parseJsonToMap(retryContent)
+                                } catch (retryParseError: Exception) {
+                                    log.warn("Degraded basic retry also unparseable. keyId={} rawLength={}",
+                                        doc.id, retryContent.length)
+                                    null
+                                }
+                                if (retryData != null) return retryData
+                            }
+                            // 降级也失败 → 按原逻辑当普通失败继续换 key
+                        }
                         // 解析失败是模型输出问题，不是 key 的问题：不冷却；
                         // attempt 已消耗、游标已推进，下一轮自然换 key。
                         log.warn("AI returned unparseable JSON — skip without cooldown. " +
