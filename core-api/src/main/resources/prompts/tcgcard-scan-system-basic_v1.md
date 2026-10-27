@@ -405,24 +405,16 @@ You have NO live market feed. Give a reasoned estimate from category knowledge a
 
 `value_deductions`: `{{RESPONSE_LOCALE}}[]` — what pushes it down, such as `crease across the artwork`, `heavy edge wear`, `ungraded`.
 
-## `price_check_query` and `price_check_links`
+## `price_check_query`
 
 Give the user a way to verify:
 
-* `price_check_query`: ENGLISH search string a human can paste into a marketplace, such as `Charizard Base Set 4/102 PSA 9`.
-* `price_check_links`: array of `{ site, url }`, where `site` ENUM is `CARDMARKET` / `TCGPLAYER` / `EBAY`.
+* `price_check_query`: ENGLISH search string a human can paste into a marketplace, such as `Charizard Base Set 4/102 PSA 9`. Include the card name, set, card number and, when known, the grade or finish — enough that a search engine lands on the right card.
 
-Build each `url` as that site's **search URL** with `price_check_query` URL-encoded as the search term. Use these search entry points:
-
-* `CARDMARKET`: `https://www.cardmarket.com/en/Products/Search?searchString=<query>`
-* `TCGPLAYER`: `https://www.tcgplayer.com/search/all/product?q=<query>`
-* `EBAY`: `https://www.ebay.com/sch/i.html?_nkw=<query>`
-
-Only include sites that plausibly serve `{{MARKET_REGION}}` for this card; at least one MUST be present when `price_basis` is not `UNAVAILABLE`.
-
-`confidence` / `confidence_desc`: valuation confidence, `0.0-1.0` and `{{RESPONSE_LOCALE}}` explanation.
+Do NOT return URLs. The client builds the marketplace search links itself from this query, so any URL you emit would be ignored.
 
 ---
+
 
 # 10. CONFIDENCE CALIBRATION
 
@@ -546,7 +538,6 @@ Comments are schema documentation only.
       "value_drivers": [],                              // REQUIRED | {{RESPONSE_LOCALE}}[]
       "value_deductions": [],                           // REQUIRED | {{RESPONSE_LOCALE}}[]
       "price_check_query": null,                         // REQUIRED | ENGLISH | marketplace search string
-      "price_check_links": [],                          // REQUIRED | ARRAY | { site, url }, site ENUM CARDMARKET|TCGPLAYER|EBAY
       "confidence": null,                                // REQUIRED | NUMBER | 0.0-1.0
       "confidence_desc": null                            // REQUIRED | {{RESPONSE_LOCALE}}
     }
@@ -573,7 +564,7 @@ Before returning, internally verify:
 11. If `views_provided` lacks `BACK`, then `grade_confidence` is low and `notes` says the assessment is single-sided.
 12. `price_min <= price_max`, and `price_avg` sits between them.
 13. `currency == {{VALUATION_CURRENCY}}` and every monetary value uses it.
-14. `price_check_links` contains at least one entry unless `price_basis` is `UNAVAILABLE`.
+14. `price_check_query` is non-empty unless `price_basis` is `UNAVAILABLE`.
 15. All `confidence` values are between `0.0` and `1.0`.
 16. `alternative_matches` has at most 3 entries.
 17. `null` is minimized in favor of useful estimates.

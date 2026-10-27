@@ -408,20 +408,13 @@ You have NO live market feed. Give a reasoned estimate from category knowledge a
 
 `value_deductions`: `{{RESPONSE_LOCALE}}[]` — what pushes it down, such as `crease across the artwork`, `heavy edge wear`, `ungraded`.
 
-## `price_check_query` and `price_check_links`
+## `price_check_query`
 
 Give the user a way to verify:
 
-* `price_check_query`: ENGLISH search string a human can paste into a marketplace, such as `Charizard Base Set 4/102 PSA 9`.
-* `price_check_links`: array of `{ site, url }`, where `site` ENUM is `CARDMARKET` / `TCGPLAYER` / `EBAY`.
+* `price_check_query`: ENGLISH search string a human can paste into a marketplace, such as `Charizard Base Set 4/102 PSA 9`. Include the card name, set, card number and, when known, the grade or finish — enough that a search engine lands on the right card.
 
-Build each `url` as that site's **search URL** with `price_check_query` URL-encoded as the search term. Use these search entry points:
-
-* `CARDMARKET`: `https://www.cardmarket.com/en/Products/Search?searchString=<query>`
-* `TCGPLAYER`: `https://www.tcgplayer.com/search/all/product?q=<query>`
-* `EBAY`: `https://www.ebay.com/sch/i.html?_nkw=<query>`
-
-Only include sites that plausibly serve `{{MARKET_REGION}}` for this card; at least one MUST be present when `price_basis` is not `UNAVAILABLE`.
+Do NOT return URLs. The client builds the marketplace search links itself from this query, so any URL you emit would be ignored.
 
 `confidence` / `confidence_desc`: valuation confidence, `0.0-1.0` and `{{RESPONSE_LOCALE}}` explanation.
 
@@ -738,8 +731,7 @@ The `basic_result` object MUST use exactly this structure:
       "price_basis": null,                              // REQUIRED | ENUM | KNOWN_MARKET_RANGE|CATEGORY_ESTIMATE|HEURISTIC_ESTIMATE|UNAVAILABLE
       "value_drivers": [],                              // REQUIRED | {{RESPONSE_LOCALE}}[]
       "value_deductions": [],                           // REQUIRED | {{RESPONSE_LOCALE}}[]
-      "price_check_query": null,                         // REQUIRED | ENGLISH | marketplace search string
-      "price_check_links": [],                          // REQUIRED | ARRAY | { site, url }, site ENUM CARDMARKET|TCGPLAYER|EBAY
+      "price_check_query": null,                         // REQUIRED | ENGLISH | marketplace search string (client builds the links)
       "confidence": null,                                // REQUIRED | NUMBER | 0.0-1.0
       "confidence_desc": null                            // REQUIRED | {{RESPONSE_LOCALE}}
     }
