@@ -35,11 +35,11 @@ class ScanPromptRegistryTest {
         ),
     )
 
-    private fun input(projectId: String?, type: ScanType) = ScanInput(
+    // projectId 不在 ScanInput 里：runner 从 ctx.projectId 取提示词组（见 7e336dce）。
+    private fun input(type: ScanType) = ScanInput(
         scanId = UUID.randomUUID(),
         items = listOf(ScanMediaItem(imageUrl = "https://x/1.jpg", mediaType = "image/jpeg")),
         type = type,
-        projectId = projectId,
     )
 
     @Test
@@ -49,9 +49,9 @@ class ScanPromptRegistryTest {
         assertThat(prompt.promptVersion).isEqualTo("v1")
         assertThat(prompt.basicScanUsesFullTemplate).isTrue()
         // BASIC 走 premium 模板 → 产出里带 premium_result（premium 组是 basic+premium 一次产出）
-        assertThat(prompt.systemPromptFor(input("toyscan", ScanType.BASIC))).contains("premium_result")
-        assertThat(prompt.systemPromptFor(input("toyscan", ScanType.BASIC)))
-            .isEqualTo(prompt.fullSystemPrompt(input("toyscan", ScanType.BASIC)))
+        assertThat(prompt.systemPromptFor(input(ScanType.BASIC))).contains("premium_result")
+        assertThat(prompt.systemPromptFor(input(ScanType.BASIC)))
+            .isEqualTo(prompt.fullSystemPrompt(input(ScanType.BASIC)))
     }
 
     @Test
