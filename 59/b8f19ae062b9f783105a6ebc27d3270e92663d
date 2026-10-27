@@ -1,0 +1,22 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/AiChatClientFactory.kt
+  h_b17efd5c751f9f 30-37,74
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/SpringAiScanRunner.kt
+  h_b17efd5c751f9f 7,200-226,292-319
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 122-127,130-133
+core-api/src/main/resources/prompts/coin-scan-system-basic_v1.md
+  h_b17efd5c751f9f 1-665
+core-api/src/main/resources/prompts/coin-scan-system-premium_v1.md
+  h_b17efd5c751f9f 1-837
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "59b8f19ae062b9f783105a6ebc27d3270e92663d",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
