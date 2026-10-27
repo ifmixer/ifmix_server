@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
  *
  * 背景：提示词原先由 [ScanPrompt] 在构造时硬编码加载 antique 的那一份，与 projectId 无关 ——
  * 第二个 app（tcgcard）一接进来就会共用古董提示词。改为**按 projectId 查表**：差异一律走配置，
- * 服务端不写 `if (projectId == "tcgcard")` 分支（设计文档 §4 反目标）。
+ * 服务端不写 `if (projectId == "tcg")` 分支（设计文档 §4 反目标）。
  *
  * 未登记的 projectId 一律回落 [default]（antique），老 app 行为不变。
  *
@@ -21,7 +21,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
  *         antique:
  *           name: antique-scan-system
  *           version: ${SCAN_PROMPT_VERSION:v10}
- *         tcgcard:
+ *         tcg:
  *           name: tcgcard-scan-system
  *           full: tcgcard-scan-system-premium
  *           version: ${TCG_SCAN_PROMPT_VERSION:v1}

@@ -104,7 +104,7 @@ app:
     # 提示词版本：加载 prompts/${name}_${promptVersion}.md，并随扫描结果落库
     # （保留给未迁移到按项目配置的调用方；新逻辑见下面的 ai.prompt.*）
     prompt-version: ${SCAN_PROMPT_VERSION:v10}
-    # 提示词按 projectId 选择（设计：docs/design/ai/tcgcard-prompt-per-project.md）。
+    # 提示词按 projectId 选择（设计：docs/design/ai/tcg-prompt-per-project.md）。
     # 未登记的 projectId 一律回落 default（antique），老 app 行为不变。
     prompt:
       default: antique
@@ -112,7 +112,7 @@ app:
         antique:
           name: antique-scan-system
           version: ${SCAN_PROMPT_VERSION:v10}
-        tcgcard:
+        tcg:
           name: tcgcard-scan-system
           # tcgcard 的「basic+premium 一次产出」提示词叫 -premium（不叫 -deep-research）
           full: tcgcard-scan-system-premium
