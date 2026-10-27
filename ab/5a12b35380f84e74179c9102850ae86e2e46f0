@@ -1,0 +1,16 @@
+core-api/src/main/kotlin/com/ifmix/core/api/modules/ai/service/ScanPromptProperties.kt
+  h_b17efd5c751f9f 10,24
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 107,115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab5a12b35380f84e74179c9102850ae86e2e46f0",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
