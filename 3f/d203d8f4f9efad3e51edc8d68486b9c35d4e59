@@ -1,0 +1,16 @@
+core-api/src/main/resources/prompts/coin-scan-system-basic_v1.md
+  h_b17efd5c751f9f 317,542
+core-api/src/main/resources/prompts/coin-scan-system-premium_v1.md
+  h_b17efd5c751f9f 314,648
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3fd203d8f4f9efad3e51edc8d68486b9c35d4e59",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
