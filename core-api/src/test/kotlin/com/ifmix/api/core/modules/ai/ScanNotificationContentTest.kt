@@ -65,14 +65,61 @@ class ScanNotificationContentTest {
     }
 
     @Test
-    fun `content falls back to plain template without main image or blank name`() {
+    fun `content falls back to plain template with no images and blank name`() {
         val content = handler.buildScanNotificationRequest(
-            context(listOf(ScanTaskContext.ImageRefItem("front.jpg", 10, "image/jpeg"))),
+            context(emptyList()),
             mapOf("object_overview" to mapOf("name" to "  ")),
         )!!.content
 
         assertThat(content.body).isEqualTo("Your scan result is ready")
         assertThat(content.imageUrl).isNull()
+    }
+
+    @Test
+    fun `name reads toy_identity before card_identity before object_overview`() {
+        val images = listOf(ScanTaskContext.ImageRefItem("main.jpg", ImageCategories.MAIN, "image/jpeg"))
+
+        val toy = handler.buildScanNotificationRequest(
+            context(images),
+            mapOf("toy_identity" to mapOf("name" to "Nissan Skyline STH")),
+        )!!.content
+        assertThat(toy.body).contains("Nissan Skyline STH")
+
+        val card = handler.buildScanNotificationRequest(
+            context(images),
+            mapOf("card_identity" to mapOf("name" to "Charizard")),
+        )!!.content
+        assertThat(card.body).contains("Charizard")
+
+        // toy_identity 存在但名字为空 → 继续向后回退，不返回空串
+        val blankToy = handler.buildScanNotificationRequest(
+            context(images),
+            mapOf(
+                "toy_identity" to mapOf("name" to "  "),
+                "object_overview" to mapOf("name" to "Bronze vase"),
+            ),
+        )!!.content
+        assertThat(blankToy.body).contains("Bronze vase")
+    }
+
+    @Test
+    fun `notification image falls back to front then first image when main missing`() {
+        val frontOnly = handler.buildScanNotificationRequest(
+            context(listOf(ScanTaskContext.ImageRefItem("front.jpg", ImageCategories.FRONT, "image/jpeg"))),
+            null,
+        )!!.content
+        assertThat(frontOnly.imageUrl).isEqualTo("https://cdn/front.jpg")
+
+        val firstFallback = handler.buildScanNotificationRequest(
+            context(
+                listOf(
+                    ScanTaskContext.ImageRefItem("detail.jpg", ImageCategories.DETAIL, "image/jpeg"),
+                    ScanTaskContext.ImageRefItem("bottom.jpg", ImageCategories.BOTTOM, "image/jpeg"),
+                ),
+            ),
+            null,
+        )!!.content
+        assertThat(firstFallback.imageUrl).isEqualTo("https://cdn/detail.jpg")
     }
 
     @Test

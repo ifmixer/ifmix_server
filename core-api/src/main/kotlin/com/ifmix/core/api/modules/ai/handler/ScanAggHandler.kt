@@ -58,18 +58,31 @@ class ScanAggHandler(
         messages.getMessage(key, args, locale)
 
     /**
-     * 从 basicResult 取「主体名称」（设计 §7.3）：**先读 `card_identity.name`，再回退 `object_overview.name`**。
+     * 从 basicResult 取「主体名称」（设计 §7.3）：**`toy_identity` → `card_identity` → `object_overview` 三级回退**。
      *
-     * tcgcard 把 antique 的 `object_overview` 改名为 `card_identity`（卡牌语境下后者名不副实），
-     * 推送标题读名处必须回退，否则 antique 的推送标题会变空。两个 app 共用这一处实现。
+     * toyscan 的根键是 `toy_identity`，tcgcard 是 `card_identity`，antique 是 `object_overview`
+     * （各品类语境下的准确命名）。推送标题读名处共用这一处实现，按新键优先逐级回退，
+     * 三个 app 都能命中且互不影响；都不命中 → 推送标题走 unnamed 文案。
      */
     @Suppress("UNCHECKED_CAST")
     private fun extractSubjectName(basicResult: Map<String, Any?>?): String? {
         fun read(rootKey: String): String? =
             ((basicResult?.get(rootKey) as? Map<String, Any?>)?.get("name") as? String)
                 ?.trim()?.takeIf { it.isNotEmpty() }
-        return read("card_identity") ?: read("object_overview")
+        return read("toy_identity") ?: read("card_identity") ?: read("object_overview")
     }
+
+    /**
+     * 挑推送大图（设计 §8.3）：按 **MAIN → FRONT → 第一张** 回退。
+     *
+     * 多品类扫描会把图片分类成 FRONT/BACK/…（toyscan 补充照片、相册多选的第一张被标成 FRONT），
+     * 只认 `category == MAIN` 会让查询落空、推送静默无图。antique 的图片恒为 MAIN，
+     * 回退链第一位就命中，行为不变。
+     */
+    private fun <T> pickNotificationImage(images: List<T>, categoryOf: (T) -> Int?): T? =
+        images.firstOrNull { categoryOf(it) == ImageCategories.MAIN }
+            ?: images.firstOrNull { categoryOf(it) == ImageCategories.FRONT }
+            ?: images.firstOrNull()
 
     /** 创建事务内：清理 stale 任务、预留额度并写入 IN_PROGRESS scan。 */
     fun createScanTask(sc: ModuleCtx, input: NewScanInput): ScanTaskContext {
@@ -333,7 +346,7 @@ class ScanAggHandler(
         val locale = resolveLocale(ctx.locale)
         val title = msg("push.scan.title", locale)
         val body = if (name != null) msg("push.scan.body.named", locale, name) else msg("push.scan.body.unnamed", locale)
-        val imageUrl = ctx.images.firstOrNull { it.category == ImageCategories.MAIN }?.let {
+        val imageUrl = pickNotificationImage(ctx.images) { it.category }?.let {
             runCatching { objectStorage.getPublicUrl("ugc", it.imageKey) }
                 .onFailure { error -> log.warn("Scan notification image URL unavailable. scanId={}", ctx.scanId, error) }
                 .getOrNull()
@@ -354,7 +367,7 @@ class ScanAggHandler(
         val locale = resolveLocale(ctx.locale)
         val title = msg("push.deepResearch.title", locale)
         val body = if (name != null) msg("push.deepResearch.body.named", locale, name) else msg("push.deepResearch.body.unnamed", locale)
-        val imageUrl = ctx.images.firstOrNull { it.category == ImageCategories.MAIN }?.let {
+        val imageUrl = pickNotificationImage(ctx.images) { it.category }?.let {
             runCatching { objectStorage.getPublicUrl("ugc", it.key) }
                 .onFailure { error -> log.warn("DeepResearch notification image URL unavailable. deepResearchId={}", ctx.deepResearchId, error) }
                 .getOrNull()

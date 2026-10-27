@@ -119,6 +119,12 @@ app:
           version: ${TCG_SCAN_PROMPT_VERSION:v1}
           # v1 单次扫描就要同时产出 basic_result + premium_result，普通扫描直接走 full 组
           scan-uses-full-template: true
+        toyscan:
+          name: toyscan-scan-system
+          # 与 tcgcard 同构：basic 组仅作 registry 占位，普通扫描直接走 premium（basic+premium 一次产出）
+          full: toyscan-scan-system-premium
+          version: ${TOY_SCAN_PROMPT_VERSION:v1}
+          scan-uses-full-template: true
     # 单次 AI 调用超时（秒）。线上最长调用 ~5min、常 2-3min，默认 6min 覆盖长尾；SDK 内置重试已关闭（maxRetries=0）
     call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:360}
     # 单次扫描总预算（秒，跨模型/attempt 的墙钟上限）：扫描在 GraphQL 请求内同步执行。
