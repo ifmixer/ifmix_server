@@ -1,0 +1,18 @@
+AGENTS.md
+  h_b17efd5c751f9f 65,78
+docs/design/ai/tcg-prompt-per-project.md
+  h_b17efd5c751f9f 1-164
+docs/ops/issues/2026-10-27-tcg-project-bootstrap.md
+  h_b17efd5c751f9f 1-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bab3939ab0144cc61ac0c252cd92fc1c332989bd",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
