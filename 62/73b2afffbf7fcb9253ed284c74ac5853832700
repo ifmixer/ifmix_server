@@ -1,0 +1,14 @@
+docs/ops/issues/2026-10-27-tcg-project-bootstrap.md
+  h_b17efd5c751f9f 76-79,86-87,96,99,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6273b2afffbf7fcb9253ed284c74ac5853832700",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
