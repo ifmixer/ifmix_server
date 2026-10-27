@@ -10,7 +10,7 @@ import com.ifmix.core.api.infra.storage.ObjectStorage
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
-import com.ifmix.core.api.modules.ai.service.ScanPrompt
+import com.ifmix.core.api.modules.ai.service.ScanPromptRegistry
 import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.util.UUID
@@ -37,7 +37,7 @@ class ScanCollectedTest {
         objectStorage = fakeStorage,
         scanRepo = ScanRecordRepository(org.mockito.kotlin.mock()),
         deepResearchRepo = ScanDeepResearchRepository(),
-        scanPrompt = ScanPrompt("v10"),
+        scanPromptRegistry = ScanPromptRegistry(),
         scanMetricsRepo = org.mockito.kotlin.mock(),
         scanQuota = com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig(),
         messages = com.ifmix.api.core.testsupport.TestMessages.source,    )

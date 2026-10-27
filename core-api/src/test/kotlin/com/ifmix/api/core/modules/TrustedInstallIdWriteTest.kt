@@ -12,7 +12,7 @@ import com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.ScanRunner
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
-import com.ifmix.core.api.modules.ai.service.ScanPrompt
+import com.ifmix.core.api.modules.ai.service.ScanPromptRegistry
 import com.ifmix.core.api.modules.ai.repo.CustomerScanMetricsRepository
 import com.ifmix.core.api.infra.storage.ObjectStorage
 import com.ifmix.core.api.entity.cs.Feedback
@@ -135,7 +135,7 @@ class TrustedInstallIdWriteTest {
             objectStorage = mock<ObjectStorage>(),
             scanRepo = scanRepo,
             deepResearchRepo = mock<ScanDeepResearchRepository>(),
-            scanPrompt = mock<ScanPrompt>(),
+            scanPromptRegistry = mock<ScanPromptRegistry>(),
             scanMetricsRepo = scanMetricsRepo,
             scanQuota = ScanQuotaConfig(),
             messages = com.ifmix.api.core.testsupport.TestMessages.source,        )

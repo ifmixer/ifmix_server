@@ -61,8 +61,12 @@ class ScanTaskService(
         }
         @Suppress("UNCHECKED_CAST")
         val basicResult = aiResponse["basic_result"] as? Map<String, Any?> ?: aiResponse
+        // premium_result 由同一次调用产出（tcgcard v1，设计 §8.2）；antique 的 BASIC 提示词
+        // 不返回它 → null → finalizeScanSuccess 不建 deepresearch 行，行为不变。
+        @Suppress("UNCHECKED_CAST")
+        val premiumResult = aiResponse["premium_result"] as? Map<String, Any?>
         val finalized = txRunner.withTx(mc) {
-            scanAggHandler.finalizeScanSuccess(it, ctx, basicResult)
+            scanAggHandler.finalizeScanSuccess(it, ctx, basicResult, premiumResult)
         }
         if (!finalized) return
 

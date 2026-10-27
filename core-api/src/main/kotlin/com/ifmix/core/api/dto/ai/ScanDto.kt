@@ -1,5 +1,6 @@
 package com.ifmix.core.api.dto.ai
 
+import com.ifmix.core.api.entity.ai.ImageCategory
 import java.time.LocalDate
 import java.util.UUID
 
@@ -19,6 +20,13 @@ data class ScanMediaItem(
     val imageUrl: String,
     /** MIME 类型（如 image/jpeg, image/png） */
     val mediaType: String,
+    /**
+     * 图片分类（码表见 [com.ifmix.core.api.entity.ai.ImageCategories]）。
+     * 卡牌背面承载版本 / 版权 / 标志等关键证据，靠模型自己猜哪张是背面会直接
+     * 影响 variant / edition / 真伪判断 —— 所以必须原样带到 user prompt（设计 §8.3）。
+     * 为 null（历史数据 / DeepResearch 路径）时不产出视角说明行。
+     */
+    val category: ImageCategory? = null,
 )
 
 /**
@@ -38,4 +46,9 @@ data class ScanInput(
     val date: LocalDate = LocalDate.now(),
     /** 扫描类型 — ScanRunner 据此选择系统提示词 */
     val type: ScanType = ScanType.BASIC,
+    /**
+     * 发起扫描的 app（core_project_info.id，如 antique / tcgcard）。
+     * ScanRunner 用它选该项目的提示词组（设计 §8.1）；为 null 时回落到默认组。
+     */
+    val projectId: String? = null,
 )

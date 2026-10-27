@@ -6,6 +6,7 @@ import assertk.assertions.isNotNull
 import com.ifmix.core.api.modules.ai.service.AiApiKeyStore
 import com.ifmix.core.api.modules.ai.service.AiChatClientFactory
 import com.ifmix.core.api.modules.ai.service.ScanPrompt
+import com.ifmix.core.api.modules.ai.service.ScanPromptRegistry
 import com.ifmix.core.api.modules.ai.service.SpringAiScanRunner
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -37,7 +38,7 @@ class SpringAiScanRunnerInitTest {
             cooldownOtherSec = 30,
             scanDeadlineSec = scanDeadlineSec,
             snakeCaseMapper = mock<ObjectMapper>(),
-            scanPrompt = mock<ScanPrompt>(),
+            scanPromptRegistry = mock<ScanPromptRegistry>(),
         )
 
     @Test

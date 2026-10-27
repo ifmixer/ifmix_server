@@ -10,6 +10,7 @@ import com.ifmix.core.api.infra.http.ErrorCode
 import com.ifmix.core.api.modules.ai.service.AiApiKeyStore
 import com.ifmix.core.api.modules.ai.service.AiChatClientFactory
 import com.ifmix.core.api.modules.ai.service.ScanPrompt
+import com.ifmix.core.api.modules.ai.service.ScanPromptRegistry
 import com.ifmix.core.api.modules.ai.service.SpringAiScanRunner
 import com.openai.core.http.Headers
 import com.openai.errors.BadRequestException
@@ -17,6 +18,7 @@ import com.openai.models.ErrorObject
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
@@ -51,6 +53,7 @@ class SpringAiScanRunnerImageFetchRetryTest {
         val callSpec = mock<CallResponseSpec>()
         val mapper = mock<ObjectMapper>()
         val scanPrompt = mock<ScanPrompt>()
+        val registry = mock<ScanPromptRegistry>()
         val runner: SpringAiScanRunner
         val doc = AiApiKeyStore.AiApiKeyDoc("k-1", "sk-x")
         val input = ScanInput(
@@ -96,8 +99,9 @@ class SpringAiScanRunnerImageFetchRetryTest {
             doReturn(doc).`when`(keyStore).pick()
             val okResult: Map<String, Any> = mapOf("ok" to true)
             doReturn(okResult).`when`(mapper).readValue(any<String>(), any<Class<Any>>())
-            doReturn("sys").`when`(scanPrompt).systemPrompt(input)
+            doReturn("sys").`when`(scanPrompt).systemPromptFor(input)
             doReturn("user").`when`(scanPrompt).userPrompt(input)
+            doReturn(scanPrompt).`when`(registry).forProject(anyOrNull())
             doReturn(callSpec).`when`(spec).call()
             doReturn("{\"ok\":true}").`when`(callSpec).content()
             runner = SpringAiScanRunner(
@@ -110,7 +114,7 @@ class SpringAiScanRunnerImageFetchRetryTest {
                 cooldownOtherSec = 30,
                 scanDeadlineSec = 600,
                 snakeCaseMapper = mapper,
-                scanPrompt = scanPrompt,
+                scanPromptRegistry = registry,
             )
         }
 

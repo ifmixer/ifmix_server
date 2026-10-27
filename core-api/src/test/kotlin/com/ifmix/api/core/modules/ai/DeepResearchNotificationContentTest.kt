@@ -12,7 +12,7 @@ import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.repo.CustomerScanMetricsRepository
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
-import com.ifmix.core.api.modules.ai.service.ScanPrompt
+import com.ifmix.core.api.modules.ai.service.ScanPromptRegistry
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import java.time.Duration
@@ -32,7 +32,7 @@ class DeepResearchNotificationContentTest {
         },
         scanRepo = mock<ScanRecordRepository>(),
         deepResearchRepo = ScanDeepResearchRepository(),
-        scanPrompt = ScanPrompt("v10"),
+        scanPromptRegistry = ScanPromptRegistry(),
         scanMetricsRepo = mock<CustomerScanMetricsRepository>(),
         scanQuota = com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig(),
         messages = com.ifmix.api.core.testsupport.TestMessages.source,    )

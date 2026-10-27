@@ -12,7 +12,7 @@ import com.ifmix.core.api.infra.storage.ObjectStorage
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
-import com.ifmix.core.api.modules.ai.service.ScanPrompt
+import com.ifmix.core.api.modules.ai.service.ScanPromptRegistry
 import com.ifmix.core.api.modules.ai.repo.CustomerScanMetricsRepository
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.junit.jupiter.api.Test
@@ -50,7 +50,7 @@ class ScanCountersTest {
         objectStorage = noopStorage,
         scanRepo = scanRepo,
         deepResearchRepo = ScanDeepResearchRepository(),
-        scanPrompt = ScanPrompt("v10"),
+        scanPromptRegistry = ScanPromptRegistry(),
         scanMetricsRepo = scanMetricsRepo,
         scanQuota = quota,
         messages = com.ifmix.api.core.testsupport.TestMessages.source,    )

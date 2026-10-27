@@ -12,7 +12,7 @@ import com.ifmix.core.api.infra.storage.ObjectStorage
 import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
-import com.ifmix.core.api.modules.ai.service.ScanPrompt
+import com.ifmix.core.api.modules.ai.service.ScanPromptRegistry
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -67,7 +67,7 @@ class ScanBatchUpdateTest {
             },
             scanRepo = repo,
             deepResearchRepo = ScanDeepResearchRepository(),
-            scanPrompt = ScanPrompt("v10"),
+            scanPromptRegistry = ScanPromptRegistry(),
             scanMetricsRepo = mock(),
             scanQuota = com.ifmix.core.api.infra.ratelimit.ScanQuotaConfig(),
             messages = com.ifmix.api.core.testsupport.TestMessages.source,        )

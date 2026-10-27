@@ -70,7 +70,8 @@ open class SpringAiScanRunner(
      */
     @Value("\${app.ai.scan-deadline-sec:600}") private val scanDeadlineSec: Long,
     @Qualifier("snakeCaseMapper") private val snakeCaseMapper: ObjectMapper,
-    private val scanPrompt: ScanPrompt,
+    /** 提示词按 projectId 选择（设计 §8.1）；这里不再持有单个 ScanPrompt。 */
+    private val scanPromptRegistry: ScanPromptRegistry,
 ) : ScanRunner {
 
     private val fallbackModels: List<String> = fallbackOrderStr
@@ -236,12 +237,8 @@ open class SpringAiScanRunner(
                 try {
                     val client = chatClientFactory.forKey(doc.key, model)
 
-                    val systemMsg = SystemMessage(
-                        when (input.type) {
-                            com.ifmix.core.api.dto.ai.ScanType.DEEP_RESEARCH -> scanPrompt.deepResearchSystemPrompt(input)
-                            com.ifmix.core.api.dto.ai.ScanType.BASIC -> scanPrompt.systemPrompt(input)
-                        }
-                    )
+                    val scanPrompt = scanPromptRegistry.forProject(input.projectId)
+                    val systemMsg = SystemMessage(scanPrompt.systemPromptFor(input))
                     val userText = scanPrompt.userPrompt(input)
                     val userMsg = UserMessage.builder()
                         .text(userText)

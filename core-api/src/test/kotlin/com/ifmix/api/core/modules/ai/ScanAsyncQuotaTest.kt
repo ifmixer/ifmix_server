@@ -14,12 +14,14 @@ import com.ifmix.core.api.modules.ai.handler.ScanAggHandler
 import com.ifmix.core.api.modules.ai.repo.CustomerScanMetricsRepository
 import com.ifmix.core.api.modules.ai.repo.ScanDeepResearchRepository
 import com.ifmix.core.api.modules.ai.repo.ScanRecordRepository
-import com.ifmix.core.api.modules.ai.service.ScanPrompt
+import com.ifmix.core.api.modules.ai.service.ScanPromptRegistry
 import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.Duration
@@ -32,6 +34,7 @@ class ScanAsyncQuotaTest {
     private val installId = UUID.randomUUID()
     private val scanRepo = mock<ScanRecordRepository>()
     private val metricsRepo = mock<CustomerScanMetricsRepository>()
+    private val sqlMock = mock<KSqlClient>()
     private val quota = ScanQuotaConfig(scan = 1, deepResearch = 3)
     private val handler = ScanAggHandler(
         scanRunner = mock(),
@@ -43,19 +46,19 @@ class ScanAsyncQuotaTest {
         },
         scanRepo = scanRepo,
         deepResearchRepo = ScanDeepResearchRepository(),
-        scanPrompt = ScanPrompt("v10"),
+        scanPromptRegistry = ScanPromptRegistry(),
         scanMetricsRepo = metricsRepo,
         scanQuota = quota,
         messages = com.ifmix.api.core.testsupport.TestMessages.source,    )
 
-    private fun mc() = ModuleCtx(
+    private fun mc(sql: KSqlClient = sqlMock) = ModuleCtx(
         action = ActionContext(
             projectId = projectId,
             actorId = customerId,
             installId = installId,
             isMutation = true,
         ),
-        sql = mock<KSqlClient>(),
+        sql = sql,
     )
 
     @Test
@@ -102,5 +105,66 @@ class ScanAsyncQuotaTest {
 
         assertThat(won).isTrue()
         verify(metricsRepo).completeScan(any(), eq(projectId), eq(customerId))
+    }
+
+    private fun ctx(scanId: UUID) = ScanTaskContext(
+        projectId = projectId,
+        customerId = customerId,
+        installId = installId,
+        scanId = scanId,
+        locale = "en",
+        country = "US",
+        currency = "USD",
+        images = emptyList(),
+        collected = false,
+        promptVersion = "v10",
+        createdAt = Instant.now(),
+    )
+
+    private val premium = mapOf("authenticity_check" to mapOf("visual_authenticity" to "GENUINE"))
+
+    /**
+     * 设计 §8.2：INSUFFICIENT_IMAGE / NON_CARD_SUBJECT 不落 core_ai_deepresearch 行
+     * （premium 与 basic 同一次 AI 调用产出，status 差时模型可能仍带 premium_result，
+     * 服务端必须拦 —— 否则每张废图都在深研表留垃圾行）。
+     */
+    @Test
+    fun `inline premium skipped when scan status is not SUCCESS or PARTIAL`() {
+        val scanId = UUID.randomUUID()
+        whenever(scanRepo.casSuccess(any(), eq(projectId), eq(customerId), eq(scanId), any())).thenReturn(1)
+        whenever(metricsRepo.completeScan(any(), eq(projectId), eq(customerId))).thenReturn(1)
+
+        val won = handler.finalizeScanSuccess(
+            mc(),
+            ctx(scanId),
+            basicResult = mapOf("scan_status" to mapOf("status" to "INSUFFICIENT_IMAGE")),
+            premiumResult = premium,
+        )
+
+        assertThat(won).isTrue()
+        verify(scanRepo, never()).updateAiFieldsAndPointerIfNewer(
+            any(), any(), any(), any(), any(), any(), any(), any(),
+        )
+    }
+
+    @Test
+    fun `inline premium attached when scan status is SUCCESS`() {
+        val scanId = UUID.randomUUID()
+        // deepResearchRepo.insert 走 Jimmer entities.save；用 deep stub 让它安全返回 0 行
+        val deepStubSql = mock<KSqlClient>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
+        whenever(scanRepo.casSuccess(any(), eq(projectId), eq(customerId), eq(scanId), any())).thenReturn(1)
+        whenever(metricsRepo.completeScan(any(), eq(projectId), eq(customerId))).thenReturn(1)
+
+        val won = handler.finalizeScanSuccess(
+            mc(deepStubSql),
+            ctx(scanId),
+            basicResult = mapOf("scan_status" to mapOf("status" to "SUCCESS")),
+            premiumResult = premium,
+        )
+
+        assertThat(won).isTrue()
+        verify(scanRepo).updateAiFieldsAndPointerIfNewer(
+            any(), eq(projectId), eq(customerId), eq(scanId), any(), any(), any(), any(),
+        )
     }
 }
