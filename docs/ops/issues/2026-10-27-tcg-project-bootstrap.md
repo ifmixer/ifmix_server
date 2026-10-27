@@ -73,14 +73,18 @@ psql "$DB_URL" -c "INSERT INTO core_project_serverconfig (id, project_id, fcm_co
 
 ## 执行步骤
 
+0. **先跑 Flyway 迁移**：`V2__scan_record_premium_result.sql` 给 `core_ai_scanrecord` 加 `premium_result` 列。
+   ```bash
+   DB_URL=jdbc:postgresql://localhost:15432/core_api DB_USER=app DB_PASSWORD=<密码> ./gradlew :core-api:flywayMigrate
+   ```
 1. 确认分支 `feature/tcgcard-prompt` 已部署（否则代码里没有 `app.ai.prompt.projects.tcg`）。
 2. 按上面的 SQL 写入 `core_project_info` 与 `core_project_serverconfig`。
 3. 重启 core-api。
 4. 冒烟：
    - 客户端用 `EXPO_PUBLIC_PROJECT_ID=tcg` 启动，扫一张卡；
    - 服务端日志应有 `projectId=tcg`；
-   - 数据库 `core_ai_deepresearch` 应出现一行 `status=30` 且 `premium_result` 非空；
-   - `scan_record.latest_deep_research_id` 指向该行。
+   - `core_ai_scanrecord.premium_result` 非空（该行同时有 `basic_result`）；
+   - `core_ai_deepresearch` **不应**新增行（premium 不再借用深研表）。
 
 ## 回滚
 
@@ -89,11 +93,10 @@ DELETE FROM core_project_serverconfig WHERE project_id = 'tcg';
 DELETE FROM core_project_info WHERE id = 'tcg';
 ```
 
-历史扫描记录（`core_ai_scanrecord` / `core_ai_deepresearch`）按 `project_id='tcg'` 隔离，不删不影响其他 app。真要清：
+历史扫描记录（`core_ai_scanrecord`）按 `project_id='tcg'` 隔离，不删不影响其他 app。真要清：
 
 ```sql
-DELETE FROM core_ai_deepresearch WHERE project_id = 'tcg';
-DELETE FROM core_ai_scanrecord   WHERE project_id = 'tcg';
+DELETE FROM core_ai_scanrecord WHERE project_id = 'tcg';
 ```
 
 ## 排障要点
@@ -102,6 +105,6 @@ DELETE FROM core_ai_scanrecord   WHERE project_id = 'tcg';
 | --- | --- |
 | 扫描返回古董结构 | 服务端代码未部署，或 `app.ai.prompt.projects.tcg` 拼错 → 回落了 antique |
 | `Classpath resource not found: prompts/tcgcard-scan-system-premium_v1.md` | 提示词文件没打进 jar（`resources/prompts/` 下应有两份） |
-| premium 一直为空 | `scan_status.status` 不是 SUCCESS/PARTIAL（设计 §4.5 刻意拦掉）；或 prompt 没返回 `premium_result` |
+| premium 一直为空 | `scan_status.status` 不是 SUCCESS/PARTIAL（设计 §4.5 刻意拦掉）；或 prompt 没返回 `premium_result`；或迁移 V2 没跑（缺 `premium_result` 列） |
 | 推送收不到 | `fcm_config` 缺失 / 写错；或改完没重启（懒加载缓存） |
 | `invalid projectId format` | `id` 不匹配 `^[a-z][a-z0-9-]{2,29}$` |
