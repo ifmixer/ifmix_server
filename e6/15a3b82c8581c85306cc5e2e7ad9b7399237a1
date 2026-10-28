@@ -1,0 +1,20 @@
+AGENTS.md
+  h_b17efd5c751f9f 8,29,31-32,34,38,40-41,43,46-56,60-62,64-70,74-88,96-103
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 142-148
+core-api/src/main/resources/prompts/note-scan-system-basic_v1.md
+  h_b17efd5c751f9f 1-606
+docs/ops/issues/2026-10-28-note-project-bootstrap.md
+  h_b17efd5c751f9f 1-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e615a3b82c8581c85306cc5e2e7ad9b7399237a1",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
