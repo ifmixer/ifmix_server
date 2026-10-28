@@ -1,14 +1,14 @@
 # TCG 扫描器（projectId=tcg）接入 —— 项目数据初始化
 
-状态：⏳ **未执行**（等客户端/服务端联调时再做）
-日期：2026-10-27
+状态：✅ **本地库已执行**（2026-10-28，见文末执行记录）；生产环境待执行
+日期：2026-10-27（2026-10-28 本地执行）
 相关：[tcg-prompt-per-project](../design/ai/tcg-prompt-per-project.md)
 
 ## 现象 / 背景
 
-第二个 app（TCG 卡牌扫描器）接入同一套后端。代码侧已由 `feature/tcgcard-prompt` 分支完成（提示词按 projectId 选择 + 内联 premium），但**项目数据还没写进数据库**，所以 tcg 的请求会因为找不到项目配置而失败或走不到正确分支。
+第二个 app（TCG 卡牌扫描器）接入同一套后端。代码侧已由 `feature/tcgcard-prompt` 分支完成（提示词按 projectId 选择 + 内联 premium），此前**项目数据还没写进数据库**，请求会因为找不到项目配置而失败或走不到正确分支。
 
-本文档是这部分运维动作的施工单，项目短期搁置，恢复时照此执行。
+本文档是这部分运维动作的施工单，本地已执行、生产环境部署 v1.0.9 时照此执行。
 
 ## 需要写入的三张表
 
@@ -108,3 +108,17 @@ DELETE FROM core_ai_scanrecord WHERE project_id = 'tcg';
 | premium 一直为空 | `scan_status.status` 不是 SUCCESS/PARTIAL（设计 §4.5 刻意拦掉）；或 prompt 没返回 `premium_result`；或迁移 V2 没跑（缺 `premium_result` 列） |
 | 推送收不到 | `fcm_config` 缺失 / 写错；或改完没重启（懒加载缓存） |
 | `invalid projectId format` | `id` 不匹配 `^[a-z][a-z0-9-]{2,29}$` |
+
+## 本地执行记录（core_api_local，2026-10-28）
+
+- `core_project_info` 插入 `tcg` / `TCG Card Scanner` / `TCG card identification & valuation`
+- `core_project_serverconfig` 插入 `tcg` 的 `fcm_config`（`ifmix-tcg` service account，
+  `ON CONFLICT (project_id)` 幂等写法，SA 从本地凭据文件读入、未入仓）
+
+验证查询：
+
+```sql
+select project_id, fcm_config->>'project_id', fcm_config->>'client_email',
+       (fcm_config ? 'private_key') as has_key
+from core_project_serverconfig where project_id = 'tcg';
+```

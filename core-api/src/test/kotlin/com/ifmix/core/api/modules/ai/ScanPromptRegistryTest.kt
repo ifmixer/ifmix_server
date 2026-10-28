@@ -14,19 +14,19 @@ import org.junit.jupiter.api.Test
 import java.util.UUID
 
 /**
- * 按 projectId 选提示词组（设计 §8.1）：toyscan 与 tcgcard 同构 —— basic 组仅占位，
+ * 按 projectId 选提示词组（设计 §8.1）：toy 与 tcgcard 同构（key 是 projectId「toy」，文件名前缀仍是 toyscan-scan-system） —— basic 组仅占位，
  * 普通扫描直接走 premium（basic+premium 一次产出）。
  */
 class ScanPromptRegistryTest {
 
-    private val toyscanProps = ScanPromptProperties(
+    private val toyProps = ScanPromptProperties(
         default = "antique",
         projects = mapOf(
             "antique" to ScanPromptProperties.ProjectPromptProperties(
                 name = "antique-scan-system",
                 version = "v10",
             ),
-            "toyscan" to ScanPromptProperties.ProjectPromptProperties(
+            "toy" to ScanPromptProperties.ProjectPromptProperties(
                 name = "toyscan-scan-system",
                 full = "toyscan-scan-system-premium",
                 version = "v1",
@@ -43,8 +43,8 @@ class ScanPromptRegistryTest {
     )
 
     @Test
-    fun `toyscan resolves to v1 and basic scans use the full template`() {
-        val prompt = ScanPromptRegistry(toyscanProps).forProject("toyscan")
+    fun `toy resolves to v1 and basic scans use the full template`() {
+        val prompt = ScanPromptRegistry(toyProps).forProject("toy")
 
         assertThat(prompt.promptVersion).isEqualTo("v1")
         assertThat(prompt.basicScanUsesFullTemplate).isTrue()
@@ -56,7 +56,7 @@ class ScanPromptRegistryTest {
 
     @Test
     fun `unknown project falls back to the default group`() {
-        val prompt = ScanPromptRegistry(toyscanProps).forProject("no-such-app")
+        val prompt = ScanPromptRegistry(toyProps).forProject("no-such-app")
 
         assertThat(prompt.promptVersion).isEqualTo("v10")
         assertThat(prompt.basicScanUsesFullTemplate).isFalse()

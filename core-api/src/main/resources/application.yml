@@ -119,7 +119,8 @@ app:
           version: ${TCG_SCAN_PROMPT_VERSION:v1}
           # v1 单次扫描就要同时产出 basic_result + premium_result，普通扫描直接走 full 组
           scan-uses-full-template: true
-        rockid:
+        rock:
+          # ⚠️ key 是 projectId（客户端 EXPO_PUBLIC_PROJECT_ID=rock）；文件名前缀沿用 rockid-scan-system
           name: rockid-scan-system
           full: rockid-scan-system-premium
           version: ${ROCK_SCAN_PROMPT_VERSION:v1}
@@ -131,7 +132,8 @@ app:
           version: ${COIN_SCAN_PROMPT_VERSION:v1}
           # 同 tcg：单次扫描同时产出 basic + premium
           scan-uses-full-template: true
-        toyscan:
+        toy:
+          # ⚠️ key 是 projectId（客户端 EXPO_PUBLIC_PROJECT_ID=toy）；文件名前缀沿用 toyscan-scan-system
           name: toyscan-scan-system
           # 与 tcg 同构：basic 组仅作 registry 占位，普通扫描直接走 premium（basic+premium 一次产出）
           full: toyscan-scan-system-premium

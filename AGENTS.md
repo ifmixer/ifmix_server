@@ -62,9 +62,10 @@ ops issues 现存记录：
 | [2026-10-10-pg-connection-closed-by-unattended-upgrade](docs/ops/issues/2026-10-10-pg-connection-closed-by-unattended-upgrade.md) | Hikari `Failed to validate connection … closed` WARN：根因是 **unattended-upgrades 升级 libxml2 → needrestart 自动重启 postgresql**（不是 maxLifetime）；已处置（自动更新全关 + needrestart `override_rc` 禁重启 PG/Redis），含证据链、代价与回退方式 |
 | [2026-10-10-ai-image-fetch-timeout-retry](docs/ops/issues/2026-10-10-ai-image-fetch-timeout-retry.md) | agnes-3.0-flash 常报「图片加载失败」：provider 回源下载超时被它自己返回成 **400**，原逻辑把 400/422 一律当不可重试；已加有限换 key 重试 |
 | [2026-10-10-redis-aof-persistence](docs/ops/issues/2026-10-10-redis-aof-persistence.md) | Redis 只有 RDB 快照（`appendonly=no`）→ 崩溃/`kill -9` 最多丢近 1h 写；已开 **AOF（everysec）+ 保留 RDB** 并重启验证。同为 **Redis 组件常驻手册**：持久化健康度判定、AOF 目录、`redis-cli -u` 必失败要用 `-a`、写入失败行为、遗留 `vm.overcommit_memory` 警告 |
-| [2026-10-27-tcg-project-bootstrap](docs/ops/issues/2026-10-27-tcg-project-bootstrap.md) | **⏳ 未执行**：TCG 扫描器（`projectId=tcg`）的项目数据初始化施工单 —— `core_project_info` / `core_project_serverconfig.fcm_config` 写入 SQL、attest 配置、冒烟步骤、回滚与排障。项目短期搁置，恢复时照此执行 |
-| [2026-10-27-toyscan-project-bootstrap](docs/ops/issues/2026-10-27-toyscan-project-bootstrap.md) | **⏳ 未执行**：玩具扫描器（`projectId=toyscan`，bundleId `com.ifmix.toy`）的项目数据初始化施工单 —— 两张表写入 SQL、冒烟、回滚与排障。与 tcg 施工单的差异见文首对照表 |
+| [2026-10-27-tcg-project-bootstrap](docs/ops/issues/2026-10-27-tcg-project-bootstrap.md) | **✅ 本地库已执行 / 生产待执行**（2026-10-28）：TCG 扫描器（`projectId=tcg`，bundleId `com.ifmix.tcg`）—— `core_project_info` / `core_project_serverconfig.fcm_config` 写入 SQL、attest 配置、冒烟步骤、回滚与排障 |
+| [2026-10-27-toyscan-project-bootstrap](docs/ops/issues/2026-10-27-toyscan-project-bootstrap.md) | **✅ 本地库已执行 / 生产待执行**：玩具扫描器（`projectId=toy`，bundleId `com.ifmix.toy`，提示词文件前缀仍是 `toyscan-scan-system`）—— 2026-10-28 projectId 由 toyscan 统一为短名 toy；两张表写入 SQL、冒烟、回滚与排障。与 tcg 施工单的差异见文首对照表 |
 | [2026-10-27-coin-project-bootstrap](docs/ops/issues/2026-10-27-coin-project-bootstrap.md) | **✅ 本地库已执行 / 生产待执行**：硬币扫描器（`projectId=coin`，bundleId `com.ifmix.coin`）—— 两张表写入 SQL、`psql -c` 不支持变量替换的坑、回滚与排障（含「回落 antique prompt 是静默的」） |
+| [2026-10-28-rock-project-bootstrap](docs/ops/issues/2026-10-28-rock-project-bootstrap.md) | **✅ 本地库已执行 / 生产待执行**：岩石识别（`projectId=rock`，bundleId `com.ifmix.rock`，提示词文件前缀仍是 `rockid-scan-system`）—— 两张表写入 SQL、冒烟、回滚与排障 |
 
 ### 设计文档（docs/design/，按模块分目录）
 
