@@ -137,6 +137,13 @@ app:
           full: toyscan-scan-system-premium
           version: ${TOY_SCAN_PROMPT_VERSION:v1}
           scan-uses-full-template: true
+        note:
+          # ⚠️ key 是 projectId（客户端 EXPO_PUBLIC_PROJECT_ID=note）；纸币扫描器，bundleId com.ifmix.note
+          name: note-scan-system
+          # 与 tcg 同构：普通扫描直接走 premium（basic+premium 一次产出），basic 组作截断降级退路
+          full: note-scan-system-premium
+          version: ${NOTE_SCAN_PROMPT_VERSION:v1}
+          scan-uses-full-template: true
     # 单次 AI 调用超时（秒）。线上最长调用 ~5min、常 2-3min，默认 6min 覆盖长尾；SDK 内置重试已关闭（maxRetries=0）
     call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:360}
     # 单次调用的显式输出 token 上限（coin 设计 §8.2.1）：不设会走 provider 默认，

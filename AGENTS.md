@@ -65,6 +65,7 @@ ops issues 现存记录：
 | [2026-10-27-tcg-project-bootstrap](docs/ops/issues/2026-10-27-tcg-project-bootstrap.md) | **⏳ 未执行**：TCG 扫描器（`projectId=tcg`）的项目数据初始化施工单 —— `core_project_info` / `core_project_serverconfig.fcm_config` 写入 SQL、attest 配置、冒烟步骤、回滚与排障。项目短期搁置，恢复时照此执行 |
 | [2026-10-27-toyscan-project-bootstrap](docs/ops/issues/2026-10-27-toyscan-project-bootstrap.md) | **⏳ 未执行**：玩具扫描器（`projectId=toyscan`，bundleId `com.ifmix.toy`）的项目数据初始化施工单 —— 两张表写入 SQL、冒烟、回滚与排障。与 tcg 施工单的差异见文首对照表 |
 | [2026-10-27-coin-project-bootstrap](docs/ops/issues/2026-10-27-coin-project-bootstrap.md) | **✅ 本地库已执行 / 生产待执行**：硬币扫描器（`projectId=coin`，bundleId `com.ifmix.coin`）—— 两张表写入 SQL、`psql -c` 不支持变量替换的坑、回滚与排障（含「回落 antique prompt 是静默的」） |
+| [2026-10-28-note-project-bootstrap](docs/ops/issues/2026-10-28-note-project-bootstrap.md) | **⏳ 未执行**：纸币扫描器（`projectId=note`，bundleId `com.ifmix.note`，分支 `feature/note-prompt` 施工中）—— 两张表写入 SQL（FCM 段暂缓至 Firebase `ifmix-note` 建好）、前置依赖、回滚与排障 |
 
 ### 设计文档（docs/design/，按模块分目录）
 
