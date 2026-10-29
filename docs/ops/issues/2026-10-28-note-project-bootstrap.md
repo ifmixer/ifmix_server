@@ -1,6 +1,6 @@
 # Banknote Scanner(projectId=note)接入 —— 项目数据初始化
 
-状态:⏳ **未执行**(本地库与生产库均待执行;代码分支 `feature/note-prompt` 施工中)
+状态:⏳ **未执行**(本地库与生产库均待执行;prompt 两个模板文件已齐,见下表 2026-10-30 更新)
 日期:2026-10-28
 相关:客户端设计 `/Users/jason/ai/myprojects/ai_scan/note/note_workspace/docs/noteapp-design.md` §5;
 先例 [2026-10-27-coin-project-bootstrap](2026-10-27-coin-project-bootstrap.md)(本单结构沿用其对照)
@@ -14,7 +14,7 @@
 | --- | --- |
 | `application.yml` 的 `app.ai.prompt.projects.note` | ✅ 已加(`NOTE_SCAN_PROMPT_VERSION:v1`,`scan-uses-full-template: true`) |
 | `prompts/note-scan-system-basic_v1.md` | ✅ 已写(606 行,basic-only 截断降级模板) |
-| `prompts/note-scan-system-premium_v1.md` | ⏳ **待写**(v1 主用:一次产出 basic+premium) |
+| `prompts/note-scan-system-premium_v1.md` | ✅ 已写(2026-10-30 于 `rc/tcg-coin-rock-toy` 补齐:以 coin premium_v1 为骨架、按客户端 `noteScanResult.ts` 契约换纸币 schema;一次产出 basic+premium) |
 
 服务端代码零改动:prompt 按 projectId 查表(ScanPromptRegistry)、单次产出 premium、
 截断降级、max-output-tokens、推送取图 MAIN→FRONT 回退均已在主线。
@@ -61,7 +61,8 @@ Firebase 侧前置:iOS App bundleId `com.ifmix.note` + Android App + APNs key。
 ## 前置依赖(执行前确认)
 
 1. **`feature/note-prompt` 已部署**(两个 prompt 文件齐了再上线;只有 yml 没有 prompt 文件时,
-   note 项目的首次扫描会在懒加载 prompt 时失败)。
+   note 项目的首次扫描会在懒加载 prompt 时失败)。✅ 本地两个文件已齐(2026-10-30,含
+   `ScanPromptRegistryTest` note 用例防回归),上线时确认目标分支含这两个文件即可。
 2. 客户端 `google-services/` 已从占位换成 ifmix-note 的正式配置(bundleId 与 Firebase 注册一致)。
 
 ## 回滚

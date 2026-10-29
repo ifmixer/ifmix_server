@@ -114,38 +114,39 @@ app:
           version: ${SCAN_PROMPT_VERSION:v10}
         tcg:
           name: tcgcard-scan-system
-          # tcgcard 的「basic+premium 一次产出」提示词叫 -premium（不叫 -deep-research）
+          # tcgcard 的 deep research 模板叫 -premium（不叫 -deep-research，历史命名）
           full: tcgcard-scan-system-premium
           version: ${TCG_SCAN_PROMPT_VERSION:v1}
-          # v1 单次扫描就要同时产出 basic_result + premium_result，普通扫描直接走 full 组
-          scan-uses-full-template: true
+          # 2026-10-30 起与 antique 统一为两段式：basic 扫描只出 basic_result，
+          # premium 由用户主动发起的 DeepResearch 异步任务产出（full 组即 DR 模板）
+          scan-uses-full-template: false
         rock:
           # ⚠️ key 是 projectId（客户端 EXPO_PUBLIC_PROJECT_ID=rock）；文件名前缀沿用 rockid-scan-system
           name: rockid-scan-system
           full: rockid-scan-system-premium
           version: ${ROCK_SCAN_PROMPT_VERSION:v1}
-          # 同 tcg：石头 app v1 也是「一次调用同时产出 basic + premium」
-          scan-uses-full-template: true
+          # 同 tcg：两段式，basic 扫描只出 basic_result，premium 走 DeepResearch
+          scan-uses-full-template: false
         coin:
           name: coin-scan-system
           full: coin-scan-system-premium
           version: ${COIN_SCAN_PROMPT_VERSION:v1}
-          # 同 tcg：单次扫描同时产出 basic + premium
-          scan-uses-full-template: true
+          # 同 tcg：两段式，basic 扫描只出 basic_result，premium 走 DeepResearch
+          scan-uses-full-template: false
         toy:
           # ⚠️ key 是 projectId（客户端 EXPO_PUBLIC_PROJECT_ID=toy）；文件名前缀沿用 toyscan-scan-system
           name: toyscan-scan-system
-          # 与 tcg 同构：basic 组仅作 registry 占位，普通扫描直接走 premium（basic+premium 一次产出）
           full: toyscan-scan-system-premium
           version: ${TOY_SCAN_PROMPT_VERSION:v1}
-          scan-uses-full-template: true
+          # 同 tcg：两段式，basic 扫描只出 basic_result，premium 走 DeepResearch
+          scan-uses-full-template: false
         note:
           # ⚠️ key 是 projectId（客户端 EXPO_PUBLIC_PROJECT_ID=note）；纸币扫描器，bundleId com.ifmix.note
           name: note-scan-system
-          # 与 tcg 同构：普通扫描直接走 premium（basic+premium 一次产出），basic 组作截断降级退路
+          # 同 tcg：两段式，basic 扫描只出 basic_result，premium 走 DeepResearch
           full: note-scan-system-premium
           version: ${NOTE_SCAN_PROMPT_VERSION:v1}
-          scan-uses-full-template: true
+          scan-uses-full-template: false
     # 单次 AI 调用超时（秒）。线上最长调用 ~5min、常 2-3min，默认 6min 覆盖长尾；SDK 内置重试已关闭（maxRetries=0）
     call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:360}
     # 单次调用的显式输出 token 上限（coin 设计 §8.2.1）：不设会走 provider 默认，

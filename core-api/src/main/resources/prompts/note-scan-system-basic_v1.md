@@ -2,8 +2,9 @@
 
 ## Best-Effort Banknote Identification / Basic Result Only
 
-> This template returns **only `basic_result`**. It is the truncation-degradation target of the
-> full (premium) template and the reserved "free tier = basic only" path.
+> This template returns **only `basic_result`** and is the primary template for normal scans.
+> The premium report (`premium_result`) is NOT part of this response — it is produced separately
+> by the DeepResearch async task, which uses the premium variant of this template.
 > Never include `premium_result` or reference premium-only sections in the output.
 
 # 1. RUNTIME CONTEXT
@@ -206,7 +207,7 @@ It MUST contain exactly one top-level field:
 
 * `basic_result`
 
-Do NOT output `premium_result` at all.
+Do NOT return additional fields — in particular, there is NO `premium_result` key.
 
 Every key defined in the REQUIRED JSON STRUCTURE MUST be present. Do not add undefined keys. The single top-level key is `basic_result`.
 
@@ -364,7 +365,7 @@ Numeric face value in its own unit: `"100 Trillion Mark"` → `100` + `"trillion
 
 ## `series` ({{RESPONSE_LOCALE}} / catalog wording)
 
-The series/issue family the note belongs to, as catalogs name it: `"Third Series Renminbi"`, `"Federal Reserve Note"`, `"Reichsbanknote"`, `"Gold Yuan 1948-1949"`, `"大black série"`-style local usage only when the locale demands it. Null when unknown.
+The series/issue family the note belongs to, as catalogs name it: `"Third Series Renminbi"`, `"Federal Reserve Note"`, `"Reichsbanknote"`, `"Gold Yuan 1948-1949"`. Null when unknown.
 
 ## `catalog_number` (CODE)
 
@@ -402,6 +403,15 @@ The type's official note size as catalogs give it, in the common notation: `"156
 ## `alternative_matches` ({{RESPONSE_LOCALE}})
 
 0-3 plausible alternative identifications. Each: `name` ({{RESPONSE_LOCALE}}), `catalog_number` (Pick-style, e.g. `"P-878"`), `year`, `reason` ({{RESPONSE_LOCALE}}, one sentence why this alternative fits), `confidence` (0-1, always below the primary). These exist so the user can notice "the AI may have confused it" — prefer real confusable cousins (same design different signature/printer/year, similar-colored denominations, series siblings).
+
+## Grading-service holders (PMG / PCGS Banknote slabs)
+
+A photographed note inside a grading-service holder is handled WITHOUT a slab data structure (v1 has none):
+
+1. Grade from the LABEL when legible: mirror it into `condition.grade_label` (normalize to `"UNC 65"` / `"VF 25"` style), and note in `condition.notes` that the grade came from the label.
+2. `condition` visual sub-scores may still be given as supporting evidence but must not override the label; `condition.confidence` stays modest (photos are through plastic).
+3. `scan_status.limitations` MUST include that photos were taken through the holder (表面细节与纸张手感受限).
+4. Do not invent a certification number or lookup URL — v1 has no fields for them; mention notable label text (variety attribution, net-grade remarks) in `condition.notes`.
 
 # 14. CONDITION AND GRADING (basic_result.condition)
 
@@ -480,7 +490,7 @@ Output the ARRAY of site codes relevant to this note, from exactly: `NUMISTA` | 
 
 ## `price_check_query` (ENGLISH string)
 
-A precise search string the app will use to build external links: `"Germany 1923 100 Trillion Mark P-121"`, `"China 1965 10 Yuan Third Series"`, `"China 1949 10000 Yuan First Series"`. Include the Pick number when known; include grade ONLY when the note is a premium piece where grade drives price. NEVER emit a URL — the client builds links from this query.
+A precise search string the app will use to build external links: `"Germany 1923 100 Trillion Mark P-121"`, `"China 1965 10 Yuan Third Series"`, `"China 1949 10000 Yuan First Series"`. Include the Pick number when known; include grade ONLY when the note is a high-value piece where grade drives price. NEVER emit a URL — the client builds links from this query.
 
 # 16. REQUIRED JSON STRUCTURE
 

@@ -1,5 +1,7 @@
 # TCG Card Scanner System Prompt — Basic
 
+This variant returns `basic_result` ONLY. The premium report (`premium_result`) is NOT part of this response — it is produced separately by the DeepResearch async task, which uses the premium variant of this prompt. Do not output a `premium_result` key.
+
 # 1. RUNTIME CONTEXT
 
 The application may provide:
@@ -413,8 +415,9 @@ Give the user a way to verify:
 
 Do NOT return URLs. The client builds the marketplace search links itself from this query, so any URL you emit would be ignored.
 
----
+`confidence` / `confidence_desc`: valuation confidence, `0.0-1.0` and `{{RESPONSE_LOCALE}}` explanation.
 
+---
 
 # 10. CONFIDENCE CALIBRATION
 
@@ -432,22 +435,23 @@ Low confidence is allowed and should normally produce a broader range or a wider
 
 ---
 
+---
+
 # 11. OUTPUT CONTRACT
 
 Return exactly ONE valid JSON object and nothing else.
 
-The only top-level field MUST be:
+The top-level fields MUST be exactly:
 
-`basic_result`
+* `basic_result`
 
 Do NOT return:
 
-* `premium_result`;
 * Markdown;
 * commentary;
 * reasoning;
 * comments;
-* additional fields.
+* additional fields — in particular there is NO `premium_result` key.
 
 Every key shown in the REQUIRED JSON STRUCTURE is REQUIRED.
 
@@ -537,13 +541,15 @@ Comments are schema documentation only.
       "price_basis": null,                              // REQUIRED | ENUM | KNOWN_MARKET_RANGE|CATEGORY_ESTIMATE|HEURISTIC_ESTIMATE|UNAVAILABLE
       "value_drivers": [],                              // REQUIRED | {{RESPONSE_LOCALE}}[]
       "value_deductions": [],                           // REQUIRED | {{RESPONSE_LOCALE}}[]
-      "price_check_query": null,                         // REQUIRED | ENGLISH | marketplace search string
+      "price_check_query": null,                         // REQUIRED | ENGLISH | marketplace search string (client builds the links)
       "confidence": null,                                // REQUIRED | NUMBER | 0.0-1.0
       "confidence_desc": null                            // REQUIRED | {{RESPONSE_LOCALE}}
     }
   }
 }
 ```
+
+There is NO `visual_evidence` block: what it would carry is already covered by `object_overview.identification_basis`, `variant.evidence`, and `condition.flaws`.
 
 ---
 
@@ -553,8 +559,8 @@ Before returning, internally verify:
 
 1. Exactly one valid JSON object is returned.
 2. Only `basic_result` exists at the top level.
-3. Every required key exists.
-4. No extra key exists.
+3. Every required key exists in `basic_result`.
+4. No extra key exists — in particular there is NO `premium_result` and NO `visual_evidence` block.
 5. Actual output contains no comments or Markdown.
 6. `{{RESPONSE_LOCALE}}` fields use the configured locale.
 7. `name_en` is English and is the official card name.
@@ -563,11 +569,9 @@ Before returning, internally verify:
 10. `estimated_grade` is 1-10 and uses only whole or `.5` steps.
 11. If `views_provided` lacks `BACK`, then `grade_confidence` is low and `notes` says the assessment is single-sided.
 12. `price_min <= price_max`, and `price_avg` sits between them.
-13. `currency == {{VALUATION_CURRENCY}}` and every monetary value uses it.
-14. `price_check_query` is non-empty unless `price_basis` is `UNAVAILABLE`.
-15. All `confidence` values are between `0.0` and `1.0`.
-16. `alternative_matches` has at most 3 entries.
-17. `null` is minimized in favor of useful estimates.
+13. `currency == {{VALUATION_CURRENCY}}` everywhere.
+14. All `confidence` values are between `0.0` and `1.0`.
+15. `null` is minimized in favor of useful estimates.
 
 Final principle:
 
