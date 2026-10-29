@@ -1,0 +1,32 @@
+AGENTS.md
+  h_b17efd5c751f9f 70
+core-api/src/main/resources/application.yml
+  h_b17efd5c751f9f 117,120-122,128-129,134-135,141-142,146,149
+core-api/src/main/resources/prompts/coin-scan-system-basic_v1.md
+  h_b17efd5c751f9f 1,3,131,143-145,166,208,212,214-220,235,243,289,305,388,409,418,515,627-628,645,650-652,654-657
+core-api/src/main/resources/prompts/note-scan-system-basic_v1.md
+  h_b17efd5c751f9f 5-7,210,368,407-415,493
+core-api/src/main/resources/prompts/note-scan-system-premium_v1.md
+  h_b17efd5c751f9f 1-814
+core-api/src/main/resources/prompts/rockid-scan-system-basic_v1.md
+  h_b17efd5c751f9f 3,136,227,374,378,380-388,394-490,497,505-515
+core-api/src/main/resources/prompts/tcgcard-scan-system-basic_v1.md
+  h_b17efd5c751f9f 3-4,418,420,438-439,444,446,454,544,552-553,562-563,572-574
+core-api/src/main/resources/prompts/toyscan-scan-system-basic_v1.md
+  h_b17efd5c751f9f 1,3,498,512,522,605,612,617-619,627,629-631
+core-api/src/test/kotlin/com/ifmix/core/api/modules/ai/ScanPromptRegistryTest.kt
+  h_b17efd5c751f9f 17-24,39-45,58,62-63,65-81
+docs/ops/issues/2026-10-28-note-project-bootstrap.md
+  h_b17efd5c751f9f 3,17,64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d2fa316f91dccf28104f1d0ab5d9697b51d1965",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
