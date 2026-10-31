@@ -1,0 +1,26 @@
+AGENTS.md
+  h_b17efd5c751f9f 66-70,83
+docs/ops/Changelog.md
+  h_b17efd5c751f9f 5-22
+docs/ops/issues/2026-10-27-coin-project-bootstrap.md
+  h_b17efd5c751f9f 3,81-86
+docs/ops/issues/2026-10-27-tcg-project-bootstrap.md
+  h_b17efd5c751f9f 3,125-130
+docs/ops/issues/2026-10-27-toyscan-project-bootstrap.md
+  h_b17efd5c751f9f 3,111-117
+docs/ops/issues/2026-10-28-rock-project-bootstrap.md
+  h_b17efd5c751f9f 3,96-102
+"docs/version/v1.0.9/release plan v1.0.9.md"
+  h_b17efd5c751f9f 11,74-75,77,79,83-84,88-91,96,101-103,132-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc3b3b34c387f45041eb4e66ce9237249deffdb8",
+  "prompts": {},
+  "humans": {
+    "h_b17efd5c751f9f": {
+      "author": "mylab <mylab@qq.com>"
+    }
+  }
+}
