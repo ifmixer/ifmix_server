@@ -552,8 +552,10 @@ class ScanAggHandler(
 
     /** AI 响应 Map → DeepResearchResult（沿用 basic_result/premium_result 提取规则）。 */
     fun toDeepResearchResult(ctx: DeepResearchTaskContext, aiResponse: Map<String, Any?>): DeepResearchResult {
+        // basic_result 缺键（畸形响应）时宁空勿整：绝不能把含 premium_result 的整个响应当 basicResult 存库。
+        // 空_map → status=null → finalizeDeepResearchSuccess 不会用它覆盖基础扫描的 basic_result。
         @Suppress("UNCHECKED_CAST")
-        val basicResult = aiResponse["basic_result"] as? Map<String, Any?> ?: aiResponse
+        val basicResult = aiResponse["basic_result"] as? Map<String, Any?> ?: emptyMap()
         @Suppress("UNCHECKED_CAST")
         val premiumResult = aiResponse["premium_result"] as? Map<String, Any?>
         return DeepResearchResult(
@@ -585,10 +587,15 @@ class ScanAggHandler(
         result: DeepResearchResult,
     ): Boolean {
         if (deepResearchRepo.casSuccess(sc, ctx.deepResearchId, result.premiumResult, result.basicResult) != 1) return false
+        // basic_result 门控：DR 是对同一组照片的第二次独立推理，SUCCESS 下的重生成结果不覆盖用户
+        // 已看过的基础扫描结论（防付费后免费区静默漂移）。仅当 DR 判废（INSUFFICIENT_IMAGE / NON_*）
+        // 时才回写拒绝结论——客户端 deepResearchRejectionReason 依赖它切到补拍引导。
+        val drRejected = result.status == "INSUFFICIENT_IMAGE" || result.status?.startsWith("NON_") == true
         // 返回值语义 = isLatest（本次成功是否成为权威 latest）；旧任务晚完成 → false（仅存历史）
         val pointerMoved = scanRepo.updateAiFieldsAndPointerIfNewer(
             sc, ctx.projectId, ctx.customerId, ctx.scanRecordId,
-            ctx.deepResearchId, ctx.createdAt, result.basicResult, result.promptVersion,
+            ctx.deepResearchId, ctx.createdAt,
+            result.basicResult?.takeIf { drRejected }, result.promptVersion,
         )
         if (pointerMoved) {
             // 配额跟随「成为 latest 的那次成功」：封顶自增，超额不卡已完成结果（设计决策 4）

@@ -2,6 +2,8 @@ package com.ifmix.core.api.modules.ai
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
 import com.ifmix.core.api.generated.types.RunDeepResearchInput
 import com.ifmix.core.api.generated.types.DeepResearchImageInput
 import com.ifmix.core.api.generated.types.UpdateScanInput
@@ -25,6 +27,8 @@ import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.isNotNull
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.times
@@ -187,7 +191,7 @@ class ScanOwnerScopeTest {
         val ctx = taskCtx(id)
         whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), anyOrNull(), anyOrNull())).thenReturn(1)
         whenever(
-            scanRepo.updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), any(), any()),
+            scanRepo.updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), anyOrNull(), any()),
         ).thenReturn(false)
         // 旧任务晚完成：仅存历史，不动 scan_record、不扣配额（设计决策 8）；finalize 返回 isLatest=false
         val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id))
@@ -201,13 +205,42 @@ class ScanOwnerScopeTest {
         val ctx = taskCtx(id)
         whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), anyOrNull(), anyOrNull())).thenReturn(1)
         whenever(
-            scanRepo.updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), any(), any()),
+            scanRepo.updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), anyOrNull(), any()),
         ).thenReturn(true)
         val finalized = handler.finalizeDeepResearchSuccess(ctx(), ctx, drResult(id))
         verify(deepResearchRepo).casSuccess(any(), eq(ctx.deepResearchId), anyOrNull(), anyOrNull())
-        verify(scanRepo).updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), any(), any())
+        verify(scanRepo).updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), anyOrNull(), any())
         assertThat(finalized).isEqualTo(true)
         verify(scanMetricsRepo, times(1)).tryIncrementDeepResearchCount(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `finalize gates basicResult overwrite - success keeps original, rejection overwrites`() {
+        val id = UUID.randomUUID()
+        val ctx = taskCtx(id)
+        whenever(deepResearchRepo.casSuccess(any(), eq(ctx.deepResearchId), anyOrNull(), anyOrNull())).thenReturn(1)
+        whenever(
+            scanRepo.updateAiFieldsAndPointerIfNewer(any(), eq(projectId), eq(owner), eq(id), any(), any(), anyOrNull(), any()),
+        ).thenReturn(true)
+
+        // SUCCESS / PARTIAL：不把 DR 重生成的 basic_result 覆盖进 scan_record（保留用户已看过的基础结论）
+        val successResult = drResult(id).copy(basicResult = mapOf("scan_status" to mapOf("status" to "SUCCESS")))
+        handler.finalizeDeepResearchSuccess(ctx(), ctx, successResult)
+        val partialResult = drResult(id).copy(basicResult = mapOf("scan_status" to mapOf("status" to "PARTIAL")))
+        handler.finalizeDeepResearchSuccess(ctx(), ctx, partialResult)
+
+        // 拒绝态（INSUFFICIENT_IMAGE / NON_*）：覆盖为拒绝结论，客户端 deepResearchRejectionReason 依赖它
+        val rejectResult = drResult(id).copy(basicResult = mapOf("scan_status" to mapOf("status" to "INSUFFICIENT_IMAGE")))
+        handler.finalizeDeepResearchSuccess(ctx(), ctx, rejectResult)
+        val nonToyResult = drResult(id).copy(basicResult = mapOf("scan_status" to mapOf("status" to "NON_TOY_SUBJECT")))
+        handler.finalizeDeepResearchSuccess(ctx(), ctx, nonToyResult)
+
+        verify(scanRepo, times(2)).updateAiFieldsAndPointerIfNewer(
+            any(), eq(projectId), eq(owner), eq(id), any(), any(), isNull(), any(),
+        )
+        verify(scanRepo, times(2)).updateAiFieldsAndPointerIfNewer(
+            any(), eq(projectId), eq(owner), eq(id), any(), any(), isNotNull(), any(),
+        )
     }
 
     // ---- (created_at, id) latest 排序纯函数（设计 §3.4） ----

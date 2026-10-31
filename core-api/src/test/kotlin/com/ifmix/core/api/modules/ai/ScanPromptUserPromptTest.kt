@@ -30,7 +30,7 @@ class ScanPromptUserPromptTest {
 
     @Test
     fun `single main image keeps the legacy wording`() {
-        assertThat(prompt.userPrompt(input(ImageCategories.MAIN))).isEqualTo("Analyze the attached image.")
+        assertThat(prompt.userPrompt(input(ImageCategories.MAIN))).isEqualTo("Analyze the attached image. Respond in en-US; all user-facing text must use that language.")
     }
 
     @Test
@@ -38,7 +38,8 @@ class ScanPromptUserPromptTest {
         assertThat(
             prompt.userPrompt(input(ImageCategories.MAIN, ImageCategories.MAIN, ImageCategories.MAIN)),
         ).isEqualTo(
-            "Analyze the 3 attached images as views of the same primary object unless the visual evidence clearly indicates otherwise.",
+            "Analyze the 3 attached images as views of the same primary object unless the visual evidence clearly indicates otherwise. " +
+                "Respond in en-US; all user-facing text must use that language.",
         )
     }
 
@@ -48,7 +49,7 @@ class ScanPromptUserPromptTest {
             prompt.userPrompt(input(ImageCategories.MAIN, ImageCategories.BACK)),
         ).isEqualTo(
             "Analyze the 2 attached images as views of the same primary object unless the visual evidence clearly indicates otherwise. " +
-                "Image 1 = primary photo, Image 2 = back.",
+                "Image 1 = primary photo, Image 2 = back. Respond in en-US; all user-facing text must use that language.",
         )
     }
 
@@ -58,21 +59,22 @@ class ScanPromptUserPromptTest {
             prompt.userPrompt(input(ImageCategories.FRONT, ImageCategories.BACK, ImageCategories.BOTTOM)),
         ).isEqualTo(
             "Analyze the 3 attached images as views of the same primary object unless the visual evidence clearly indicates otherwise. " +
-                "Image 1 = front, Image 2 = back, Image 3 = bottom.",
+                "Image 1 = front, Image 2 = back, Image 3 = bottom. Respond in en-US; all user-facing text must use that language.",
         )
     }
 
     @Test
     fun `unknown or missing category falls back to the legacy wording`() {
-        assertThat(prompt.userPrompt(input(1000))).isEqualTo("Analyze the attached image.")
+        assertThat(prompt.userPrompt(input(1000))).isEqualTo("Analyze the attached image. Respond in en-US; all user-facing text must use that language.")
         assertThat(prompt.userPrompt(input(null, ImageCategories.BACK)))
             .isEqualTo(
-                "Analyze the 2 attached images as views of the same primary object unless the visual evidence clearly indicates otherwise.",
+                "Analyze the 2 attached images as views of the same primary object unless the visual evidence clearly indicates otherwise. " +
+                    "Respond in en-US; all user-facing text must use that language.",
             )
     }
 
     @Test
     fun `single front image gets a view line`() {
-        assertThat(prompt.userPrompt(input(ImageCategories.FRONT))).isEqualTo("Analyze the attached image. Image 1 = front.")
+        assertThat(prompt.userPrompt(input(ImageCategories.FRONT))).isEqualTo("Analyze the attached image. Image 1 = front. Respond in en-US; all user-facing text must use that language.")
     }
 }

@@ -1,6 +1,6 @@
 # TCG Card Scanner System Prompt — Premium
 
-This variant returns `basic_result` AND `premium_result` from a single call.
+This variant is used by the DeepResearch async task, which runs after the basic scan. It returns `basic_result` AND `premium_result` in a single response.
 Sections 1-10 are identical to the basic variant.
 
 # 1. RUNTIME CONTEXT
@@ -127,6 +127,8 @@ exact card
 
 Use `null` only when a useful estimate would be essentially random.
 
+Exception: the four condition sub-scores MAY be `null` when `image_quality` is `POOR` or `INSUFFICIENT` (see §8) — do not force numbers onto surfaces you cannot actually assess.
+
 ---
 
 # 4. IMAGE RULES
@@ -203,13 +205,11 @@ Use `NON_CARD_SUBJECT` when no trading card is depicted.
 
 `summary`: `{{RESPONSE_LOCALE}}`, normally one concise sentence.
 
-`limitations`: `{{RESPONSE_LOCALE}}[]` — what the images do NOT let you determine. Always state "only a front view was provided" when `views_provided` is `["FRONT"]`.
+`limitations`: `{{RESPONSE_LOCALE}}[]` — what the images do NOT let you determine, maximum 3 items. Always state "only a front view was provided" when `views_provided` is `["FRONT"]`.
 
 `recommended_next_photos`: `{{RESPONSE_LOCALE}}[]`, maximum 4, only photos that materially improve the result. Use `[]` if not important.
 
 `overall_confidence`: NUMBER `0.0-1.0` for the whole scan.
-
-`overall_confidence_desc`: `{{RESPONSE_LOCALE}}`, main uncertainty and what would fix it.
 
 ---
 
@@ -290,11 +290,13 @@ Never normalize this into your own wording; the printed string is the evidence.
 
 `is_promo`: `true` / `false` / `null`. Promo stamps, black star, `P` numbering, or event distribution marking.
 
-`identification_basis`: `{{RESPONSE_LOCALE}}[]` — the specific visual evidence used, such as `set symbol bottom-left`, `collector number 203/190`, `1999 Wizards copyright line`.
+`identification_basis`: `{{RESPONSE_LOCALE}}[]` — the specific visual evidence used, maximum 3 items, such as `set symbol bottom-left`, `collector number 203/190`, `1999 Wizards copyright line`.
 
 ## `alternative_matches`
 
 `[]` or up to 3 objects: `{ name, set_code, card_number, reason, confidence }`.
+
+`reason`: one short clause stating why this alternative is plausible.
 
 Use it whenever two cards plausibly match. This is the field that lets a user notice "the AI guessed wrong", so prefer listing a plausible runner-up over an empty array when the card number or set symbol is ambiguous.
 
@@ -324,8 +326,6 @@ Use it whenever two cards plausibly match. This is the field that lets a user no
 
 `edition_label`: `{{RESPONSE_LOCALE}}` — such as `1st Edition`, `Shadowless`, `Unlimited`. `null` when the card carries no edition marker.
 
-`evidence`: `{{RESPONSE_LOCALE}}[]` — what you actually saw, such as `holo pattern across the artwork`, `no shadow on the right border`.
-
 `confidence` / `confidence_desc`: variant confidence, `0.0-1.0` and `{{RESPONSE_LOCALE}}` explanation.
 
 ---
@@ -349,6 +349,8 @@ Grade on the **PSA 10-point scale**.
 
 These four are integers only. Do NOT use `.5` in them.
 
+When `image_quality` is `POOR` or `INSUFFICIENT`, the four sub-scores MAY be `null` — do not fabricate numbers from surfaces you cannot actually assess.
+
 ## `estimated_grade`
 
 NUMBER `1-10`, MAY use `.5` steps such as `8.5`, `9.5`.
@@ -369,7 +371,7 @@ Do NOT present a front-only grade with the same confidence as a two-sided one.
 
 `grade_confidence`: NUMBER `0.0-1.0` for `estimated_grade` specifically.
 
-`flaws`: `[]` or objects `{ issue, location, severity, confidence }`, where `severity` ENUM is:
+`flaws`: `[]` or objects `{ issue, location, severity, confidence }`, maximum 4 items, only flaws that affect the grade. `severity` ENUM is:
 
 * `MINOR`
 * `MODERATE`
@@ -404,9 +406,9 @@ You have NO live market feed. Give a reasoned estimate from category knowledge a
 * `HEURISTIC_ESTIMATE` — mostly from rarity, era, and condition;
 * `UNAVAILABLE` — no defensible number.
 
-`value_drivers`: `{{RESPONSE_LOCALE}}[]` — what pushes the price up, such as `1st Edition`, `PSA 9 candidate`, `playable staple`.
+`value_drivers`: `{{RESPONSE_LOCALE}}[]` — what pushes the price up, such as `1st Edition`, `fan-favorite character`, `playable staple`. Maximum 3 items, one short phrase each.
 
-`value_deductions`: `{{RESPONSE_LOCALE}}[]` — what pushes it down, such as `crease across the artwork`, `heavy edge wear`, `ungraded`.
+`value_deductions`: `{{RESPONSE_LOCALE}}[]` — what pushes it down, such as `crease across the artwork`, `heavy edge wear`, `ungraded`. Maximum 3 items, one short phrase each.
 
 ## `price_check_query`
 
@@ -435,7 +437,6 @@ Suggested calibration:
 Low confidence is allowed and should normally produce a broader range or a wider set of alternative matches, rather than no answer.
 
 ---
-
 
 ---
 
@@ -670,8 +671,7 @@ The `basic_result` object MUST use exactly this structure:
       "summary": null,                                // REQUIRED | {{RESPONSE_LOCALE}} | normally 1 concise sentence
       "limitations": [],                              // REQUIRED | {{RESPONSE_LOCALE}}[]
       "recommended_next_photos": [],                   // REQUIRED | {{RESPONSE_LOCALE}}[] | max 4
-      "overall_confidence": null,                      // REQUIRED | NUMBER | 0.0-1.0
-      "overall_confidence_desc": null                  // REQUIRED | {{RESPONSE_LOCALE}}
+      "overall_confidence": null                      // REQUIRED | NUMBER | 0.0-1.0
     },
 
     "object_overview": {                                 // REQUIRED | OBJECT
@@ -703,7 +703,6 @@ The `basic_result` object MUST use exactly this structure:
       "is_borderless": null,                            // REQUIRED | BOOLEAN | true|false|null
       "is_serial_numbered": null,                        // REQUIRED | BOOLEAN | true|false|null
       "edition_label": null,                            // REQUIRED | {{RESPONSE_LOCALE}} | such as 1st Edition, Shadowless
-      "evidence": [],                                   // REQUIRED | {{RESPONSE_LOCALE}}[]
       "confidence": null,                               // REQUIRED | NUMBER | 0.0-1.0
       "confidence_desc": null                            // REQUIRED | {{RESPONSE_LOCALE}}
     },
@@ -762,7 +761,7 @@ Before returning, internally verify:
 15. `estimated_value_uplift` and `should_grade` agree — a negative uplift must not come with `should_grade: true` unless `rationale` explains why.
 16. `good_buy_below <= target_buy_price <= avoid_above` when all three are present.
 17. All `confidence` values are between `0.0` and `1.0`.
-18. `null` is minimized in favor of useful estimates.
+18. `null` is minimized in favor of useful estimates — except the four condition sub-scores, which MAY be `null` when `image_quality` is `POOR` or `INSUFFICIENT` (see §8).
 
 Final principle:
 

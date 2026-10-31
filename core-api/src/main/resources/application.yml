@@ -130,14 +130,17 @@ app:
         coin:
           name: coin-scan-system
           full: coin-scan-system-premium
-          version: ${COIN_SCAN_PROMPT_VERSION:v1}
+          # v2（2026-10-31）：与 note v2 同口径——示例全部英文格式示意化、price_range 多币种示例、
+          # 补「response language determined ONLY by RESPONSE_LOCALE」（v1 中文示例会把输出拉向中文/¥）
+          version: ${COIN_SCAN_PROMPT_VERSION:v2}
           # 同 tcg：两段式，basic 扫描只出 basic_result，premium 走 DeepResearch
           scan-uses-full-template: false
         toy:
           # ⚠️ key 是 projectId（客户端 EXPO_PUBLIC_PROJECT_ID=toy）；文件名前缀沿用 toyscan-scan-system
           name: toyscan-scan-system
           full: toyscan-scan-system-premium
-          version: ${TOY_SCAN_PROMPT_VERSION:v1}
+          # v2（2026-10-31）：category_name 示例 `Hot Wheels 车模` 改英文格式示意（防语言漂移），其余同 v1
+          version: ${TOY_SCAN_PROMPT_VERSION:v2}
           # 同 tcg：两段式，basic 扫描只出 basic_result，premium 走 DeepResearch
           scan-uses-full-template: false
         note:
@@ -145,7 +148,9 @@ app:
           name: note-scan-system
           # 同 tcg：两段式，basic 扫描只出 basic_result，premium 走 DeepResearch
           full: note-scan-system-premium
-          version: ${NOTE_SCAN_PROMPT_VERSION:v1}
+          # v2（2026-10-31）：示例全部英文格式示意化（v1 大量中文示例会把非中文用户的输出拉向中文/¥），
+          # price_range 示例改多币种，补「response language determined ONLY by RESPONSE_LOCALE」
+          version: ${NOTE_SCAN_PROMPT_VERSION:v2}
           scan-uses-full-template: false
     # 单次 AI 调用超时（秒）。线上最长调用 ~5min、常 2-3min，默认 6min 覆盖长尾；SDK 内置重试已关闭（maxRetries=0）
     call-timeout-sec: ${AI_CALL_TIMEOUT_SEC:360}

@@ -86,7 +86,7 @@ Analyze ONE primary specimen from the supplied image.
 
 Goal:
 
-**Produce the most useful plausible identification plus a readable mineral profile from the available visual evidence.**
+**Produce the most useful plausible identification plus a quick property snapshot from the available visual evidence.**
 
 ---
 
@@ -156,7 +156,7 @@ Never invent visual details that are not present.
 
 `summary` — `{{RESPONSE_LOCALE}}`, normally one concise sentence.
 
-`limitations` — `{{RESPONSE_LOCALE}}[]`. Be specific and honest. Examples:
+`limitations` — `{{RESPONSE_LOCALE}}[]`, maximum 3 items. Be specific and honest. Examples:
 
 * "Hardness and streak cannot be determined from a photograph."
 * "Only one face is visible; cleavage and fracture are not shown."
@@ -170,8 +170,6 @@ Never invent visual details that are not present.
 * "The underside or matrix attachment."
 
 `overall_confidence` — number 0.0–1.0.
-
-`overall_confidence_desc` — `{{RESPONSE_LOCALE}}`, one sentence on the main uncertainty.
 
 ---
 
@@ -215,14 +213,14 @@ Choose the category that best matches how a collector would describe and value t
 
 `group` — `{{RESPONSE_LOCALE}}`. Mineral group or class. Examples: "Silicate", "Framework silicate", "Carbonate", "Sulfide", "Oxide".
 
-`identification_basis` — `{{RESPONSE_LOCALE}}[]`. The specific visual evidence that led to this identification. Each entry should name an observable feature. Examples:
+`identification_basis` — `{{RESPONSE_LOCALE}}[]`, maximum 4 items. The specific visual evidence that led to this identification. Each entry should name an observable feature. Examples:
 
 * "Six-sided prismatic crystals with pyramidal terminations."
 * "Vitreous luster with conchoidal fracture."
 * "Purple color with uneven zoning toward colorless at the base."
 * "Granular texture with visible feldspar, quartz, and mica."
 
-`alternative_matches` — array of objects `{ name, name_en, reason, confidence }`. **Always provide at least one alternative when confidence < 0.85**, and provide 2–3 when the specimen is ambiguous. Each `reason` explains what distinguishes it or why it cannot be excluded. `name` is `{{RESPONSE_LOCALE}}`, `name_en` is `ENGLISH`.
+`alternative_matches` — array of objects `{ name, name_en, reason, confidence }`. **Always provide at least one alternative when confidence < 0.70**, with 2 as the maximum; give a second only when the specimen is ambiguous. Each `reason` explains what distinguishes it or why it cannot be excluded. `name` is `{{RESPONSE_LOCALE}}`, `name_en` is `ENGLISH`.
 
 `is_likely_synthetic` — boolean or null. Preliminary judgement only; the full authenticity analysis is produced later by the separate DeepResearch follow-up. Set `true` only when there is clear visible evidence (e.g. uniform bubble inclusions, perfect glassy conchoidal fracture in an implausible color, obvious resin).
 
@@ -240,25 +238,15 @@ This is a reference profile, not a measurement. State this in `limitations`.
 
 `chemical_formula` — the standard formula. Examples: `SiO2`, `CaCO3`, `FeS2`, `Al2SiO4(F,OH)2`.
 
-`chemical_composition` — `{{RESPONSE_LOCALE}}`. A short plain-language description of the composition.
-
 `hardness_mohs` — a string. Use a single value (`"7"`) or a range (`"6.5–7"`). Use the en-dash `–` for ranges. Never use a number type.
 
 `streak` — `{{RESPONSE_LOCALE}}`. The streak color. Examples: "White", "Colorless", "Pale greenish black".
 
 `luster` — `{{RESPONSE_LOCALE}}`. Examples: "Vitreous", "Adamantine", "Pearly", "Silky", "Greasy", "Earthy", "Metallic", "Waxy", "Resinous".
 
-`cleavage` — `{{RESPONSE_LOCALE}}`. Examples: "Perfect in one direction", "Imperfect, indistinct", "None — conchoidal fracture".
-
-`fracture` — `{{RESPONSE_LOCALE}}`. Examples: "Conchoidal", "Uneven", "Splintery", "Hackly".
-
 `crystal_system` — `{{RESPONSE_LOCALE}}`. Examples: "Hexagonal", "Trigonal", "Cubic", "Monoclinic", "Triclinic", "Orthorhombic", "Tetragonal", "Amorphous".
 
 `transparency` — `{{RESPONSE_LOCALE}}`. Examples: "Transparent", "Translucent", "Opaque".
-
-`color_variants` — `{{RESPONSE_LOCALE}}[]`. The common colors and named varieties of this species. Examples: "Colorless", "Purple (amethyst)", "Yellow (citrine)", "Brown (smoky)".
-
-`fluorescence` — `{{RESPONSE_LOCALE}}` or null. Only when this species has a well-known diagnostic fluorescence. Otherwise null.
 
 `confidence` / `confidence_desc` — confidence in the *identification* that this profile belongs to, not in the published values themselves.
 
@@ -278,9 +266,7 @@ This is a reference profile, not a measurement. State this in `limitations`.
 * `MANUFACTURED` — human-made;
 * `UNKNOWN` — cannot be reasonably determined.
 
-`formation_process` — `{{RESPONSE_LOCALE}}`. Two to four sentences describing how this material forms, in language a curious amateur can follow.
-
-`typical_environment` — `{{RESPONSE_LOCALE}}`. Where in the geological setting it is found. Examples: "Pegmatite dikes in granitic terrain", "Hydrothermal veins in limestone", "Alluvial gravels derived from weathering of primary deposits".
+`formation_process` — `{{RESPONSE_LOCALE}}`. One sentence describing how this material forms, in language a curious amateur can follow.
 
 `confidence` / `confidence_desc` — how confident you are in the formation story for this specimen.
 
@@ -290,14 +276,7 @@ This is a reference profile, not a measurement. State this in `limitations`.
 
 This section answers the user's practical question: **where could I find this?**
 
-`common_locations` — `{{RESPONSE_LOCALE}}[]`. Countries and broad regions where this material is commonly found. Examples: "Brazil (Minas Gerais)", "Madagascar", "Zambia", "Australia (Queensland)".
-
-`where_to_find` — `{{RESPONSE_LOCALE}}[]`. Specific, actionable places. Examples:
-
-* "River gravels downstream of pegmatite outcrops."
-* "Contact zones between granite and limestone."
-* "Beach sand where heavy minerals concentrate."
-* "Road cuts through metamorphic schist."
+`common_locations` — `{{RESPONSE_LOCALE}}[]`, maximum 3 items. Countries and broad regions where this material is commonly found. Examples: "Brazil (Minas Gerais)", "Madagascar", "Zambia".
 
 `is_commercially_mined` — boolean or null.
 
@@ -307,31 +286,7 @@ Do NOT claim the user can find it where they live. `{{MARKET_REGION}}` is not ev
 
 ---
 
-# 10. USES
-
-`industrial_uses` — `{{RESPONSE_LOCALE}}[]`. Examples: "Abrasive", "Refractory brick", "Semiconductor substrate", "Cement additive".
-
-`decorative_uses` — `{{RESPONSE_LOCALE}}[]`. Examples: "Cabochons", "Faceted gemstones", "Carved ornaments", "Aquarium gravel".
-
-`other_uses` — `{{RESPONSE_LOCALE}}[]`. Examples: "Collector specimens", "Metaphysical use", "Teaching specimens".
-
-Empty arrays are acceptable when a use genuinely does not apply.
-
----
-
-# 11. CONDITION
-
-This is a secondary field. Keep it short.
-
-`condition` — one of `PRISTINE`, `GOOD`, `FAIR`, `POOR`, `DAMAGED`, or null.
-
-`flaws` — array of `{ issue, severity }` where severity is `MINOR`, `MODERATE`, or `MAJOR`. `issue` is `{{RESPONSE_LOCALE}}`. Examples: "Chipped crystal termination", "Iron staining on the matrix", "Hairline fracture across the face".
-
-`notes` — `{{RESPONSE_LOCALE}}` or null. One short sentence.
-
----
-
-# 12. VALUE NOTE
+# 10. VALUE NOTE
 
 This is deliberately a **single line of supplementary information**, not a valuation report. Most specimens found by ordinary users have little monetary value, and saying so plainly is more useful than inventing a number.
 
@@ -353,7 +308,7 @@ Do NOT produce a detailed valuation. Do NOT produce buying advice. Those belong 
 
 ---
 
-# 13. CONFIDENCE CALIBRATION
+# 11. CONFIDENCE CALIBRATION
 
 Use this scale consistently across every `confidence` field:
 
@@ -367,7 +322,7 @@ Photographs systematically overstate certainty. When in doubt, choose the lower 
 
 ---
 
-# 14. OUTPUT CONTRACT
+# 12. OUTPUT CONTRACT
 
 Return exactly ONE valid JSON object and nothing else.
 
@@ -391,7 +346,7 @@ A required scalar may be `null` only when a useful estimate is genuinely impract
 
 ---
 
-# 15. REQUIRED JSON STRUCTURE
+# 13. REQUIRED JSON STRUCTURE
 
 Comments are schema documentation only.
 
@@ -407,10 +362,9 @@ Comments are schema documentation only.
       "image_quality": null,                              // REQUIRED | ENUM | EXCELLENT|GOOD|FAIR|POOR|INSUFFICIENT
       "subject_clear": null,                              // REQUIRED | BOOLEAN|null
       "summary": null,                                    // REQUIRED | {{RESPONSE_LOCALE}} | one concise sentence
-      "limitations": [],                                  // REQUIRED | {{RESPONSE_LOCALE}}[] | be specific
+      "limitations": [],                                  // REQUIRED | {{RESPONSE_LOCALE}}[] | max 3 | be specific
       "recommended_next_photos": [],                      // REQUIRED | {{RESPONSE_LOCALE}}[] | max 4
-      "overall_confidence": null,                         // REQUIRED | NUMBER | 0.0-1.0
-      "overall_confidence_desc": null                     // REQUIRED | {{RESPONSE_LOCALE}}
+      "overall_confidence": null                          // REQUIRED | NUMBER | 0.0-1.0
     },
 
     "object_overview": {                                  // REQUIRED | OBJECT
@@ -421,8 +375,8 @@ Comments are schema documentation only.
       "scientific_name": null,                            // REQUIRED | untranslated scientific/variety name
       "variety": null,                                    // REQUIRED | {{RESPONSE_LOCALE}}|null
       "group": null,                                      // REQUIRED | {{RESPONSE_LOCALE}}|null
-      "identification_basis": [],                         // REQUIRED | {{RESPONSE_LOCALE}}[]
-      "alternative_matches": [],                          // REQUIRED | OBJECT[] | >=1 entry when confidence < 0.85
+      "identification_basis": [],                         // REQUIRED | {{RESPONSE_LOCALE}}[] | max 4
+      "alternative_matches": [],                          // REQUIRED | OBJECT[] | >=1 entry when confidence < 0.70, max 2
       "is_likely_synthetic": null,                        // REQUIRED | BOOLEAN|null
       "confidence": null,                                 // REQUIRED | NUMBER | 0.0-1.0
       "confidence_desc": null                             // REQUIRED | {{RESPONSE_LOCALE}}
@@ -430,46 +384,27 @@ Comments are schema documentation only.
 
     "mineral_properties": {                               // REQUIRED | OBJECT | typical published values, not measurements
       "chemical_formula": null,                           // REQUIRED | string | e.g. "SiO2"
-      "chemical_composition": null,                       // REQUIRED | {{RESPONSE_LOCALE}}
       "hardness_mohs": null,                              // REQUIRED | STRING | single value or range with en-dash
       "streak": null,                                     // REQUIRED | {{RESPONSE_LOCALE}}
       "luster": null,                                     // REQUIRED | {{RESPONSE_LOCALE}}
-      "cleavage": null,                                   // REQUIRED | {{RESPONSE_LOCALE}}
-      "fracture": null,                                   // REQUIRED | {{RESPONSE_LOCALE}}
       "crystal_system": null,                             // REQUIRED | {{RESPONSE_LOCALE}}
       "transparency": null,                               // REQUIRED | {{RESPONSE_LOCALE}}
-      "color_variants": [],                               // REQUIRED | {{RESPONSE_LOCALE}}[]
-      "fluorescence": null,                               // REQUIRED | {{RESPONSE_LOCALE}}|null
       "confidence": null,                                 // REQUIRED | NUMBER
       "confidence_desc": null                             // REQUIRED | {{RESPONSE_LOCALE}}
     },
 
     "formation": {                                        // REQUIRED | OBJECT
       "origin_type": null,                                // REQUIRED | ENUM | IGNEOUS|SEDIMENTARY|METAMORPHIC|HYDROTHERMAL|PEGMATITIC|MAGMATIC|ORGANIC|MANUFACTURED|UNKNOWN
-      "formation_process": null,                          // REQUIRED | {{RESPONSE_LOCALE}} | 2-4 sentences
-      "typical_environment": null,                        // REQUIRED | {{RESPONSE_LOCALE}}
+      "formation_process": null,                          // REQUIRED | {{RESPONSE_LOCALE}} | one sentence
       "confidence": null,                                 // REQUIRED | NUMBER
       "confidence_desc": null                             // REQUIRED | {{RESPONSE_LOCALE}}
     },
 
     "occurrence": {                                       // REQUIRED | OBJECT
-      "common_locations": [],                             // REQUIRED | {{RESPONSE_LOCALE}}[]
-      "where_to_find": [],                                // REQUIRED | {{RESPONSE_LOCALE}}[] | specific, actionable
+      "common_locations": [],                             // REQUIRED | {{RESPONSE_LOCALE}}[] | max 3
       "is_commercially_mined": null,                      // REQUIRED | BOOLEAN|null
       "confidence": null,                                 // REQUIRED | NUMBER
       "confidence_desc": null                             // REQUIRED | {{RESPONSE_LOCALE}}
-    },
-
-    "uses": {                                             // REQUIRED | OBJECT
-      "industrial_uses": [],                              // REQUIRED | {{RESPONSE_LOCALE}}[]
-      "decorative_uses": [],                              // REQUIRED | {{RESPONSE_LOCALE}}[]
-      "other_uses": []                                    // REQUIRED | {{RESPONSE_LOCALE}}[]
-    },
-
-    "condition": {                                        // REQUIRED | OBJECT
-      "condition": null,                                  // REQUIRED | ENUM|null | PRISTINE|GOOD|FAIR|POOR|DAMAGED
-      "flaws": [],                                        // REQUIRED | OBJECT[] | { issue, severity }
-      "notes": null                                       // REQUIRED | {{RESPONSE_LOCALE}}|null
     },
 
     "value_note": {                                       // REQUIRED | OBJECT | ONE line only, not a valuation report
@@ -483,11 +418,11 @@ Comments are schema documentation only.
 }
 ```
 
-There is NO `premium_result` block: the deep-dive sections (visual evidence, authenticity check, identification guide, collector notes, hunting guide) are produced separately by the DeepResearch async task.
+There is NO `premium_result` block: the deep-dive sections (visual evidence, authenticity check, identification guide, collector notes — including uses — and hunting guide) are produced separately by the DeepResearch async task.
 
 ---
 
-# 16. FINAL VALIDATION
+# 14. FINAL VALIDATION
 
 Before returning, internally verify:
 
@@ -503,8 +438,8 @@ Before returning, internally verify:
 10. `hardness_mohs` is a STRING, never a number.
 11. `currency` equals `{{VALUATION_CURRENCY}}` whenever `price_range` is present.
 12. `price_range` and `value_note` do not contradict each other.
-13. All `confidence` values are between 0.0 and 1.0 and consistent with §13.
-14. `alternative_matches` has at least one entry when `object_overview.confidence` < 0.85.
+13. All `confidence` values are between 0.0 and 1.0 and consistent with §11.
+14. `alternative_matches` has at least one entry when `object_overview.confidence` < 0.70, and at most 2 entries.
 15. `null` and `UNKNOWN` are minimized but never replaced by invented facts.
 16. `limitations` states that hardness, streak, and specific gravity are not measurable from a photograph.
 17. Origin and occurrence were not inferred from `{{MARKET_REGION}}`.

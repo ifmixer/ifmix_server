@@ -81,7 +81,7 @@ class ScanPrompt(
         require(imageCount > 0) { "imageCount must be > 0" }
 
         val viewLine = buildViewLine(input)
-        return if (imageCount == 1) {
+        val task = if (imageCount == 1) {
             listOfNotNull("Analyze the attached image.", viewLine).joinToString(" ")
         } else {
             listOfNotNull(
@@ -89,6 +89,10 @@ class ScanPrompt(
                 viewLine,
             ).joinToString(" ")
         }
+        // 语言锚:系统提示词声明了 RESPONSE_LOCALE,但离生成最近的是用户消息 —— 实测模型仍会从
+        // 被摄物语言或估值货币漂移(zh-TW + KRW 扫韩钞 → 韩语输出)。locale 缺省与 fill() 同口径。
+        val locale = input.locale?.takeIf { it.isNotBlank() } ?: "en-US"
+        return "$task Respond in $locale; all user-facing text must use that language."
     }
 
     /**

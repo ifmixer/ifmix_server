@@ -299,7 +299,7 @@ A `SCREENSHOT` of an auction listing photo is usually still good evidence — tr
 
 `scan_status.subject_clear` — whether the primary note is unambiguous. Multiple notes in one image: assess the most prominent one, note the others in `summary`, and lower `subject_clear` only if the primary note itself is unclear.
 
-`recommended_next_photos` — concrete, action-first requests, e.g. "把纸币翻面拍摄背面，确保四边完整入镜", "在自然光下平放拍摄，避免反光盖住水印区", "对着光源拍一张，让水印和安全线显现", "把尺子放在旁边或注明实测票幅".
+`recommended_next_photos` — concrete, action-first requests, maximum 3 items, e.g. "把纸币翻面拍摄背面，确保四边完整入镜", "在自然光下平放拍摄，避免反光盖住水印区", "对着光源拍一张，让水印和安全线显现", "把尺子放在旁边或注明实测票幅".
 
 # 13. NOTE IDENTITY
 
@@ -394,7 +394,7 @@ Summary of the type's anti-counterfeit features relevant to identification: `"�
 
 ## `dimensions_text` ({{RESPONSE_LOCALE}})
 
-The type's official note size as catalogs give it, in the common notation: `"156 × 78 mm"`, `"171 × 85 mm"`. Null when unknown. This is the number the user with a ruler can check — a several-millimeter mismatch is a red flag (see also condition notes and limitations; exact verification is a premium self-check).
+The type's official note size as catalogs give it, in the common notation: `"156 × 78 mm"`, `"171 × 85 mm"`. Null when unknown. This is the number the user with a ruler can check — when the note's apparent size clearly differs from the catalog value, note the discrepancy factually, prompt the user to re-measure with a ruler, and record the observation in `limitations`.
 
 ## `identification_basis` ({{RESPONSE_LOCALE}}[])
 
@@ -475,7 +475,7 @@ Value the note AS GRADED (the condition you assessed), not the type in general �
 
 ## `value_drivers` / `value_deductions` ({{RESPONSE_LOCALE}})
 
-Banknote-flavored, each ≤ 2 sentences, ≤ 5 entries each:
+Banknote-flavored, at most 3 entries each, one short sentence each; the examples below are typical cases, not a quota:
 
 * drivers: `"补号版别，同面值中的稀缺冠字"`, `"原票未下水、四角尖挺（UNC 档）"`, `"题材热门（第一套人民币/牧马图级）"`, `"签名组合对应早期印刷厂版别"`, `"低印量纪念钞，原封原票"`.
 * deductions: `"明显硬折，品相掉档"`, `"纸面笔迹/盖章"`, `"疑似下水或压平，评级会判 details"`, `"常见年份，存世量大"`, `"针孔密集"`.
@@ -509,10 +509,9 @@ Every field shown is a REQUIRED KEY. A REQUIRED KEY may contain `null` only wher
       "subject_clear": true,                        // REQUIRED | BOOLEAN
       "views_provided": ["FRONT", "BACK"],          // REQUIRED | ENUM[] | subset of FRONT | BACK, roles actually available
       "summary": null,                              // REQUIRED | {{RESPONSE_LOCALE}} | 1-3 sentence overall summary
-      "limitations": [],                            // REQUIRED | {{RESPONSE_LOCALE}}[] | e.g. back missing, glare, watermark area not shown
-      "recommended_next_photos": [],                // REQUIRED | {{RESPONSE_LOCALE}}[] | concrete next shots
-      "overall_confidence": 0.0,                    // REQUIRED | NUMBER | 0.0-1.0
-      "overall_confidence_desc": null               // REQUIRED | {{RESPONSE_LOCALE}} | what limits it, what would improve it
+      "limitations": [],                            // REQUIRED | {{RESPONSE_LOCALE}}[] | e.g. back missing, glare, watermark area not shown — maximum 3 items
+      "recommended_next_photos": [],                // REQUIRED | {{RESPONSE_LOCALE}}[] | concrete next shots — maximum 3 items
+      "overall_confidence": 0.0                     // REQUIRED | NUMBER | 0.0-1.0
     },
 
     "object_overview": {
@@ -567,8 +566,8 @@ Every field shown is a REQUIRED KEY. A REQUIRED KEY may contain `null` only wher
       "currency": "{{VALUATION_CURRENCY}}",         // REQUIRED | CODE | EXACTLY {{VALUATION_CURRENCY}}
       "market_region": "{{MARKET_REGION}}",         // REQUIRED | CODE | EXACTLY {{MARKET_REGION}} when supplied
       "price_basis": "UNAVAILABLE",                 // REQUIRED | ENUM | KNOWN_MARKET_RANGE | CATEGORY_ESTIMATE | HEURISTIC_ESTIMATE | UNAVAILABLE
-      "value_drivers": [],                          // REQUIRED | {{RESPONSE_LOCALE}}[] | ≤ 5, banknote-flavored
-      "value_deductions": [],                       // REQUIRED | {{RESPONSE_LOCALE}}[] | ≤ 5
+      "value_drivers": [],                          // REQUIRED | {{RESPONSE_LOCALE}}[] | ≤ 3, banknote-flavored, one short sentence each
+      "value_deductions": [],                       // REQUIRED | {{RESPONSE_LOCALE}}[] | ≤ 3, one short sentence each
       "price_check_query": null,                    // REQUIRED | ENGLISH | search string; NEVER a URL
       "price_check_sites": [],                      // REQUIRED | ENUM[] | subset of NUMISTA | EBAY_SOLD | MA_SHOPS — client builds the links
       "confidence": 0.0,                            // REQUIRED | NUMBER | 0.0-1.0

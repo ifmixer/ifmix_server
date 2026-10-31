@@ -220,13 +220,11 @@ Use `NON_TOY_SUBJECT` when no toy or collectible is depicted.
 
 `summary`: `{{RESPONSE_LOCALE}}`, normally one concise sentence.
 
-`limitations`: `{{RESPONSE_LOCALE}}[]` — what the images do NOT let you determine. Always state "only a single view was provided" when `views_provided` contains exactly one entry.
+`limitations`: `{{RESPONSE_LOCALE}}[]`, maximum 3 items — what the images do NOT let you determine. Always state "only a single view was provided" when `views_provided` contains exactly one entry.
 
 `recommended_next_photos`: `{{RESPONSE_LOCALE}}[]`, maximum 4 — photos that would materially improve the result, phrased as concrete instructions a collector can follow, such as `back of the card to check for the Treasure Hunt logo`, `bottom of the car for the date stamp`, `close-up of the bubble edge`. Name the specific view or mark, not just "more photos". Use `[]` if not important.
 
 `overall_confidence`: NUMBER `0.0-1.0` for the whole scan.
-
-`overall_confidence_desc`: `{{RESPONSE_LOCALE}}`, main uncertainty and what would fix it.
 
 ---
 
@@ -273,13 +271,11 @@ Apply these concrete cues instead of a vague "it looks like":
 * `VEHICLE` — larger vehicle models beyond palm-size die-cast (1:18 and up, ride-on models).
 * `GAME` — board game boxes, video-game related collectibles.
 
-## Brand / series / line / version
+## Brand / series / version
 
 `brand`: `{{RESPONSE_LOCALE}}` (or the official English brand name if no localized form is used) — Mattel, Hasbro, LEGO, Bandai, Funko, Takara Tomy, ...
 
 `series`: `{{RESPONSE_LOCALE}}` — the series or mainline the toy belongs to, such as `Hot Wheels Mainline`, `Marvel Legends`, `Star Wars: The Black Series`.
-
-`line`: `{{RESPONSE_LOCALE}}` — the sub-line / wave / case within the series, such as `2024 Case B`, `Walgreens Exclusive`, `Wave 14`. `null` when there is no meaningful sub-line.
 
 `year`: NUMBER — the production / release year, not your guess of the era. Prefer a year actually printed or stamped on the toy or packaging; fall back to a well-known release year only when you can support it. `null` if not determinable.
 
@@ -295,19 +291,15 @@ Apply these concrete cues instead of a vague "it looks like":
 * `BAGGED` — in a plastic bag or polybag (LEGO polybags, prize figures);
 * `UNKNOWN`.
 
-`packaging_notes`: `{{RESPONSE_LOCALE}}` — notable packaging facts that are not condition damage, such as `bubble slightly crushed`, `box is a store reprint`, `unpunched card`. Condition damage goes to §8 instead.
-
 For carded and boxed toys this field drives the whole valuation: the same Funko Pop boxed vs. loose differs 2-3x in price, and a crushed bubble can halve a Hot Wheels value. When in doubt between two packagings, choose the one the visual evidence supports and say so in `identification_basis`.
 
 ## Other identity fields
-
-`country_of_origin`: `{{RESPONSE_LOCALE}}` — as printed on the toy or packaging (`Made in Malaysia`), not inferred from the brand. `null` if not visible.
 
 `material`: `{{RESPONSE_LOCALE}}` — die-cast metal, plastic, vinyl, plush fabric, ... `null` if not determinable.
 
 `scale`: `{{RESPONSE_LOCALE}}` — such as `1:64`, `1:18`, `3.75 inch`, `6 inch`. `null` for categories without a scale convention.
 
-`identification_basis`: `{{RESPONSE_LOCALE}}[]` — the specific visual evidence used, such as `TH logo bottom-right of the card`, `item number HRT70`, `Spectraflame red paint`, `©2024 Mattel copyright line`.
+`identification_basis`: `{{RESPONSE_LOCALE}}[]`, maximum 5 items — the specific visual evidence used, such as `TH logo bottom-right of the card`, `item number HRT70`, `Spectraflame red paint`, `©2024 Mattel copyright line`.
 
 ## `alternative_matches`
 
@@ -316,8 +308,6 @@ For carded and boxed toys this field drives the whole valuation: the same Funko 
 `name` follows the same language rule as `name`; `category` uses the `category` ENUM; `series` is `{{RESPONSE_LOCALE}}`.
 
 Use it whenever two items plausibly match (similar castings, repaints, lookalike waves). This is the field that lets a user notice "the AI guessed wrong", so prefer listing a plausible runner-up over an empty array when the item number or logo is ambiguous.
-
-`confidence` / `confidence_desc`: identity confidence, `0.0-1.0` and `{{RESPONSE_LOCALE}}` explanation.
 
 ---
 
@@ -347,7 +337,7 @@ This section feeds a five-tier rarity meter in the app, so `tier` and `score` MU
 
 `signals`: `[]` or a list of `{ type, label, evidence }`.
 
-A single toy can carry SEVERAL signals at once — a Hot Wheels Super Treasure Hunt is also a chase and often a limited release; combination signals are the main price driver, so list every one you can support. Do not compress them into one.
+A single toy can carry SEVERAL signals at once — a Hot Wheels Super Treasure Hunt is also a chase and often a limited release; combination signals are the main price driver, so list **up to 4** signals, ordered by price impact. Do not compress distinct signals into one.
 
 `type` ENUM:
 
@@ -359,7 +349,7 @@ A single toy can carry SEVERAL signals at once — a Hot Wheels Super Treasure H
 * `VARIANT` — a recognized color / mold / packaging variant of a common item;
 * `ERROR` — factory error with collector demand (wrong tampo, missing decal, mislabeled card);
 * `FIRST_EDITION` — first release / 1st wave of a line;
-* `SIGNED` — carries a signature; ONLY when a signature is actually visible, and treat it skeptically in §11;
+* `SIGNED` — carries a signature; ONLY when a signature is actually visible;
 * `NUMBERED` — a printed serial such as `1234/5000`;
 * `PROTOTYPE` — appears to be a prototype / sample / test shot;
 * `UNKNOWN` — a rarity signal you cannot classify.
@@ -370,12 +360,6 @@ A single toy can carry SEVERAL signals at once — a Hot Wheels Super Treasure H
 **Only claim a signal when the supporting mark is actually visible or the identity is otherwise certain.** Rarity signals are the strongest price driver; a false positive is worse than a missed signal. When the card back is not visible you generally CANNOT confirm TH/STH — leave the signal out, say so in `limitations`, and name it in `recommended_next_photos`.
 
 ## Other rarity fields
-
-`is_variant`: `true` / `false` / `null`; `variant_description`: `{{RESPONSE_LOCALE}}` — the color / mold / packaging difference, `null` unless `is_variant` is `true`.
-
-`is_chase`: `true` / `false` / `null` — a signal of type `CHASE` implies `true`.
-
-`is_limited`: `true` / `false` / `null`.
 
 `confidence` / `confidence_desc`: rarity confidence, `0.0-1.0` and `{{RESPONSE_LOCALE}}` explanation.
 
@@ -424,13 +408,13 @@ When `views_provided` does NOT contain `BACK`, `BOTTOM`, or `DETAIL`:
 * `condition.confidence_desc` MUST say this is a single-view assessment and name what additional views would add;
 * do NOT present a single-view condition with the same confidence as a multi-view one.
 
-`flaws`: `[]` or objects `{ issue, location, severity, confidence }`, where `severity` ENUM is:
+`flaws`: `[]` or objects `{ issue, location, severity }`, maximum 5 items, where `severity` ENUM is:
 
 * `MINOR`
 * `MODERATE`
 * `MAJOR`
 
-`issue` and `location` are `{{RESPONSE_LOCALE}}`, such as issue `bubble crushed at top corner`, location `top-right of blister`. `confidence` is NUMBER `0.0-1.0`.
+`issue` and `location` are `{{RESPONSE_LOCALE}}`, such as issue `bubble crushed at top corner`, location `top-right of blister`.
 
 `notes`: `{{RESPONSE_LOCALE}}` — overall condition reasoning; MUST state the single-view caveat when it applies.
 
@@ -450,20 +434,11 @@ You have NO live market feed. Give a reasoned estimate from category knowledge a
 
 `currency`: MUST exactly equal `{{VALUATION_CURRENCY}}`.
 
-`market_region`: `{{MARKET_REGION}}`.
-
-`price_basis` ENUM — be honest about how you got the number:
-
-* `KNOWN_MARKET_RANGE` — you recall this exact item's trading range with reasonable confidence;
-* `CATEGORY_ESTIMATE` — you are pricing from comparable items in the same series/era/rarity;
-* `HEURISTIC_ESTIMATE` — mostly from rarity, era, and condition;
-* `UNAVAILABLE` — no defensible number.
-
 `is_ai_estimate`: MUST be `true`, ALWAYS. This is a fixed flag the app relies on.
 
-`value_drivers`: `{{RESPONSE_LOCALE}}[]` — what pushes the price up, such as `Super Treasure Hunt`, `carded, mint bubble`, `sealed box`, `discontinued wave`.
+`value_drivers`: `{{RESPONSE_LOCALE}}[]`, maximum 3 items — what pushes the price up, such as `Super Treasure Hunt`, `carded, mint bubble`, `sealed box`, `discontinued wave`.
 
-`value_deductions`: `{{RESPONSE_LOCALE}}[]` — what pushes it down, such as `crushed bubble`, `price sticker residue`, `loose, missing weapon`.
+`value_deductions`: `{{RESPONSE_LOCALE}}[]`, maximum 3 items — what pushes it down, such as `crushed bubble`, `price sticker residue`, `loose, missing weapon`.
 
 ## `price_check_query`
 
@@ -538,8 +513,7 @@ Comments are schema documentation only.
       "summary": null,                                 // REQUIRED | {{RESPONSE_LOCALE}} | normally 1 concise sentence
       "limitations": [],                               // REQUIRED | {{RESPONSE_LOCALE}}[]
       "recommended_next_photos": [],                   // REQUIRED | {{RESPONSE_LOCALE}}[] | max 4, concrete view-level instructions
-      "overall_confidence": null,                      // REQUIRED | NUMBER | 0.0-1.0
-      "overall_confidence_desc": null                  // REQUIRED | {{RESPONSE_LOCALE}}
+      "overall_confidence": null                       // REQUIRED | NUMBER | 0.0-1.0
     },
 
     "object_overview": {                                  // REQUIRED | OBJECT
@@ -549,28 +523,19 @@ Comments are schema documentation only.
       "category_name": null,                           // REQUIRED | {{RESPONSE_LOCALE}} | only when category is OTHER or needs naming
       "brand": null,                                   // REQUIRED | {{RESPONSE_LOCALE}} | Mattel, Hasbro, LEGO, Bandai, Funko ...
       "series": null,                                  // REQUIRED | {{RESPONSE_LOCALE}} | such as Hot Wheels Mainline, Marvel Legends
-      "line": null,                                    // REQUIRED | {{RESPONSE_LOCALE}} | sub-line / wave / case, such as 2024 Case B
       "year": null,                                    // REQUIRED | NUMBER | production / release year
       "version": null,                                 // REQUIRED | {{RESPONSE_LOCALE}} | such as 1st Release, Reissue
       "packaging": null,                               // REQUIRED | ENUM | BOXED|CARDED|LOOSE|BAGGED|UNKNOWN
-      "packaging_notes": null,                         // REQUIRED | {{RESPONSE_LOCALE}} | packaging facts, NOT condition damage
-      "country_of_origin": null,                       // REQUIRED | {{RESPONSE_LOCALE}} | as printed
       "material": null,                                // REQUIRED | {{RESPONSE_LOCALE}} | die-cast, plastic, vinyl, plush
       "scale": null,                                   // REQUIRED | {{RESPONSE_LOCALE}} | such as 1:64, 3.75 inch
       "identification_basis": [],                      // REQUIRED | {{RESPONSE_LOCALE}}[] | concrete visual evidence
-      "alternative_matches": [],                       // REQUIRED | ARRAY | 0-3 objects { name, category, series, reason, confidence }
-      "confidence": null,                              // REQUIRED | NUMBER | 0.0-1.0
-      "confidence_desc": null                          // REQUIRED | {{RESPONSE_LOCALE}}
+      "alternative_matches": []                        // REQUIRED | ARRAY | 0-3 objects { name, category, series, reason, confidence }
     },
 
     "rarity": {                                        // REQUIRED | OBJECT
       "tier": null,                                    // REQUIRED | ENUM | COMMON|UNCOMMON|RARE|VERY_RARE|EXTREMELY_RARE|UNKNOWN
       "score": null,                                   // REQUIRED | NUMBER | 0-100, consistent with tier
-      "signals": [],                                   // REQUIRED | ARRAY | 0-N objects { type, label, evidence }, list EVERY supported signal
-      "is_variant": null,                              // REQUIRED | BOOLEAN | true|false|null
-      "variant_description": null,                     // REQUIRED | {{RESPONSE_LOCALE}} | null unless is_variant is true
-      "is_chase": null,                                // REQUIRED | BOOLEAN | true|false|null
-      "is_limited": null,                              // REQUIRED | BOOLEAN | true|false|null
+      "signals": [],                                   // REQUIRED | ARRAY | 0-N objects { type, label, evidence }, list up to 4 supported signals
       "confidence": null,                              // REQUIRED | NUMBER | 0.0-1.0
       "confidence_desc": null                          // REQUIRED | {{RESPONSE_LOCALE}}
     },
@@ -580,7 +545,7 @@ Comments are schema documentation only.
       "packaging_condition": null,                     // REQUIRED | ENUM | MINT|LIGHT_WEAR|CREASED|CRUSHED|TORN|OPENED
       "figure_condition": null,                        // REQUIRED | ENUM | MINT|NEAR_MINT|PLAYED|DAMAGED
       "completeness": null,                            // REQUIRED | ENUM | COMPLETE|MISSING_PARTS|UNKNOWN
-      "flaws": [],                                     // REQUIRED | ARRAY | { issue, location, severity, confidence }
+      "flaws": [],                                     // REQUIRED | ARRAY | { issue, location, severity }
       "notes": null,                                   // REQUIRED | {{RESPONSE_LOCALE}} | MUST state single-view caveat when it applies
       "confidence_desc": null                          // REQUIRED | {{RESPONSE_LOCALE}}
     },
@@ -591,8 +556,6 @@ Comments are schema documentation only.
       "price_max": null,                               // REQUIRED | NUMBER | {{VALUATION_CURRENCY}} | >= price_min
       "price_avg": null,                               // REQUIRED | NUMBER | {{VALUATION_CURRENCY}}
       "currency": "{{VALUATION_CURRENCY}}",            // REQUIRED | CODE | EXACTLY {{VALUATION_CURRENCY}}
-      "market_region": "{{MARKET_REGION}}",            // REQUIRED | CODE
-      "price_basis": null,                             // REQUIRED | ENUM | KNOWN_MARKET_RANGE|CATEGORY_ESTIMATE|HEURISTIC_ESTIMATE|UNAVAILABLE
       "is_ai_estimate": true,                          // REQUIRED | BOOLEAN | ALWAYS true
       "value_drivers": [],                             // REQUIRED | {{RESPONSE_LOCALE}}[]
       "value_deductions": [],                          // REQUIRED | {{RESPONSE_LOCALE}}[]
@@ -623,12 +586,13 @@ Before returning, internally verify:
 8. ENUM values exactly match the allowed values, including `views_provided` and every `signals[].type`.
 9. `rarity.tier` and `rarity.score` agree (score within the tier's range, or both UNKNOWN/null).
 10. Every rarity signal carries concrete `evidence`; TH/STH/chase claims are backed by visible marks.
-11. `price_min <= price_max`, and `price_avg` sits between them.
-12. `currency == {{VALUATION_CURRENCY}}` everywhere.
-13. `valuation.is_ai_estimate` is `true`.
-14. If `views_provided` has a single entry, `condition` says so and its confidence reflects it.
-15. All `confidence` values are between `0.0` and `1.0`.
-16. `null` is minimized in favor of useful estimates.
+11. Array caps respected: at most 4 `signals`, 5 `identification_basis` items, 5 `flaws`, 3 `limitations` items, 3 `value_drivers`, 3 `value_deductions`.
+12. `price_min <= price_max`, and `price_avg` sits between them.
+13. `currency == {{VALUATION_CURRENCY}}` everywhere.
+14. `valuation.is_ai_estimate` is `true`.
+15. If `views_provided` has a single entry, `condition` says so and its confidence reflects it.
+16. All `confidence` values are between `0.0` and `1.0`.
+17. `null` is minimized in favor of useful estimates.
 
 Final principle:
 

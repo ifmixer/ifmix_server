@@ -220,8 +220,12 @@ class ScanRecordRepository(dataSource: DataSource) {
     }.execute()
 
     /**
-     * DeepResearch 成功回写（事务内调用，设计 §3.4）：basicResult/hasDeepSearch/promptVersion 与
-     * latestDeepResearchId 必须**同语句**更新——保证 basic_result 与 pointer 指向同一次成功。
+     * DeepResearch 成功回写（事务内调用，设计 §3.4）：hasDeepSearch/promptVersion 与
+     * latestDeepResearchId 必须**同语句**更新。
+     *
+     * basicResult 仅在 DeepResearch 判废（INSUFFICIENT_IMAGE / NON_*）时由调用方传入——把拒绝结论
+     * 覆盖进 scan_record，客户端据此切到补拍引导；传 null = 保留基础扫描的权威 basic_result
+     * （DR 的二次推理不覆盖用户已看过的结论）。
      *
      * 并发正确性靠 **`SELECT ... FOR UPDATE` 行锁**（决策 7b）：先锁住 scan 行，锁内读 pointer、
      * 按 (created_at,id) 比较后再更新——同一 scan 的并发赢家被行锁串行化，锁内读到的 pointer
@@ -269,11 +273,14 @@ class ScanRecordRepository(dataSource: DataSource) {
         }
 
         // 3) 锁内更新（行锁在手，无需指针条件；归属条件保留）
+        // basicResult=null → 跳过该列（Jimmer set 无条件写值，直接 set(null) 会把列清空）
         val affected = mc.sql.createUpdate(ScanRecord::class) {
             where(table.projectId eq projectId)
             where(table.customerId eq customerId)
             where(table.id eq scanRecordId)
-            set(table.basicResult, basicResult)
+            if (basicResult != null) {
+                set(table.basicResult, basicResult)
+            }
             set(table.hasDeepSearch, true)
             set(table.promptVersion, promptVersion)
             set(table.latestDeepResearchId, deepResearchId)
