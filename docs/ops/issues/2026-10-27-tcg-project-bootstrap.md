@@ -1,6 +1,6 @@
 # TCG 扫描器（projectId=tcg）接入 —— 项目数据初始化
 
-状态：✅ **本地库已执行**（2026-10-28，见文末执行记录）；生产环境待执行
+状态：✅ **本地库已执行**（2026-10-28，见文末执行记录）；✅ **生产库已执行**（2026-10-31，随 v1.0.9 发布）
 日期：2026-10-27（2026-10-28 本地执行）
 相关：[tcg-prompt-per-project](../design/ai/tcg-prompt-per-project.md)
 
@@ -122,3 +122,9 @@ select project_id, fcm_config->>'project_id', fcm_config->>'client_email',
        (fcm_config ? 'private_key') as has_key
 from core_project_serverconfig where project_id = 'tcg';
 ```
+
+## 生产执行记录（core_api，2026-10-31，随 v1.0.9 发布）
+
+- Flyway V2 先行应用（`flyway_schema_history` v2 success=t）；`core_project_info` + `core_project_serverconfig` 按上文 SQL 写入
+- 核对：`fcm_config->>'project_id'`=`ifmix-tcg`、`client_email` 一致、`private_key` 1704 字符与源文件一致
+- 部署与整体验证见 [release plan v1.0.9 §5](../../version/v1.0.9/release%20plan%20v1.0.9.md)；真机冒烟待客户端发版

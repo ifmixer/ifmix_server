@@ -2,6 +2,24 @@
 
 本文件按时间倒序记录 core-api 面向客户端/数据库的变更。DateTime 用 ISO-8601；数据库变更标注对应 Flyway 版本。
 
+## 已发布（v1.0.9，2026-10-31）
+
+tag `v1.0.9`（commit `7cb1aa61`）。发布步骤与决策记录见 [`docs/version/v1.0.9/release plan v1.0.9.md`](../version/v1.0.9/release%20plan%20v1.0.9.md)。
+
+### Added
+- **提示词按 projectId 选择**（`app.ai.prompt.*` registry）：未登记 projectId 静默回落 antique（老 app 行为不变）。本版一次性接入 4 个新 app：**tcg / toy / coin / rock**（projectId 短名；提示词文件前缀沿用 `tcgcard-`/`toyscan-`/`rockid-`/`coin-scan-system`）；note（纸币）prompt 已随本版上线、客户端未发。
+- **GraphQL `ScanRecord` 新增只读字段 `premiumResult`**（纯增量，老客户端无感）；读取优先级 `premium_result ?? latestDeepResearch.premiumResult`。
+- **输出截断兜底三件套**：`max-output-tokens` 显式上限（默认 8192）+ 截断判定 + basic 模板降级重跑（产出 basic、premium 留空）。
+- **推送取图回退**：`MAIN → FRONT → 第一张`（coin 等只有 FRONT/BACK 的 app 推送恒无图的问题；对 antique 纯增强）。
+
+### Changed（数据库）
+- **Flyway V2**：`core_ai_scanrecord` 加 `premium_result jsonb`（nullable，只加列）。生产已应用（v2 success=t）。
+- 新 app 项目数据入库：`core_project_info` + `core_project_serverconfig.fcm_config` 各 4 行（施工单见 ops issues，本地+生产已执行）。
+
+### 兼容性
+- 无破坏性 API 变更；V2 只加列；未登记项目静默回落 antique。发布顺序自由（后端先上不影响 antique，客户端各 app 独立发版）。
+- 新配置均有默认值，`.env.prod` 无需新增变量（`AI_MAX_OUTPUT_TOKENS` / `*_SCAN_PROMPT_VERSION` 可不配）。
+
 ## 未发布（2026-10-10 起，待整理进 v1.0.7）
 
 ### Changed

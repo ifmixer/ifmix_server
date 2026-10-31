@@ -1,6 +1,6 @@
 # 岩石扫描器（projectId=rock）接入 —— 项目数据初始化
 
-状态：✅ **本地库已执行**（2026-10-28）；生产环境待执行
+状态：✅ **本地库已执行**（2026-10-28）；✅ **生产库已执行**（2026-10-31，随 v1.0.9 发布）
 日期：2026-10-28
 相关：代码分支 `rc/tcg-coin-rock-toy`（提示词按 projectId 选择 + premium 直写列，与 tcg/coin/toy 同构）
 
@@ -92,6 +92,13 @@ from core_project_serverconfig where project_id = 'rock';
    - `core_ai_scanrecord.premium_result` 非空（会员/成功路径）；
    - `core_ai_deepresearch` **不应**新增行；
    - 推送到达且有图。
+
+### 生产执行记录（2026-10-31，随 v1.0.9 发布）✅
+
+- Flyway V2 先行应用；两张表按上文 SQL 写入
+- 核对：`fcm_config->>'project_id'`=`ifmix-rock`、`client_email` 一致、`private_key` 1704 字符与源文件一致
+- 部署与整体验证见 [release plan v1.0.9 §5](../../version/v1.0.9/release%20plan%20v1.0.9.md)；真机冒烟待客户端发版
+  （注意：rock 现为两段式，basic 扫描只出 `basic_result`，premium 走 DeepResearch——上文冒烟按新口径理解）
 
 ## 回滚
 

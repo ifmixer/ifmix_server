@@ -1,6 +1,6 @@
 # Coin Scanner（projectId=coin）接入 —— 项目数据初始化
 
-状态：✅ **本地库已执行**（2026-10-27）；生产环境待执行
+状态：✅ **本地库已执行**（2026-10-27）；✅ **生产库已执行**（2026-10-31，随 v1.0.9 发布）
 日期：2026-10-27
 相关：设计 `coin_workspace/docs/superpowers/specs/2026-10-27-coinapp-design.md` §8.4；代码分支 `feature/coin-prompt-v2`
 
@@ -77,6 +77,12 @@ SDK 的 `iapVerify` 在 `useOpenPaywall` 里只是预留注入位、hook 本体�
 
 ⚠️ 生产执行前确认 `feature/coin-prompt-v2` 已部署，否则代码里没有
 `app.ai.prompt.projects.coin`，请求会静默回落 antique prompt（返回古董结构，不报错）。
+
+### 生产执行记录（2026-10-31，随 v1.0.9 发布）✅
+
+- Flyway V2 先行应用；两张表按上文 SQL 写入
+- 核对：`fcm_config->>'project_id'`=`ifmix-coin`、`client_email` 一致、`private_key` 1704 字符与源文件一致
+- 部署与整体验证见 [release plan v1.0.9 §5](../../version/v1.0.9/release%20plan%20v1.0.9.md)；真机冒烟待客户端发版
 
 ## 回滚
 

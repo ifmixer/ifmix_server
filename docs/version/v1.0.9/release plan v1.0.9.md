@@ -8,7 +8,7 @@ projectId 统一为短名 `antique/coin/toy/rock/tcg`（2026-10-28 决策）；�
 
 | 版本 | tag commit | 日期 | 线上 | 说明 |
 |------|-----------|------|:----:|------|
-| v1.0.9 | 未发布 | — |  | 4 app 接入（tcg/toyscan/coin/rockid）：prompt per-project registry、`premium_result` 内联落 `scan_record`、输出截断降级重跑、推送取图 MAIN→FRONT→第一张 回退、Flyway V2 |
+| v1.0.9 | `7cb1aa61`（tag `v1.0.9`） | 2026-10-31 | ✅ | 4 app 接入（tcg/toyscan/coin/rockid）：prompt per-project registry、`premium_result` 内联落 `scan_record`、输出截断降级重跑、推送取图 MAIN→FRONT→第一张 回退、Flyway V2 |
 | v1.0.7 | `4644ba52` | 2026-10 | ✅ | 上一线上版本（见 Changelog） |
 
 设计文档：[tcg-prompt-per-project](../../design/ai/tcg-prompt-per-project.md)（✅ 代码已实现，本分支即其载体）。
@@ -71,34 +71,36 @@ projectId 统一为短名 `antique/coin/toy/rock/tcg`（2026-10-28 决策）；�
 
 ### Phase 0 — 发布前（本地）
 
-- [ ] P0/P2 清单全部打勾（P0 仅剩客户端 env 对齐）；全量 `./gradlew :core-api:test :core-job:test` 通过
+- [x] 全量 `./gradlew :core-api:test :core-job:test` 通过（2026-10-31 发布前复跑，BUILD SUCCESSFUL）。
+  P0 仅剩客户端 env 对齐（属客户端仓库，不阻塞后端发布）；P2 两项（降级重跑预算检查、`ScanAggHandler` 注释）未随本版修，见 §2
 - [ ] 本地从零库验证 Flyway：V1 + V2 依次应用成功（`flyway_schema_history` version=2 success=t）
+  ——未单独做从零库演练；生产库在既有 V1 上应用 V2 成功（见 §5 执行记录）
 - [x] 本地补写 4 个新 app 项目数据（2026-10-28 完成：`toy` 由 `toyscan` 改名而来，`tcg`/`rock` 新增，均含 FCM config；antique/coin 原有）
-- [ ] 确认 `.env.prod` 无需新增变量：新配置全部有默认值（`AI_MAX_OUTPUT_TOKENS` / `*_SCAN_PROMPT_VERSION` 均可不配）
+- [x] 确认 `.env.prod` 无需新增变量：新配置全部有默认值（`AI_MAX_OUTPUT_TOKENS` / `*_SCAN_PROMPT_VERSION` 均可不配；2026-10-31 核对 `application.yml`）
 
 ### Phase 1 — 生产 DB（SSH 隧道 + 本地 psql，流程同 v1.0.6 计划 Phase 2）
 
-- [ ] Flyway 应用 **V2**（`ALTER TABLE core_ai_scanrecord ADD COLUMN IF NOT EXISTS premium_result jsonb`，可重复执行）
-- [ ] 4 个 app 的 `core_project_info` + `core_project_serverconfig` 写入（SQL 模板与凭据路径见各施工单）：
+- [x] Flyway 应用 **V2**（`ALTER TABLE core_ai_scanrecord ADD COLUMN IF NOT EXISTS premium_result jsonb`，可重复执行）——2026-10-31 生产执行，`flyway_schema_history` v2 success=t
+- [x] 4 个 app 的 `core_project_info` + `core_project_serverconfig` 写入（SQL 模板与凭据路径见各施工单）——2026-10-31 生产执行：
 
 | projectId | bundleId / package | Firebase 项目 | 提示词文件（前缀不变） | 施工单状态 |
 |---|---|---|---|---|
-| `tcg` | `com.ifmix.tcg` | `ifmix-tcg` | `tcgcard-scan-system-{basic,premium}_v1` | ✅ 本地已执行，生产待执行 |
-| `toy` | `com.ifmix.toy` | `ifmix-toy` | `toyscan-scan-system-{basic,premium}_v1` | ✅ 本地已执行，生产待执行 |
-| `coin` | `com.ifmix.coin` | `ifmix-coin` | `coin-scan-system-{basic,premium}_v1` | ✅ 本地已执行，生产待执行 |
-| `rock` | `com.ifmix.rock` | `ifmix-rock` | `rockid-scan-system-{basic,premium}_v1` | ✅ 本地已执行，生产待执行 |
+| `tcg` | `com.ifmix.tcg` | `ifmix-tcg` | `tcgcard-scan-system-{basic,premium}_v1` | ✅ 本地+生产已执行（2026-10-31） |
+| `toy` | `com.ifmix.toy` | `ifmix-toy` | `toyscan-scan-system-{basic,premium}_v1` | ✅ 本地+生产已执行（2026-10-31） |
+| `coin` | `com.ifmix.coin` | `ifmix-coin` | `coin-scan-system-{basic,premium}_v1` | ✅ 本地+生产已执行（2026-10-31） |
+| `rock` | `com.ifmix.rock` | `ifmix-rock` | `rockid-scan-system-{basic,premium}_v1` | ✅ 本地+生产已执行（2026-10-31） |
 
 > ⚠️ 生产库无历史 `toyscan`/`rockid` 行，四个 app 均直接 INSERT；**不要**把旧短名之外的
 > `toyscan`/`rockid` 写进生产 DB 或 yml（yml key 已改为 `toy`/`rock`，拼旧名会静默回落 antique）。
 
-- [ ] 每行写入后核对：`select id from core_project_info;` 四行齐全；`fcm_config->>'project_id'` 与上表一致；SA JSON 字节数与源文件一致
+- [x] 每行写入后核对（2026-10-31）：`core_project_info` 5 行齐全（antique + 4 新）；4 行 `fcm_config->>'project_id'` 与上表一致（`ifmix-tcg/toy/coin/rock`）、`client_email` 一致、`private_key` 1704 字符与源文件一致
 - [ ] v1 各 app 均不需要：`core_project_configrevision`（IAP 走 Superwall）、attest 配置（global-enabled=false 两侧全关）
 
 ### Phase 2 — 后端部署
 
-- [ ] 部署 v1.0.9（顺序：先 DB 后代码；FCM 配置行先于首次扫描写入即可——`FirebaseAppRegistry` 按 projectId 懒加载，首次使用时生效）
-- [ ] 冒烟（antique 回归）：老 app 扫一单 → 结果与升级前同构、prompt_version 仍 v10、推送有图（MAIN 命中第一分支）
-- [ ] 冒烟（新项目回落保护）：用一个未登记 projectId 发请求 → 应回落 antique 提示词并正常出结果（不 500）
+- [x] 部署 v1.0.9（2026-10-31：先 DB 后代码；`sync-core-api.sh` 增量发布，active 槽 a→b，健康 UP、NRestarts=0、error/warn 日志无新条目；部署产物瘦 jar 内 prompt 模板齐全）
+- [ ] 冒烟（antique 回归）：老 app 扫一单 → 结果与升级前同构、prompt_version 仍 v10、推送有图（MAIN 命中第一分支）——**待真机**
+- [ ] 冒烟（新项目回落保护）：用一个未登记 projectId 发请求 → 应回落 antique 提示词并正常出结果（不 500）——**待真机**
 
 ### Phase 3 — 客户端发布（4 个 app 独立发版，服务端就绪后随时可上）
 
@@ -127,3 +129,27 @@ projectId 统一为短名 `antique/coin/toy/rock/tcg`（2026-10-28 决策）；�
 5. **发布顺序自由、无停机要求**：全部变更向后兼容（加列/加字段/按项目回落），不设 v1.0.6 式「短暂停机」前置。
 6. **8192 输出上限是本版兜底手段之一**：显式 maxTokens + 截断判定 + basic 降级重跑三件套，把「premium 拖垮 basic」从整单失败降为「缺 premium 的成功」。
 7. **projectId 统一为短名 `antique/coin/toy/rock/tcg`**（2026-10-28 决策）：DB、yml registry key、客户端 `EXPO_PUBLIC_PROJECT_ID` 三处一致；提示词**文件名前缀**与产品/仓库/目录名不变（`toyscan-scan-system`、`rockid-scan-system`，app 目录 `apps/toyscan`、`apps/rockid`）。promptVersion 与扫描落库值不受影响。
+
+---
+
+## 5. 发布执行记录（2026-10-31）
+
+| 步骤 | 结果 |
+|---|---|
+| 全量测试 | `:core-api:test :core-job:test` BUILD SUCCESSFUL |
+| 生产 DB：Flyway V2 | ✅ `flyway_schema_history` v1+v2 均 success=t（在既有 V1 上应用） |
+| 生产 DB：4 app 项目数据 | ✅ `core_project_info` 5 行（antique+tcg/toy/coin/rock）；`core_project_serverconfig` 4 行新增，`fcm_project=ifmix-tcg/toy/coin/rock`、`private_key` 1704 字符与源文件一致 |
+| 部署 | ✅ `sync-core-api.sh` 增量发布，active 槽 `a→b`，健康 UP、NRestarts=0；error/warn 日志无重启后新条目 |
+| 产物验证 | 瘦 jar（3.25MB）内 prompt 模板齐全：antique v10、coin/note/toy v1+v2、rockid/tcgcard v1 |
+| tag | `v1.0.9` @ `7cb1aa61` |
+
+**发布后待办**：
+
+- 真机冒烟（Phase 2 两条 + Phase 3 各 app 清单）待客户端发版时执行。
+- P2 两项（降级重跑预算检查、`ScanAggHandler` 注释残留）未随本版修，见 §2。
+- note（纸币扫描器）prompt/代码已随本版上线，两张表 SQL 仍待执行（FCM 暂缓至 Firebase `ifmix-note` 建好）——见 [note 施工单](../../ops/issues/2026-10-28-note-project-bootstrap.md)。
+
+**与 §1 描述的差异（计划定稿后代码又演进，以代码为准）**：tcg/rock/coin/toy/note 已改为与 antique 一致的
+**两段式**（`scan-uses-full-template: false`——basic 扫描只出 basic_result，premium 由用户主动发起的
+DeepResearch 产出），不再是「一次 AI 调用同时产出 basic+premium」；coin/toy/note prompt 升到 v2（2026-10-30/31，
+防输出语言漂移）。`premium_result` 列与 GraphQL `premiumResult` 字段保留（读取优先级 `premium_result ?? latestDeepResearch.premiumResult` 不变）。

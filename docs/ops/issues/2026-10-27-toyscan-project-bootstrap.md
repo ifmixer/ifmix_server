@@ -1,6 +1,6 @@
 # 玩具扫描器（projectId=toy）接入 —— 项目数据初始化
 
-状态：✅ **本地（core_api_local）已执行**（2026-10-27 首次写入，2026-10-28 改名并复核）；生产环境待部署时执行
+状态：✅ **本地（core_api_local）已执行**（2026-10-27 首次写入，2026-10-28 改名并复核）；✅ **生产库已执行**（2026-10-31，随 v1.0.9 发布）
 日期：2026-10-27（2026-10-28 修订：projectId 由 `toyscan` 改为 `toy`）
 相关：[toyscan 设计](../../../ai_scan/toy/toy_workspace/docs/superpowers/specs/2026-10-27-toyscan-design.md)
 
@@ -107,6 +107,13 @@ from core_project_serverconfig where project_id = 'toy';
    - 返回结构里 `basic_result.object_overview` 有值（不是古董的字段）；
    - `core_ai_scanrecord.premium_result` 非空；
    - `core_ai_deepresearch` **不应**新增行。
+
+### 生产执行记录（2026-10-31，随 v1.0.9 发布）✅
+
+- Flyway V2 先行应用；两张表按上文 SQL 直接 INSERT（生产库无历史 `toyscan` 行）
+- 核对：`fcm_config->>'project_id'`=`ifmix-toy`、`client_email` 一致、`private_key` 1704 字符与源文件一致
+- 部署与整体验证见 [release plan v1.0.9 §5](../../version/v1.0.9/release%20plan%20v1.0.9.md)；真机冒烟待客户端发版
+  （注意：toy 现为两段式，basic 扫描只出 `basic_result`，premium 走 DeepResearch——上文冒烟第 4/5 条按新口径理解）
 
 ## 回滚
 
